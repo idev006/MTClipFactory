@@ -60,6 +60,10 @@ class FinalRenderPrerequisiteError(ValueError):
     """Raised when final render requirements are not satisfied."""
 
 
+class FactoryJobNotFoundError(ValueError):
+    """Raised when a factory job cannot be found."""
+
+
 class VideoAssemblyFactoryService:
     PREVIEW_JOB_TYPE = "render_recipe_preview"
     FINAL_JOB_TYPE = "render_recipe_final"
@@ -417,6 +421,34 @@ class VideoAssemblyFactoryService:
 
     def list_final_render_jobs(self, *, status: str | None = None) -> list[PreviewJobSummaryDTO]:
         return self._list_jobs(job_type=self.FINAL_JOB_TYPE, status=status)
+
+    def list_jobs(self, *, status: str | None = None) -> list[PreviewJobSummaryDTO]:
+        jobs = [
+            *self.list_preview_jobs(status=status),
+            *self.list_final_render_jobs(status=status),
+        ]
+        return sorted(jobs, key=lambda job: job.job_id, reverse=True)
+
+    def retry_job(self, job_id: int) -> None:
+        with self._unit_of_work_factory() as uow:
+            job = uow.jobs.get_by_id(job_id)
+            if job is None or job.id is None:
+                raise FactoryJobNotFoundError(str(job_id))
+            if job.job_type not in {self.PREVIEW_JOB_TYPE, self.FINAL_JOB_TYPE}:
+                raise ValueError(f"Unsupported factory job type: {job.job_type}")
+            job.status = JobStatus.QUEUED
+            job.progress = 0.0
+            job.error_message = None
+            job.started_at = None
+            job.finished_at = None
+            job.output_json = None
+            uow.jobs.update(job)
+            uow.commit()
+
+        if job.job_type == self.PREVIEW_JOB_TYPE:
+            self.run_preview_job(job_id)
+            return
+        self.run_final_render_job(job_id)
 
     def _list_jobs(self, *, job_type: str, status: str | None = None) -> list[PreviewJobSummaryDTO]:
         with self._unit_of_work_factory() as uow:

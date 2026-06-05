@@ -1,7 +1,8 @@
 # MTClipFactory Document Index
 
-เอกสารทั้งหมดในโฟลเดอร์นี้คือแหล่งอ้างอิงหลักของโครงการ ทีมพัฒนาต้องยึดตามเอกสารก่อนเสมอ และเมื่อโค้ดเปลี่ยน เอกสารต้องถูกปรับในงานเดียวกัน
-ไฟล์นี้คือ `SSOT` ของชุดเอกสาร หากมีเอกสารใหม่ ต้องถูกเพิ่มเข้ามาที่นี่ก่อนจึงถือว่าเป็นเอกสารทางการของโครงการ
+This folder is the project document SSOT.
+
+When code changes, the related Markdown documents in this folder must be updated in the same delivery loop.
 
 ## Reading Order
 
@@ -21,12 +22,13 @@
 14. [14_Lessons_Learned.md](/F:/programming/python/MTClipFactory/doc/14_Lessons_Learned.md)
 15. [15_System_Decomposition_Library_and_Factory.md](/F:/programming/python/MTClipFactory/doc/15_System_Decomposition_Library_and_Factory.md)
 16. [16_Operational_Reliability_and_Control_Center.md](/F:/programming/python/MTClipFactory/doc/16_Operational_Reliability_and_Control_Center.md)
+17. [17_Project_Progress_Snapshot.md](/F:/programming/python/MTClipFactory/doc/17_Project_Progress_Snapshot.md)
 
 ## Governance
 
-- Document-first: เริ่มจากเอกสารก่อนเขียนโค้ด
-- SSOT-first: ใช้ `doc/00_Document_Index.md` เป็นประตูทางเข้าชุดเอกสารทั้งหมด
-- Architecture-first: ทุกโมดูลใหม่ต้องระบุว่าตรงกับชั้นใดในสถาปัตยกรรม
-- Testability-first: โค้ดใหม่ต้องออกแบบให้เทสต์ได้ง่าย ไม่ซ่อน logic ไว้ใน UI
-- Traceability-first: การตัดสินใจสำคัญต้องสะท้อนในเอกสาร
-- PM-visibility-first: ความคืบหน้า, งานค้าง, issue, และ lesson learned ต้องอัปเดตในเอกสารส่วนกลาง
+- Document-first: update documents before or together with implementation changes.
+- SSOT-first: only files linked from this index are official project documents.
+- UML-first: architecture and workflow changes must be reflected in the UML document.
+- Testability-first: service seams, adapters, and view models must stay easy to verify with `pytest`.
+- Traceability-first: roadmap, status, issues, Kanban, and lessons learned must describe the real project state.
+- PM-visibility-first: progress must be visible from both the dashboard and the central project documents.

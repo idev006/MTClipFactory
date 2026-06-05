@@ -4,22 +4,23 @@ This Markdown board is the SSOT Kanban for the repository.
 
 ## Backlog
 
-- final render workflow
 - advanced output registration and approval trail
 - duplicate risk evaluation
 - recipe scoring
 - quality gate automation
+- automatic resume orchestrator
 
 ## Ready
 
 - richer preview composition beyond simple renderable-video flow
 - richer final-render composition beyond preview-promotion foundation
 - detailed output reporting in UI
+- path-root hot-reload decision
 
 ## In Progress
 
-- recovery and retry policy for persisted jobs
-- final-render architecture slice
+- richer preview and final composition slice
+- approval and output auditability slice
 
 ## Review
 
@@ -39,6 +40,8 @@ This Markdown board is the SSOT Kanban for the repository.
 - configurable path roots in `app_config.toml`
 - thumbnail/proxy artifact generation jobs
 - job persistence for library artifacts
+- unified persisted-job visibility on dashboard
+- manual retry for factory preview/final jobs
 - recipe persistence
 - recipe item assignment
 - preview render output job flow

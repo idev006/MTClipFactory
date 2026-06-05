@@ -50,13 +50,14 @@ Compose prepared assets into reviewable preview and later final-output workflows
 - recipe approval / rejection decisions
 - final render foundation
 - preview job status tracking
+- final job status tracking
+- manual retry for persisted factory jobs
 
 ### Future Responsibilities
 
-- preview video rendering
-- review decision workflow
-- final render jobs
-- output registration
+- layered preview composition
+- richer final render composition
+- stronger output approval trail
 - quality and duplicate-risk checks
 
 ### Owned SSOT
@@ -74,6 +75,7 @@ Compose prepared assets into reviewable preview and later final-output workflows
 - job persistence
 - unit of work
 - dashboard and settings aggregation
+- cross-capability job visibility
 
 ## Ownership Rule
 

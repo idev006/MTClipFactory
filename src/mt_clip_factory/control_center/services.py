@@ -1,17 +1,19 @@
 from __future__ import annotations
 
 from dataclasses import asdict
+from datetime import UTC, datetime
 from pathlib import Path
 import tomllib
 from typing import TYPE_CHECKING
 
 from mt_clip_factory.application.services import ProductApplicationService
 from mt_clip_factory.config import AppConfig
-from mt_clip_factory.control_center.dto import DashboardSummaryDTO, SystemSettingsDTO
+from mt_clip_factory.control_center.dto import DashboardJobDTO, DashboardSummaryDTO, SystemSettingsDTO
 from mt_clip_factory.library.services import AssetIntakeService
 from mt_clip_factory.library.tag_services import TagManagementService
 
 if TYPE_CHECKING:
+    from mt_clip_factory.factory.services import VideoAssemblyFactoryService
     from mt_clip_factory.library.artifact_services import ArtifactGenerationService
 
 
@@ -104,6 +106,7 @@ class DashboardService:
         product_service: ProductApplicationService,
         asset_intake_service: AssetIntakeService,
         artifact_generation_service: ArtifactGenerationService,
+        video_assembly_factory_service: VideoAssemblyFactoryService,
         tag_management_service: TagManagementService,
         system_settings_service: SystemSettingsService,
     ) -> None:
@@ -111,6 +114,7 @@ class DashboardService:
         self._product_service = product_service
         self._asset_intake_service = asset_intake_service
         self._artifact_generation_service = artifact_generation_service
+        self._video_assembly_factory_service = video_assembly_factory_service
         self._tag_management_service = tag_management_service
         self._system_settings_service = system_settings_service
 
@@ -120,8 +124,7 @@ class DashboardService:
         assets = self._asset_intake_service.list_assets()
         recipe_count = sum(product.recipe_count for product in products)
         output_count = sum(product.output_count for product in products)
-        queued_jobs = self._artifact_generation_service.list_jobs(status="queued")
-        failed_jobs = self._artifact_generation_service.list_jobs(status="failed")
+        dashboard_jobs = self._build_dashboard_jobs()
         tags = self._tag_management_service.list_tags()
         ready_asset_count = sum(1 for asset in assets if asset.status == "ready")
         needs_review_asset_count = sum(1 for asset in assets if asset.status == "needs_review")
@@ -135,10 +138,15 @@ class DashboardService:
             ready_asset_count=ready_asset_count,
             needs_review_asset_count=needs_review_asset_count,
             tag_count=len(tags),
-            queued_job_count=len(queued_jobs),
-            failed_job_count=len(failed_jobs),
+            total_job_count=len(dashboard_jobs),
+            active_job_count=sum(1 for job in dashboard_jobs if job.status in {"queued", "processing"}),
+            queued_job_count=sum(1 for job in dashboard_jobs if job.status == "queued"),
+            processing_job_count=sum(1 for job in dashboard_jobs if job.status == "processing"),
+            failed_job_count=sum(1 for job in dashboard_jobs if job.status == "failed"),
+            generated_at=_utc_timestamp(),
             ffprobe_available=ffprobe_path.exists(),
             ffmpeg_available=ffmpeg_path.exists(),
+            recent_jobs=tuple(dashboard_jobs[:8]),
             workspace_root=str(self._config.paths.workspace_root),
             database_path=settings.database_path,
             media_root=settings.media_root,
@@ -155,6 +163,36 @@ class DashboardService:
             auto_refresh_seconds=settings.auto_refresh_seconds,
         )
 
+    def _build_dashboard_jobs(self) -> list[DashboardJobDTO]:
+        artifact_jobs = [
+            DashboardJobDTO(
+                job_id=job.job_id,
+                job_code=job.job_code,
+                job_type=job.job_type,
+                job_source="library",
+                status=job.status,
+                progress=job.progress,
+                subject_reference=_subject_reference("asset", job.asset_id),
+                error_message=job.error_message,
+            )
+            for job in self._artifact_generation_service.list_jobs()
+        ]
+        factory_jobs = [
+            DashboardJobDTO(
+                job_id=job.job_id,
+                job_code=job.job_code,
+                job_type=job.job_type,
+                job_source="factory",
+                status=job.status,
+                progress=job.progress,
+                subject_reference=_subject_reference("recipe", job.recipe_id),
+                output_path=job.output_path,
+                error_message=job.error_message,
+            )
+            for job in self._video_assembly_factory_service.list_jobs()
+        ]
+        return sorted([*artifact_jobs, *factory_jobs], key=lambda job: job.job_id, reverse=True)
+
 
 def _escape_toml(value: str) -> str:
     return value.replace("\\", "\\\\").replace('"', '\\"')
@@ -165,3 +203,11 @@ def _resolve_runtime_path(workspace_root: Path, raw_value: str) -> str:
     if path.is_absolute():
         return str(path)
     return str(workspace_root / path)
+
+
+def _subject_reference(kind: str, subject_id: int | None) -> str:
+    return f"{kind}#{subject_id}" if subject_id is not None else f"{kind}#-"
+
+
+def _utc_timestamp() -> str:
+    return datetime.now(UTC).strftime("%Y-%m-%d %H:%M:%S UTC")

@@ -57,6 +57,7 @@ classDiagram
         +list_recipes(...)
         +get_recipe(recipe_id)
         +list_outputs(...)
+        +list_jobs(...)
         +approve_output(output_id)
         +approve_recipe(recipe_id)
         +reject_recipe(recipe_id)
@@ -67,6 +68,7 @@ classDiagram
         +enqueue_final_render_job(recipe_id)
         +run_final_render_job(job_id)
         +list_final_render_jobs(...)
+        +retry_job(job_id)
     }
 
     class FFmpegPreviewRenderer {
@@ -263,6 +265,27 @@ sequenceDiagram
     VM->>Factory: run_final_render_job(job_id)
     Factory->>Render: render_output(...)
     Factory->>Out: add(final output)
+    Factory->>JobRepo: update(done/failed)
+    Factory->>DB: COMMIT
+```
+
+## Retry Recovery Sequence
+
+```mermaid
+sequenceDiagram
+    actor User
+    participant Dash as DashboardWindow
+    participant Factory as VideoAssemblyFactoryService
+    participant JobRepo as JobRepository
+    participant Render as FFmpegPreviewRenderer
+    participant DB as SQLite
+
+    User->>Dash: inspect failed job on dashboard
+    User->>Factory: retry_job(job_id)
+    Factory->>JobRepo: load failed job
+    Factory->>JobRepo: reset status=queued
+    Factory->>DB: COMMIT
+    Factory->>Render: run preview/final job again
     Factory->>JobRepo: update(done/failed)
     Factory->>DB: COMMIT
 ```

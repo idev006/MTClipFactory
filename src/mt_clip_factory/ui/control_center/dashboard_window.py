@@ -46,7 +46,8 @@ class DashboardWindow(QMainWindow):
         content_layout = QGridLayout()
         content_layout.addWidget(self._build_system_summary_group(), 0, 0)
         content_layout.addWidget(self._build_paths_group(), 0, 1)
-        content_layout.addWidget(self._build_settings_group(), 1, 0, 1, 2)
+        content_layout.addWidget(self._build_recent_jobs_group(), 1, 0)
+        content_layout.addWidget(self._build_settings_group(), 1, 1)
         content_layout.setColumnStretch(0, 1)
         content_layout.setColumnStretch(1, 1)
         layout.addLayout(content_layout)
@@ -115,6 +116,14 @@ class DashboardWindow(QMainWindow):
         layout.addWidget(self.settings_text)
         return group
 
+    def _build_recent_jobs_group(self) -> QGroupBox:
+        group = QGroupBox("Operational Attention")
+        layout = QVBoxLayout(group)
+        self.recent_jobs_text = QTextEdit()
+        self.recent_jobs_text.setReadOnly(True)
+        layout.addWidget(self.recent_jobs_text)
+        return group
+
     def _refresh_status(self) -> None:
         self.status_label.setText(f"Status: {self._view_model.status}")
 
@@ -125,6 +134,7 @@ class DashboardWindow(QMainWindow):
         self.system_summary_text.setPlainText(
             "\n".join(
                 [
+                    f"Generated At: {summary.generated_at}",
                     f"Products: {summary.product_count}",
                     f"Assets: {summary.asset_count}",
                     f"Recipes: {summary.recipe_count}",
@@ -132,7 +142,10 @@ class DashboardWindow(QMainWindow):
                     f"Ready Assets: {summary.ready_asset_count}",
                     f"Needs Review Assets: {summary.needs_review_asset_count}",
                     f"Tags: {summary.tag_count}",
+                    f"Total Jobs: {summary.total_job_count}",
+                    f"Active Jobs: {summary.active_job_count}",
                     f"Queued Jobs: {summary.queued_job_count}",
+                    f"Processing Jobs: {summary.processing_job_count}",
                     f"Failed Jobs: {summary.failed_job_count}",
                     f"FFprobe Available: {summary.ffprobe_available}",
                     f"FFmpeg Available: {summary.ffmpeg_available}",
@@ -153,6 +166,7 @@ class DashboardWindow(QMainWindow):
                 ]
             )
         )
+        self.recent_jobs_text.setPlainText(_format_operational_attention(summary))
         self.settings_text.setPlainText(
             "\n".join(
                 [
@@ -165,3 +179,29 @@ class DashboardWindow(QMainWindow):
                 ]
             )
         )
+
+
+def _format_operational_attention(summary) -> str:
+    lines: list[str] = []
+    if summary.failed_job_count > 0:
+        lines.append("Attention: failed jobs need operator review or retry.")
+    if summary.needs_review_asset_count > 0:
+        lines.append("Attention: some assets are still waiting for review.")
+    if not summary.ffprobe_available or not summary.ffmpeg_available:
+        lines.append("Attention: one or more FFmpeg dependencies are unavailable.")
+    if not lines:
+        lines.append("Attention: no active alerts.")
+    lines.append("")
+    lines.append("Recent Jobs:")
+    if not summary.recent_jobs:
+        lines.append("- No persisted jobs yet.")
+        return "\n".join(lines)
+    for job in summary.recent_jobs:
+        target = f"{job.subject_reference} | {job.job_source}"
+        output = f" | output={job.output_path}" if job.output_path else ""
+        error = f" | error={job.error_message}" if job.error_message else ""
+        lines.append(
+            f"- #{job.job_id} {job.job_code} [{job.status}] {job.job_type} "
+            f"{target} | progress={job.progress:.1f}{output}{error}"
+        )
+    return "\n".join(lines)

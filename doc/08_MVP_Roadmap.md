@@ -40,6 +40,8 @@
 - audio mix adapter
 - final render job
 - output registration
+- unified dashboard visibility for persisted jobs
+- manual retry for persisted factory jobs
 
 ## Phase 5: Automation and Quality
 
@@ -48,7 +50,7 @@
 - quality gate
 - resumable orchestrator
 
-## Status Snapshot On 2026-06-05
+## Status Snapshot On 2026-06-06
 
 - Phase 1: complete
 - Phase 2: functionally complete for MVP baseline

@@ -54,3 +54,8 @@
 
 - a first final-render slice does not need full composition logic if it creates traceable value and preserves a clean seam for deeper rendering later
 - promoting from an approved preview output gave us a safe bridge toward richer render orchestration without inventing hidden state
+
+## LL-012 | 2026-06-06 | One Job Surface Improves Honesty
+
+- once library and factory jobs share one dashboard surface, operators stop guessing where work is stuck
+- a unified job vocabulary also makes retry behavior easier to explain, test, and document

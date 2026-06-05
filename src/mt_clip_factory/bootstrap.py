@@ -92,6 +92,7 @@ def build_resource_library_module(workspace_root: Path) -> ResourceLibraryModule
         product_service=product_service,
         asset_intake_service=asset_intake_service,
         artifact_generation_service=artifact_generation_service,
+        video_assembly_factory_service=video_assembly_factory_service,
         tag_management_service=tag_management_service,
         system_settings_service=settings_service,
     )

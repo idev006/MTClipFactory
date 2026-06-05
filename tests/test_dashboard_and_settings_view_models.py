@@ -7,6 +7,7 @@ from mt_clip_factory.application.services import ProductApplicationService
 from mt_clip_factory.config import default_config
 from mt_clip_factory.control_center.dto import SystemSettingsDTO
 from mt_clip_factory.control_center.services import DashboardService, SystemSettingsService
+from mt_clip_factory.factory.dto import PreviewJobSummaryDTO
 from mt_clip_factory.library.artifact_dto import ArtifactJobSummaryDTO
 from mt_clip_factory.library.dto import RegisterAssetCommand
 from mt_clip_factory.library.readiness import AssetReadinessEvaluator
@@ -65,6 +66,26 @@ class FakeArtifactGenerationService:
         if status == "failed":
             return list(self._failed_jobs)
         return [*self._queued_jobs, *self._failed_jobs]
+
+
+class FakeVideoAssemblyFactoryService:
+    def __init__(self) -> None:
+        self._jobs = [
+            PreviewJobSummaryDTO(
+                job_id=6,
+                job_code="final_06",
+                recipe_id=4,
+                job_type="render_recipe_final",
+                status="processing",
+                progress=0.6,
+                output_path=None,
+            )
+        ]
+
+    def list_jobs(self, *, status: str | None = None) -> list[PreviewJobSummaryDTO]:
+        if status is None:
+            return list(self._jobs)
+        return [job for job in self._jobs if job.status == status]
 
 
 def _build_asset_service(unit_of_work_factory, media_root: Path) -> AssetIntakeService:
@@ -163,6 +184,7 @@ def test_dashboard_view_model_loads_summary(unit_of_work_factory, tmp_path) -> N
         product_service=product_service,
         asset_intake_service=asset_service,
         artifact_generation_service=FakeArtifactGenerationService(queued_count=1, failed_count=1),
+        video_assembly_factory_service=FakeVideoAssemblyFactoryService(),
         tag_management_service=tag_service,
         system_settings_service=settings_service,
     )
@@ -176,4 +198,6 @@ def test_dashboard_view_model_loads_summary(unit_of_work_factory, tmp_path) -> N
     assert view_model.summary.recipe_count == 0
     assert view_model.summary.output_count == 0
     assert view_model.summary.queued_job_count == 1
+    assert view_model.summary.processing_job_count == 1
     assert view_model.summary.failed_job_count == 1
+    assert view_model.summary.recent_jobs[0].job_code == "final_06"

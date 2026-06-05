@@ -6,15 +6,16 @@
 | --- | --- | --- | --- | --- | --- | --- | --- |
 | ISS-001 | 2026-06-05 | Medium | UI Direction | The original blueprint referenced Streamlit ideas, but the implementation SSOT is now PySide6 + MVVM. Team members must ignore legacy UI assumptions. | Engineering | Open | Continue updating docs and screens only from current repo behavior. |
 | ISS-002 | 2026-06-05 | Medium | Module Boundary | `Video Assembly Factory` must consume prepared assets without mutating core asset metadata ownership owned by `Resource Library Management`. | Engineering | Open | Keep ownership rule explicit in architecture and service contracts. |
-| ISS-004 | 2026-06-05 | Medium | Recovery Depth | Job persistence exists, but recovery policy is not yet uniform across artifact and preview jobs. | Engineering | Open | Add resume/retry policy and restart tests. |
 | ISS-008 | 2026-06-06 | Medium | Path Reload Semantics | Path roots are now configurable, but a full runtime switch still assumes application restart for complete consistency. | Engineering | Open | Decide whether to keep restart semantics explicit or implement hot-reload for path-dependent services. |
 | ISS-009 | 2026-06-06 | Medium | Preview Composition Depth | Preview output currently supports a simple renderable-video path. It does not yet reflect layered composition, timing control, or audio mixing. | Engineering | Open | Add richer composition pipeline and explicit role-based render rules. |
 | ISS-010 | 2026-06-06 | Medium | Final Render Depth | Current final-render flow promotes from an approved preview output as a foundation. It is traceable and useful, but not yet a full recomposition pipeline. | Engineering | Open | Add richer final renderer with composition/audio-aware pipeline and stronger reporting. |
+| ISS-013 | 2026-06-06 | Medium | Auto Resume Depth | Manual retry now exists across persisted job types, but automatic resume/orchestration after application restart is not yet defined. | Engineering | Open | Design orchestrator semantics and add restart-resume tests before claiming unattended recovery. |
 
 ## Closed Issues
 
 | ID | Date Closed | Topic | Resolution |
 | --- | --- | --- | --- |
+| ISS-004-CLOSED | 2026-06-06 | Recovery Depth | Closed by delivering a uniform manual retry path across artifact, preview, and final persisted jobs, plus restart-style retry coverage for factory jobs. |
 | ISS-011-CLOSED | 2026-06-06 | Review Workflow Gap | Closed by delivering output approval plus recipe approval/rejection workflow. |
 | ISS-012-CLOSED | 2026-06-06 | Output Visibility Gap | Closed by delivering output browsing/reporting foundation in the Recipe Builder UI. |
 | ISS-003-CLOSED | 2026-06-06 | Preview Depth | Closed by delivering preview output rendering plus output registration foundation. |

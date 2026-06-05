@@ -22,6 +22,19 @@ class SystemSettingsDTO:
 
 
 @dataclass(slots=True, frozen=True)
+class DashboardJobDTO:
+    job_id: int
+    job_code: str
+    job_type: str
+    job_source: str
+    status: str
+    progress: float
+    subject_reference: str
+    output_path: str | None = None
+    error_message: str | None = None
+
+
+@dataclass(slots=True, frozen=True)
 class DashboardSummaryDTO:
     product_count: int
     asset_count: int
@@ -30,10 +43,15 @@ class DashboardSummaryDTO:
     ready_asset_count: int
     needs_review_asset_count: int
     tag_count: int
+    total_job_count: int
+    active_job_count: int
     queued_job_count: int
+    processing_job_count: int
     failed_job_count: int
+    generated_at: str
     ffprobe_available: bool
     ffmpeg_available: bool
+    recent_jobs: tuple[DashboardJobDTO, ...]
     workspace_root: str
     database_path: str
     media_root: str

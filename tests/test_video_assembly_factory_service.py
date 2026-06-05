@@ -10,6 +10,7 @@ from mt_clip_factory.factory.dto import AssignAssetToRecipeCommand, CreateRecipe
 from mt_clip_factory.factory.preview_artifacts import PreviewManifestBuilder
 from mt_clip_factory.factory.renderers import RenderedPreviewOutput
 from mt_clip_factory.factory.services import (
+    FactoryJobNotFoundError,
     FinalRenderPrerequisiteError,
     PreviewBuildInputError,
     RecipeAlreadyExistsError,
@@ -165,6 +166,30 @@ def test_factory_service_marks_preview_job_failed_when_recipe_has_no_items(unit_
     assert jobs[0].error_message is not None
 
 
+def test_factory_service_retries_failed_preview_job_after_restart(unit_of_work_factory, tmp_path) -> None:
+    product_id, asset_id = _register_ready_asset(unit_of_work_factory, tmp_path)
+    preview_root = tmp_path / "previews"
+    service = _build_factory_service(unit_of_work_factory, preview_root)
+    recipe_id = service.create_recipe(CreateRecipeCommand(product_id=product_id, recipe_code="Honey Launch"))
+    job_id = service.enqueue_preview_job(recipe_id)
+
+    with pytest.raises(PreviewBuildInputError):
+        service.run_preview_job(job_id)
+
+    restarted_service = _build_factory_service(unit_of_work_factory, preview_root)
+    restarted_service.assign_asset_to_recipe(
+        AssignAssetToRecipeCommand(recipe_id=recipe_id, asset_id=asset_id, role="hero")
+    )
+    restarted_service.retry_job(job_id)
+
+    jobs = restarted_service.list_jobs()
+    outputs = restarted_service.list_outputs(recipe_id=recipe_id)
+    assert jobs[0].job_id == job_id
+    assert jobs[0].status == "done"
+    assert len(outputs) == 1
+    assert Path(outputs[0].file_path).exists()
+
+
 def test_factory_service_requires_approved_output_before_approving_recipe(unit_of_work_factory, tmp_path) -> None:
     product_id, asset_id = _register_ready_asset(unit_of_work_factory, tmp_path)
     service = _build_factory_service(unit_of_work_factory, tmp_path / "previews")
@@ -241,3 +266,45 @@ def test_factory_service_builds_final_render_job(unit_of_work_factory, tmp_path)
     assert len(outputs) == 2
     assert outputs[0].approved is True
     assert products[0].output_count == 2
+
+
+def test_factory_service_retries_failed_final_job_after_restart(unit_of_work_factory, tmp_path) -> None:
+    product_id, asset_id = _register_ready_asset(unit_of_work_factory, tmp_path)
+    preview_root = tmp_path / "previews"
+    service = _build_factory_service(unit_of_work_factory, preview_root)
+    recipe_id = service.create_recipe(CreateRecipeCommand(product_id=product_id, recipe_code="Honey Launch"))
+    service.assign_asset_to_recipe(AssignAssetToRecipeCommand(recipe_id=recipe_id, asset_id=asset_id, role="hero"))
+    preview_job_id = service.enqueue_preview_job(recipe_id)
+    service.run_preview_job(preview_job_id)
+    output_id = service.list_outputs(recipe_id=recipe_id)[0].output_id
+    service.approve_output(output_id)
+    service.approve_recipe(recipe_id)
+
+    with unit_of_work_factory() as uow:
+        output = uow.outputs.get_by_id(output_id)
+        assert output is not None
+        output.approved = False
+        uow.outputs.update(output)
+        uow.commit()
+
+    final_job_id = service.enqueue_final_render_job(recipe_id)
+    with pytest.raises(FinalRenderPrerequisiteError, match="Approve at least one output"):
+        service.run_final_render_job(final_job_id)
+
+    restarted_service = _build_factory_service(unit_of_work_factory, preview_root)
+    restarted_service.approve_output(output_id)
+    restarted_service.retry_job(final_job_id)
+
+    jobs = restarted_service.list_jobs()
+    outputs = restarted_service.list_outputs(recipe_id=recipe_id)
+    assert jobs[0].job_id == final_job_id
+    assert jobs[0].status == "done"
+    assert len(outputs) == 2
+    assert Path(outputs[0].file_path).exists()
+
+
+def test_factory_service_rejects_retry_for_unknown_job(unit_of_work_factory, tmp_path) -> None:
+    service = _build_factory_service(unit_of_work_factory, tmp_path / "previews")
+
+    with pytest.raises(FactoryJobNotFoundError):
+        service.retry_job(999)

@@ -4,7 +4,7 @@
 
 - Report date: 2026-06-06
 - Overall status: In Progress
-- Current phase: Phase 4, Render Pipeline Foundation
+- Current phase: Phase 4, Render Pipeline and Operational Recovery
 - Delivery mode: document-led SSOT with code and tests kept in sync
 
 ## What Is Done
@@ -19,6 +19,7 @@
 - dashboard and settings control center
 - FFmpeg-backed thumbnail/proxy generation jobs
 - persisted job tracking with queued/failed visibility
+- dashboard recent-job visibility across library and factory workflows
 - initial Video Assembly Factory:
   - recipe persistence
   - recipe item assignment
@@ -29,25 +30,27 @@
   - recipe builder desktop window
   - final render foundation
   - output browsing/reporting foundation
+  - manual retry for preview/final jobs
 - configurable path roots in `app_config.toml` for database, media, docs, outputs, and preview roots
 
 ## Verification Baseline
 
-- `python -m pytest` via `.venv`: `61 passed`
+- `python -m pytest` via `.venv`: `64 passed`
 - UI smoke via `QT_QPA_PLATFORM=offscreen`: `6` windows instantiated successfully
 
 ## Current Focus
 
-- deepen recovery policy across jobs
 - deepen render fidelity beyond the current foundation
+- add richer auditability around approvals and outputs
 - decide whether runtime path changes should hot-reload or remain restart-driven
+- define future auto-resume orchestration beyond the current manual retry policy
 
 ## Next Steps
 
 1. Add richer preview composition and asset-role handling.
 2. Replace final-render foundation with fuller composition and audio-aware rendering.
-3. Add durable retry and resume policy for all job types.
-4. Add stronger output reporting and approval trail.
+3. Add stronger output reporting and approval trail.
+4. Design automatic resume/orchestrator behavior on top of persisted manual retry.
 
 ## Ownership
 
