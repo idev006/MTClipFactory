@@ -8,6 +8,7 @@ from mt_clip_factory.application.dto import CreateProductCommand
 from mt_clip_factory.application.services import ProductApplicationService
 from mt_clip_factory.factory.dto import AssignAssetToRecipeCommand, CreateRecipeCommand
 from mt_clip_factory.factory.preview_artifacts import PreviewManifestBuilder
+from mt_clip_factory.factory.renderers import RenderedPreviewOutput
 from mt_clip_factory.factory.services import (
     PreviewBuildInputError,
     RecipeAlreadyExistsError,
@@ -44,9 +45,18 @@ def _build_asset_service(unit_of_work_factory, media_root: Path) -> AssetIntakeS
 
 
 def _build_factory_service(unit_of_work_factory, preview_root: Path) -> VideoAssemblyFactoryService:
+    class FakePreviewRenderer:
+        def render_preview(self, *, product_code: str, recipe_code: str, source_files: list[Path]) -> RenderedPreviewOutput:
+            output_dir = preview_root / product_code / "videos"
+            output_dir.mkdir(parents=True, exist_ok=True)
+            target_path = output_dir / f"{recipe_code}.mp4"
+            target_path.write_bytes(source_files[0].read_bytes())
+            return RenderedPreviewOutput(file_path=target_path, duration_sec=3.0)
+
     return VideoAssemblyFactoryService(
         unit_of_work_factory=unit_of_work_factory,
         preview_manifest_builder=PreviewManifestBuilder(preview_root),
+        preview_renderer=FakePreviewRenderer(),
     )
 
 
@@ -112,7 +122,7 @@ def test_factory_service_assigns_asset_and_returns_recipe_details(unit_of_work_f
     assert recipe.items[0].role == "hero"
 
 
-def test_factory_service_builds_preview_manifest_job(unit_of_work_factory, tmp_path) -> None:
+def test_factory_service_builds_preview_output_job(unit_of_work_factory, tmp_path) -> None:
     product_id, asset_id = _register_ready_asset(unit_of_work_factory, tmp_path)
     service = _build_factory_service(unit_of_work_factory, tmp_path / "previews")
     recipe_id = service.create_recipe(CreateRecipeCommand(product_id=product_id, recipe_code="Honey Launch"))
@@ -123,11 +133,14 @@ def test_factory_service_builds_preview_manifest_job(unit_of_work_factory, tmp_p
 
     jobs = service.list_preview_jobs()
     recipe = service.get_recipe(recipe_id)
+    products = ProductApplicationService(unit_of_work_factory=unit_of_work_factory).list_products()
     assert jobs[0].job_id == job_id
     assert jobs[0].status == "done"
     assert jobs[0].output_path is not None
     assert Path(jobs[0].output_path).exists()
+    assert jobs[0].output_path.endswith(".mp4")
     assert recipe.status == "candidate"
+    assert products[0].output_count == 1
 
 
 def test_factory_service_marks_preview_job_failed_when_recipe_has_no_items(unit_of_work_factory, tmp_path) -> None:

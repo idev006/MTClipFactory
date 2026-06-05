@@ -175,4 +175,4 @@ def test_recipe_builder_view_model_builds_preview(unit_of_work_factory) -> None:
 
     assert job_id == 1
     assert view_model.status == "ready"
-    assert "Built preview manifest for recipe #1" in view_model.feedback
+    assert "Built preview output for recipe #1" in view_model.feedback

@@ -34,3 +34,13 @@
 
 - moving operational thresholds into `app_config.toml` was a good step, but path configuration is still not complete
 - the team should treat remaining implicit defaults as active debt, not “good enough”
+
+## LL-008 | 2026-06-06 | Path Config Must Be Explicit
+
+- once path roots became first-class config, the dashboard and settings language also had to change from “runtime” to “configured” to stay truthful
+- admin-facing controls are only useful when the system explains whether a change applies immediately or after restart
+
+## LL-009 | 2026-06-06 | Output Records Matter
+
+- writing a preview file alone is not enough; registering an output record makes reporting and product-level counts much more useful
+- if work produces value, that value should usually enter the SSOT instead of living only on disk

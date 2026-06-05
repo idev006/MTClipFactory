@@ -8,10 +8,12 @@ from mt_clip_factory.application.services import ProductApplicationService
 from mt_clip_factory.config import AppConfig, default_config
 from mt_clip_factory.control_center.services import DashboardService, SystemSettingsService
 from mt_clip_factory.factory.preview_artifacts import PreviewManifestBuilder
+from mt_clip_factory.factory.renderers import FFmpegPreviewRenderer
 from mt_clip_factory.factory.services import VideoAssemblyFactoryService
 from mt_clip_factory.infrastructure.factory_repositories import SqlAlchemyRecipeRepository
 from mt_clip_factory.infrastructure.database import create_engine_from_path, create_schema
 from mt_clip_factory.infrastructure.job_repositories import SqlAlchemyJobRepository
+from mt_clip_factory.infrastructure.output_repositories import SqlAlchemyOutputRepository
 from mt_clip_factory.infrastructure.repositories import (
     SqlAlchemyAssetRepository,
     SqlAlchemyProductRepository,
@@ -42,6 +44,7 @@ def build_product_service(workspace_root: Path) -> ProductApplicationService:
             tag_repository_type=SqlAlchemyTagRepository,
             job_repository_type=SqlAlchemyJobRepository,
             recipe_repository_type=SqlAlchemyRecipeRepository,
+            output_repository_type=SqlAlchemyOutputRepository,
         )
 
     return ProductApplicationService(unit_of_work_factory=uow_factory)
@@ -62,6 +65,7 @@ def build_resource_library_module(workspace_root: Path) -> ResourceLibraryModule
             tag_repository_type=SqlAlchemyTagRepository,
             job_repository_type=SqlAlchemyJobRepository,
             recipe_repository_type=SqlAlchemyRecipeRepository,
+            output_repository_type=SqlAlchemyOutputRepository,
         )
 
     product_service = ProductApplicationService(unit_of_work_factory=uow_factory)
@@ -78,7 +82,8 @@ def build_resource_library_module(workspace_root: Path) -> ResourceLibraryModule
     )
     video_assembly_factory_service = VideoAssemblyFactoryService(
         unit_of_work_factory=uow_factory,
-        preview_manifest_builder=PreviewManifestBuilder(config.paths.media_root / "factory" / "preview_manifests"),
+        preview_manifest_builder=PreviewManifestBuilder(config.paths.preview_root / "manifests"),
+        preview_renderer=FFmpegPreviewRenderer(settings_service, config.paths.preview_root),
     )
     tag_management_service = TagManagementService(unit_of_work_factory=uow_factory)
     dashboard_service = DashboardService(

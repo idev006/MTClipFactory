@@ -45,7 +45,7 @@ Compose prepared assets into reviewable preview and later final-output workflows
 - recipe creation
 - recipe item assignment
 - preview job enqueue
-- preview manifest generation
+- preview output generation
 - preview job status tracking
 
 ### Future Responsibilities

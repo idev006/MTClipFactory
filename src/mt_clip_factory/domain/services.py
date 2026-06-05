@@ -7,6 +7,7 @@ from typing import Protocol
 from mt_clip_factory.domain.assets import Asset, AssetSummary
 from mt_clip_factory.domain.entities import Product, ProductSummary
 from mt_clip_factory.domain.jobs import Job, JobSummary
+from mt_clip_factory.domain.outputs import Output
 from mt_clip_factory.domain.recipes import Recipe, RecipeItem, RecipeSummary
 from mt_clip_factory.domain.tags import Tag, TagSummary
 
@@ -123,12 +124,18 @@ class RecipeRepository(Protocol):
         ...
 
 
+class OutputRepository(Protocol):
+    def add(self, output: Output) -> Output:
+        ...
+
+
 class UnitOfWork(AbstractContextManager["UnitOfWork"], Protocol):
     products: ProductRepository
     assets: AssetRepository
     tags: TagRepository
     jobs: JobRepository
     recipes: RecipeRepository
+    outputs: OutputRepository
 
     def commit(self) -> None:
         ...

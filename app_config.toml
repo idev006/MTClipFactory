@@ -1,3 +1,10 @@
+[paths]
+database_path = "ad_kitchen.db"
+media_root = "media_library"
+docs_root = "doc"
+outputs_root = "outputs"
+preview_root = "outputs\\preview"
+
 [ffmpeg]
 root = "F:\\ffmpeg"
 ffprobe = "F:\\ffmpeg\\bin\\ffprobe.exe"

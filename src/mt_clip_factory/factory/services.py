@@ -3,9 +3,11 @@ from __future__ import annotations
 import json
 from collections.abc import Callable
 from datetime import UTC, datetime
+from pathlib import Path
 
 from mt_clip_factory.domain.enums import JobStatus
 from mt_clip_factory.domain.jobs import Job
+from mt_clip_factory.domain.outputs import Output
 from mt_clip_factory.domain.recipes import Recipe
 from mt_clip_factory.domain.services import UnitOfWork
 from mt_clip_factory.factory.dto import (
@@ -17,6 +19,7 @@ from mt_clip_factory.factory.dto import (
     RecipeSummaryDTO,
 )
 from mt_clip_factory.factory.preview_artifacts import PreviewManifestBuilder
+from mt_clip_factory.factory.renderers import RenderedPreviewOutput
 from mt_clip_factory.library.artifacts import build_artifact_job_code, decode_job_input, encode_job_input
 
 
@@ -51,9 +54,11 @@ class VideoAssemblyFactoryService:
         self,
         unit_of_work_factory: Callable[[], UnitOfWork],
         preview_manifest_builder: PreviewManifestBuilder,
+        preview_renderer,
     ) -> None:
         self._unit_of_work_factory = unit_of_work_factory
         self._preview_manifest_builder = preview_manifest_builder
+        self._preview_renderer = preview_renderer
 
     def create_recipe(self, command: CreateRecipeCommand) -> int:
         recipe_code = _slugify_recipe_code(command.recipe_code)
@@ -229,9 +234,40 @@ class VideoAssemblyFactoryService:
                         ],
                     },
                 )
+                source_files = [
+                    Path(asset.file_path)
+                    for item in items
+                    for asset in [uow.assets.get_by_id(item.asset_id)]
+                    if asset is not None and _is_renderable_preview_asset(asset.asset_type.value)
+                ]
+                if not source_files:
+                    raise PreviewBuildInputError(f"Recipe {recipe.recipe_code} has no renderable video assets.")
+                rendered_output = self._preview_renderer.render_preview(
+                    product_code=product.product_code,
+                    recipe_code=recipe.recipe_code,
+                    source_files=source_files,
+                )
+                output = uow.outputs.add(
+                    Output(
+                        recipe_id=recipe.id,
+                        output_code=build_artifact_job_code("preview_output"),
+                        file_path=str(rendered_output.file_path),
+                        platform=recipe.target_platform,
+                        ratio=recipe.target_ratio,
+                        duration_sec=rendered_output.duration_sec,
+                        approved=False,
+                    )
+                )
                 job.status = JobStatus.DONE
                 job.progress = 1.0
-                job.output_json = json.dumps({"preview_manifest_path": str(manifest_path)}, sort_keys=True)
+                job.output_json = json.dumps(
+                    {
+                        "output_id": output.id,
+                        "preview_manifest_path": str(manifest_path),
+                        "preview_output_path": str(rendered_output.file_path),
+                    },
+                    sort_keys=True,
+                )
                 job.error_message = None
                 job.finished_at = _utc_now()
                 uow.jobs.update(job)
@@ -279,7 +315,11 @@ def _extract_output_path(output_json: str | None) -> str | None:
     if not output_json:
         return None
     payload = json.loads(output_json)
-    return payload.get("preview_manifest_path")
+    return payload.get("preview_output_path") or payload.get("preview_manifest_path")
+
+
+def _is_renderable_preview_asset(asset_type: str) -> bool:
+    return asset_type in {"background_video", "foreground_video"}
 
 
 def _utc_now() -> datetime:

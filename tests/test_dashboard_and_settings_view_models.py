@@ -81,6 +81,13 @@ def test_settings_view_model_loads_and_saves(tmp_path) -> None:
     config_path.write_text(
         "\n".join(
             [
+                "[paths]",
+                'database_path = "ad_kitchen.db"',
+                'media_root = "media_library"',
+                'docs_root = "doc"',
+                'outputs_root = "outputs"',
+                'preview_root = "outputs\\\\preview"',
+                "",
                 "[ffmpeg]",
                 'root = "F:\\\\ffmpeg"',
                 'ffprobe = "F:\\\\ffmpeg\\\\bin\\\\ffprobe.exe"',
@@ -107,6 +114,11 @@ def test_settings_view_model_loads_and_saves(tmp_path) -> None:
 
     view_model.save(
         SystemSettingsDTO(
+            database_path=str(tmp_path / "db.sqlite"),
+            media_root=str(tmp_path / "media"),
+            docs_root=str(tmp_path / "doc"),
+            outputs_root=str(tmp_path / "outputs"),
+            preview_root=str(tmp_path / "outputs" / "preview"),
             ffmpeg_root=r"F:\ffmpeg",
             ffprobe_path=r"F:\ffmpeg\bin\ffprobe.exe",
             ffmpeg_path=r"F:\ffmpeg\bin\ffmpeg.exe",
@@ -121,6 +133,7 @@ def test_settings_view_model_loads_and_saves(tmp_path) -> None:
 
     assert view_model.status == "ready"
     assert view_model.settings is not None
+    assert view_model.settings.outputs_root.endswith("outputs")
     assert view_model.settings.cpu_limit_percent == 91
 
 

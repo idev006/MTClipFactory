@@ -100,7 +100,7 @@ class DashboardWindow(QMainWindow):
         return group
 
     def _build_paths_group(self) -> QGroupBox:
-        group = QGroupBox("Runtime Paths")
+        group = QGroupBox("Configured Paths")
         layout = QVBoxLayout(group)
         self.paths_text = QTextEdit()
         self.paths_text.setReadOnly(True)
@@ -145,6 +145,9 @@ class DashboardWindow(QMainWindow):
                     f"Workspace: {summary.workspace_root}",
                     f"Database: {summary.database_path}",
                     f"Media Root: {summary.media_root}",
+                    f"Docs Root: {summary.docs_root}",
+                    f"Outputs Root: {summary.outputs_root}",
+                    f"Preview Root: {summary.preview_root}",
                     f"FFprobe: {summary.ffprobe_path}",
                     f"FFmpeg: {summary.ffmpeg_path}",
                 ]

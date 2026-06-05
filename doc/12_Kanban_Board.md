@@ -12,14 +12,14 @@ This Markdown board is the SSOT Kanban for the repository.
 
 ## Ready
 
-- preview render adapter that produces a real video output
 - review decision workflow after preview generation
-- configurable path overrides in `app_config.toml`
+- richer preview composition beyond simple renderable-video flow
+- output browsing/reporting in UI
 
 ## In Progress
 
 - recovery and retry policy for persisted jobs
-- move preview flow from manifest-only to render-capable scaffolding
+- final-render architecture slice
 
 ## Review
 
@@ -36,11 +36,12 @@ This Markdown board is the SSOT Kanban for the repository.
 - asset library filters
 - dashboard control center
 - settings authority surface
+- configurable path roots in `app_config.toml`
 - thumbnail/proxy artifact generation jobs
 - job persistence for library artifacts
 - recipe persistence
 - recipe item assignment
-- preview manifest job flow
+- preview render output job flow
 - recipe builder window and view model
 
 ## Board Policy

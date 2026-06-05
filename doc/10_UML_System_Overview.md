@@ -62,6 +62,10 @@ classDiagram
         +list_preview_jobs(...)
     }
 
+    class FFmpegPreviewRenderer {
+        +render_preview(...)
+    }
+
     class DashboardService {
         +build_summary()
     }
@@ -120,6 +124,10 @@ classDiagram
         +list_items(recipe_id)
     }
 
+    class SqlAlchemyOutputRepository {
+        +add(output)
+    }
+
     class PreviewManifestBuilder {
         +write_manifest(...)
     }
@@ -153,11 +161,13 @@ classDiagram
     RecipeBuilderViewModel --> VideoAssemblyFactoryService
     DashboardWindow --> RecipeBuilderWindow
     VideoAssemblyFactoryService --> PreviewManifestBuilder
+    VideoAssemblyFactoryService --> FFmpegPreviewRenderer
     ProductApplicationService --> SqlAlchemyUnitOfWork
     AssetIntakeService --> SqlAlchemyUnitOfWork
     ArtifactGenerationService --> SqlAlchemyUnitOfWork
     VideoAssemblyFactoryService --> SqlAlchemyUnitOfWork
     SqlAlchemyUnitOfWork --> SqlAlchemyRecipeRepository
+    SqlAlchemyUnitOfWork --> SqlAlchemyOutputRepository
     SqlAlchemyRecipeRepository --> Recipe
     SqlAlchemyUnitOfWork --> Job
 ```
@@ -197,6 +207,8 @@ sequenceDiagram
     participant RecipeRepo as RecipeRepository
     participant JobRepo as JobRepository
     participant Preview as PreviewManifestBuilder
+    participant Render as FFmpegPreviewRenderer
+    participant Out as OutputRepository
     participant DB as SQLite
 
     User->>View: Build Preview
@@ -207,6 +219,8 @@ sequenceDiagram
     VM->>Factory: run_preview_job(job_id)
     Factory->>RecipeRepo: list_items(recipe_id)
     Factory->>Preview: write_manifest(...)
+    Factory->>Render: render_preview(...)
+    Factory->>Out: add(output)
     Factory->>JobRepo: update(done/failed)
     Factory->>DB: COMMIT
     VM-->>View: refresh recipes and feedback
@@ -221,8 +235,8 @@ stateDiagram-v2
     ASSET_READY --> RECIPE_CANDIDATE
     RECIPE_CANDIDATE --> PREVIEW_JOB_QUEUED
     PREVIEW_JOB_QUEUED --> PREVIEW_JOB_PROCESSING
-    PREVIEW_JOB_PROCESSING --> PREVIEW_MANIFEST_READY
-    PREVIEW_MANIFEST_READY --> HUMAN_REVIEW
+    PREVIEW_JOB_PROCESSING --> PREVIEW_OUTPUT_READY
+    PREVIEW_OUTPUT_READY --> HUMAN_REVIEW
     HUMAN_REVIEW --> APPROVED
     HUMAN_REVIEW --> REJECTED
     APPROVED --> FINAL_RENDER_PENDING

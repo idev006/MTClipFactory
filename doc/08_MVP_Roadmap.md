@@ -26,7 +26,7 @@
 - recipe persistence
 - manual recipe builder
 - recipe item assignment
-- preview manifest job enqueue
+- preview render job enqueue
 - preview status tracking
 - dashboard visibility for recipe/job counts
 
@@ -50,11 +50,11 @@
 - Phase 1: complete
 - Phase 2: functionally complete for MVP baseline
 - Phase 3: in progress
-- Phase 4: not started
+- Phase 4: started
 - Phase 5: not started
 
 ## Current Phase 3 Remaining
 
-1. Replace preview manifest scaffolding with a real preview render output.
-2. Add explicit review decision workflow after preview generation.
-3. Add final render orchestration and output registration.
+1. Add explicit review decision workflow after preview generation.
+2. Deepen preview composition beyond the current simple renderable-video path.
+3. Add final render orchestration and richer output registration/reporting.

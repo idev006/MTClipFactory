@@ -5,6 +5,11 @@ from dataclasses import dataclass
 
 @dataclass(slots=True, frozen=True)
 class SystemSettingsDTO:
+    database_path: str
+    media_root: str
+    docs_root: str
+    outputs_root: str
+    preview_root: str
     ffmpeg_root: str
     ffprobe_path: str
     ffmpeg_path: str
@@ -32,6 +37,9 @@ class DashboardSummaryDTO:
     workspace_root: str
     database_path: str
     media_root: str
+    docs_root: str
+    outputs_root: str
+    preview_root: str
     ffprobe_path: str
     ffmpeg_path: str
     cpu_limit_percent: int

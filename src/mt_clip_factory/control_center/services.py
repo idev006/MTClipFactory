@@ -21,8 +21,15 @@ class SystemSettingsService:
 
     def load(self) -> SystemSettingsDTO:
         data = self._read_raw()
+        workspace_root = self._config_path.parent
+        paths = data.get("paths", {})
         ffmpeg = data.get("ffmpeg", {})
         system = data.get("system", {})
+        database_path = _resolve_runtime_path(workspace_root, str(paths.get("database_path", "ad_kitchen.db")))
+        media_root = _resolve_runtime_path(workspace_root, str(paths.get("media_root", "media_library")))
+        docs_root = _resolve_runtime_path(workspace_root, str(paths.get("docs_root", "doc")))
+        outputs_root = _resolve_runtime_path(workspace_root, str(paths.get("outputs_root", "outputs")))
+        preview_root = _resolve_runtime_path(workspace_root, str(paths.get("preview_root", Path(outputs_root) / "preview")))
         ffmpeg_root = str(ffmpeg.get("root", ""))
         ffprobe_path = str(ffmpeg.get("ffprobe", ""))
         ffmpeg_path = str(ffmpeg.get("ffmpeg", ""))
@@ -33,6 +40,11 @@ class SystemSettingsService:
             ffmpeg_path = str(Path(ffmpeg_root) / "bin" / "ffmpeg.exe")
 
         return SystemSettingsDTO(
+            database_path=database_path,
+            media_root=media_root,
+            docs_root=docs_root,
+            outputs_root=outputs_root,
+            preview_root=preview_root,
             ffmpeg_root=ffmpeg_root,
             ffprobe_path=ffprobe_path,
             ffmpeg_path=ffmpeg_path,
@@ -47,6 +59,13 @@ class SystemSettingsService:
     def save(self, settings: SystemSettingsDTO) -> None:
         content = "\n".join(
             [
+                "[paths]",
+                f'database_path = "{_escape_toml(settings.database_path)}"',
+                f'media_root = "{_escape_toml(settings.media_root)}"',
+                f'docs_root = "{_escape_toml(settings.docs_root)}"',
+                f'outputs_root = "{_escape_toml(settings.outputs_root)}"',
+                f'preview_root = "{_escape_toml(settings.preview_root)}"',
+                "",
                 "[ffmpeg]",
                 f'root = "{_escape_toml(settings.ffmpeg_root)}"',
                 f'ffprobe = "{_escape_toml(settings.ffprobe_path)}"',
@@ -121,8 +140,11 @@ class DashboardService:
             ffprobe_available=ffprobe_path.exists(),
             ffmpeg_available=ffmpeg_path.exists(),
             workspace_root=str(self._config.paths.workspace_root),
-            database_path=str(self._config.paths.database_path),
-            media_root=str(self._config.paths.media_root),
+            database_path=settings.database_path,
+            media_root=settings.media_root,
+            docs_root=settings.docs_root,
+            outputs_root=settings.outputs_root,
+            preview_root=settings.preview_root,
             ffprobe_path=settings.ffprobe_path,
             ffmpeg_path=settings.ffmpeg_path,
             cpu_limit_percent=settings.cpu_limit_percent,
@@ -136,3 +158,10 @@ class DashboardService:
 
 def _escape_toml(value: str) -> str:
     return value.replace("\\", "\\\\").replace('"', '\\"')
+
+
+def _resolve_runtime_path(workspace_root: Path, raw_value: str) -> str:
+    path = Path(raw_value)
+    if path.is_absolute():
+        return str(path)
+    return str(workspace_root / path)

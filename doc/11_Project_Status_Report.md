@@ -22,27 +22,29 @@
 - initial Video Assembly Factory:
   - recipe persistence
   - recipe item assignment
-  - preview manifest job flow
+  - preview render job flow
   - recipe builder view model
   - recipe builder desktop window
+  - output registration foundation
+- configurable path roots in `app_config.toml` for database, media, docs, outputs, and preview roots
 
 ## Verification Baseline
 
-- `python -m pytest` via `.venv`: `51 passed`
+- `python -m pytest` via `.venv`: `53 passed`
 - UI smoke via `QT_QPA_PLATFORM=offscreen`: `6` windows instantiated successfully
 
 ## Current Focus
 
-- move from preview-manifest scaffolding to actual preview render output
 - deepen recovery policy across jobs
-- continue removing remaining implicit defaults from runtime path handling
+- add richer review/final-render workflow on top of the preview-output baseline
+- decide whether runtime path changes should hot-reload or remain restart-driven
 
 ## Next Steps
 
-1. Add a preview render adapter that emits a real preview video or timeline output.
-2. Add review decision workflow after preview build.
-3. Add configurable path overrides for database, media, docs, and output roots.
-4. Add durable retry and resume policy for all job types.
+1. Add review decision workflow after preview build.
+2. Add richer preview composition and asset-role handling.
+3. Add durable retry and resume policy for all job types.
+4. Add final render orchestration and output reports.
 
 ## Ownership
 

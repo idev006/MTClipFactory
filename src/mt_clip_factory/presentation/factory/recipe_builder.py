@@ -157,7 +157,7 @@ class RecipeBuilderViewModel(QObject):
             raise
 
         self._selected_recipe_id = recipe_id
-        self._set_feedback(f"Built preview manifest for recipe #{recipe_id}")
+        self._set_feedback(f"Built preview output for recipe #{recipe_id}")
         self.load()
         return job_id
 

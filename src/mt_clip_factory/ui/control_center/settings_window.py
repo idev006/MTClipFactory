@@ -51,6 +51,11 @@ class SettingsWindow(QMainWindow):
         self.ffmpeg_root_input = QLineEdit()
         self.ffprobe_path_input = QLineEdit()
         self.ffmpeg_path_input = QLineEdit()
+        self.database_path_input = QLineEdit()
+        self.media_root_input = QLineEdit()
+        self.docs_root_input = QLineEdit()
+        self.outputs_root_input = QLineEdit()
+        self.preview_root_input = QLineEdit()
         self.cpu_limit_input = QSpinBox()
         self.ram_limit_input = QSpinBox()
         self.disk_free_input = QSpinBox()
@@ -68,6 +73,11 @@ class SettingsWindow(QMainWindow):
         ):
             spinbox.setRange(0, 100000)
 
+        form_layout.addRow("Database Path", self.database_path_input)
+        form_layout.addRow("Media Root", self.media_root_input)
+        form_layout.addRow("Docs Root", self.docs_root_input)
+        form_layout.addRow("Outputs Root", self.outputs_root_input)
+        form_layout.addRow("Preview Root", self.preview_root_input)
         form_layout.addRow("FFmpeg Root", self.ffmpeg_root_input)
         form_layout.addRow("FFprobe Path", self.ffprobe_path_input)
         form_layout.addRow("FFmpeg Path", self.ffmpeg_path_input)
@@ -99,6 +109,11 @@ class SettingsWindow(QMainWindow):
         settings = self._view_model.settings
         if settings is None:
             return
+        self.database_path_input.setText(settings.database_path)
+        self.media_root_input.setText(settings.media_root)
+        self.docs_root_input.setText(settings.docs_root)
+        self.outputs_root_input.setText(settings.outputs_root)
+        self.preview_root_input.setText(settings.preview_root)
         self.ffmpeg_root_input.setText(settings.ffmpeg_root)
         self.ffprobe_path_input.setText(settings.ffprobe_path)
         self.ffmpeg_path_input.setText(settings.ffmpeg_path)
@@ -116,6 +131,11 @@ class SettingsWindow(QMainWindow):
         try:
             self._view_model.save(
                 SystemSettingsDTO(
+                    database_path=self.database_path_input.text(),
+                    media_root=self.media_root_input.text(),
+                    docs_root=self.docs_root_input.text(),
+                    outputs_root=self.outputs_root_input.text(),
+                    preview_root=self.preview_root_input.text(),
                     ffmpeg_root=self.ffmpeg_root_input.text(),
                     ffprobe_path=self.ffprobe_path_input.text(),
                     ffmpeg_path=self.ffmpeg_path_input.text(),

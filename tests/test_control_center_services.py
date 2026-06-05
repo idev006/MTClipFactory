@@ -79,6 +79,13 @@ def test_system_settings_service_reads_and_writes_toml(tmp_path) -> None:
     config_path.write_text(
         "\n".join(
             [
+                "[paths]",
+                'database_path = "ad_kitchen.db"',
+                'media_root = "media_library"',
+                'docs_root = "doc"',
+                'outputs_root = "outputs"',
+                'preview_root = "outputs\\\\preview"',
+                "",
                 "[ffmpeg]",
                 'root = "F:\\\\ffmpeg"',
                 'ffprobe = "F:\\\\ffmpeg\\\\bin\\\\ffprobe.exe"',
@@ -102,6 +109,11 @@ def test_system_settings_service_reads_and_writes_toml(tmp_path) -> None:
     assert defaults.ffprobe_path.endswith("ffprobe.exe")
 
     updated = SystemSettingsDTO(
+        database_path=str(tmp_path / "db.sqlite"),
+        media_root=str(tmp_path / "media"),
+        docs_root=str(tmp_path / "doc"),
+        outputs_root=str(tmp_path / "outputs"),
+        preview_root=str(tmp_path / "outputs" / "preview"),
         ffmpeg_root=r"F:\custom_ffmpeg",
         ffprobe_path=r"F:\custom_ffmpeg\bin\ffprobe.exe",
         ffmpeg_path=r"F:\custom_ffmpeg\bin\ffmpeg.exe",
@@ -115,6 +127,7 @@ def test_system_settings_service_reads_and_writes_toml(tmp_path) -> None:
     service.save(updated)
 
     loaded = service.load()
+    assert loaded.database_path.endswith("db.sqlite")
     assert loaded.ffmpeg_root == r"F:\custom_ffmpeg"
     assert loaded.cpu_limit_percent == 88
     assert config_path.exists()
@@ -127,6 +140,11 @@ def test_dashboard_service_aggregates_system_information(unit_of_work_factory, t
     settings_service = SystemSettingsService(config.paths.app_config_path)
     settings_service.save(
         SystemSettingsDTO(
+            database_path=str(tmp_path / "workspace" / "ad_kitchen.db"),
+            media_root=str(tmp_path / "media_library"),
+            docs_root=str(tmp_path / "workspace" / "doc"),
+            outputs_root=str(tmp_path / "workspace" / "outputs"),
+            preview_root=str(tmp_path / "workspace" / "outputs" / "preview"),
             ffmpeg_root=str(tmp_path / "ffmpeg"),
             ffprobe_path=str(tmp_path / "ffmpeg" / "bin" / "ffprobe.exe"),
             ffmpeg_path=str(tmp_path / "ffmpeg" / "bin" / "ffmpeg.exe"),
@@ -173,4 +191,6 @@ def test_dashboard_service_aggregates_system_information(unit_of_work_factory, t
     assert summary.tag_count == 1
     assert summary.queued_job_count == 2
     assert summary.failed_job_count == 1
+    assert summary.outputs_root.endswith("outputs")
+    assert summary.preview_root.endswith("preview")
     assert summary.cpu_limit_percent == 90
