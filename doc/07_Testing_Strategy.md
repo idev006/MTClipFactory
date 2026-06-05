@@ -18,6 +18,26 @@
 
 เทสต์ว่า ViewModel bind สถานะและเรียก use case ถูกต้อง โดยไม่ต้องเปิดหน้าจอเต็มรูปแบบ
 
+## Module Testing Direction
+
+### Resource Library Management
+
+ควรมี test สำหรับ:
+
+- product and asset use cases
+- tag assignment rules
+- asset readiness logic
+- metadata ingestion contracts
+
+### Video Assembly Factory
+
+ควรมี test สำหรับ:
+
+- recipe creation and validation
+- candidate scoring
+- job orchestration rules
+- approval and final-render gating
+
 ## Current Test Conventions
 
 - ใช้ `pytest`
@@ -31,4 +51,3 @@
 - use case ต้องไม่รู้เรื่อง QWidget
 - repository ต้องถูกสลับ implementation ได้
 - time, filesystem, ffmpeg, random selection ควรถูก wrap เพื่อ mock ได้ภายหลัง
-

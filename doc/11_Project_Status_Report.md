@@ -9,7 +9,7 @@
 - Project phase: Foundation
 - Overall status: In Progress
 - Report date: 2026-06-05
-- Current focus: product CRUD and first desktop workflow after governance baseline is complete
+- Current focus: Resource Library Management milestone after delivering asset intake foundation
 
 ## Completed
 
@@ -20,21 +20,31 @@
 - สร้าง Alembic baseline migration
 - สร้าง baseline tests และรันผ่านใน `.venv`
 - ยกระดับ governance ให้รองรับ SSOT, UML, Kanban, issue log, lessons learned, และ PM reporting
+- กำหนดทิศทางโครงการให้แบ่งเป็น `Resource Library Management` และ `Video Assembly Factory`
+- เพิ่ม module packages สำหรับ `library` และ `factory`
+- ส่งมอบ `Product CRUD foundation` สำหรับ `Resource Library Management`
+- สร้าง `ProductLibraryViewModel` และ `ProductLibraryWindow` สำหรับ desktop flow แรก
+- ติดตั้ง package แบบ editable และเพิ่ม entry point `mt-resource-library`
+- ยืนยันด้วย `pytest` 16 tests ผ่าน และ UI smoke test แบบ offscreen ผ่าน
+- ส่งมอบ `asset intake flow` เบื้องต้นพร้อม `metadata analyzer seam`
+- สร้าง `AssetLibraryViewModel` และ `AssetLibraryWindow`
+- เพิ่ม `LocalAssetStorage` และ `BasicFileMetadataAnalyzer` สำหรับ MVP
+- ยืนยันด้วย `pytest` 23 tests ผ่าน และ UI smoke test ของทั้งสองหน้าต่างผ่าน
 
 ## In Progress
 
-- Product CRUD implementation planning
-- Basic PySide6 product dashboard evolution
+- Tag dictionary and asset readiness milestone planning
+- Define contracts that separate `Library` ownership from `Factory` ownership
 
 ## Next Steps
 
-1. Implement Product CRUD use cases and basic PySide6 screens
-2. Implement asset intake flow and metadata analyzer seam
-3. Extend UML and Kanban after each milestone
+1. Add tag dictionary management in `Resource Library Management`
+2. Add asset readiness rules and preflight validation
+3. Prepare `Video Assembly Factory` recipe and job contracts
 
 ## Owners
 
-- Architecture and code foundation: Engineering
+- Resource Library Management foundation: Engineering
 - Documentation governance and status visibility: Project Management
 
 ## Reporting Rule

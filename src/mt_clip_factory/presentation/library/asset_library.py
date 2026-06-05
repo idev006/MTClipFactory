@@ -1,0 +1,95 @@
+from __future__ import annotations
+
+from pathlib import Path
+
+from PySide6.QtCore import QObject, Property, Signal, Slot
+
+from mt_clip_factory.application.services import ProductApplicationService
+from mt_clip_factory.library.dto import AssetSummaryDTO, RegisterAssetCommand
+from mt_clip_factory.library.services import AssetCodeAlreadyExistsError, AssetIntakeService, AssetSourceFileMissingError
+
+
+class AssetLibraryViewModel(QObject):
+    assets_changed = Signal()
+    products_changed = Signal()
+    status_changed = Signal()
+    feedback_changed = Signal()
+
+    def __init__(
+        self,
+        product_service: ProductApplicationService,
+        asset_intake_service: AssetIntakeService,
+    ) -> None:
+        super().__init__()
+        self._product_service = product_service
+        self._asset_intake_service = asset_intake_service
+        self._products = []
+        self._assets: list[AssetSummaryDTO] = []
+        self._status = "idle"
+        self._feedback = ""
+
+    def _get_status(self) -> str:
+        return self._status
+
+    def _set_status(self, value: str) -> None:
+        if self._status == value:
+            return
+        self._status = value
+        self.status_changed.emit()
+
+    def _get_feedback(self) -> str:
+        return self._feedback
+
+    def _set_feedback(self, value: str) -> None:
+        if self._feedback == value:
+            return
+        self._feedback = value
+        self.feedback_changed.emit()
+
+    status = Property(str, _get_status, notify=status_changed)
+    feedback = Property(str, _get_feedback, notify=feedback_changed)
+
+    @property
+    def products(self):
+        return list(self._products)
+
+    @property
+    def assets(self) -> list[AssetSummaryDTO]:
+        return list(self._assets)
+
+    @Slot()
+    def load(self) -> None:
+        self._set_status("loading")
+        self._products = self._product_service.list_products()
+        self._assets = self._asset_intake_service.list_assets()
+        self.products_changed.emit()
+        self.assets_changed.emit()
+        self._set_status("ready")
+
+    def register_asset(
+        self,
+        *,
+        product_id: int,
+        asset_type: str,
+        source_file_path: str,
+        asset_code: str | None = None,
+    ) -> int:
+        self._set_status("submitting")
+        try:
+            asset_id = self._asset_intake_service.register_asset(
+                RegisterAssetCommand(
+                    product_id=product_id,
+                    asset_type=asset_type,
+                    source_file_path=Path(source_file_path),
+                    asset_code=asset_code,
+                )
+            )
+        except (AssetCodeAlreadyExistsError, AssetSourceFileMissingError, ValueError) as exc:
+            self._set_feedback(str(exc))
+            self._set_status("error")
+            raise
+
+        self._set_feedback(f"Registered asset #{asset_id}")
+        self.load()
+        return asset_id
+

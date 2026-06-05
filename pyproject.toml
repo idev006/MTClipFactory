@@ -14,6 +14,9 @@ dependencies = [
     "PySide6>=6.11,<7.0",
 ]
 
+[project.scripts]
+mt-resource-library = "mt_clip_factory.ui.main:main"
+
 [project.optional-dependencies]
 dev = [
     "pytest>=9.0,<10.0",
@@ -29,4 +32,3 @@ where = ["src"]
 pythonpath = ["src"]
 testpaths = ["tests"]
 addopts = "-ra"
-

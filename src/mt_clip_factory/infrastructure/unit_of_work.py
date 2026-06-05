@@ -5,7 +5,7 @@ from types import TracebackType
 
 from sqlalchemy.orm import Session
 
-from mt_clip_factory.infrastructure.repositories import SqlAlchemyProductRepository
+from mt_clip_factory.infrastructure.repositories import SqlAlchemyAssetRepository, SqlAlchemyProductRepository
 
 
 class SqlAlchemyUnitOfWork:
@@ -13,15 +13,19 @@ class SqlAlchemyUnitOfWork:
         self,
         session_factory: Callable[[], Session],
         product_repository_type: type[SqlAlchemyProductRepository] = SqlAlchemyProductRepository,
+        asset_repository_type: type[SqlAlchemyAssetRepository] = SqlAlchemyAssetRepository,
     ) -> None:
         self._session_factory = session_factory
         self._product_repository_type = product_repository_type
+        self._asset_repository_type = asset_repository_type
         self.session: Session | None = None
         self.products: SqlAlchemyProductRepository
+        self.assets: SqlAlchemyAssetRepository
 
     def __enter__(self) -> "SqlAlchemyUnitOfWork":
         self.session = self._session_factory()
         self.products = self._product_repository_type(self.session)
+        self.assets = self._asset_repository_type(self.session)
         return self
 
     def __exit__(
@@ -45,4 +49,3 @@ class SqlAlchemyUnitOfWork:
         if self.session is None:
             raise RuntimeError("Unit of work has not been entered.")
         self.session.rollback()
-

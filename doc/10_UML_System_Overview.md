@@ -7,7 +7,10 @@
 ```mermaid
 flowchart TB
     UI["UI Layer"] --> VM["Presentation / ViewModel"]
-    VM --> APP["Application Services"]
+    VM --> LIB["Resource Library Management"]
+    VM --> FAC["Video Assembly Factory"]
+    LIB --> APP["Shared Application Services"]
+    FAC --> APP
     APP --> DOMAIN["Domain"]
     APP --> INFRA["Infrastructure"]
     INFRA --> DB["SQLite / SQLAlchemy"]
@@ -15,23 +18,79 @@ flowchart TB
     INFRA --> EXT["FFmpeg / External Tools"]
 ```
 
+## Module Relationship
+
+```mermaid
+flowchart LR
+    L["Resource Library Management"] -->|"prepared assets"| F["Video Assembly Factory"]
+    L -->|"product, asset, tag SSOT"| DB["Shared SQLite"]
+    F -->|"recipe, job, output state"| DB
+```
+
 ## Component Responsibilities
 
 ```mermaid
 classDiagram
-    class ProductDashboardViewModel {
+    class ResourceLibraryModule {
+        +product_service
+        +asset_intake_service
+    }
+
+    class VideoAssemblyFactoryModule {
+        +build_recipe()
+        +queue_preview()
+        +approve_recipe()
+        +queue_final_render()
+    }
+
+    class ProductLibraryWindow {
+        +show()
+        +create_product()
+        +update_product()
+        +delete_product()
+    }
+
+    class AssetLibraryWindow {
+        +show()
+        +register_asset()
+        +refresh()
+    }
+
+    class ProductLibraryViewModel {
         +load()
+        +create_product(command)
+        +get_product(product_id)
+        +update_product(command)
+        +delete_product(product_id)
         +status
         +products
+        +feedback
+    }
+
+    class AssetLibraryViewModel {
+        +load()
+        +register_asset(...)
+        +products
+        +assets
+        +feedback
     }
 
     class ProductApplicationService {
         +create_product(command)
+        +get_product(product_id)
+        +update_product(command)
+        +delete_product(product_id)
         +list_products()
+    }
+
+    class AssetIntakeService {
+        +register_asset(command)
+        +list_assets(product_id)
     }
 
     class SqlAlchemyUnitOfWork {
         +products
+        +assets
         +commit()
         +rollback()
     }
@@ -42,16 +101,41 @@ classDiagram
         +list_summaries()
     }
 
+    class SqlAlchemyAssetRepository {
+        +add(asset)
+        +get_by_id(asset_id)
+        +get_by_code(asset_code)
+        +list_summaries(product_id)
+    }
+
     class Product {
         +id
         +product_code
         +product_name
     }
 
-    ProductDashboardViewModel --> ProductApplicationService
+    class Asset {
+        +id
+        +asset_code
+        +asset_type
+        +file_name
+        +status
+    }
+
+    ProductLibraryWindow --> ProductLibraryViewModel
+    AssetLibraryWindow --> AssetLibraryViewModel
+    ResourceLibraryModule --> ProductApplicationService
+    ResourceLibraryModule --> AssetIntakeService
+    VideoAssemblyFactoryModule --> ProductApplicationService
+    ProductLibraryViewModel --> ProductApplicationService
+    AssetLibraryViewModel --> ProductApplicationService
+    AssetLibraryViewModel --> AssetIntakeService
     ProductApplicationService --> SqlAlchemyUnitOfWork
+    AssetIntakeService --> SqlAlchemyUnitOfWork
     SqlAlchemyUnitOfWork --> SqlAlchemyProductRepository
+    SqlAlchemyUnitOfWork --> SqlAlchemyAssetRepository
     SqlAlchemyProductRepository --> Product
+    SqlAlchemyAssetRepository --> Asset
 ```
 
 ## Product Creation Sequence
@@ -59,8 +143,8 @@ classDiagram
 ```mermaid
 sequenceDiagram
     actor User
-    participant View as UI View
-    participant VM as ProductDashboardViewModel
+    participant View as ProductLibraryWindow
+    participant VM as ProductLibraryViewModel
     participant App as ProductApplicationService
     participant UoW as SqlAlchemyUnitOfWork
     participant Repo as SqlAlchemyProductRepository
@@ -78,6 +162,36 @@ sequenceDiagram
     App->>UoW: commit()
     UoW->>DB: COMMIT
     App-->>VM: product_id
+    VM-->>View: refresh state
+```
+
+## Asset Intake Sequence
+
+```mermaid
+sequenceDiagram
+    actor User
+    participant View as AssetLibraryWindow
+    participant VM as AssetLibraryViewModel
+    participant App as AssetIntakeService
+    participant Store as LocalAssetStorage
+    participant Analyze as MetadataAnalyzer
+    participant UoW as SqlAlchemyUnitOfWork
+    participant Repo as SqlAlchemyAssetRepository
+    participant DB as SQLite
+
+    User->>View: choose product, asset type, source file
+    View->>VM: register_asset(...)
+    VM->>App: register_asset(command)
+    App->>Store: store_asset(...)
+    Store-->>App: stored file path
+    App->>Analyze: analyze(file_path)
+    Analyze-->>App: metadata
+    App->>UoW: open
+    UoW->>Repo: add(asset)
+    Repo->>DB: INSERT asset
+    App->>UoW: commit()
+    UoW->>DB: COMMIT
+    App-->>VM: asset_id
     VM-->>View: refresh state
 ```
 
@@ -101,3 +215,8 @@ stateDiagram-v2
     FINAL_RENDERED --> DONE
 ```
 
+## Responsibility Rule
+
+- `Resource Library Management` รับผิดชอบความพร้อมของวัตถุดิบ
+- `Video Assembly Factory` รับผิดชอบการประกอบและ workflow ของ output
+- ทั้งสองส่วนแชร์ SSOT เดียวกัน แต่ไม่ควรทับความรับผิดชอบกัน

@@ -10,14 +10,17 @@
 - initial MVVM view model
 - pytest baseline
 
-## Phase 2: Asset Intake
+## Phase 2: Resource Library Management
 
+- product CRUD
+- library navigation
 - asset registration flow
 - metadata analyzer abstraction
 - tag dictionary
 - asset library queries
+- asset readiness rules
 
-## Phase 3: Recipe and Preview
+## Phase 3: Video Assembly Factory
 
 - manual recipe builder
 - recipe persistence
@@ -37,4 +40,3 @@
 - duplicate risk checks
 - quality gate
 - resumable orchestrator
-

@@ -19,6 +19,7 @@
 12. [12_Kanban_Board.md](/F:/programming/python/MTClipFactory/doc/12_Kanban_Board.md)
 13. [13_Issues_Log.md](/F:/programming/python/MTClipFactory/doc/13_Issues_Log.md)
 14. [14_Lessons_Learned.md](/F:/programming/python/MTClipFactory/doc/14_Lessons_Learned.md)
+15. [15_System_Decomposition_Library_and_Factory.md](/F:/programming/python/MTClipFactory/doc/15_System_Decomposition_Library_and_Factory.md)
 
 ## Governance
 

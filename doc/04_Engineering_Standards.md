@@ -7,6 +7,8 @@
 - `src/mt_clip_factory/infrastructure`
 - `src/mt_clip_factory/presentation`
 - `src/mt_clip_factory/ui`
+- `src/mt_clip_factory/library`
+- `src/mt_clip_factory/factory`
 - `tests`
 - `doc`
 
@@ -25,6 +27,8 @@
 - หลีกเลี่ยง global mutable state
 - แยก pure logic ออกจาก IO ให้มากที่สุด
 - ใช้ dataclass หรือ domain model ที่เรียบง่ายในชั้น domain
+- แยก use case ของ `Library` และ `Factory` คนละโมดูลให้ชัด
+- ห้าม copy business rule เดียวกันไปคนละฝั่งโดยไม่มี shared abstraction
 
 ## Database Rules
 

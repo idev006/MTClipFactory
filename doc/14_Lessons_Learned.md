@@ -10,6 +10,25 @@
 - การสร้าง `document-first` และ `testable skeleton` ก่อน feature จริงช่วยลดความเสี่ยงการแก้สถาปัตยกรรมภายหลัง
 - การกำหนด `.venv`, `.md`, `.toml`, และ SSOT ตั้งแต่วันแรกช่วยลดความสับสนของทีมได้มาก
 
+### LL-002 | 2026-06-05 | System Split Decision
+
+- การแยกเป็น `Resource Library Management` และ `Video Assembly Factory` ช่วยให้ขอบเขตธุรกิจชัดขึ้นมากกว่าการแยกตามหน้าจอ
+- ช่วง MVP ควรแยกเป็นโมดูลใน codebase เดียวก่อน ไม่ควรรีบแยกเป็นหลาย repo
+- ถ้าไม่ล็อก ownership ของ `Asset`, `Tag`, และ `Recipe` ตั้งแต่ต้น จะเกิด rule duplication ง่าย
+
+### LL-003 | 2026-06-05 | First Library Milestone
+
+- การเริ่มจาก `Product CRUD foundation` ทำให้ทั้ง DB, service, ViewModel, UI, และ test seam ถูกเดินให้ครบเส้นครั้งแรก
+- การติดตั้ง package แบบ editable ช่วยลด friction ของทีมเวลาทดลอง UI และ import package ในงานพัฒนา
+- การทำ UI smoke test แบบ offscreen เป็นตัวช่วยที่ดีระหว่างยังไม่มี test harness ฝั่ง widget เต็มรูปแบบ
+
+### LL-004 | 2026-06-05 | Asset Intake Foundation
+
+- การแยก `AssetIntakeService`, `LocalAssetStorage`, และ `MetadataAnalyzer` ออกจากกันช่วยให้เปลี่ยน implementation จริงเป็น FFmpeg ภายหลังได้โดยไม่กระทบ use case
+- MVP ของ asset intake ควรเดินแบบ synchronous ก่อน เพื่อพิสูจน์สัญญาระหว่าง storage, analyzer, และ repository
+- การเพิ่มหน้าต่าง `AssetLibraryWindow` แบบแยกจาก product screen ช่วยควบคุมขนาดไฟล์และลดความเสี่ยง UI บวมเร็วเกินไป
+
+
 ## Lesson Rule
 
 - ทุก milestone ต้องมีอย่างน้อย 1 lesson learned ถ้ามีสาระสำคัญ

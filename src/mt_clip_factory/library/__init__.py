@@ -1,0 +1,2 @@
+"""Resource Library Management module."""
+

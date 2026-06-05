@@ -1,0 +1,2 @@
+"""Video Assembly Factory module."""
+

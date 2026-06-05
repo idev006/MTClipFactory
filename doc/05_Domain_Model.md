@@ -26,6 +26,33 @@
 
 ไฟล์ผลลัพธ์ preview/final ที่ trace กลับไปหา recipe และ product ได้
 
+## Context Split
+
+### Library Context
+
+ใช้แนวคิดหลักดังนี้:
+
+- `Product`
+- `Asset`
+- `Tag`
+- `AssetReadiness`
+
+### Factory Context
+
+ใช้แนวคิดหลักดังนี้:
+
+- `Recipe`
+- `Job`
+- `Output`
+- `ApprovalDecision`
+
+### Shared Concepts
+
+- Product identity
+- Tag dictionary
+- File naming convention
+- Traceability rules
+
 ## Aggregate Direction
 
 - Product เป็น aggregate root เชิง business identity
@@ -38,4 +65,4 @@
 - recipe ต้องผูกกับ product
 - output ต้อง trace ไปยัง recipe ได้
 - final render ต้องเกิดจาก approved recipe
-
+- asset ต้องมีสถานะพร้อมใช้งานก่อนถูกนำเข้าสู่ workflow ของ factory

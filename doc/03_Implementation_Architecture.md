@@ -32,6 +32,43 @@
 
 เก็บ widget, window, dialog หรือ QML adapter ถ้ามี
 
+## System Modules
+
+สถาปัตยกรรมเชิง business ถูกแบ่งเป็น 2 โมดูลหลักที่ใช้ domain และ infrastructure ร่วมกัน
+
+### Resource Library Management Module
+
+รับผิดชอบ:
+
+- product setup
+- asset lifecycle ก่อนเข้าสู่การผลิต
+- metadata, tags, thumbnails, proxy, readiness
+
+### Video Assembly Factory Module
+
+รับผิดชอบ:
+
+- recipe lifecycle
+- orchestration ของ preview/final workflow
+- quality gate, approval, output tracking
+
+## Deployment Guidance
+
+- ช่วงแรกให้ใช้ codebase เดียวและฐานข้อมูลเดียว
+- การแยกนี้เป็น `module split` ก่อน ไม่ใช่ `repository split`
+- อนุญาตให้มีหลาย entry point ได้ในอนาคต
+- ยังไม่บังคับให้เป็น 2 executable apps ตั้งแต่ MVP
+
+## Shared Core
+
+ทั้ง `Library` และ `Factory` ต้องใช้สิ่งเหล่านี้ร่วมกัน:
+
+- shared domain model
+- shared SQLite schema
+- shared tag dictionary
+- shared identity and naming rules
+- shared audit and traceability rules
+
 ## MVVM Rules
 
 - View รับ input และ bind กับ ViewModel

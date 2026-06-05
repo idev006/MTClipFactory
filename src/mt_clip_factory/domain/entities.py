@@ -25,7 +25,9 @@ class ProductSummary:
     product_id: int
     product_code: str
     product_name: str
+    category: str | None = None
+    brand_name: str | None = None
+    default_platform: str | None = None
     asset_count: int = 0
     recipe_count: int = 0
     output_count: int = 0
-

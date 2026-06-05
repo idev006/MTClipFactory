@@ -3,6 +3,10 @@
 ## Purpose
 
 MTClipFactory ถูกสร้างขึ้นเพื่อเป็นโรงงานผลิตคลิปโฆษณาสินค้าแบบควบคุมได้ ไม่ใช่ random video generator
+โครงการนี้ถูกแบ่งเชิงธุรกิจเป็น 2 ส่วนที่ทำงานร่วมกัน:
+
+- `Resource Library Management`
+- `Video Assembly Factory`
 
 ## Core Philosophy
 
@@ -22,6 +26,7 @@ MTClipFactory ถูกสร้างขึ้นเพื่อเป็นโ
 ## Non-Negotiable Rules
 
 - `doc/00_Document_Index.md` คือ SSOT ของเอกสารทั้งหมด
+- การแบ่งระบบเป็น `Library` และ `Factory` เป็นข้อกำหนดสถาปัตยกรรมหลักของโครงการ
 - ทุก feature ต้องมีเอกสารรองรับก่อนเริ่ม implement
 - ทุก architecture สำคัญต้องมี UML ประกอบเสมอ
 - ใช้ Mermaid ได้เมื่อช่วยให้ UML อ่านง่ายและแก้ไขใน `.md` ได้สะดวก
