@@ -207,10 +207,20 @@ class DashboardService:
         return sorted([*artifact_jobs, *factory_jobs], key=lambda job: job.job_id, reverse=True)
 
     def recover_queued_jobs(self, *, trigger: str = "manual") -> RecoveryRunSummaryDTO:
+        return self._run_job_recovery(trigger=trigger, job_selection="queued")
+
+    def retry_failed_jobs(self, *, trigger: str = "manual") -> RecoveryRunSummaryDTO:
+        return self._run_job_recovery(trigger=trigger, job_selection="failed")
+
+    def _run_job_recovery(self, *, trigger: str, job_selection: str) -> RecoveryRunSummaryDTO:
         settings = self._system_settings_service.load()
         started_at = _utc_timestamp()
-        queued_jobs = self._queued_recovery_jobs()
-        attempted_jobs = queued_jobs if settings.max_recovery_jobs_per_run <= 0 else queued_jobs[: settings.max_recovery_jobs_per_run]
+        selected_jobs = self._selected_recovery_jobs(job_selection=job_selection)
+        attempted_jobs = (
+            selected_jobs
+            if settings.max_recovery_jobs_per_run <= 0
+            else selected_jobs[: settings.max_recovery_jobs_per_run]
+        )
         recovered_job_codes: list[str] = []
         failed_job_codes: list[str] = []
 
@@ -223,9 +233,11 @@ class DashboardService:
 
         summary = RecoveryRunSummaryDTO(
             trigger=trigger,
+            job_selection=job_selection,
             started_at=started_at,
             finished_at=_utc_timestamp(),
-            queued_job_count=len(queued_jobs),
+            matched_job_count=len(selected_jobs),
+            queued_job_count=len(selected_jobs) if job_selection == "queued" else 0,
             attempted_job_count=len(attempted_jobs),
             succeeded_job_count=len(recovered_job_codes),
             failed_job_count=len(failed_job_codes),
@@ -237,6 +249,13 @@ class DashboardService:
 
     def should_auto_recover_queued_jobs(self) -> bool:
         return self._system_settings_service.load().auto_recover_queued_jobs
+
+    def _selected_recovery_jobs(self, *, job_selection: str) -> list[dict[str, object]]:
+        if job_selection == "queued":
+            return self._queued_recovery_jobs()
+        if job_selection == "failed":
+            return self._failed_retry_jobs()
+        raise ValueError(f"Unsupported recovery selection: {job_selection}")
 
     def _queued_recovery_jobs(self) -> list[dict[str, object]]:
         jobs: list[dict[str, object]] = []
@@ -263,6 +282,26 @@ class DashboardService:
                 "runner": self._video_assembly_factory_service.run_final_render_job,
             }
             for job in self._video_assembly_factory_service.list_final_render_jobs(status="queued")
+        )
+        return jobs
+
+    def _failed_retry_jobs(self) -> list[dict[str, object]]:
+        jobs: list[dict[str, object]] = []
+        jobs.extend(
+            {
+                "job_id": job.job_id,
+                "job_code": job.job_code,
+                "runner": self._artifact_generation_service.retry_job,
+            }
+            for job in self._artifact_generation_service.list_jobs(status="failed")
+        )
+        jobs.extend(
+            {
+                "job_id": job.job_id,
+                "job_code": job.job_code,
+                "runner": self._video_assembly_factory_service.retry_job,
+            }
+            for job in self._video_assembly_factory_service.list_jobs(status="failed")
         )
         return jobs
 

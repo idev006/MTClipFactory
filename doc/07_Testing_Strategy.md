@@ -8,7 +8,7 @@ MTClipFactory must stay easy to test with `pytest` from day one. The system is e
 
 - Python runtime: `F:\programming\python\MTClipFactory\.venv`
 - Test command: `python -m pytest`
-- Current automated baseline on 2026-06-06: `68 passed`
+- Current automated baseline on 2026-06-06: `70 passed`
 - Current UI smoke baseline on 2026-06-06: `6` PySide windows instantiated with `QT_QPA_PLATFORM=offscreen`
 
 ## Test Pyramid
@@ -64,6 +64,7 @@ MTClipFactory must stay easy to test with `pytest` from day one. The system is e
 - preview/final factory job retry after restart-style service recreation
 - queued-job recovery orchestration through the dashboard and startup policy
 - output lineage reporting from persisted output and job records
+- failed-job retry orchestration from the dashboard
 - recipe builder view model flow
 
 ## Conventions

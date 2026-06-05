@@ -39,8 +39,10 @@ class DashboardJobDTO:
 @dataclass(slots=True, frozen=True)
 class RecoveryRunSummaryDTO:
     trigger: str
+    job_selection: str
     started_at: str
     finished_at: str
+    matched_job_count: int
     queued_job_count: int
     attempted_job_count: int
     succeeded_job_count: int

@@ -53,6 +53,7 @@ Compose prepared assets into reviewable preview and later final-output workflows
 - final job status tracking
 - manual retry for persisted factory jobs
 - output lineage reporting
+- dashboard-driven failed-job retry orchestration
 
 ### Future Responsibilities
 

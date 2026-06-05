@@ -78,6 +78,7 @@ classDiagram
     class DashboardService {
         +build_summary()
         +recover_queued_jobs(...)
+        +retry_failed_jobs(...)
         +should_auto_recover_queued_jobs()
     }
 
@@ -334,6 +335,23 @@ sequenceDiagram
     else startup policy disabled
         Boot-->>DB: no recovery side effect
     end
+```
+
+## Failed Retry Sequence
+
+```mermaid
+sequenceDiagram
+    actor User
+    participant DashView as DashboardWindow
+    participant Dash as DashboardService
+    participant Artifact as ArtifactGenerationService
+    participant Factory as VideoAssemblyFactoryService
+
+    User->>DashView: Retry Failed Jobs
+    DashView->>Dash: retry_failed_jobs(trigger="manual")
+    Dash->>Artifact: retry_job(failed artifact)
+    Dash->>Factory: retry_job(failed preview/final)
+    Dash-->>DashView: recovery summary (selection=failed)
 ```
 
 ## Workflow State Direction

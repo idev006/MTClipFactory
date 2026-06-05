@@ -51,6 +51,7 @@
 - quality gate
 - resumable orchestrator
 - queued-job recovery orchestrator
+- failed-job retry orchestration
 
 ## Status Snapshot On 2026-06-06
 
@@ -65,4 +66,4 @@
 1. Deepen preview composition beyond the current simple renderable-video path.
 2. Replace final-render foundation with richer composition and audio-aware rendering.
 3. Deepen approval trail beyond the current output-lineage reporting foundation.
-4. Deepen queued-job orchestration beyond the current startup/manual recovery baseline.
+4. Deepen orchestration beyond current queued-startup and failed-manual retry baselines.

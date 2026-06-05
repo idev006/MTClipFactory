@@ -23,7 +23,7 @@
 - `Resource Library Management` is at a useful MVP baseline.
 - `Video Assembly Factory` is at a working review-and-render foundation, not a full composition engine yet.
 - Dashboard and settings are now a stronger operational truth surface.
-- Automatic queued-job recovery now exists when enabled. Failed-job handling is still a manual retry path.
+- Automatic queued-job recovery now exists when enabled. Failed jobs can now be retried from the dashboard, but they are still not auto-startup work.
 - Output lineage is now visible from persisted output/job records. Approval audit history is not fully persisted yet.
 
 ## Delivered In The Latest Loop
@@ -33,6 +33,7 @@
 - bootstrap can auto-recover queued jobs on startup when the policy is enabled
 - automated tests now cover recovery orchestration plus dashboard/view-model behavior
 - recipe builder now shows output kind, creation time, render job code, manifest, and source-output lineage
+- dashboard can now retry failed jobs and report the latest failed-retry summary
 - documents, Kanban, issues, and lessons learned were updated with the same milestone
 
 ## Still Open
@@ -40,10 +41,10 @@
 1. richer preview composition
 2. richer final-render composition
 3. approval actor/time/reason trail
-4. broader failed-job escalation and orchestration policy
+4. failed-job escalation policy beyond manual retry
 5. optional hot-reload decision for path-root changes
 
 ## Verification Baseline
 
-- `python -m pytest` in `.venv`: `68 passed`
+- `python -m pytest` in `.venv`: `70 passed`
 - `QT_QPA_PLATFORM=offscreen` UI smoke: `6` main windows instantiated

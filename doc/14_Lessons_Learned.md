@@ -69,3 +69,8 @@
 
 - output reporting gained real value by correlating persisted output records with job payloads instead of waiting for a full audit-schema redesign
 - deriving lineage from existing SSOT is safer than pretending approval history exists when it does not
+
+## LL-015 | 2026-06-06 | Failed Recovery Should Stay Explicit
+
+- allowing dashboard-driven failed-job retry improves operator control without silently re-running risky work at startup
+- separating queued auto-recovery from failed manual retry keeps reliability policy easier to explain and trust

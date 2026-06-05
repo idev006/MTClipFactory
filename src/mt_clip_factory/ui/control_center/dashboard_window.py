@@ -67,6 +67,7 @@ class DashboardWindow(QMainWindow):
         layout = QHBoxLayout(group)
         dashboard_refresh_button = QPushButton("Refresh Dashboard")
         recover_jobs_button = QPushButton("Recover Queued Jobs")
+        retry_failed_button = QPushButton("Retry Failed Jobs")
         products_button = QPushButton("Products")
         assets_button = QPushButton("Assets")
         recipes_button = QPushButton("Recipes")
@@ -74,6 +75,7 @@ class DashboardWindow(QMainWindow):
         settings_button = QPushButton("Settings")
         dashboard_refresh_button.clicked.connect(self._view_model.load)
         recover_jobs_button.clicked.connect(self._view_model.recover_queued_jobs)
+        retry_failed_button.clicked.connect(self._view_model.retry_failed_jobs)
         products_button.clicked.connect(self._open_products)
         assets_button.clicked.connect(self._open_assets)
         recipes_button.clicked.connect(self._open_recipes)
@@ -82,6 +84,7 @@ class DashboardWindow(QMainWindow):
         for button in (
             dashboard_refresh_button,
             recover_jobs_button,
+            retry_failed_button,
             products_button,
             assets_button,
             recipes_button,
@@ -224,9 +227,10 @@ def _format_recovery_summary(summary) -> list[str]:
     return [
         "Recovery Summary:",
         f"- Trigger: {recovery.trigger}",
+        f"- Selection: {recovery.job_selection}",
         f"- Started: {recovery.started_at}",
         f"- Finished: {recovery.finished_at}",
-        f"- Queued Seen: {recovery.queued_job_count}",
+        f"- Matched Jobs: {recovery.matched_job_count}",
         f"- Attempted: {recovery.attempted_job_count}",
         f"- Succeeded: {recovery.succeeded_job_count}",
         f"- Failed: {recovery.failed_job_count}",

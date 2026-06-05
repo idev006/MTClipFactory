@@ -56,6 +56,7 @@ Current editable fields:
 - artifact generation and preview generation should not require manual database repair after normal failures
 - operators must be able to tell whether work is queued, failed, or completed from the dashboard
 - automatic recovery should be policy-driven and visible, not hidden magic
+- failed-job retry should remain an explicit operator decision unless a stronger policy is later designed
 
 ## Durability Principles
 
@@ -80,6 +81,7 @@ The following must flow through config or services whenever user control is appr
 - persisted final-render jobs for recipe final-output foundation
 - uniform manual retry across artifact, preview, and final persisted jobs
 - configurable queued-job recovery orchestrator for dashboard/manual and startup execution
+- dashboard-driven failed-job retry orchestration
 - output approval and recipe approval decisions captured in SSOT workflow
 - output lineage reporting derived from persisted jobs and outputs
 - configurable path roots through `[paths]` in `app_config.toml`
@@ -91,7 +93,7 @@ The following must flow through config or services whenever user control is appr
 
 ## Current Gaps
 
-1. Recovery scope is still narrower for failed jobs and advanced orchestration rules.
+1. Recovery scope is still narrower for failed-job escalation and advanced orchestration rules.
 2. Approval audit depth is still limited to workflow state, not actor/time/reason history.
 3. Preview composition is still simple and not yet a full layered edit pipeline.
 4. Final render is still a foundation path and not yet a full recomposition pipeline.

@@ -75,6 +75,14 @@ class FakeArtifactGenerationService:
             return
         raise ValueError(str(job_id))
 
+    def retry_job(self, job_id: int) -> None:
+        for index, job in enumerate(self._failed_jobs):
+            if job.job_id != job_id:
+                continue
+            self._failed_jobs.pop(index)
+            return
+        raise ValueError(str(job_id))
+
 
 class FakeVideoAssemblyFactoryService:
     def __init__(self) -> None:
@@ -96,7 +104,17 @@ class FakeVideoAssemblyFactoryService:
                 status="processing",
                 progress=0.6,
                 output_path=None,
-            )
+            ),
+            PreviewJobSummaryDTO(
+                job_id=7,
+                job_code="preview_07",
+                recipe_id=2,
+                job_type="render_recipe_preview",
+                status="failed",
+                progress=0.0,
+                output_path=None,
+                error_message="preview failed",
+            ),
         ]
 
     def list_jobs(self, *, status: str | None = None) -> list[PreviewJobSummaryDTO]:
@@ -133,6 +151,22 @@ class FakeVideoAssemblyFactoryService:
         raise ValueError(str(job_id))
 
     def run_final_render_job(self, job_id: int) -> None:
+        raise ValueError(str(job_id))
+
+    def retry_job(self, job_id: int) -> None:
+        for index, job in enumerate(self._jobs):
+            if job.job_id != job_id:
+                continue
+            self._jobs[index] = PreviewJobSummaryDTO(
+                job_id=job.job_id,
+                job_code=job.job_code,
+                recipe_id=job.recipe_id,
+                job_type=job.job_type,
+                status="done",
+                progress=1.0,
+                output_path="F:/workspace/outputs/preview/retried.mp4",
+            )
+            return
         raise ValueError(str(job_id))
 
 
@@ -253,8 +287,8 @@ def test_dashboard_view_model_loads_summary(unit_of_work_factory, tmp_path) -> N
     assert view_model.summary.output_count == 0
     assert view_model.summary.queued_job_count == 2
     assert view_model.summary.processing_job_count == 1
-    assert view_model.summary.failed_job_count == 1
-    assert view_model.summary.recent_jobs[0].job_code == "final_06"
+    assert view_model.summary.failed_job_count == 2
+    assert view_model.summary.recent_jobs[0].job_code == "preview_07"
 
 
 def test_dashboard_view_model_recovers_queued_jobs(unit_of_work_factory, tmp_path) -> None:
@@ -283,3 +317,31 @@ def test_dashboard_view_model_recovers_queued_jobs(unit_of_work_factory, tmp_pat
     assert view_model.summary.queued_job_count == 0
     assert view_model.summary.last_recovery_summary is not None
     assert view_model.summary.last_recovery_summary.succeeded_job_count == 2
+
+
+def test_dashboard_view_model_retries_failed_jobs(unit_of_work_factory, tmp_path) -> None:
+    workspace_root = tmp_path / "workspace"
+    workspace_root.mkdir()
+    config = default_config(workspace_root)
+    settings_service = SystemSettingsService(config.paths.app_config_path)
+    product_service = ProductApplicationService(unit_of_work_factory=unit_of_work_factory)
+    asset_service = _build_asset_service(unit_of_work_factory, tmp_path / "media_library")
+    tag_service = TagManagementService(unit_of_work_factory=unit_of_work_factory)
+    dashboard_service = DashboardService(
+        config=config,
+        product_service=product_service,
+        asset_intake_service=asset_service,
+        artifact_generation_service=FakeArtifactGenerationService(queued_count=0, failed_count=1),
+        video_assembly_factory_service=FakeVideoAssemblyFactoryService(),
+        tag_management_service=tag_service,
+        system_settings_service=settings_service,
+    )
+    view_model = DashboardViewModel(dashboard_service)
+
+    view_model.retry_failed_jobs()
+
+    assert view_model.status == "ready"
+    assert view_model.summary is not None
+    assert view_model.summary.failed_job_count == 0
+    assert view_model.summary.last_recovery_summary is not None
+    assert view_model.summary.last_recovery_summary.job_selection == "failed"
