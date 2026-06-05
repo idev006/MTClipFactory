@@ -42,6 +42,7 @@
 - output registration
 - unified dashboard visibility for persisted jobs
 - manual retry for persisted factory jobs
+- output lineage reporting in factory UI
 
 ## Phase 5: Automation and Quality
 
@@ -63,5 +64,5 @@
 
 1. Deepen preview composition beyond the current simple renderable-video path.
 2. Replace final-render foundation with richer composition and audio-aware rendering.
-3. Add output reporting and approval trail beyond the current basic foundation.
+3. Deepen approval trail beyond the current output-lineage reporting foundation.
 4. Deepen queued-job orchestration beyond the current startup/manual recovery baseline.

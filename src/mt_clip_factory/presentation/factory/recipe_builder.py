@@ -84,6 +84,12 @@ class RecipeBuilderViewModel(QObject):
     def outputs(self) -> list[OutputSummaryDTO]:
         return list(self._outputs)
 
+    def find_output(self, output_id: int) -> OutputSummaryDTO | None:
+        for output in self._outputs:
+            if output.output_id == output_id:
+                return output
+        return None
+
     def load(self) -> None:
         self._set_status("loading")
         self._products = self._product_service.list_products()

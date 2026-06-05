@@ -100,6 +100,7 @@ classDiagram
         +assign_asset_to_recipe(...)
         +queue_preview(recipe_id)
         +select_recipe(recipe_id)
+        +find_output(output_id)
     }
 
     class DashboardWindow {
@@ -114,6 +115,7 @@ classDiagram
         +create_recipe()
         +attach_asset()
         +build_preview()
+        +show output lineage details
     }
 
     class SqlAlchemyUnitOfWork {
@@ -269,6 +271,26 @@ sequenceDiagram
     Factory->>Out: add(final output)
     Factory->>JobRepo: update(done/failed)
     Factory->>DB: COMMIT
+```
+
+## Output Reporting Sequence
+
+```mermaid
+sequenceDiagram
+    actor User
+    participant View as RecipeBuilderWindow
+    participant VM as RecipeBuilderViewModel
+    participant Factory as VideoAssemblyFactoryService
+    participant Out as OutputRepository
+    participant JobRepo as JobRepository
+
+    User->>View: select recipe
+    View->>VM: select_recipe(recipe_id)
+    VM->>Factory: list_outputs(recipe_id)
+    Factory->>Out: list_summaries(recipe_id)
+    Factory->>JobRepo: read preview/final job output_json
+    Factory-->>VM: OutputSummaryDTO with lineage
+    VM-->>View: outputs + selected output details
 ```
 
 ## Retry Recovery Sequence

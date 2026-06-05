@@ -13,6 +13,7 @@ from PySide6.QtWidgets import (
     QPushButton,
     QTableWidget,
     QTableWidgetItem,
+    QTextEdit,
     QVBoxLayout,
     QWidget,
 )
@@ -152,13 +153,19 @@ class RecipeBuilderWindow(QMainWindow):
     def _build_outputs_group(self) -> QGroupBox:
         group = QGroupBox("Recipe Outputs")
         layout = QVBoxLayout(group)
-        self.outputs_table = QTableWidget(0, 6)
-        self.outputs_table.setHorizontalHeaderLabels(["Output ID", "Code", "Recipe", "Platform", "Approved", "Path"])
+        self.outputs_table = QTableWidget(0, 8)
+        self.outputs_table.setHorizontalHeaderLabels(
+            ["Output ID", "Kind", "Code", "Approved", "Created", "Job Code", "Source", "Path"]
+        )
         self.outputs_table.setSelectionBehavior(QTableWidget.SelectRows)
         self.outputs_table.setSelectionMode(QTableWidget.SingleSelection)
         self.outputs_table.setEditTriggers(QTableWidget.NoEditTriggers)
         self.outputs_table.horizontalHeader().setStretchLastSection(True)
+        self.outputs_table.itemSelectionChanged.connect(self._refresh_selected_output_details)
+        self.output_details_text = QTextEdit()
+        self.output_details_text.setReadOnly(True)
         layout.addWidget(self.outputs_table)
+        layout.addWidget(self.output_details_text)
         return group
 
     def _refresh_feedback(self) -> None:
@@ -219,14 +226,17 @@ class RecipeBuilderWindow(QMainWindow):
         for row_index, output in enumerate(self._view_model.outputs):
             values = [
                 str(output.output_id),
+                output.output_kind,
                 output.output_code,
-                output.recipe_code,
-                output.platform or "",
                 "Yes" if output.approved else "No",
+                output.created_at,
+                output.rendering_job_code or "",
+                output.source_output_code or "",
                 output.file_path,
             ]
             for column_index, value in enumerate(values):
                 self.outputs_table.setItem(row_index, column_index, QTableWidgetItem(value))
+        self._refresh_selected_output_details()
 
     def _selected_product_id(self) -> int | None:
         selected_items = self.product_picker.selectedItems()
@@ -251,6 +261,35 @@ class RecipeBuilderWindow(QMainWindow):
         if not selected_items:
             return None
         return int(self.outputs_table.item(selected_items[0].row(), 0).text())
+
+    def _refresh_selected_output_details(self) -> None:
+        output_id = self._selected_output_id()
+        if output_id is None:
+            self.output_details_text.setPlainText("Select an output to inspect lineage and render details.")
+            return
+        output = self._view_model.find_output(output_id)
+        if output is None:
+            self.output_details_text.setPlainText("Selected output details are unavailable.")
+            return
+        self.output_details_text.setPlainText(
+            "\n".join(
+                [
+                    f"Output ID: {output.output_id}",
+                    f"Recipe: {output.recipe_code} (#{output.recipe_id})",
+                    f"Kind: {output.output_kind}",
+                    f"Approved: {output.approved}",
+                    f"Created At: {output.created_at}",
+                    f"Platform: {output.platform or '-'}",
+                    f"Ratio: {output.ratio or '-'}",
+                    f"Render Job Code: {output.rendering_job_code or '-'}",
+                    f"Manifest Path: {output.manifest_path or '-'}",
+                    f"Source Output ID: {output.source_output_id or '-'}",
+                    f"Source Output Code: {output.source_output_code or '-'}",
+                    f"Source Output Path: {output.source_output_path or '-'}",
+                    f"File Path: {output.file_path}",
+                ]
+            )
+        )
 
     def _create_recipe(self) -> None:
         product_id = self._selected_product_id()

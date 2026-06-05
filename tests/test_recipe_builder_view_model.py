@@ -124,6 +124,13 @@ class FakeVideoAssemblyFactoryService:
                     platform=output.platform,
                     ratio=output.ratio,
                     approved=True,
+                    created_at=output.created_at,
+                    output_kind=output.output_kind,
+                    rendering_job_code=output.rendering_job_code,
+                    manifest_path=output.manifest_path,
+                    source_output_id=output.source_output_id,
+                    source_output_code=output.source_output_code,
+                    source_output_path=output.source_output_path,
                 )
                 return
         raise ValueError(str(output_id))
@@ -168,6 +175,13 @@ class FakeVideoAssemblyFactoryService:
                 platform="tiktok",
                 ratio="9:16",
                 approved=False,
+                created_at="2026-06-06 10:00:00",
+                output_kind="preview",
+                rendering_job_code=f"preview_job_{job_id}",
+                manifest_path=f"outputs/manifests/{job_id}.json",
+                source_output_id=None,
+                source_output_code=None,
+                source_output_path=None,
             )
         )
 
@@ -186,6 +200,13 @@ class FakeVideoAssemblyFactoryService:
                 platform="tiktok",
                 ratio="9:16",
                 approved=True,
+                created_at="2026-06-06 11:00:00",
+                output_kind="final",
+                rendering_job_code=f"final_job_{recipe_id}",
+                manifest_path=None,
+                source_output_id=1,
+                source_output_code=f"preview_output_{recipe_id}",
+                source_output_path=f"outputs/preview/{recipe_id}.mp4",
             )
         )
 
@@ -262,6 +283,7 @@ def test_recipe_builder_view_model_builds_preview(unit_of_work_factory) -> None:
     assert view_model.status == "ready"
     assert "Built preview output for recipe #1" in view_model.feedback
     assert len(view_model.outputs) == 1
+    assert view_model.outputs[0].manifest_path == "outputs/manifests/1.json"
 
 
 def test_recipe_builder_view_model_approves_output_and_recipe(unit_of_work_factory) -> None:
@@ -320,4 +342,24 @@ def test_recipe_builder_view_model_builds_final_render(unit_of_work_factory) -> 
     assert job_id == 101
     assert len(view_model.outputs) == 2
     assert view_model.outputs[-1].approved is True
+    assert view_model.outputs[-1].source_output_code == "preview_output_1"
     assert "Built final render for recipe #1" in view_model.feedback
+
+
+def test_recipe_builder_view_model_finds_output_details(unit_of_work_factory) -> None:
+    product_service = ProductApplicationService(unit_of_work_factory=unit_of_work_factory)
+    product_service.create_product(CreateProductCommand(product_code="honey", product_name="Honey"))
+    factory_service = FakeVideoAssemblyFactoryService()
+    view_model = RecipeBuilderViewModel(
+        product_service=product_service,
+        asset_intake_service=FakeAssetIntakeService(),
+        video_assembly_factory_service=factory_service,
+    )
+    view_model.create_recipe(product_id=1, recipe_code="Honey Launch")
+    view_model.queue_preview(1)
+
+    output = view_model.find_output(1)
+
+    assert output is not None
+    assert output.output_kind == "preview"
+    assert output.rendering_job_code == "preview_job_1"

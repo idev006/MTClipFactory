@@ -10,6 +10,7 @@
 | ISS-009 | 2026-06-06 | Medium | Preview Composition Depth | Preview output currently supports a simple renderable-video path. It does not yet reflect layered composition, timing control, or audio mixing. | Engineering | Open | Add richer composition pipeline and explicit role-based render rules. |
 | ISS-010 | 2026-06-06 | Medium | Final Render Depth | Current final-render flow promotes from an approved preview output as a foundation. It is traceable and useful, but not yet a full recomposition pipeline. | Engineering | Open | Add richer final renderer with composition/audio-aware pipeline and stronger reporting. |
 | ISS-014 | 2026-06-06 | Medium | Recovery Scope | Startup/manual queued-job recovery now exists, but failed-job escalation and richer orchestration policy are still limited. | Engineering | Open | Expand recovery semantics beyond queued sequential execution and document escalation rules. |
+| ISS-015 | 2026-06-06 | Medium | Approval Audit Depth | Output lineage reporting now exists, but explicit approval actor/time/reason audit fields are not yet persisted in SSOT. | Engineering | Open | Design schema-safe approval audit model and deliver migration-backed implementation. |
 
 ## Closed Issues
 

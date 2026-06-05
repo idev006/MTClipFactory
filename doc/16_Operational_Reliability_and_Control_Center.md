@@ -81,6 +81,7 @@ The following must flow through config or services whenever user control is appr
 - uniform manual retry across artifact, preview, and final persisted jobs
 - configurable queued-job recovery orchestrator for dashboard/manual and startup execution
 - output approval and recipe approval decisions captured in SSOT workflow
+- output lineage reporting derived from persisted jobs and outputs
 - configurable path roots through `[paths]` in `app_config.toml`
 - dashboard visibility of recent, queued, processing, and failed jobs
 - settings-based FFmpeg path control
@@ -91,6 +92,7 @@ The following must flow through config or services whenever user control is appr
 ## Current Gaps
 
 1. Recovery scope is still narrower for failed jobs and advanced orchestration rules.
-2. Preview composition is still simple and not yet a full layered edit pipeline.
-3. Final render is still a foundation path and not yet a full recomposition pipeline.
-4. Path-root changes are not fully hot-reloaded across all runtime services.
+2. Approval audit depth is still limited to workflow state, not actor/time/reason history.
+3. Preview composition is still simple and not yet a full layered edit pipeline.
+4. Final render is still a foundation path and not yet a full recomposition pipeline.
+5. Path-root changes are not fully hot-reloaded across all runtime services.

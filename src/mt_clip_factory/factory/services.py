@@ -194,6 +194,27 @@ class VideoAssemblyFactoryService:
         approved: bool | None = None,
     ) -> list[OutputSummaryDTO]:
         with self._unit_of_work_factory() as uow:
+            requested_outputs = list(uow.outputs.list_summaries(recipe_id=recipe_id, approved=approved))
+            lineage_context = _build_output_lineage_context(
+                requested_outputs=requested_outputs,
+                all_outputs=list(uow.outputs.list_summaries(recipe_id=recipe_id)),
+                preview_jobs=[
+                    job
+                    for job in (
+                        uow.jobs.get_by_id(summary.job_id)
+                        for summary in uow.jobs.list_summaries(job_type=self.PREVIEW_JOB_TYPE)
+                    )
+                    if job is not None
+                ],
+                final_jobs=[
+                    job
+                    for job in (
+                        uow.jobs.get_by_id(summary.job_id)
+                        for summary in uow.jobs.list_summaries(job_type=self.FINAL_JOB_TYPE)
+                    )
+                    if job is not None
+                ],
+            )
             return [
                 OutputSummaryDTO(
                     output_id=summary.output_id,
@@ -204,8 +225,15 @@ class VideoAssemblyFactoryService:
                     platform=summary.platform,
                     ratio=summary.ratio,
                     approved=summary.approved,
+                    created_at=_format_timestamp(summary.created_at),
+                    output_kind=_resolve_output_kind(summary.output_code, lineage_context.get(summary.output_id)),
+                    rendering_job_code=_lineage_value(summary.output_id, lineage_context, "job_code"),
+                    manifest_path=_lineage_value(summary.output_id, lineage_context, "preview_manifest_path"),
+                    source_output_id=_lineage_value(summary.output_id, lineage_context, "source_output_id"),
+                    source_output_code=_lineage_value(summary.output_id, lineage_context, "source_output_code"),
+                    source_output_path=_lineage_value(summary.output_id, lineage_context, "source_output_path"),
                 )
-                for summary in uow.outputs.list_summaries(recipe_id=recipe_id, approved=approved)
+                for summary in requested_outputs
             ]
 
     def approve_output(self, output_id: int) -> None:
@@ -512,3 +540,53 @@ def _is_renderable_preview_asset(asset_type: str) -> bool:
 
 def _utc_now() -> datetime:
     return datetime.now(UTC).replace(tzinfo=None)
+
+
+def _build_output_lineage_context(*, requested_outputs, all_outputs, preview_jobs, final_jobs) -> dict[int, dict[str, object | None]]:
+    output_lookup = {summary.output_id: summary for summary in all_outputs}
+    lineage: dict[int, dict[str, object | None]] = {}
+    for job in [*preview_jobs, *final_jobs]:
+        payload = _decode_output_payload(job.output_json)
+        output_id = payload.get("output_id")
+        if not isinstance(output_id, int):
+            continue
+        source_output_id = payload.get("source_output_id")
+        source_summary = output_lookup.get(source_output_id) if isinstance(source_output_id, int) else None
+        lineage[output_id] = {
+            "job_code": job.job_code,
+            "job_type": job.job_type,
+            "preview_manifest_path": payload.get("preview_manifest_path"),
+            "source_output_id": source_output_id if isinstance(source_output_id, int) else None,
+            "source_output_code": source_summary.output_code if source_summary is not None else None,
+            "source_output_path": source_summary.file_path if source_summary is not None else None,
+        }
+    for summary in requested_outputs:
+        lineage.setdefault(summary.output_id, {})
+    return lineage
+
+
+def _decode_output_payload(output_json: str | None) -> dict[str, object]:
+    if not output_json:
+        return {}
+    payload = json.loads(output_json)
+    if isinstance(payload, dict):
+        return payload
+    return {}
+
+
+def _resolve_output_kind(output_code: str, lineage: dict[str, object | None] | None) -> str:
+    if lineage is not None and lineage.get("job_type") == VideoAssemblyFactoryService.FINAL_JOB_TYPE:
+        return "final"
+    if lineage is not None and lineage.get("job_type") == VideoAssemblyFactoryService.PREVIEW_JOB_TYPE:
+        return "preview"
+    if output_code.startswith("final_output"):
+        return "final"
+    return "preview"
+
+
+def _lineage_value(output_id: int, lineage_context: dict[int, dict[str, object | None]], key: str):
+    return lineage_context.get(output_id, {}).get(key)
+
+
+def _format_timestamp(value: datetime) -> str:
+    return value.strftime("%Y-%m-%d %H:%M:%S")

@@ -148,6 +148,9 @@ def test_factory_service_builds_preview_output_job(unit_of_work_factory, tmp_pat
     assert recipe.status == "candidate"
     assert len(outputs) == 1
     assert outputs[0].approved is False
+    assert outputs[0].output_kind == "preview"
+    assert outputs[0].manifest_path is not None
+    assert outputs[0].rendering_job_code is not None
     assert products[0].output_count == 1
 
 
@@ -265,7 +268,36 @@ def test_factory_service_builds_final_render_job(unit_of_work_factory, tmp_path)
     assert jobs[0].output_path.endswith(".mp4")
     assert len(outputs) == 2
     assert outputs[0].approved is True
+    assert outputs[0].output_kind == "final"
+    assert outputs[0].source_output_id is not None
+    assert outputs[0].source_output_code is not None
     assert products[0].output_count == 2
+
+
+def test_factory_service_reports_output_lineage(unit_of_work_factory, tmp_path) -> None:
+    product_id, asset_id = _register_ready_asset(unit_of_work_factory, tmp_path)
+    service = _build_factory_service(unit_of_work_factory, tmp_path / "previews")
+    recipe_id = service.create_recipe(CreateRecipeCommand(product_id=product_id, recipe_code="Honey Launch"))
+    service.assign_asset_to_recipe(AssignAssetToRecipeCommand(recipe_id=recipe_id, asset_id=asset_id, role="hero"))
+    preview_job_id = service.enqueue_preview_job(recipe_id)
+    service.run_preview_job(preview_job_id)
+    preview_output = service.list_outputs(recipe_id=recipe_id)[0]
+    service.approve_output(preview_output.output_id)
+    service.approve_recipe(recipe_id)
+    final_job_id = service.enqueue_final_render_job(recipe_id)
+    service.run_final_render_job(final_job_id)
+
+    outputs = service.list_outputs(recipe_id=recipe_id)
+    final_output = outputs[0]
+    preview_output = outputs[1]
+
+    assert final_output.output_kind == "final"
+    assert final_output.rendering_job_code is not None
+    assert final_output.source_output_id == preview_output.output_id
+    assert final_output.source_output_code == preview_output.output_code
+    assert final_output.source_output_path == preview_output.file_path
+    assert preview_output.output_kind == "preview"
+    assert preview_output.manifest_path is not None
 
 
 def test_factory_service_retries_failed_final_job_after_restart(unit_of_work_factory, tmp_path) -> None:

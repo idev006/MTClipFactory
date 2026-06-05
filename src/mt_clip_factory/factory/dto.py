@@ -84,3 +84,10 @@ class OutputSummaryDTO:
     platform: str | None
     ratio: str | None
     approved: bool
+    created_at: str
+    output_kind: str
+    rendering_job_code: str | None
+    manifest_path: str | None = None
+    source_output_id: int | None = None
+    source_output_code: str | None = None
+    source_output_path: str | None = None

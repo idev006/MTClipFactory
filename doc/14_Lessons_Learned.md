@@ -64,3 +64,8 @@
 
 - automatic recovery is safer when it begins with queued work only and leaves failed work under explicit human control
 - putting recovery policy behind settings keeps the system durable without hiding side effects from operators
+
+## LL-014 | 2026-06-06 | Reporting Can Get Better Before Schema Changes
+
+- output reporting gained real value by correlating persisted output records with job payloads instead of waiting for a full audit-schema redesign
+- deriving lineage from existing SSOT is safer than pretending approval history exists when it does not

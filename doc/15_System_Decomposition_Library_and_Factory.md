@@ -52,6 +52,7 @@ Compose prepared assets into reviewable preview and later final-output workflows
 - preview job status tracking
 - final job status tracking
 - manual retry for persisted factory jobs
+- output lineage reporting
 
 ### Future Responsibilities
 
