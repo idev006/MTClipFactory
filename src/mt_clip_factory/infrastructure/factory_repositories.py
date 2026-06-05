@@ -29,6 +29,9 @@ class SqlAlchemyRecipeRepository:
             recipe_score=recipe.recipe_score,
             duplicate_risk=recipe.duplicate_risk,
             status=recipe.status.value,
+            decision_actor=recipe.decision_actor,
+            decision_at=recipe.decision_at,
+            decision_reason=recipe.decision_reason,
             created_at=recipe.created_at,
         )
         self._session.add(model)
@@ -67,6 +70,9 @@ class SqlAlchemyRecipeRepository:
         model.recipe_score = recipe.recipe_score
         model.duplicate_risk = recipe.duplicate_risk
         model.status = recipe.status.value
+        model.decision_actor = recipe.decision_actor
+        model.decision_at = recipe.decision_at
+        model.decision_reason = recipe.decision_reason
         self._session.flush()
         return recipe
 
@@ -85,6 +91,8 @@ class SqlAlchemyRecipeRepository:
                 RecipeModel.target_platform,
                 RecipeModel.target_ratio,
                 RecipeModel.status,
+                RecipeModel.decision_actor,
+                RecipeModel.decision_at,
                 func.count(RecipeItemModel.id).label("item_count"),
             )
             .join(ProductModel, ProductModel.id == RecipeModel.product_id)
@@ -97,6 +105,8 @@ class SqlAlchemyRecipeRepository:
                 RecipeModel.target_platform,
                 RecipeModel.target_ratio,
                 RecipeModel.status,
+                RecipeModel.decision_actor,
+                RecipeModel.decision_at,
             )
             .order_by(RecipeModel.created_at.desc(), RecipeModel.id.desc())
         )
@@ -114,6 +124,8 @@ class SqlAlchemyRecipeRepository:
                 target_platform=row.target_platform,
                 target_ratio=row.target_ratio,
                 status=RecipeStatus(row.status),
+                decision_actor=row.decision_actor,
+                decision_at=row.decision_at,
                 item_count=row.item_count,
             )
             for row in rows
@@ -168,5 +180,8 @@ class SqlAlchemyRecipeRepository:
             recipe_score=model.recipe_score,
             duplicate_risk=model.duplicate_risk,
             status=RecipeStatus(model.status),
+            decision_actor=model.decision_actor,
+            decision_at=model.decision_at,
+            decision_reason=model.decision_reason,
             created_at=model.created_at,
         )

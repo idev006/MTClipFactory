@@ -11,8 +11,9 @@ from mt_clip_factory.factory.preview_artifacts import PreviewManifestBuilder
 from mt_clip_factory.factory.renderers import FFmpegPreviewRenderer
 from mt_clip_factory.factory.services import VideoAssemblyFactoryService
 from mt_clip_factory.infrastructure.factory_repositories import SqlAlchemyRecipeRepository
-from mt_clip_factory.infrastructure.database import create_engine_from_path, create_schema
+from mt_clip_factory.infrastructure.database import create_engine_from_path
 from mt_clip_factory.infrastructure.job_repositories import SqlAlchemyJobRepository
+from mt_clip_factory.infrastructure.migrations import ensure_schema_current
 from mt_clip_factory.infrastructure.output_repositories import SqlAlchemyOutputRepository
 from mt_clip_factory.infrastructure.repositories import (
     SqlAlchemyAssetRepository,
@@ -32,8 +33,8 @@ from mt_clip_factory.library.tag_services import TagManagementService
 
 def build_product_service(workspace_root: Path) -> ProductApplicationService:
     config: AppConfig = default_config(workspace_root)
+    ensure_schema_current(workspace_root, config.paths.database_path)
     engine = create_engine_from_path(config.paths.database_path)
-    create_schema(engine)
     session_factory = sessionmaker(bind=engine, expire_on_commit=False)
 
     def uow_factory() -> SqlAlchemyUnitOfWork:
@@ -52,8 +53,8 @@ def build_product_service(workspace_root: Path) -> ProductApplicationService:
 
 def build_resource_library_module(workspace_root: Path) -> ResourceLibraryModule:
     config: AppConfig = default_config(workspace_root)
+    ensure_schema_current(workspace_root, config.paths.database_path)
     engine = create_engine_from_path(config.paths.database_path)
-    create_schema(engine)
     session_factory = sessionmaker(bind=engine, expire_on_commit=False)
     settings_service = SystemSettingsService(config.paths.app_config_path)
 

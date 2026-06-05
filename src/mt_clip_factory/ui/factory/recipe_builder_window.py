@@ -72,11 +72,17 @@ class RecipeBuilderWindow(QMainWindow):
         self.platform_input = QLineEdit()
         self.ratio_input = QLineEdit()
         self.role_input = QLineEdit()
+        self.decision_actor_input = QLineEdit()
+        self.decision_reason_input = QLineEdit()
         self.role_input.setPlaceholderText("hero, hook, broll, cta")
+        self.decision_actor_input.setPlaceholderText("operator, editor, qa")
+        self.decision_reason_input.setPlaceholderText("optional decision note")
         form_layout.addRow("Recipe Code", self.recipe_code_input)
         form_layout.addRow("Target Platform", self.platform_input)
         form_layout.addRow("Target Ratio", self.ratio_input)
         form_layout.addRow("Attach Role", self.role_input)
+        form_layout.addRow("Decision Actor", self.decision_actor_input)
+        form_layout.addRow("Decision Note", self.decision_reason_input)
         layout.addWidget(self.product_picker)
         layout.addLayout(form_layout)
 
@@ -116,8 +122,10 @@ class RecipeBuilderWindow(QMainWindow):
     def _build_recipe_table_group(self) -> QGroupBox:
         group = QGroupBox("Recipes")
         layout = QVBoxLayout(group)
-        self.recipe_table = QTableWidget(0, 7)
-        self.recipe_table.setHorizontalHeaderLabels(["ID", "Product", "Code", "Platform", "Ratio", "Status", "Items"])
+        self.recipe_table = QTableWidget(0, 9)
+        self.recipe_table.setHorizontalHeaderLabels(
+            ["ID", "Product", "Code", "Platform", "Ratio", "Status", "Decision By", "Decision At", "Items"]
+        )
         self.recipe_table.setSelectionBehavior(QTableWidget.SelectRows)
         self.recipe_table.setSelectionMode(QTableWidget.SingleSelection)
         self.recipe_table.setEditTriggers(QTableWidget.NoEditTriggers)
@@ -153,9 +161,9 @@ class RecipeBuilderWindow(QMainWindow):
     def _build_outputs_group(self) -> QGroupBox:
         group = QGroupBox("Recipe Outputs")
         layout = QVBoxLayout(group)
-        self.outputs_table = QTableWidget(0, 8)
+        self.outputs_table = QTableWidget(0, 10)
         self.outputs_table.setHorizontalHeaderLabels(
-            ["Output ID", "Kind", "Code", "Approved", "Created", "Job Code", "Source", "Path"]
+            ["Output ID", "Kind", "Code", "Approved", "Approved By", "Approved At", "Created", "Job Code", "Source", "Path"]
         )
         self.outputs_table.setSelectionBehavior(QTableWidget.SelectRows)
         self.outputs_table.setSelectionMode(QTableWidget.SingleSelection)
@@ -191,6 +199,8 @@ class RecipeBuilderWindow(QMainWindow):
                 recipe.target_platform or "",
                 recipe.target_ratio or "",
                 recipe.status,
+                recipe.decision_actor or "",
+                recipe.decision_at or "",
                 str(recipe.item_count),
             ]
             for column_index, value in enumerate(values):
@@ -229,6 +239,8 @@ class RecipeBuilderWindow(QMainWindow):
                 output.output_kind,
                 output.output_code,
                 "Yes" if output.approved else "No",
+                output.approved_by or "",
+                output.approved_at or "",
                 output.created_at,
                 output.rendering_job_code or "",
                 output.source_output_code or "",
@@ -278,6 +290,9 @@ class RecipeBuilderWindow(QMainWindow):
                     f"Recipe: {output.recipe_code} (#{output.recipe_id})",
                     f"Kind: {output.output_kind}",
                     f"Approved: {output.approved}",
+                    f"Approved By: {output.approved_by or '-'}",
+                    f"Approved At: {output.approved_at or '-'}",
+                    f"Approval Reason: {output.approval_reason or '-'}",
                     f"Created At: {output.created_at}",
                     f"Platform: {output.platform or '-'}",
                     f"Ratio: {output.ratio or '-'}",
@@ -342,7 +357,11 @@ class RecipeBuilderWindow(QMainWindow):
             QMessageBox.warning(self, "Approve Output", "Select an output first.")
             return
         try:
-            self._view_model.approve_output(output_id)
+            self._view_model.approve_output(
+                output_id,
+                actor=self.decision_actor_input.text(),
+                reason=self.decision_reason_input.text() or None,
+            )
         except Exception as exc:  # noqa: BLE001
             QMessageBox.warning(self, "Approve Output", str(exc))
 
@@ -352,7 +371,11 @@ class RecipeBuilderWindow(QMainWindow):
             QMessageBox.warning(self, "Approve Recipe", "Select a recipe first.")
             return
         try:
-            self._view_model.approve_recipe(recipe_id)
+            self._view_model.approve_recipe(
+                recipe_id,
+                actor=self.decision_actor_input.text(),
+                reason=self.decision_reason_input.text() or None,
+            )
         except Exception as exc:  # noqa: BLE001
             QMessageBox.warning(self, "Approve Recipe", str(exc))
 
@@ -362,7 +385,11 @@ class RecipeBuilderWindow(QMainWindow):
             QMessageBox.warning(self, "Reject Recipe", "Select a recipe first.")
             return
         try:
-            self._view_model.reject_recipe(recipe_id)
+            self._view_model.reject_recipe(
+                recipe_id,
+                actor=self.decision_actor_input.text(),
+                reason=self.decision_reason_input.text() or None,
+            )
         except Exception as exc:  # noqa: BLE001
             QMessageBox.warning(self, "Reject Recipe", str(exc))
 

@@ -23,6 +23,7 @@
 - queued-job recovery orchestrator with dashboard trigger and startup policy
 - failed-job retry orchestration through dashboard control
 - output lineage reporting in the Recipe Builder UI
+- migration-backed approval actor/time/reason persistence
 - initial Video Assembly Factory:
   - recipe persistence
   - recipe item assignment
@@ -34,13 +35,14 @@
   - final render foundation
   - output browsing/reporting foundation
   - output lineage details from persisted job/output records
+  - approval actor/time/reason capture for outputs and recipe decisions
   - manual retry for preview/final jobs
 - configurable path roots in `app_config.toml` for database, media, docs, outputs, and preview roots
 - configurable queued-job recovery policy in `app_config.toml`
 
 ## Verification Baseline
 
-- `python -m pytest` via `.venv`: `70 passed`
+- `python -m pytest` via `.venv`: `71 passed`
 - UI smoke via `QT_QPA_PLATFORM=offscreen`: `6` windows instantiated successfully
 
 ## Current Focus
@@ -48,6 +50,7 @@
 - deepen render fidelity beyond the current foundation
 - add richer auditability around approvals and outputs
 - keep output reporting truthful without inventing schema that has not been migrated yet
+- runtime migration path now exists, so future schema work can be delivered more safely
 - decide whether runtime path changes should hot-reload or remain restart-driven
 - deepen orchestration policy beyond the current queued-startup and failed-manual retry baselines
 
@@ -55,7 +58,7 @@
 
 1. Add richer preview composition and asset-role handling.
 2. Replace final-render foundation with fuller composition and audio-aware rendering.
-3. Add stronger approval trail beyond current output lineage.
+3. Add immutable approval history beyond current actor/time/reason fields.
 4. Extend recovery orchestration beyond current sequential retry behavior and define escalation rules.
 
 ## Ownership

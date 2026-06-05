@@ -67,6 +67,8 @@ class FactoryJobNotFoundError(ValueError):
 class VideoAssemblyFactoryService:
     PREVIEW_JOB_TYPE = "render_recipe_preview"
     FINAL_JOB_TYPE = "render_recipe_final"
+    SYSTEM_APPROVAL_ACTOR = "system_final_render"
+    SYSTEM_APPROVAL_REASON = "Auto-approved by final render pipeline."
 
     def __init__(
         self,
@@ -126,6 +128,8 @@ class VideoAssemblyFactoryService:
                     target_platform=summary.target_platform,
                     target_ratio=summary.target_ratio,
                     status=summary.status.value,
+                    decision_actor=summary.decision_actor,
+                    decision_at=_format_optional_timestamp(summary.decision_at),
                     item_count=summary.item_count,
                 )
                 for summary in uow.recipes.list_summaries(product_id=product_id, status=status)
@@ -159,6 +163,9 @@ class VideoAssemblyFactoryService:
                 hook_text=recipe.hook_text,
                 cta_text=recipe.cta_text,
                 status=recipe.status.value,
+                decision_actor=recipe.decision_actor,
+                decision_at=_format_optional_timestamp(recipe.decision_at),
+                decision_reason=recipe.decision_reason,
                 items=items,
             )
 
@@ -226,6 +233,9 @@ class VideoAssemblyFactoryService:
                     ratio=summary.ratio,
                     approved=summary.approved,
                     created_at=_format_timestamp(summary.created_at),
+                    approved_by=summary.approved_by,
+                    approved_at=_format_optional_timestamp(summary.approved_at),
+                    approval_reason=summary.approval_reason,
                     output_kind=_resolve_output_kind(summary.output_code, lineage_context.get(summary.output_id)),
                     rendering_job_code=_lineage_value(summary.output_id, lineage_context, "job_code"),
                     manifest_path=_lineage_value(summary.output_id, lineage_context, "preview_manifest_path"),
@@ -236,16 +246,23 @@ class VideoAssemblyFactoryService:
                 for summary in requested_outputs
             ]
 
-    def approve_output(self, output_id: int) -> None:
+    def approve_output(self, output_id: int, *, actor: str, reason: str | None = None) -> None:
+        actor_name = _normalize_actor(actor)
+        approval_reason = _normalize_reason(reason)
         with self._unit_of_work_factory() as uow:
             output = uow.outputs.get_by_id(output_id)
             if output is None or output.id is None:
                 raise OutputNotFoundError(str(output_id))
             output.approved = True
+            output.approved_by = actor_name
+            output.approved_at = _utc_now()
+            output.approval_reason = approval_reason
             uow.outputs.update(output)
             uow.commit()
 
-    def approve_recipe(self, recipe_id: int) -> None:
+    def approve_recipe(self, recipe_id: int, *, actor: str, reason: str | None = None) -> None:
+        actor_name = _normalize_actor(actor)
+        decision_reason = _normalize_reason(reason)
         with self._unit_of_work_factory() as uow:
             recipe = uow.recipes.get_by_id(recipe_id)
             if recipe is None or recipe.id is None:
@@ -254,15 +271,23 @@ class VideoAssemblyFactoryService:
             if not approved_outputs:
                 raise RecipeApprovalError("Approve at least one output before approving the recipe.")
             recipe.status = RecipeStatus.APPROVED
+            recipe.decision_actor = actor_name
+            recipe.decision_at = _utc_now()
+            recipe.decision_reason = decision_reason
             uow.recipes.update(recipe)
             uow.commit()
 
-    def reject_recipe(self, recipe_id: int) -> None:
+    def reject_recipe(self, recipe_id: int, *, actor: str, reason: str | None = None) -> None:
+        actor_name = _normalize_actor(actor)
+        decision_reason = _normalize_reason(reason)
         with self._unit_of_work_factory() as uow:
             recipe = uow.recipes.get_by_id(recipe_id)
             if recipe is None or recipe.id is None:
                 raise RecipeNotFoundError(str(recipe_id))
             recipe.status = RecipeStatus.REJECTED
+            recipe.decision_actor = actor_name
+            recipe.decision_at = _utc_now()
+            recipe.decision_reason = decision_reason
             uow.recipes.update(recipe)
             uow.commit()
 
@@ -419,6 +444,9 @@ class VideoAssemblyFactoryService:
                         ratio=recipe.target_ratio,
                         duration_sec=rendered_output.duration_sec,
                         approved=True,
+                        approved_by=self.SYSTEM_APPROVAL_ACTOR,
+                        approved_at=_utc_now(),
+                        approval_reason=self.SYSTEM_APPROVAL_REASON,
                     )
                 )
                 job.status = JobStatus.DONE
@@ -590,3 +618,23 @@ def _lineage_value(output_id: int, lineage_context: dict[int, dict[str, object |
 
 def _format_timestamp(value: datetime) -> str:
     return value.strftime("%Y-%m-%d %H:%M:%S")
+
+
+def _format_optional_timestamp(value: datetime | None) -> str | None:
+    if value is None:
+        return None
+    return _format_timestamp(value)
+
+
+def _normalize_actor(value: str) -> str:
+    actor = value.strip()
+    if not actor:
+        raise ValueError("Decision actor is required.")
+    return actor
+
+
+def _normalize_reason(value: str | None) -> str | None:
+    if value is None:
+        return None
+    reason = value.strip()
+    return reason or None

@@ -42,6 +42,8 @@ class RecipeSummaryDTO:
     target_platform: str | None
     target_ratio: str | None
     status: str
+    decision_actor: str | None
+    decision_at: str | None
     item_count: int
 
 
@@ -59,6 +61,9 @@ class RecipeDetailsDTO:
     hook_text: str | None
     cta_text: str | None
     status: str
+    decision_actor: str | None
+    decision_at: str | None
+    decision_reason: str | None
     items: tuple[RecipeItemDTO, ...]
 
 
@@ -85,6 +90,9 @@ class OutputSummaryDTO:
     ratio: str | None
     approved: bool
     created_at: str
+    approved_by: str | None
+    approved_at: str | None
+    approval_reason: str | None
     output_kind: str
     rendering_job_code: str | None
     manifest_path: str | None = None

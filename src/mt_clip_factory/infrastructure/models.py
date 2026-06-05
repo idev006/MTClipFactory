@@ -83,6 +83,9 @@ class RecipeModel(Base):
     recipe_score: Mapped[float] = mapped_column(Float, nullable=False, default=0.0)
     duplicate_risk: Mapped[float] = mapped_column(Float, nullable=False, default=0.0)
     status: Mapped[str] = mapped_column(String(32), nullable=False, default="candidate")
+    decision_actor: Mapped[str | None] = mapped_column(String(255), nullable=True)
+    decision_at: Mapped[datetime | None] = mapped_column(DateTime, nullable=True)
+    decision_reason: Mapped[str | None] = mapped_column(Text, nullable=True)
     created_at: Mapped[datetime] = mapped_column(DateTime, nullable=False, default=func.now())
 
 
@@ -128,5 +131,7 @@ class OutputModel(Base):
     quality_score: Mapped[float | None] = mapped_column(Float, nullable=True)
     duplicate_risk: Mapped[float | None] = mapped_column(Float, nullable=True)
     approved: Mapped[bool] = mapped_column(Boolean, nullable=False, default=False)
+    approved_by: Mapped[str | None] = mapped_column(String(255), nullable=True)
+    approved_at: Mapped[datetime | None] = mapped_column(DateTime, nullable=True)
+    approval_reason: Mapped[str | None] = mapped_column(Text, nullable=True)
     created_at: Mapped[datetime] = mapped_column(DateTime, nullable=False, default=func.now())
-

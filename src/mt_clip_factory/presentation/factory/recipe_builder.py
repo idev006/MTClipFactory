@@ -184,10 +184,10 @@ class RecipeBuilderViewModel(QObject):
         self.load()
         return job_id
 
-    def approve_output(self, output_id: int) -> None:
+    def approve_output(self, output_id: int, *, actor: str, reason: str | None = None) -> None:
         self._set_status("submitting")
         try:
-            self._video_assembly_factory_service.approve_output(output_id)
+            self._video_assembly_factory_service.approve_output(output_id, actor=actor, reason=reason)
         except Exception as exc:  # noqa: BLE001
             self._set_feedback(str(exc))
             self._set_status("error")
@@ -196,10 +196,10 @@ class RecipeBuilderViewModel(QObject):
         self._set_feedback(f"Approved output #{output_id}")
         self.load()
 
-    def approve_recipe(self, recipe_id: int) -> None:
+    def approve_recipe(self, recipe_id: int, *, actor: str, reason: str | None = None) -> None:
         self._set_status("submitting")
         try:
-            self._video_assembly_factory_service.approve_recipe(recipe_id)
+            self._video_assembly_factory_service.approve_recipe(recipe_id, actor=actor, reason=reason)
         except Exception as exc:  # noqa: BLE001
             self._set_feedback(str(exc))
             self._set_status("error")
@@ -209,10 +209,10 @@ class RecipeBuilderViewModel(QObject):
         self._set_feedback(f"Approved recipe #{recipe_id}")
         self.load()
 
-    def reject_recipe(self, recipe_id: int) -> None:
+    def reject_recipe(self, recipe_id: int, *, actor: str, reason: str | None = None) -> None:
         self._set_status("submitting")
         try:
-            self._video_assembly_factory_service.reject_recipe(recipe_id)
+            self._video_assembly_factory_service.reject_recipe(recipe_id, actor=actor, reason=reason)
         except Exception as exc:  # noqa: BLE001
             self._set_feedback(str(exc))
             self._set_status("error")

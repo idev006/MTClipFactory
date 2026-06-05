@@ -54,12 +54,13 @@ Compose prepared assets into reviewable preview and later final-output workflows
 - manual retry for persisted factory jobs
 - output lineage reporting
 - dashboard-driven failed-job retry orchestration
+- approval actor/time/reason persistence
 
 ### Future Responsibilities
 
 - layered preview composition
 - richer final render composition
-- stronger output approval trail
+- immutable approval history
 - quality and duplicate-risk checks
 
 ### Owned SSOT

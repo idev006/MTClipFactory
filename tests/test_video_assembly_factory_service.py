@@ -202,7 +202,7 @@ def test_factory_service_requires_approved_output_before_approving_recipe(unit_o
     service.run_preview_job(preview_job_id)
 
     with pytest.raises(RecipeApprovalError, match="Approve at least one output"):
-        service.approve_recipe(recipe_id)
+        service.approve_recipe(recipe_id, actor="qa_lead", reason="creative approved")
 
 
 def test_factory_service_approves_output_and_recipe(unit_of_work_factory, tmp_path) -> None:
@@ -214,12 +214,15 @@ def test_factory_service_approves_output_and_recipe(unit_of_work_factory, tmp_pa
     service.run_preview_job(preview_job_id)
     output_id = service.list_outputs(recipe_id=recipe_id)[0].output_id
 
-    service.approve_output(output_id)
-    service.approve_recipe(recipe_id)
+    service.approve_output(output_id, actor="qa_lead", reason="ready to publish")
+    service.approve_recipe(recipe_id, actor="qa_lead", reason="creative approved")
 
     recipe = service.get_recipe(recipe_id)
     outputs = service.list_outputs(recipe_id=recipe_id, approved=True)
     assert recipe.status == "approved"
+    assert recipe.decision_actor == "qa_lead"
+    assert recipe.decision_reason == "creative approved"
+    assert outputs[0].approved_by == "qa_lead"
     assert len(outputs) == 1
 
 
@@ -228,10 +231,12 @@ def test_factory_service_rejects_recipe(unit_of_work_factory, tmp_path) -> None:
     service = _build_factory_service(unit_of_work_factory, tmp_path / "previews")
     recipe_id = service.create_recipe(CreateRecipeCommand(product_id=product_id, recipe_code="Honey Launch"))
 
-    service.reject_recipe(recipe_id)
+    service.reject_recipe(recipe_id, actor="editor", reason="hook too weak")
 
     recipe = service.get_recipe(recipe_id)
     assert recipe.status == "rejected"
+    assert recipe.decision_actor == "editor"
+    assert recipe.decision_reason == "hook too weak"
 
 
 def test_factory_service_blocks_final_render_until_recipe_is_approved(unit_of_work_factory, tmp_path) -> None:
@@ -252,8 +257,8 @@ def test_factory_service_builds_final_render_job(unit_of_work_factory, tmp_path)
     preview_job_id = service.enqueue_preview_job(recipe_id)
     service.run_preview_job(preview_job_id)
     output_id = service.list_outputs(recipe_id=recipe_id)[0].output_id
-    service.approve_output(output_id)
-    service.approve_recipe(recipe_id)
+    service.approve_output(output_id, actor="qa_lead", reason="ready to publish")
+    service.approve_recipe(recipe_id, actor="qa_lead", reason="creative approved")
 
     final_job_id = service.enqueue_final_render_job(recipe_id)
     service.run_final_render_job(final_job_id)
@@ -268,6 +273,7 @@ def test_factory_service_builds_final_render_job(unit_of_work_factory, tmp_path)
     assert jobs[0].output_path.endswith(".mp4")
     assert len(outputs) == 2
     assert outputs[0].approved is True
+    assert outputs[0].approved_by == "system_final_render"
     assert outputs[0].output_kind == "final"
     assert outputs[0].source_output_id is not None
     assert outputs[0].source_output_code is not None
@@ -282,8 +288,8 @@ def test_factory_service_reports_output_lineage(unit_of_work_factory, tmp_path) 
     preview_job_id = service.enqueue_preview_job(recipe_id)
     service.run_preview_job(preview_job_id)
     preview_output = service.list_outputs(recipe_id=recipe_id)[0]
-    service.approve_output(preview_output.output_id)
-    service.approve_recipe(recipe_id)
+    service.approve_output(preview_output.output_id, actor="qa_lead", reason="ready to publish")
+    service.approve_recipe(recipe_id, actor="qa_lead", reason="creative approved")
     final_job_id = service.enqueue_final_render_job(recipe_id)
     service.run_final_render_job(final_job_id)
 
@@ -309,8 +315,8 @@ def test_factory_service_retries_failed_final_job_after_restart(unit_of_work_fac
     preview_job_id = service.enqueue_preview_job(recipe_id)
     service.run_preview_job(preview_job_id)
     output_id = service.list_outputs(recipe_id=recipe_id)[0].output_id
-    service.approve_output(output_id)
-    service.approve_recipe(recipe_id)
+    service.approve_output(output_id, actor="qa_lead", reason="ready to publish")
+    service.approve_recipe(recipe_id, actor="qa_lead", reason="creative approved")
 
     with unit_of_work_factory() as uow:
         output = uow.outputs.get_by_id(output_id)
@@ -324,7 +330,7 @@ def test_factory_service_retries_failed_final_job_after_restart(unit_of_work_fac
         service.run_final_render_job(final_job_id)
 
     restarted_service = _build_factory_service(unit_of_work_factory, preview_root)
-    restarted_service.approve_output(output_id)
+    restarted_service.approve_output(output_id, actor="qa_lead", reason="ready to publish")
     restarted_service.retry_job(final_job_id)
 
     jobs = restarted_service.list_jobs()

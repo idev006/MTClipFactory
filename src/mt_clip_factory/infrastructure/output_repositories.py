@@ -24,6 +24,9 @@ class SqlAlchemyOutputRepository:
             quality_score=output.quality_score,
             duplicate_risk=output.duplicate_risk,
             approved=output.approved,
+            approved_by=output.approved_by,
+            approved_at=output.approved_at,
+            approval_reason=output.approval_reason,
             created_at=output.created_at,
         )
         self._session.add(model)
@@ -50,6 +53,9 @@ class SqlAlchemyOutputRepository:
         model.quality_score = output.quality_score
         model.duplicate_risk = output.duplicate_risk
         model.approved = output.approved
+        model.approved_by = output.approved_by
+        model.approved_at = output.approved_at
+        model.approval_reason = output.approval_reason
         self._session.flush()
         return output
 
@@ -69,6 +75,9 @@ class SqlAlchemyOutputRepository:
                 OutputModel.platform,
                 OutputModel.ratio,
                 OutputModel.approved,
+                OutputModel.approved_by,
+                OutputModel.approved_at,
+                OutputModel.approval_reason,
                 OutputModel.created_at,
             )
             .join(RecipeModel, RecipeModel.id == OutputModel.recipe_id)
@@ -89,6 +98,9 @@ class SqlAlchemyOutputRepository:
                 platform=row.platform,
                 ratio=row.ratio,
                 approved=row.approved,
+                approved_by=row.approved_by,
+                approved_at=row.approved_at,
+                approval_reason=row.approval_reason,
                 created_at=row.created_at,
             )
             for row in rows
@@ -106,5 +118,8 @@ class SqlAlchemyOutputRepository:
             quality_score=model.quality_score,
             duplicate_risk=model.duplicate_risk,
             approved=model.approved,
+            approved_by=model.approved_by,
+            approved_at=model.approved_at,
+            approval_reason=model.approval_reason,
             created_at=model.created_at,
         )

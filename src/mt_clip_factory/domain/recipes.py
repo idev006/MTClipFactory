@@ -22,6 +22,9 @@ class Recipe:
     recipe_score: float = 0.0
     duplicate_risk: float = 0.0
     status: RecipeStatus = RecipeStatus.CANDIDATE
+    decision_actor: str | None = None
+    decision_at: datetime | None = None
+    decision_reason: str | None = None
     created_at: datetime = field(default_factory=utc_now)
     id: int | None = None
 
@@ -45,4 +48,6 @@ class RecipeSummary:
     target_platform: str | None
     target_ratio: str | None
     status: RecipeStatus
+    decision_actor: str | None
+    decision_at: datetime | None
     item_count: int

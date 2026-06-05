@@ -88,6 +88,10 @@ classDiagram
         +update(...)
     }
 
+    class MigrationGuard {
+        +ensure_schema_current(...)
+    }
+
     class AssetLibraryViewModel {
         +load()
         +register_asset(...)
@@ -168,6 +172,7 @@ classDiagram
     ResourceLibraryModule --> VideoAssemblyFactoryService
     ResourceLibraryModule --> DashboardService
     ResourceLibraryModule --> SystemSettingsService
+    ResourceLibraryModule --> MigrationGuard
     AssetLibraryViewModel --> AssetIntakeService
     AssetLibraryViewModel --> ArtifactGenerationService
     RecipeBuilderViewModel --> ProductApplicationService
@@ -292,6 +297,47 @@ sequenceDiagram
     Factory->>JobRepo: read preview/final job output_json
     Factory-->>VM: OutputSummaryDTO with lineage
     VM-->>View: outputs + selected output details
+```
+
+## Approval Audit Sequence
+
+```mermaid
+sequenceDiagram
+    actor User
+    participant View as RecipeBuilderWindow
+    participant VM as RecipeBuilderViewModel
+    participant Factory as VideoAssemblyFactoryService
+    participant Out as OutputRepository
+    participant RecipeRepo as RecipeRepository
+
+    User->>View: enter decision actor + note
+    User->>View: approve output / approve recipe / reject recipe
+    View->>VM: action(..., actor, reason)
+    VM->>Factory: action(..., actor, reason)
+    Factory->>Out: update approval audit fields
+    Factory->>RecipeRepo: update decision audit fields
+```
+
+## Runtime Migration Sequence
+
+```mermaid
+sequenceDiagram
+    participant Boot as Bootstrap
+    participant Guard as MigrationGuard
+    participant DB as SQLite
+    participant Alembic as Alembic
+
+    Boot->>Guard: ensure_schema_current(workspace_root, db_path)
+    Guard->>DB: inspect tables
+    alt new database
+        Guard->>DB: create latest schema
+        Guard->>Alembic: stamp head
+    else legacy database without alembic_version
+        Guard->>Alembic: stamp baseline
+        Guard->>Alembic: upgrade head
+    else versioned database
+        Guard->>Alembic: upgrade head
+    end
 ```
 
 ## Retry Recovery Sequence

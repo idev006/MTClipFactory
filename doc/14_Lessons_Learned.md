@@ -74,3 +74,8 @@
 
 - allowing dashboard-driven failed-job retry improves operator control without silently re-running risky work at startup
 - separating queued auto-recovery from failed manual retry keeps reliability policy easier to explain and trust
+
+## LL-016 | 2026-06-06 | Schema Features Need Runtime Migration, Not Just Models
+
+- once approval audit moved into persisted fields, Alembic had to become part of the real startup path instead of a document-only promise
+- shipping schema changes without runtime upgrade support would have created a false sense of completeness

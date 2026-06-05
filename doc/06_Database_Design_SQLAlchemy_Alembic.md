@@ -21,8 +21,26 @@
 
 - SQLAlchemy models อยู่ที่ `src/mt_clip_factory/infrastructure/models.py`
 - migration เริ่มต้นอยู่ที่ `alembic/versions/20260605_0001_initial_schema.py`
+- approval audit fields เพิ่มผ่าน `alembic/versions/20260606_0002_approval_audit_fields.py`
 - repository ตัวแรกคือ `SqlAlchemyProductRepository`
 - transaction ถูกควบคุมผ่าน `SqlAlchemyUnitOfWork`
+- runtime schema guard อยู่ที่ `src/mt_clip_factory/infrastructure/migrations.py`
+
+## Current Audit Fields
+
+- `recipes.decision_actor`
+- `recipes.decision_at`
+- `recipes.decision_reason`
+- `outputs.approved_by`
+- `outputs.approved_at`
+- `outputs.approval_reason`
+
+## Runtime Migration Policy
+
+- database ใหม่จะถูกสร้างจาก model ล่าสุดแล้ว `stamp head`
+- database เดิมที่ยังไม่มี `alembic_version` จะถูก `stamp` ที่ baseline revision ก่อน แล้ว `upgrade head`
+- database ที่มี revision อยู่แล้วจะถูก `upgrade head` ตามปกติ
+- ห้ามอ้างว่า schema feature เสร็จ หากยังไม่มี migration และ runtime path รองรับจริง
 
 ## Migration Discipline
 
@@ -31,4 +49,3 @@
 3. review migration
 4. run migration ใน environment ทดสอบ
 5. update เอกสารที่เกี่ยวข้อง
-

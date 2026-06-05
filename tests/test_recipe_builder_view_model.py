@@ -49,6 +49,8 @@ class FakeVideoAssemblyFactoryService:
             target_platform=command.target_platform,
             target_ratio=command.target_ratio,
             status="candidate",
+            decision_actor=None,
+            decision_at=None,
             item_count=0,
         )
         self.recipes.append(summary)
@@ -74,6 +76,9 @@ class FakeVideoAssemblyFactoryService:
             hook_text=None,
             cta_text=None,
             status=recipe.status,
+            decision_actor=recipe.decision_actor,
+            decision_at=recipe.decision_at,
+            decision_reason=None,
             items=tuple(self.items[recipe_id]),
         )
 
@@ -97,6 +102,8 @@ class FakeVideoAssemblyFactoryService:
             target_platform=recipe.target_platform,
             target_ratio=recipe.target_ratio,
             status=recipe.status,
+            decision_actor=recipe.decision_actor,
+            decision_at=recipe.decision_at,
             item_count=len(self.items[command.recipe_id]),
         )
         return item_id
@@ -110,7 +117,7 @@ class FakeVideoAssemblyFactoryService:
             return values
         return [output for output in values if output.approved == approved]
 
-    def approve_output(self, output_id: int) -> None:
+    def approve_output(self, output_id: int, *, actor: str, reason: str | None = None) -> None:
         for recipe_id, outputs in self.outputs.items():
             for index, output in enumerate(outputs):
                 if output.output_id != output_id:
@@ -125,6 +132,9 @@ class FakeVideoAssemblyFactoryService:
                     ratio=output.ratio,
                     approved=True,
                     created_at=output.created_at,
+                    approved_by=actor,
+                    approved_at="2026-06-06 10:05:00",
+                    approval_reason=reason,
                     output_kind=output.output_kind,
                     rendering_job_code=output.rendering_job_code,
                     manifest_path=output.manifest_path,
@@ -135,7 +145,7 @@ class FakeVideoAssemblyFactoryService:
                 return
         raise ValueError(str(output_id))
 
-    def approve_recipe(self, recipe_id: int) -> None:
+    def approve_recipe(self, recipe_id: int, *, actor: str, reason: str | None = None) -> None:
         recipe = next(recipe for recipe in self.recipes if recipe.recipe_id == recipe_id)
         self.recipes[self.recipes.index(recipe)] = RecipeSummaryDTO(
             recipe_id=recipe.recipe_id,
@@ -145,10 +155,12 @@ class FakeVideoAssemblyFactoryService:
             target_platform=recipe.target_platform,
             target_ratio=recipe.target_ratio,
             status="approved",
+            decision_actor=actor,
+            decision_at="2026-06-06 10:06:00",
             item_count=recipe.item_count,
         )
 
-    def reject_recipe(self, recipe_id: int) -> None:
+    def reject_recipe(self, recipe_id: int, *, actor: str, reason: str | None = None) -> None:
         recipe = next(recipe for recipe in self.recipes if recipe.recipe_id == recipe_id)
         self.recipes[self.recipes.index(recipe)] = RecipeSummaryDTO(
             recipe_id=recipe.recipe_id,
@@ -158,6 +170,8 @@ class FakeVideoAssemblyFactoryService:
             target_platform=recipe.target_platform,
             target_ratio=recipe.target_ratio,
             status="rejected",
+            decision_actor=actor,
+            decision_at="2026-06-06 10:07:00",
             item_count=recipe.item_count,
         )
 
@@ -176,6 +190,9 @@ class FakeVideoAssemblyFactoryService:
                 ratio="9:16",
                 approved=False,
                 created_at="2026-06-06 10:00:00",
+                approved_by=None,
+                approved_at=None,
+                approval_reason=None,
                 output_kind="preview",
                 rendering_job_code=f"preview_job_{job_id}",
                 manifest_path=f"outputs/manifests/{job_id}.json",
@@ -201,6 +218,9 @@ class FakeVideoAssemblyFactoryService:
                 ratio="9:16",
                 approved=True,
                 created_at="2026-06-06 11:00:00",
+                approved_by="system_final_render",
+                approved_at="2026-06-06 11:00:00",
+                approval_reason="Auto-approved by final render pipeline.",
                 output_kind="final",
                 rendering_job_code=f"final_job_{recipe_id}",
                 manifest_path=None,
@@ -298,11 +318,13 @@ def test_recipe_builder_view_model_approves_output_and_recipe(unit_of_work_facto
     view_model.create_recipe(product_id=1, recipe_code="Honey Launch")
     view_model.queue_preview(1)
 
-    view_model.approve_output(1)
-    view_model.approve_recipe(1)
+    view_model.approve_output(1, actor="qa_lead", reason="ready to publish")
+    view_model.approve_recipe(1, actor="qa_lead", reason="creative approved")
 
     assert view_model.outputs[0].approved is True
+    assert view_model.outputs[0].approved_by == "qa_lead"
     assert view_model.recipes[0].status == "approved"
+    assert view_model.recipes[0].decision_actor == "qa_lead"
     assert "Approved recipe #1" in view_model.feedback
 
 
@@ -317,9 +339,10 @@ def test_recipe_builder_view_model_rejects_recipe(unit_of_work_factory) -> None:
     )
     view_model.create_recipe(product_id=1, recipe_code="Honey Launch")
 
-    view_model.reject_recipe(1)
+    view_model.reject_recipe(1, actor="editor", reason="hook too weak")
 
     assert view_model.recipes[0].status == "rejected"
+    assert view_model.recipes[0].decision_actor == "editor"
     assert "Rejected recipe #1" in view_model.feedback
 
 
@@ -334,14 +357,15 @@ def test_recipe_builder_view_model_builds_final_render(unit_of_work_factory) -> 
     )
     view_model.create_recipe(product_id=1, recipe_code="Honey Launch")
     view_model.queue_preview(1)
-    view_model.approve_output(1)
-    view_model.approve_recipe(1)
+    view_model.approve_output(1, actor="qa_lead", reason="ready to publish")
+    view_model.approve_recipe(1, actor="qa_lead", reason="creative approved")
 
     job_id = view_model.queue_final_render(1)
 
     assert job_id == 101
     assert len(view_model.outputs) == 2
     assert view_model.outputs[-1].approved is True
+    assert view_model.outputs[-1].approved_by == "system_final_render"
     assert view_model.outputs[-1].source_output_code == "preview_output_1"
     assert "Built final render for recipe #1" in view_model.feedback
 

@@ -17,6 +17,9 @@ class Output:
     quality_score: float | None = None
     duplicate_risk: float | None = None
     approved: bool = False
+    approved_by: str | None = None
+    approved_at: datetime | None = None
+    approval_reason: str | None = None
     created_at: datetime = field(default_factory=utc_now)
     id: int | None = None
 
@@ -31,4 +34,7 @@ class OutputSummary:
     platform: str | None
     ratio: str | None
     approved: bool
+    approved_by: str | None
+    approved_at: datetime | None
+    approval_reason: str | None
     created_at: datetime
