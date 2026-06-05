@@ -61,6 +61,16 @@ Settings คือหน้า system authority สำหรับ admin/user
 - runtime settings สำคัญต้อง persist
 - การเปลี่ยนค่า config ต้องตรวจสอบย้อนหลังได้
 
+## No-Hardcode Rule
+
+- runtime paths
+- thresholds
+- worker limits
+- refresh cadence
+- policy defaults ที่ admin/user ควรควบคุมได้
+
+ทั้งหมดนี้ต้องไหลผ่าน config/service กลาง ไม่กระจายเป็น hardcoded literals ใน business code
+
 ## Performance Principles
 
 - ใช้ FFprobe สำหรับ metadata phase

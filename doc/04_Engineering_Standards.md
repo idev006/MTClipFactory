@@ -31,6 +31,7 @@
 - ใช้ dataclass หรือ domain model ที่เรียบง่ายในชั้น domain
 - แยก use case ของ `Library` และ `Factory` คนละโมดูลให้ชัด
 - ห้าม copy business rule เดียวกันไปคนละฝั่งโดยไม่มี shared abstraction
+- ห้าม hardcode operational values, runtime paths, thresholds, หรือ policy defaults ในโค้ดเมื่อค่าพวกนั้นควรถูกปรับได้
 
 ## Database Rules
 

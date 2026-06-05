@@ -19,16 +19,25 @@ class SystemSettingsService:
         data = self._read_raw()
         ffmpeg = data.get("ffmpeg", {})
         system = data.get("system", {})
+        ffmpeg_root = str(ffmpeg.get("root", ""))
+        ffprobe_path = str(ffmpeg.get("ffprobe", ""))
+        ffmpeg_path = str(ffmpeg.get("ffmpeg", ""))
+
+        if ffmpeg_root and not ffprobe_path:
+            ffprobe_path = str(Path(ffmpeg_root) / "bin" / "ffprobe.exe")
+        if ffmpeg_root and not ffmpeg_path:
+            ffmpeg_path = str(Path(ffmpeg_root) / "bin" / "ffmpeg.exe")
+
         return SystemSettingsDTO(
-            ffmpeg_root=str(ffmpeg.get("root", r"F:\ffmpeg")),
-            ffprobe_path=str(ffmpeg.get("ffprobe", r"F:\ffmpeg\bin\ffprobe.exe")),
-            ffmpeg_path=str(ffmpeg.get("ffmpeg", r"F:\ffmpeg\bin\ffmpeg.exe")),
-            cpu_limit_percent=int(system.get("cpu_limit_percent", 90)),
-            ram_limit_percent=int(system.get("ram_limit_percent", 80)),
-            disk_free_gb_min=int(system.get("disk_free_gb_min", 20)),
-            max_preview_workers=int(system.get("max_preview_workers", 1)),
-            max_final_workers=int(system.get("max_final_workers", 1)),
-            auto_refresh_seconds=int(system.get("auto_refresh_seconds", 10)),
+            ffmpeg_root=ffmpeg_root,
+            ffprobe_path=ffprobe_path,
+            ffmpeg_path=ffmpeg_path,
+            cpu_limit_percent=int(system.get("cpu_limit_percent", 0)),
+            ram_limit_percent=int(system.get("ram_limit_percent", 0)),
+            disk_free_gb_min=int(system.get("disk_free_gb_min", 0)),
+            max_preview_workers=int(system.get("max_preview_workers", 0)),
+            max_final_workers=int(system.get("max_final_workers", 0)),
+            auto_refresh_seconds=int(system.get("auto_refresh_seconds", 0)),
         )
 
     def save(self, settings: SystemSettingsDTO) -> None:

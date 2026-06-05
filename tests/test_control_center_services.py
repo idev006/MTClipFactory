@@ -41,6 +41,26 @@ def _build_asset_service(unit_of_work_factory, media_root: Path) -> AssetIntakeS
 
 def test_system_settings_service_reads_and_writes_toml(tmp_path) -> None:
     config_path = tmp_path / "app_config.toml"
+    config_path.write_text(
+        "\n".join(
+            [
+                "[ffmpeg]",
+                'root = "F:\\\\ffmpeg"',
+                'ffprobe = "F:\\\\ffmpeg\\\\bin\\\\ffprobe.exe"',
+                'ffmpeg = "F:\\\\ffmpeg\\\\bin\\\\ffmpeg.exe"',
+                "",
+                "[system]",
+                "cpu_limit_percent = 90",
+                "ram_limit_percent = 80",
+                "disk_free_gb_min = 20",
+                "max_preview_workers = 1",
+                "max_final_workers = 1",
+                "auto_refresh_seconds = 10",
+                "",
+            ]
+        ),
+        encoding="utf-8",
+    )
     service = SystemSettingsService(config_path)
 
     defaults = service.load()

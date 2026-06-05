@@ -42,7 +42,28 @@ def _build_asset_service(unit_of_work_factory, media_root: Path) -> AssetIntakeS
 
 
 def test_settings_view_model_loads_and_saves(tmp_path) -> None:
-    service = SystemSettingsService(tmp_path / "app_config.toml")
+    config_path = tmp_path / "app_config.toml"
+    config_path.write_text(
+        "\n".join(
+            [
+                "[ffmpeg]",
+                'root = "F:\\\\ffmpeg"',
+                'ffprobe = "F:\\\\ffmpeg\\\\bin\\\\ffprobe.exe"',
+                'ffmpeg = "F:\\\\ffmpeg\\\\bin\\\\ffmpeg.exe"',
+                "",
+                "[system]",
+                "cpu_limit_percent = 90",
+                "ram_limit_percent = 80",
+                "disk_free_gb_min = 20",
+                "max_preview_workers = 1",
+                "max_final_workers = 1",
+                "auto_refresh_seconds = 10",
+                "",
+            ]
+        ),
+        encoding="utf-8",
+    )
+    service = SystemSettingsService(config_path)
     view_model = SettingsViewModel(service)
 
     view_model.load()
