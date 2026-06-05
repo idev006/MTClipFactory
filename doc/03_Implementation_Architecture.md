@@ -69,6 +69,12 @@
 - shared identity and naming rules
 - shared audit and traceability rules
 
+## Runtime Tooling
+
+- FFmpeg runtime ถูกอ้างอิงผ่าน `app_config.toml`
+- ฝั่ง Library ใช้ `ffprobe` สำหรับ metadata analysis
+- runtime tool path ต้องอ่านได้จาก config ไม่ hardcode กระจัดกระจายหลายจุด
+
 ## MVVM Rules
 
 - View รับ input และ bind กับ ViewModel

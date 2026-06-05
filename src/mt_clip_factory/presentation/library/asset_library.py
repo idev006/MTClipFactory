@@ -27,6 +27,9 @@ class AssetLibraryViewModel(QObject):
         self._assets: list[AssetSummaryDTO] = []
         self._status = "idle"
         self._feedback = ""
+        self._selected_product_id: int | None = None
+        self._selected_asset_type: str | None = None
+        self._selected_status: str | None = None
 
     def _get_status(self) -> str:
         return self._status
@@ -61,10 +64,26 @@ class AssetLibraryViewModel(QObject):
     def load(self) -> None:
         self._set_status("loading")
         self._products = self._product_service.list_products()
-        self._assets = self._asset_intake_service.list_assets()
+        self._assets = self._asset_intake_service.list_assets(
+            product_id=self._selected_product_id,
+            asset_type=self._selected_asset_type,
+            status=self._selected_status,
+        )
         self.products_changed.emit()
         self.assets_changed.emit()
         self._set_status("ready")
+
+    def apply_filters(
+        self,
+        *,
+        product_id: int | None,
+        asset_type: str | None,
+        status: str | None,
+    ) -> None:
+        self._selected_product_id = product_id
+        self._selected_asset_type = asset_type
+        self._selected_status = status
+        self.load()
 
     def register_asset(
         self,
@@ -92,4 +111,3 @@ class AssetLibraryViewModel(QObject):
         self._set_feedback(f"Registered asset #{asset_id}")
         self.load()
         return asset_id
-

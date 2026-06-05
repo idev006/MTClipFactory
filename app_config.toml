@@ -1,0 +1,5 @@
+[ffmpeg]
+root = "F:\\ffmpeg"
+ffprobe = "F:\\ffmpeg\\bin\\ffprobe.exe"
+ffmpeg = "F:\\ffmpeg\\bin\\ffmpeg.exe"
+

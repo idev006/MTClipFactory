@@ -18,6 +18,7 @@
 - ไฟล์ config ใหม่ใช้ `.toml`
 - diagram ฝังใน `.md` โดยใช้ Mermaid ได้
 - หลีกเลี่ยง config format หลายแบบโดยไม่จำเป็น
+- runtime path เช่น FFmpeg/FFprobe ต้องอ้างอิงผ่าน `.toml` กลางของโปรเจกต์
 
 ## Coding Rules
 

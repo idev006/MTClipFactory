@@ -17,6 +17,7 @@ class AnalyzedMediaMetadata:
     file_size_mb: float | None = None
     codec: str | None = None
     has_audio: bool = False
+    format_name: str | None = None
 
 
 @dataclass(slots=True, frozen=True)
@@ -39,4 +40,3 @@ class AssetStorage(Protocol):
         source_file_path: Path,
     ) -> StoredAssetFile:
         ...
-

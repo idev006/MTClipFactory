@@ -5,7 +5,11 @@ from types import TracebackType
 
 from sqlalchemy.orm import Session
 
-from mt_clip_factory.infrastructure.repositories import SqlAlchemyAssetRepository, SqlAlchemyProductRepository
+from mt_clip_factory.infrastructure.repositories import (
+    SqlAlchemyAssetRepository,
+    SqlAlchemyProductRepository,
+    SqlAlchemyTagRepository,
+)
 
 
 class SqlAlchemyUnitOfWork:
@@ -14,18 +18,22 @@ class SqlAlchemyUnitOfWork:
         session_factory: Callable[[], Session],
         product_repository_type: type[SqlAlchemyProductRepository] = SqlAlchemyProductRepository,
         asset_repository_type: type[SqlAlchemyAssetRepository] = SqlAlchemyAssetRepository,
+        tag_repository_type: type[SqlAlchemyTagRepository] = SqlAlchemyTagRepository,
     ) -> None:
         self._session_factory = session_factory
         self._product_repository_type = product_repository_type
         self._asset_repository_type = asset_repository_type
+        self._tag_repository_type = tag_repository_type
         self.session: Session | None = None
         self.products: SqlAlchemyProductRepository
         self.assets: SqlAlchemyAssetRepository
+        self.tags: SqlAlchemyTagRepository
 
     def __enter__(self) -> "SqlAlchemyUnitOfWork":
         self.session = self._session_factory()
         self.products = self._product_repository_type(self.session)
         self.assets = self._asset_repository_type(self.session)
+        self.tags = self._tag_repository_type(self.session)
         return self
 
     def __exit__(

@@ -44,3 +44,4 @@ class AssetSummary:
     ratio: str | None = None
     duration_sec: float | None = None
     file_size_mb: float | None = None
+    tag_labels: tuple[str, ...] = ()

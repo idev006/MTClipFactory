@@ -29,15 +29,21 @@ class FakeAssetIntakeService:
                 asset_code=command.asset_code or "auto_code",
                 asset_type=command.asset_type,
                 file_name="hero.mp4",
-                status="analyzed",
+                status="ready",
                 ratio=None,
                 duration_sec=None,
                 file_size_mb=0.001,
+                tag_labels=(),
             )
         )
         return asset_id
 
-    def list_assets(self, product_id: int | None = None) -> list[AssetSummaryDTO]:
+    def list_assets(
+        self,
+        product_id: int | None = None,
+        asset_type: str | None = None,
+        status: str | None = None,
+    ) -> list[AssetSummaryDTO]:
         return list(self.assets)
 
 
@@ -89,3 +95,14 @@ def test_asset_view_model_surfaces_register_errors(unit_of_work_factory, tmp_pat
 
     assert view_model.status == "error"
     assert "missing.mp4" in view_model.feedback
+
+
+def test_asset_view_model_applies_filters(unit_of_work_factory) -> None:
+    product_service = ProductApplicationService(unit_of_work_factory=unit_of_work_factory)
+    product_service.create_product(CreateProductCommand(product_code="honey", product_name="Honey"))
+    asset_service = FakeAssetIntakeService()
+    view_model = AssetLibraryViewModel(product_service=product_service, asset_intake_service=asset_service)
+
+    view_model.apply_filters(product_id=1, asset_type="background_video", status="ready")
+
+    assert view_model.status == "ready"

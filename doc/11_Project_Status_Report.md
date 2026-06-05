@@ -9,7 +9,7 @@
 - Project phase: Foundation
 - Overall status: In Progress
 - Report date: 2026-06-05
-- Current focus: Resource Library Management milestone after delivering asset intake foundation
+- Current focus: Resource Library Management milestone after delivering query/filter visibility on top of FFmpeg metadata and tags
 
 ## Completed
 
@@ -30,16 +30,23 @@
 - สร้าง `AssetLibraryViewModel` และ `AssetLibraryWindow`
 - เพิ่ม `LocalAssetStorage` และ `BasicFileMetadataAnalyzer` สำหรับ MVP
 - ยืนยันด้วย `pytest` 23 tests ผ่าน และ UI smoke test ของทั้งสองหน้าต่างผ่าน
+- เชื่อม `F:\ffmpeg` ผ่าน `app_config.toml`
+- เพิ่ม `FFprobeMetadataAnalyzer` พร้อม fallback analyzer
+- ส่งมอบ `TagManagementService`, `TagDictionaryViewModel`, และ `TagDictionaryWindow`
+- เพิ่ม `asset readiness rules` ให้ asset ถูกจัด status อัตโนมัติตอน ingest
+- ยืนยันด้วย `pytest` 32 tests ผ่าน และ UI smoke test ของสามหน้าต่างผ่าน
+- เพิ่ม asset library filters และ tag visibility ใน asset list
+- ยืนยันรอบล่าสุดด้วย `pytest` 33 tests ผ่าน
 
 ## In Progress
 
-- Tag dictionary and asset readiness milestone planning
 - Define contracts that separate `Library` ownership from `Factory` ownership
+- Thumbnail/proxy generation planning on top of FFmpeg
 
 ## Next Steps
 
-1. Add tag dictionary management in `Resource Library Management`
-2. Add asset readiness rules and preflight validation
+1. Add thumbnail/proxy generation contracts on top of FFmpeg
+2. Add richer asset preview artifacts in the library workflow
 3. Prepare `Video Assembly Factory` recipe and job contracts
 
 ## Owners

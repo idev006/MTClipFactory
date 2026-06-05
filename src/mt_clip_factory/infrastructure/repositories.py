@@ -8,7 +8,8 @@ from sqlalchemy.orm import Session
 from mt_clip_factory.domain.assets import Asset, AssetSummary
 from mt_clip_factory.domain.entities import Product, ProductSummary
 from mt_clip_factory.domain.enums import AssetType
-from mt_clip_factory.infrastructure.models import AssetModel, OutputModel, ProductModel, RecipeModel
+from mt_clip_factory.domain.tags import Tag, TagSummary
+from mt_clip_factory.infrastructure.models import AssetModel, AssetTagModel, OutputModel, ProductModel, RecipeModel, TagModel
 
 
 class SqlAlchemyProductRepository:
@@ -179,7 +180,12 @@ class SqlAlchemyAssetRepository:
             return None
         return self._to_entity(model)
 
-    def list_summaries(self, product_id: int | None = None) -> Sequence[AssetSummary]:
+    def list_summaries(
+        self,
+        product_id: int | None = None,
+        asset_type: str | None = None,
+        status: str | None = None,
+    ) -> Sequence[AssetSummary]:
         statement = (
             select(
                 AssetModel.id,
@@ -198,6 +204,10 @@ class SqlAlchemyAssetRepository:
         )
         if product_id is not None:
             statement = statement.where(AssetModel.product_id == product_id)
+        if asset_type is not None:
+            statement = statement.where(AssetModel.asset_type == asset_type)
+        if status is not None:
+            statement = statement.where(AssetModel.status == status)
 
         rows = self._session.execute(statement).all()
         return [
@@ -212,9 +222,31 @@ class SqlAlchemyAssetRepository:
                 ratio=row.ratio,
                 duration_sec=row.duration_sec,
                 file_size_mb=row.file_size_mb,
+                tag_labels=self._load_tag_labels(row.id),
             )
             for row in rows
         ]
+
+    def assign_tag(self, asset_id: int, tag_id: int) -> None:
+        existing = self._session.get(AssetTagModel, {"asset_id": asset_id, "tag_id": tag_id})
+        if existing is not None:
+            return
+        self._session.add(AssetTagModel(asset_id=asset_id, tag_id=tag_id))
+        self._session.flush()
+
+    def list_tag_ids(self, asset_id: int) -> Sequence[int]:
+        statement = select(AssetTagModel.tag_id).where(AssetTagModel.asset_id == asset_id)
+        return list(self._session.execute(statement).scalars())
+
+    def _load_tag_labels(self, asset_id: int) -> tuple[str, ...]:
+        statement = (
+            select(TagModel.tag_group, TagModel.tag_name)
+            .join(AssetTagModel, AssetTagModel.tag_id == TagModel.id)
+            .where(AssetTagModel.asset_id == asset_id)
+            .order_by(TagModel.tag_group.asc(), TagModel.tag_name.asc())
+        )
+        rows = self._session.execute(statement).all()
+        return tuple(f"{row.tag_group}:{row.tag_name}" for row in rows)
 
     def _to_entity(self, model: AssetModel) -> Asset:
         return Asset(
@@ -240,3 +272,60 @@ class SqlAlchemyAssetRepository:
             status=model.status,
             created_at=model.created_at,
         )
+
+
+class SqlAlchemyTagRepository:
+    def __init__(self, session: Session) -> None:
+        self._session = session
+
+    def add(self, tag: Tag) -> Tag:
+        model = TagModel(
+            tag_name=tag.tag_name,
+            tag_group=tag.tag_group,
+            description=tag.description,
+        )
+        self._session.add(model)
+        self._session.flush()
+        tag.id = model.id
+        return tag
+
+    def get_by_id(self, tag_id: int) -> Tag | None:
+        model = self._session.get(TagModel, tag_id)
+        if model is None:
+            return None
+        return Tag(
+            id=model.id,
+            tag_name=model.tag_name,
+            tag_group=model.tag_group,
+            description=model.description,
+        )
+
+    def get_by_name_and_group(self, tag_name: str, tag_group: str) -> Tag | None:
+        statement: Select[tuple[TagModel]] = select(TagModel).where(
+            TagModel.tag_name == tag_name,
+            TagModel.tag_group == tag_group,
+        )
+        model = self._session.execute(statement).scalar_one_or_none()
+        if model is None:
+            return None
+        return Tag(
+            id=model.id,
+            tag_name=model.tag_name,
+            tag_group=model.tag_group,
+            description=model.description,
+        )
+
+    def list_summaries(self, tag_group: str | None = None) -> Sequence[TagSummary]:
+        statement = select(TagModel).order_by(TagModel.tag_group.asc(), TagModel.tag_name.asc())
+        if tag_group is not None:
+            statement = statement.where(TagModel.tag_group == tag_group)
+        rows = self._session.execute(statement).scalars().all()
+        return [
+            TagSummary(
+                tag_id=row.id,
+                tag_name=row.tag_name,
+                tag_group=row.tag_group,
+                description=row.description,
+            )
+            for row in rows
+        ]

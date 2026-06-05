@@ -16,3 +16,10 @@ python -m pip install -e .[dev]
 python -m pytest
 mt-resource-library
 ```
+
+## Runtime Config
+
+Runtime paths are stored in [app_config.toml](/F:/programming/python/MTClipFactory/app_config.toml).
+
+- `ffprobe` points to `F:\ffmpeg\bin\ffprobe.exe`
+- `ffmpeg` points to `F:\ffmpeg\bin\ffmpeg.exe`

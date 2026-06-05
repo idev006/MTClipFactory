@@ -9,13 +9,13 @@
 | ISS-001 | 2026-06-05 | Medium | UI Direction | Blueprint เดิมอ้างอิง Streamlit แต่ implementation target ใช้ PySide6 + MVVM ต้องคุมการแปลแนวคิดให้สอดคล้อง | Engineering | Open | ยึด architecture docs ใหม่เป็น implementation SSOT |
 | ISS-002 | 2026-06-05 | Medium | Module Boundary | ต้องป้องกันไม่ให้ `Video Assembly Factory` ไปแก้ asset metadata หลักเองจนความรับผิดชอบซ้อนกับ `Resource Library Management` | Engineering | Open | นิยาม contract และ ownership ของข้อมูลร่วมในเอกสาร architecture และ domain |
 | ISS-003 | 2026-06-05 | Low | Packaging Contract | การรัน package ตรงจาก source ต้องมี contract ชัดเจนว่าจะใช้ editable install หรือ entry point อะไร | Engineering | Open | ใช้ `python -m pip install -e .[dev]` และ `mt-resource-library` เป็นทางหลักระหว่างพัฒนา |
-| ISS-004 | 2026-06-05 | Medium | Metadata Depth | `BasicFileMetadataAnalyzer` ใน MVP อ่านได้เพียง metadata ขั้นต้น ยังไม่ครอบคลุม duration/resolution จริงจาก FFmpeg | Engineering | Open | ออกแบบ FFmpeg-backed analyzer เป็น implementation ถัดไปหลัง tag/readiness milestone |
+| ISS-004 | 2026-06-05 | Medium | Preview Artifacts | แม้ metadata ใช้ `ffprobe` จริงแล้ว แต่ thumbnail/proxy generation ยังไม่ถูกส่งมอบ | Engineering | Open | ออกแบบ FFmpeg-backed thumbnail/proxy contracts เป็น milestone ถัดไป |
 
 ## Closed Issues
 
 | ID | Date Closed | Topic | Resolution |
 | --- | --- | --- | --- |
-| None | - | - | - |
+| ISS-004-OLD | 2026-06-05 | Metadata Depth | ปิดด้วยการส่งมอบ `FFprobeMetadataAnalyzer` และ config ผ่าน `app_config.toml` |
 
 ## Issue Rule
 

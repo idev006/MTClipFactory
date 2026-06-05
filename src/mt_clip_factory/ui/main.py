@@ -8,8 +8,10 @@ from PySide6.QtWidgets import QApplication
 from mt_clip_factory.bootstrap import build_resource_library_module
 from mt_clip_factory.presentation.library.asset_library import AssetLibraryViewModel
 from mt_clip_factory.presentation.library.product_library import ProductLibraryViewModel
+from mt_clip_factory.presentation.library.tag_dictionary import TagDictionaryViewModel
 from mt_clip_factory.ui.library.asset_library_window import AssetLibraryWindow
 from mt_clip_factory.ui.library.product_library_window import ProductLibraryWindow
+from mt_clip_factory.ui.library.tag_dictionary_window import TagDictionaryWindow
 
 
 def main() -> int:
@@ -21,7 +23,15 @@ def main() -> int:
         product_service=resource_library.product_service,
         asset_intake_service=resource_library.asset_intake_service,
     )
-    asset_window = AssetLibraryWindow(asset_view_model)
+    tag_view_model = TagDictionaryViewModel(
+        tag_management_service=resource_library.tag_management_service,
+        asset_intake_service=resource_library.asset_intake_service,
+    )
+    tag_window = TagDictionaryWindow(tag_view_model)
+    asset_window = AssetLibraryWindow(
+        asset_view_model,
+        open_tag_dictionary=lambda: _show_window(tag_window),
+    )
     window = ProductLibraryWindow(
         product_view_model,
         open_asset_intake=lambda: _show_window(asset_window),

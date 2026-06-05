@@ -8,6 +8,7 @@ from mt_clip_factory.application.dto import CreateProductCommand
 from mt_clip_factory.application.services import ProductApplicationService
 from mt_clip_factory.library.contracts import AnalyzedMediaMetadata
 from mt_clip_factory.library.dto import RegisterAssetCommand
+from mt_clip_factory.library.readiness import AssetReadinessEvaluator
 from mt_clip_factory.library.services import (
     AssetCodeAlreadyExistsError,
     AssetIntakeService,
@@ -36,6 +37,7 @@ def _build_asset_service(unit_of_work_factory, media_root: Path) -> AssetIntakeS
         unit_of_work_factory=unit_of_work_factory,
         asset_storage=LocalAssetStorage(media_root),
         metadata_analyzer=FakeMetadataAnalyzer(),
+        readiness_evaluator=AssetReadinessEvaluator(),
     )
 
 
@@ -60,6 +62,7 @@ def test_register_asset_copies_file_and_persists_record(unit_of_work_factory, tm
     assert assets[0].product_code == "honey"
     assert assets[0].asset_code == "hero_clip"
     assert assets[0].asset_type == "background_video"
+    assert assets[0].status == "ready"
     stored_file = tmp_path / "media_library" / "products" / "honey" / "background_videos" / "hero_clip.mp4"
     assert stored_file.exists()
 

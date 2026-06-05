@@ -6,6 +6,7 @@ from typing import Protocol
 
 from mt_clip_factory.domain.assets import Asset, AssetSummary
 from mt_clip_factory.domain.entities import Product, ProductSummary
+from mt_clip_factory.domain.tags import Tag, TagSummary
 
 
 class ProductRepository(Protocol):
@@ -41,13 +42,39 @@ class AssetRepository(Protocol):
     def get_by_code(self, asset_code: str) -> Asset | None:
         ...
 
-    def list_summaries(self, product_id: int | None = None) -> Sequence[AssetSummary]:
+    def list_summaries(
+        self,
+        product_id: int | None = None,
+        asset_type: str | None = None,
+        status: str | None = None,
+    ) -> Sequence[AssetSummary]:
+        ...
+
+    def assign_tag(self, asset_id: int, tag_id: int) -> None:
+        ...
+
+    def list_tag_ids(self, asset_id: int) -> Sequence[int]:
+        ...
+
+
+class TagRepository(Protocol):
+    def add(self, tag: Tag) -> Tag:
+        ...
+
+    def get_by_id(self, tag_id: int) -> Tag | None:
+        ...
+
+    def get_by_name_and_group(self, tag_name: str, tag_group: str) -> Tag | None:
+        ...
+
+    def list_summaries(self, tag_group: str | None = None) -> Sequence[TagSummary]:
         ...
 
 
 class UnitOfWork(AbstractContextManager["UnitOfWork"], Protocol):
     products: ProductRepository
     assets: AssetRepository
+    tags: TagRepository
 
     def commit(self) -> None:
         ...

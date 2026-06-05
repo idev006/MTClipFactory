@@ -56,6 +56,12 @@ classDiagram
         +refresh()
     }
 
+    class TagDictionaryWindow {
+        +show()
+        +create_tag()
+        +assign_tag()
+    }
+
     class ProductLibraryViewModel {
         +load()
         +create_product(command)
@@ -75,6 +81,14 @@ classDiagram
         +feedback
     }
 
+    class TagDictionaryViewModel {
+        +load()
+        +create_tag(...)
+        +assign_tag_to_asset(...)
+        +tags
+        +assets
+    }
+
     class ProductApplicationService {
         +create_product(command)
         +get_product(product_id)
@@ -88,9 +102,16 @@ classDiagram
         +list_assets(product_id)
     }
 
+    class TagManagementService {
+        +create_tag(command)
+        +list_tags(tag_group)
+        +assign_tag_to_asset(command)
+    }
+
     class SqlAlchemyUnitOfWork {
         +products
         +assets
+        +tags
         +commit()
         +rollback()
     }
@@ -108,6 +129,13 @@ classDiagram
         +list_summaries(product_id)
     }
 
+    class SqlAlchemyTagRepository {
+        +add(tag)
+        +get_by_id(tag_id)
+        +get_by_name_and_group(name, group)
+        +list_summaries(tag_group)
+    }
+
     class Product {
         +id
         +product_code
@@ -122,20 +150,33 @@ classDiagram
         +status
     }
 
+    class Tag {
+        +id
+        +tag_name
+        +tag_group
+    }
+
     ProductLibraryWindow --> ProductLibraryViewModel
     AssetLibraryWindow --> AssetLibraryViewModel
+    TagDictionaryWindow --> TagDictionaryViewModel
     ResourceLibraryModule --> ProductApplicationService
     ResourceLibraryModule --> AssetIntakeService
+    ResourceLibraryModule --> TagManagementService
     VideoAssemblyFactoryModule --> ProductApplicationService
     ProductLibraryViewModel --> ProductApplicationService
     AssetLibraryViewModel --> ProductApplicationService
     AssetLibraryViewModel --> AssetIntakeService
+    TagDictionaryViewModel --> TagManagementService
+    TagDictionaryViewModel --> AssetIntakeService
     ProductApplicationService --> SqlAlchemyUnitOfWork
     AssetIntakeService --> SqlAlchemyUnitOfWork
+    TagManagementService --> SqlAlchemyUnitOfWork
     SqlAlchemyUnitOfWork --> SqlAlchemyProductRepository
     SqlAlchemyUnitOfWork --> SqlAlchemyAssetRepository
+    SqlAlchemyUnitOfWork --> SqlAlchemyTagRepository
     SqlAlchemyProductRepository --> Product
     SqlAlchemyAssetRepository --> Asset
+    SqlAlchemyTagRepository --> Tag
 ```
 
 ## Product Creation Sequence
@@ -192,6 +233,33 @@ sequenceDiagram
     App->>UoW: commit()
     UoW->>DB: COMMIT
     App-->>VM: asset_id
+    VM-->>View: refresh state
+```
+
+## Tag Assignment Sequence
+
+```mermaid
+sequenceDiagram
+    actor User
+    participant View as TagDictionaryWindow
+    participant VM as TagDictionaryViewModel
+    participant App as TagManagementService
+    participant UoW as SqlAlchemyUnitOfWork
+    participant TagRepo as SqlAlchemyTagRepository
+    participant AssetRepo as SqlAlchemyAssetRepository
+    participant DB as SQLite
+
+    User->>View: select tag and asset
+    View->>VM: assign_tag_to_asset(...)
+    VM->>App: assign_tag_to_asset(command)
+    App->>UoW: open
+    UoW->>AssetRepo: get_by_id(asset_id)
+    UoW->>TagRepo: get_by_id(tag_id)
+    UoW->>AssetRepo: assign_tag(asset_id, tag_id)
+    AssetRepo->>DB: INSERT asset_tags
+    App->>UoW: commit()
+    UoW->>DB: COMMIT
+    App-->>VM: success
     VM-->>View: refresh state
 ```
 

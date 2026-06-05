@@ -28,6 +28,17 @@
 - MVP ของ asset intake ควรเดินแบบ synchronous ก่อน เพื่อพิสูจน์สัญญาระหว่าง storage, analyzer, และ repository
 - การเพิ่มหน้าต่าง `AssetLibraryWindow` แบบแยกจาก product screen ช่วยควบคุมขนาดไฟล์และลดความเสี่ยง UI บวมเร็วเกินไป
 
+### LL-005 | 2026-06-05 | FFmpeg and Tag Foundation
+
+- การอ้าง FFmpeg path ผ่าน `app_config.toml` ช่วยให้ runtime tooling ชัดเจนและตรวจสอบได้
+- `ffprobe` เหมาะมากสำหรับ metadata phase และควรถูกแยกจากงาน render/proxy ที่จะตามมา
+- การทำ `Tag Dictionary` เป็นหน้าต่างแยกช่วยให้ขอบเขตของ library ชัดขึ้นและหลีกเลี่ยงการยัดทุกอย่างในหน้า asset intake
+
+### LL-006 | 2026-06-05 | Query Visibility Matters
+
+- เมื่อมี tag แล้ว ต้องรีบทำให้มองเห็นและกรองได้ ไม่อย่างนั้นคุณค่าของ dictionary จะยังไม่ส่งผลต่อ workflow จริง
+- การให้ query layer คืน `tag labels` พร้อม filter ช่วยลด logic กระจัดกระจายใน UI และทำให้การทดสอบง่ายกว่า
+
 
 ## Lesson Rule
 

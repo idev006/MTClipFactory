@@ -24,4 +24,4 @@ class AssetSummaryDTO:
     ratio: str | None
     duration_sec: float | None
     file_size_mb: float | None
-
+    tag_labels: tuple[str, ...]

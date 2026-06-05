@@ -1,5 +1,7 @@
 from __future__ import annotations
 
+from collections.abc import Callable
+
 from PySide6.QtCore import Qt
 from PySide6.QtWidgets import (
     QComboBox,
@@ -24,9 +26,14 @@ from mt_clip_factory.presentation.library.asset_library import AssetLibraryViewM
 
 
 class AssetLibraryWindow(QMainWindow):
-    def __init__(self, view_model: AssetLibraryViewModel) -> None:
+    def __init__(
+        self,
+        view_model: AssetLibraryViewModel,
+        open_tag_dictionary: Callable[[], None] | None = None,
+    ) -> None:
         super().__init__()
         self._view_model = view_model
+        self._open_tag_dictionary = open_tag_dictionary
         self.setWindowTitle("MTClipFactory - Asset Intake")
         self.resize(1100, 700)
 
@@ -78,12 +85,33 @@ class AssetLibraryWindow(QMainWindow):
         form_layout.addRow("Source File", source_row)
         outer_layout.addLayout(form_layout)
 
+        filter_layout = QFormLayout()
+        self.filter_product_combo = QComboBox()
+        self.filter_asset_type_combo = QComboBox()
+        self.filter_status_combo = QComboBox()
+        self.filter_asset_type_combo.addItem("All", None)
+        for asset_type in AssetType:
+            self.filter_asset_type_combo.addItem(asset_type.value, asset_type.value)
+        self.filter_status_combo.addItem("All", None)
+        for status in ("ready", "needs_review"):
+            self.filter_status_combo.addItem(status, status)
+        filter_layout.addRow("Filter Product", self.filter_product_combo)
+        filter_layout.addRow("Filter Type", self.filter_asset_type_combo)
+        filter_layout.addRow("Filter Status", self.filter_status_combo)
+        outer_layout.addLayout(filter_layout)
+
         button_row = QHBoxLayout()
         self.register_button = QPushButton("Register")
+        self.tags_button = QPushButton("Tag Dictionary")
+        self.apply_filters_button = QPushButton("Apply Filters")
         self.refresh_button = QPushButton("Refresh")
         self.register_button.clicked.connect(self._register_asset)
+        self.tags_button.clicked.connect(self._handle_open_tag_dictionary)
+        self.apply_filters_button.clicked.connect(self._apply_filters)
         self.refresh_button.clicked.connect(self._view_model.load)
         button_row.addWidget(self.register_button)
+        button_row.addWidget(self.tags_button)
+        button_row.addWidget(self.apply_filters_button)
         button_row.addWidget(self.refresh_button)
         outer_layout.addLayout(button_row)
 
@@ -97,9 +125,9 @@ class AssetLibraryWindow(QMainWindow):
     def _build_table_group(self) -> QGroupBox:
         group = QGroupBox("Registered Assets")
         layout = QVBoxLayout(group)
-        self.asset_table = QTableWidget(0, 8)
+        self.asset_table = QTableWidget(0, 9)
         self.asset_table.setHorizontalHeaderLabels(
-            ["ID", "Product", "Code", "Type", "File Name", "Status", "Ratio", "Size MB"]
+            ["ID", "Product", "Code", "Type", "File Name", "Status", "Ratio", "Size MB", "Tags"]
         )
         self.asset_table.setSelectionBehavior(QTableWidget.SelectRows)
         self.asset_table.setSelectionMode(QTableWidget.SingleSelection)
@@ -113,16 +141,26 @@ class AssetLibraryWindow(QMainWindow):
 
     def _refresh_product_combo(self) -> None:
         selected_product_id = self.product_combo.currentData()
+        selected_filter_product_id = self.filter_product_combo.currentData()
         self.product_combo.blockSignals(True)
+        self.filter_product_combo.blockSignals(True)
         self.product_combo.clear()
+        self.filter_product_combo.clear()
+        self.filter_product_combo.addItem("All", None)
         for product in self._view_model.products:
             label = f"{product.product_code} | {product.product_name}"
             self.product_combo.addItem(label, product.product_id)
+            self.filter_product_combo.addItem(label, product.product_id)
         if selected_product_id is not None:
             index = self.product_combo.findData(selected_product_id)
             if index >= 0:
                 self.product_combo.setCurrentIndex(index)
+        if selected_filter_product_id is not None:
+            filter_index = self.filter_product_combo.findData(selected_filter_product_id)
+            if filter_index >= 0:
+                self.filter_product_combo.setCurrentIndex(filter_index)
         self.product_combo.blockSignals(False)
+        self.filter_product_combo.blockSignals(False)
 
     def _refresh_table(self) -> None:
         assets = self._view_model.assets
@@ -137,6 +175,7 @@ class AssetLibraryWindow(QMainWindow):
                 asset.status,
                 asset.ratio or "",
                 "" if asset.file_size_mb is None else f"{asset.file_size_mb:.4f}",
+                ", ".join(asset.tag_labels),
             ]
             for column_index, value in enumerate(values):
                 self.asset_table.setItem(row_index, column_index, QTableWidgetItem(value))
@@ -165,3 +204,13 @@ class AssetLibraryWindow(QMainWindow):
         self.asset_code_input.clear()
         self.source_path_input.clear()
 
+    def _handle_open_tag_dictionary(self) -> None:
+        if self._open_tag_dictionary is not None:
+            self._open_tag_dictionary()
+
+    def _apply_filters(self) -> None:
+        self._view_model.apply_filters(
+            product_id=self.filter_product_combo.currentData(),
+            asset_type=self.filter_asset_type_combo.currentData(),
+            status=self.filter_status_combo.currentData(),
+        )

@@ -14,6 +14,12 @@
 
 เทสต์ repository, unit of work, migration, FFmpeg adapter contract
 
+ตัวอย่างปัจจุบัน:
+
+- `ffprobe` metadata integration test
+- local asset storage copy behavior
+- tag assignment persistence
+
 ### UI/ViewModel Tests
 
 เทสต์ว่า ViewModel bind สถานะและเรียก use case ถูกต้อง โดยไม่ต้องเปิดหน้าจอเต็มรูปแบบ

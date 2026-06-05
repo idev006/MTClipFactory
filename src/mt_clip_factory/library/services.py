@@ -9,6 +9,7 @@ from mt_clip_factory.domain.enums import AssetType
 from mt_clip_factory.domain.services import UnitOfWork
 from mt_clip_factory.library.contracts import AssetMetadataAnalyzer, AssetStorage
 from mt_clip_factory.library.dto import AssetSummaryDTO, RegisterAssetCommand
+from mt_clip_factory.library.readiness import AssetReadinessEvaluator
 
 
 class AssetCodeAlreadyExistsError(ValueError):
@@ -49,10 +50,12 @@ class AssetIntakeService:
         unit_of_work_factory: Callable[[], UnitOfWork],
         asset_storage: AssetStorage,
         metadata_analyzer: AssetMetadataAnalyzer,
+        readiness_evaluator: AssetReadinessEvaluator,
     ) -> None:
         self._unit_of_work_factory = unit_of_work_factory
         self._asset_storage = asset_storage
         self._metadata_analyzer = metadata_analyzer
+        self._readiness_evaluator = readiness_evaluator
 
     def register_asset(self, command: RegisterAssetCommand) -> int:
         source_file_path = Path(command.source_file_path)
@@ -78,6 +81,7 @@ class AssetIntakeService:
                 source_file_path=source_file_path,
             )
             metadata = self._metadata_analyzer.analyze(stored_file.file_path)
+            readiness = self._readiness_evaluator.evaluate(asset_type=asset_type, metadata=metadata)
 
             asset = Asset(
                 product_id=product.id,
@@ -93,6 +97,7 @@ class AssetIntakeService:
                 file_size_mb=metadata.file_size_mb,
                 codec=metadata.codec,
                 has_audio=metadata.has_audio,
+                status=readiness.status,
             )
             created = uow.assets.add(asset)
             uow.commit()
@@ -101,7 +106,12 @@ class AssetIntakeService:
                 raise RuntimeError("Asset identifier was not assigned.")
             return created.id
 
-    def list_assets(self, product_id: int | None = None) -> list[AssetSummaryDTO]:
+    def list_assets(
+        self,
+        product_id: int | None = None,
+        asset_type: str | None = None,
+        status: str | None = None,
+    ) -> list[AssetSummaryDTO]:
         with self._unit_of_work_factory() as uow:
             return [
                 AssetSummaryDTO(
@@ -115,6 +125,11 @@ class AssetIntakeService:
                     ratio=summary.ratio,
                     duration_sec=summary.duration_sec,
                     file_size_mb=summary.file_size_mb,
+                    tag_labels=summary.tag_labels,
                 )
-                for summary in uow.assets.list_summaries(product_id=product_id)
+                for summary in uow.assets.list_summaries(
+                    product_id=product_id,
+                    asset_type=asset_type,
+                    status=status,
+                )
             ]
