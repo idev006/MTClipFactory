@@ -10,12 +10,12 @@
 | ISS-009 | 2026-06-06 | Medium | Preview Composition Depth | Preview output currently supports a simple renderable-video path. It does not yet reflect layered composition, timing control, or audio mixing. | Engineering | Open | Add richer composition pipeline and explicit role-based render rules. |
 | ISS-010 | 2026-06-06 | Medium | Final Render Depth | Current final-render flow promotes from an approved preview output as a foundation. It is traceable and useful, but not yet a full recomposition pipeline. | Engineering | Open | Add richer final renderer with composition/audio-aware pipeline and stronger reporting. |
 | ISS-014 | 2026-06-06 | Medium | Recovery Scope | Startup queued-job recovery and manual failed-job retry now exist, but failed-job escalation and richer orchestration policy are still limited. | Engineering | Open | Expand recovery semantics beyond current sequential retry flow and document escalation rules. |
-| ISS-016 | 2026-06-06 | Medium | Approval History Depth | Actor/time/reason fields are now persisted, but the system still lacks immutable multi-event approval history. | Engineering | Open | Design an append-only approval history model after deciding retention and UI needs. |
 
 ## Closed Issues
 
 | ID | Date Closed | Topic | Resolution |
 | --- | --- | --- | --- |
+| ISS-016-CLOSED | 2026-06-06 | Approval History Depth | Closed by delivering an append-only `decision_events` ledger, migration coverage, service retrieval, and Recipe Builder visibility. |
 | ISS-015-CLOSED | 2026-06-06 | Approval Audit Depth | Closed by delivering Alembic-backed approval actor/time/reason persistence plus runtime migration support. |
 | ISS-013-CLOSED | 2026-06-06 | Auto Resume Depth | Closed by delivering configurable queued-job recovery orchestration through dashboard/manual trigger and startup policy for persisted jobs. |
 | ISS-004-CLOSED | 2026-06-06 | Recovery Depth | Closed by delivering a uniform manual retry path across artifact, preview, and final persisted jobs, plus restart-style retry coverage for factory jobs. |

@@ -4,7 +4,6 @@ This Markdown board is the SSOT Kanban for the repository.
 
 ## Backlog
 
-- immutable approval history log
 - duplicate risk evaluation
 - recipe scoring
 - quality gate automation
@@ -14,13 +13,11 @@ This Markdown board is the SSOT Kanban for the repository.
 
 - richer preview composition beyond simple renderable-video flow
 - richer final-render composition beyond preview-promotion foundation
-- deeper approval history beyond current audit fields
 - path-root hot-reload decision
 
 ## In Progress
 
 - richer preview and final composition slice
-- approval and output auditability slice
 - broader recovery-orchestration scope
 
 ## Review
@@ -47,6 +44,8 @@ This Markdown board is the SSOT Kanban for the repository.
 - failed-job retry orchestration from dashboard
 - output lineage reporting in Recipe Builder
 - migration-backed approval actor/time/reason persistence
+- immutable approval history log
+- milestone revision checkpoint policy across docs, Kanban, issues, and lessons learned
 - recipe persistence
 - recipe item assignment
 - preview render output job flow

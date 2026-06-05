@@ -135,3 +135,15 @@ class OutputModel(Base):
     approved_at: Mapped[datetime | None] = mapped_column(DateTime, nullable=True)
     approval_reason: Mapped[str | None] = mapped_column(Text, nullable=True)
     created_at: Mapped[datetime] = mapped_column(DateTime, nullable=False, default=func.now())
+
+
+class DecisionEventModel(Base):
+    __tablename__ = "decision_events"
+
+    id: Mapped[int] = mapped_column(Integer, primary_key=True, autoincrement=True)
+    recipe_id: Mapped[int] = mapped_column(ForeignKey("recipes.id"), nullable=False)
+    output_id: Mapped[int | None] = mapped_column(ForeignKey("outputs.id"), nullable=True)
+    event_type: Mapped[str] = mapped_column(String(64), nullable=False)
+    actor: Mapped[str] = mapped_column(String(255), nullable=False)
+    reason: Mapped[str | None] = mapped_column(Text, nullable=True)
+    created_at: Mapped[datetime] = mapped_column(DateTime, nullable=False, default=func.now())

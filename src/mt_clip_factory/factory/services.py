@@ -5,6 +5,7 @@ from collections.abc import Callable
 from datetime import UTC, datetime
 from pathlib import Path
 
+from mt_clip_factory.domain.decision_events import DecisionEvent
 from mt_clip_factory.domain.enums import JobStatus, RecipeStatus
 from mt_clip_factory.domain.jobs import Job
 from mt_clip_factory.domain.outputs import Output
@@ -13,6 +14,7 @@ from mt_clip_factory.domain.services import UnitOfWork
 from mt_clip_factory.factory.dto import (
     AssignAssetToRecipeCommand,
     CreateRecipeCommand,
+    DecisionEventDTO,
     OutputSummaryDTO,
     PreviewJobSummaryDTO,
     RecipeDetailsDTO,
@@ -69,6 +71,10 @@ class VideoAssemblyFactoryService:
     FINAL_JOB_TYPE = "render_recipe_final"
     SYSTEM_APPROVAL_ACTOR = "system_final_render"
     SYSTEM_APPROVAL_REASON = "Auto-approved by final render pipeline."
+    OUTPUT_APPROVED_EVENT = "output_approved"
+    OUTPUT_AUTO_APPROVED_EVENT = "output_auto_approved"
+    RECIPE_APPROVED_EVENT = "recipe_approved"
+    RECIPE_REJECTED_EVENT = "recipe_rejected"
 
     def __init__(
         self,
@@ -246,6 +252,25 @@ class VideoAssemblyFactoryService:
                 for summary in requested_outputs
             ]
 
+    def list_decision_events(self, recipe_id: int) -> list[DecisionEventDTO]:
+        with self._unit_of_work_factory() as uow:
+            recipe = uow.recipes.get_by_id(recipe_id)
+            if recipe is None or recipe.id is None:
+                raise RecipeNotFoundError(str(recipe_id))
+            return [
+                DecisionEventDTO(
+                    event_id=event.id or 0,
+                    recipe_id=event.recipe_id,
+                    event_type=event.event_type,
+                    actor=event.actor,
+                    created_at=_format_timestamp(event.created_at),
+                    output_id=event.output_id,
+                    output_code=event.output_code,
+                    reason=event.reason,
+                )
+                for event in uow.decision_events.list_by_recipe(recipe_id)
+            ]
+
     def approve_output(self, output_id: int, *, actor: str, reason: str | None = None) -> None:
         actor_name = _normalize_actor(actor)
         approval_reason = _normalize_reason(reason)
@@ -253,11 +278,21 @@ class VideoAssemblyFactoryService:
             output = uow.outputs.get_by_id(output_id)
             if output is None or output.id is None:
                 raise OutputNotFoundError(str(output_id))
+            approved_at = _utc_now()
             output.approved = True
             output.approved_by = actor_name
-            output.approved_at = _utc_now()
+            output.approved_at = approved_at
             output.approval_reason = approval_reason
             uow.outputs.update(output)
+            _record_decision_event(
+                uow,
+                recipe_id=output.recipe_id,
+                output_id=output.id,
+                event_type=self.OUTPUT_APPROVED_EVENT,
+                actor=actor_name,
+                reason=approval_reason,
+                created_at=approved_at,
+            )
             uow.commit()
 
     def approve_recipe(self, recipe_id: int, *, actor: str, reason: str | None = None) -> None:
@@ -270,11 +305,20 @@ class VideoAssemblyFactoryService:
             approved_outputs = list(uow.outputs.list_summaries(recipe_id=recipe_id, approved=True))
             if not approved_outputs:
                 raise RecipeApprovalError("Approve at least one output before approving the recipe.")
+            decided_at = _utc_now()
             recipe.status = RecipeStatus.APPROVED
             recipe.decision_actor = actor_name
-            recipe.decision_at = _utc_now()
+            recipe.decision_at = decided_at
             recipe.decision_reason = decision_reason
             uow.recipes.update(recipe)
+            _record_decision_event(
+                uow,
+                recipe_id=recipe.id,
+                event_type=self.RECIPE_APPROVED_EVENT,
+                actor=actor_name,
+                reason=decision_reason,
+                created_at=decided_at,
+            )
             uow.commit()
 
     def reject_recipe(self, recipe_id: int, *, actor: str, reason: str | None = None) -> None:
@@ -284,11 +328,20 @@ class VideoAssemblyFactoryService:
             recipe = uow.recipes.get_by_id(recipe_id)
             if recipe is None or recipe.id is None:
                 raise RecipeNotFoundError(str(recipe_id))
+            decided_at = _utc_now()
             recipe.status = RecipeStatus.REJECTED
             recipe.decision_actor = actor_name
-            recipe.decision_at = _utc_now()
+            recipe.decision_at = decided_at
             recipe.decision_reason = decision_reason
             uow.recipes.update(recipe)
+            _record_decision_event(
+                uow,
+                recipe_id=recipe.id,
+                event_type=self.RECIPE_REJECTED_EVENT,
+                actor=actor_name,
+                reason=decision_reason,
+                created_at=decided_at,
+            )
             uow.commit()
 
     def enqueue_preview_job(self, recipe_id: int) -> int:
@@ -435,6 +488,7 @@ class VideoAssemblyFactoryService:
                     output_stem=f"{recipe.recipe_code}_final",
                     source_files=[Path(source_output.file_path)],
                 )
+                approved_at = _utc_now()
                 output = uow.outputs.add(
                     Output(
                         recipe_id=recipe.id,
@@ -445,9 +499,20 @@ class VideoAssemblyFactoryService:
                         duration_sec=rendered_output.duration_sec,
                         approved=True,
                         approved_by=self.SYSTEM_APPROVAL_ACTOR,
-                        approved_at=_utc_now(),
+                        approved_at=approved_at,
                         approval_reason=self.SYSTEM_APPROVAL_REASON,
                     )
+                )
+                if output.id is None:
+                    raise RuntimeError("Final output identifier was not assigned.")
+                _record_decision_event(
+                    uow,
+                    recipe_id=recipe.id,
+                    output_id=output.id,
+                    event_type=self.OUTPUT_AUTO_APPROVED_EVENT,
+                    actor=self.SYSTEM_APPROVAL_ACTOR,
+                    reason=self.SYSTEM_APPROVAL_REASON,
+                    created_at=approved_at,
                 )
                 job.status = JobStatus.DONE
                 job.progress = 1.0
@@ -638,3 +703,25 @@ def _normalize_reason(value: str | None) -> str | None:
         return None
     reason = value.strip()
     return reason or None
+
+
+def _record_decision_event(
+    uow: UnitOfWork,
+    *,
+    recipe_id: int,
+    event_type: str,
+    actor: str,
+    created_at: datetime,
+    output_id: int | None = None,
+    reason: str | None = None,
+) -> None:
+    uow.decision_events.add(
+        DecisionEvent(
+            recipe_id=recipe_id,
+            output_id=output_id,
+            event_type=event_type,
+            actor=actor,
+            reason=reason,
+            created_at=created_at,
+        )
+    )

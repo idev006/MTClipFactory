@@ -2,7 +2,13 @@ from __future__ import annotations
 
 from mt_clip_factory.application.dto import CreateProductCommand
 from mt_clip_factory.application.services import ProductApplicationService
-from mt_clip_factory.factory.dto import OutputSummaryDTO, RecipeDetailsDTO, RecipeItemDTO, RecipeSummaryDTO
+from mt_clip_factory.factory.dto import (
+    DecisionEventDTO,
+    OutputSummaryDTO,
+    RecipeDetailsDTO,
+    RecipeItemDTO,
+    RecipeSummaryDTO,
+)
 from mt_clip_factory.library.dto import AssetSummaryDTO
 from mt_clip_factory.presentation.factory.recipe_builder import RecipeBuilderViewModel
 
@@ -38,6 +44,7 @@ class FakeVideoAssemblyFactoryService:
         self.recipes: list[RecipeSummaryDTO] = []
         self.items: dict[int, list[RecipeItemDTO]] = {}
         self.outputs: dict[int, list[OutputSummaryDTO]] = {}
+        self.decision_events: dict[int, list[DecisionEventDTO]] = {}
 
     def create_recipe(self, command) -> int:
         recipe_id = len(self.recipes) + 1
@@ -56,6 +63,7 @@ class FakeVideoAssemblyFactoryService:
         self.recipes.append(summary)
         self.items[recipe_id] = []
         self.outputs[recipe_id] = []
+        self.decision_events[recipe_id] = []
         return recipe_id
 
     def list_recipes(self, *, product_id: int | None = None, status: str | None = None) -> list[RecipeSummaryDTO]:
@@ -117,6 +125,9 @@ class FakeVideoAssemblyFactoryService:
             return values
         return [output for output in values if output.approved == approved]
 
+    def list_decision_events(self, recipe_id: int) -> list[DecisionEventDTO]:
+        return list(self.decision_events.get(recipe_id, []))
+
     def approve_output(self, output_id: int, *, actor: str, reason: str | None = None) -> None:
         for recipe_id, outputs in self.outputs.items():
             for index, output in enumerate(outputs):
@@ -142,6 +153,19 @@ class FakeVideoAssemblyFactoryService:
                     source_output_code=output.source_output_code,
                     source_output_path=output.source_output_path,
                 )
+                self.decision_events[recipe_id].insert(
+                    0,
+                    DecisionEventDTO(
+                        event_id=self._next_event_id(recipe_id),
+                        recipe_id=recipe_id,
+                        event_type="output_approved",
+                        actor=actor,
+                        created_at="2026-06-06 10:05:00",
+                        output_id=output_id,
+                        output_code=output.output_code,
+                        reason=reason,
+                    ),
+                )
                 return
         raise ValueError(str(output_id))
 
@@ -159,6 +183,17 @@ class FakeVideoAssemblyFactoryService:
             decision_at="2026-06-06 10:06:00",
             item_count=recipe.item_count,
         )
+        self.decision_events[recipe_id].insert(
+            0,
+            DecisionEventDTO(
+                event_id=self._next_event_id(recipe_id),
+                recipe_id=recipe_id,
+                event_type="recipe_approved",
+                actor=actor,
+                created_at="2026-06-06 10:06:00",
+                reason=reason,
+            ),
+        )
 
     def reject_recipe(self, recipe_id: int, *, actor: str, reason: str | None = None) -> None:
         recipe = next(recipe for recipe in self.recipes if recipe.recipe_id == recipe_id)
@@ -173,6 +208,17 @@ class FakeVideoAssemblyFactoryService:
             decision_actor=actor,
             decision_at="2026-06-06 10:07:00",
             item_count=recipe.item_count,
+        )
+        self.decision_events[recipe_id].insert(
+            0,
+            DecisionEventDTO(
+                event_id=self._next_event_id(recipe_id),
+                recipe_id=recipe_id,
+                event_type="recipe_rejected",
+                actor=actor,
+                created_at="2026-06-06 10:07:00",
+                reason=reason,
+            ),
         )
 
     def enqueue_preview_job(self, recipe_id: int) -> int:
@@ -229,6 +275,22 @@ class FakeVideoAssemblyFactoryService:
                 source_output_path=f"outputs/preview/{recipe_id}.mp4",
             )
         )
+        self.decision_events[recipe_id].insert(
+            0,
+            DecisionEventDTO(
+                event_id=self._next_event_id(recipe_id),
+                recipe_id=recipe_id,
+                event_type="output_auto_approved",
+                actor="system_final_render",
+                created_at="2026-06-06 11:00:00",
+                output_id=len(self.outputs[recipe_id]),
+                output_code=f"final_output_{recipe_id}",
+                reason="Auto-approved by final render pipeline.",
+            ),
+        )
+
+    def _next_event_id(self, recipe_id: int) -> int:
+        return len(self.decision_events[recipe_id]) + 1
 
 
 def test_recipe_builder_view_model_loads_products_assets_and_recipes(unit_of_work_factory) -> None:
@@ -247,6 +309,7 @@ def test_recipe_builder_view_model_loads_products_assets_and_recipes(unit_of_wor
     assert len(view_model.assets) == 1
     assert view_model.recipes == []
     assert view_model.outputs == []
+    assert view_model.decision_events == []
 
 
 def test_recipe_builder_view_model_creates_recipe(unit_of_work_factory) -> None:
@@ -325,6 +388,8 @@ def test_recipe_builder_view_model_approves_output_and_recipe(unit_of_work_facto
     assert view_model.outputs[0].approved_by == "qa_lead"
     assert view_model.recipes[0].status == "approved"
     assert view_model.recipes[0].decision_actor == "qa_lead"
+    assert len(view_model.decision_events) == 2
+    assert view_model.decision_events[0].event_type == "recipe_approved"
     assert "Approved recipe #1" in view_model.feedback
 
 
@@ -343,6 +408,7 @@ def test_recipe_builder_view_model_rejects_recipe(unit_of_work_factory) -> None:
 
     assert view_model.recipes[0].status == "rejected"
     assert view_model.recipes[0].decision_actor == "editor"
+    assert view_model.decision_events[0].event_type == "recipe_rejected"
     assert "Rejected recipe #1" in view_model.feedback
 
 
@@ -367,6 +433,7 @@ def test_recipe_builder_view_model_builds_final_render(unit_of_work_factory) -> 
     assert view_model.outputs[-1].approved is True
     assert view_model.outputs[-1].approved_by == "system_final_render"
     assert view_model.outputs[-1].source_output_code == "preview_output_1"
+    assert view_model.decision_events[0].event_type == "output_auto_approved"
     assert "Built final render for recipe #1" in view_model.feedback
 
 

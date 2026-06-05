@@ -24,6 +24,7 @@ MTClipFactory ถูกสร้างขึ้นเพื่อเป็นโ
 12. Project visibility is part of engineering discipline.
 13. Dashboard is the operational truth surface for admin and user.
 14. Settings are a controlled god-mode interface, not hidden tribal knowledge.
+15. Approval and review history must be append-only once recorded.
 
 ## Non-Negotiable Rules
 
@@ -43,6 +44,11 @@ MTClipFactory ถูกสร้างขึ้นเพื่อเป็นโ
 - ข้อมูลระบบสำคัญที่ admin/user ควรรู้ต้องถูกยกขึ้น dashboard
 - system settings สำคัญต้องแก้ได้จากหน้า settings โดยไม่ต้องแก้ไฟล์ด้วยมือเป็นหลัก
 - ทีมต้องไม่สร้างระบบเพื่อหลบการตรวจจับแพลตฟอร์ม หรือผลิต spam ปริมาณมากแบบคุณภาพต่ำ
+
+## Revision Checkpoint
+
+- every implementation milestone must include a document revision checkpoint before commit/push
+- the checkpoint must revisit architecture, process, Kanban, issues, lessons learned, and status wording when behavior changed
 
 ## Working Mindset
 

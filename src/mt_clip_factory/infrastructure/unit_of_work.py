@@ -5,6 +5,7 @@ from types import TracebackType
 
 from sqlalchemy.orm import Session
 
+from mt_clip_factory.infrastructure.decision_event_repositories import SqlAlchemyDecisionEventRepository
 from mt_clip_factory.infrastructure.factory_repositories import SqlAlchemyRecipeRepository
 from mt_clip_factory.infrastructure.job_repositories import SqlAlchemyJobRepository
 from mt_clip_factory.infrastructure.output_repositories import SqlAlchemyOutputRepository
@@ -25,6 +26,7 @@ class SqlAlchemyUnitOfWork:
         job_repository_type: type[SqlAlchemyJobRepository] = SqlAlchemyJobRepository,
         recipe_repository_type: type[SqlAlchemyRecipeRepository] = SqlAlchemyRecipeRepository,
         output_repository_type: type[SqlAlchemyOutputRepository] = SqlAlchemyOutputRepository,
+        decision_event_repository_type: type[SqlAlchemyDecisionEventRepository] = SqlAlchemyDecisionEventRepository,
     ) -> None:
         self._session_factory = session_factory
         self._product_repository_type = product_repository_type
@@ -33,6 +35,7 @@ class SqlAlchemyUnitOfWork:
         self._job_repository_type = job_repository_type
         self._recipe_repository_type = recipe_repository_type
         self._output_repository_type = output_repository_type
+        self._decision_event_repository_type = decision_event_repository_type
         self.session: Session | None = None
         self.products: SqlAlchemyProductRepository
         self.assets: SqlAlchemyAssetRepository
@@ -40,6 +43,7 @@ class SqlAlchemyUnitOfWork:
         self.jobs: SqlAlchemyJobRepository
         self.recipes: SqlAlchemyRecipeRepository
         self.outputs: SqlAlchemyOutputRepository
+        self.decision_events: SqlAlchemyDecisionEventRepository
 
     def __enter__(self) -> "SqlAlchemyUnitOfWork":
         self.session = self._session_factory()
@@ -49,6 +53,7 @@ class SqlAlchemyUnitOfWork:
         self.jobs = self._job_repository_type(self.session)
         self.recipes = self._recipe_repository_type(self.session)
         self.outputs = self._output_repository_type(self.session)
+        self.decision_events = self._decision_event_repository_type(self.session)
         return self
 
     def __exit__(

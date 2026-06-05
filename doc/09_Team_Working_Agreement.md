@@ -25,11 +25,15 @@
 7. issue และ lesson learned ถูกบันทึกเมื่อมีสาระสำคัญ
 8. มีเส้นทางขยายต่อโดยไม่ทำลาย design
 
+9. architecture/process review checkpoint completed if the milestone changes workflow, persistence, or delivery policy
+
 ## Decision Rule
 
 ถ้าโค้ดกับเอกสารขัดกัน ให้ถือว่า implementation ยังไม่สมบูรณ์ จนกว่าจะปรับให้ตรงกันหรือแก้เอกสารอย่างเป็นทางการ
 
 ## Project Manager Cadence
+
+- every milestone must include a revision checkpoint for architecture, process, and SSOT docs before commit/push
 
 - ทุกช่วงงานต้องมี owner และ next step ชัดเจนในเอกสารความคืบหน้า
 - ถ้ามี blocker ต้องสะท้อนใน issue log และ Kanban ภายในงานเดียวกัน

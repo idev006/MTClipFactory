@@ -79,6 +79,7 @@
 - shared tag dictionary
 - shared identity and naming rules
 - shared audit and traceability rules
+- shared decision-event ledger for immutable review history
 
 ## Runtime Tooling
 
@@ -108,6 +109,11 @@
 - architecture, workflow, และ state transition สำคัญต้องมี UML
 - สามารถใช้ Mermaid ใน Markdown เพื่อสื่อ UML ได้
 - diagram ต้องอัปเดตพร้อมกับการเปลี่ยนแปลงเชิงสถาปัตยกรรม
+
+## Revision Checkpoint Rule
+
+- every milestone ends with a revision checkpoint across docs, architecture notes, Kanban, issues, and lessons learned
+- if the checkpoint reveals workflow or boundary drift, the documents are corrected before claiming the milestone complete
 
 ## Planned Evolution
 

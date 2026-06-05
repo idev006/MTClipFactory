@@ -55,12 +55,12 @@ Compose prepared assets into reviewable preview and later final-output workflows
 - output lineage reporting
 - dashboard-driven failed-job retry orchestration
 - approval actor/time/reason persistence
+- immutable decision-event history
 
 ### Future Responsibilities
 
 - layered preview composition
 - richer final render composition
-- immutable approval history
 - quality and duplicate-risk checks
 
 ### Owned SSOT
@@ -70,6 +70,7 @@ Compose prepared assets into reviewable preview and later final-output workflows
 - preview/final job state
 - review decisions
 - output records
+- decision-event history
 
 ## Shared Core
 
@@ -80,6 +81,7 @@ Compose prepared assets into reviewable preview and later final-output workflows
 - dashboard and settings aggregation
 - cross-capability job visibility
 - queued-job recovery orchestration
+- runtime migration guard
 
 ## Ownership Rule
 

@@ -53,6 +53,7 @@
 - queued-job recovery orchestrator
 - failed-job retry orchestration
 - migration-backed approval audit persistence
+- immutable approval history ledger
 
 ## Status Snapshot On 2026-06-06
 
@@ -66,5 +67,5 @@
 
 1. Deepen preview composition beyond the current simple renderable-video path.
 2. Replace final-render foundation with richer composition and audio-aware rendering.
-3. Deepen approval history beyond the current actor/time/reason persistence foundation.
-4. Deepen orchestration beyond current queued-startup and failed-manual retry baselines.
+3. Deepen orchestration beyond current queued-startup and failed-manual retry baselines.
+4. Decide whether path-root changes remain restart-driven or move to hot-reload semantics.

@@ -57,6 +57,7 @@ classDiagram
         +list_recipes(...)
         +get_recipe(recipe_id)
         +list_outputs(...)
+        +list_decision_events(recipe_id)
         +list_jobs(...)
         +approve_output(output_id)
         +approve_recipe(recipe_id)
@@ -129,6 +130,7 @@ classDiagram
         +tags
         +jobs
         +recipes
+        +decision_events
         +commit()
         +rollback()
     }
@@ -144,6 +146,11 @@ classDiagram
 
     class SqlAlchemyOutputRepository {
         +add(output)
+    }
+
+    class SqlAlchemyDecisionEventRepository {
+        +add(event)
+        +list_by_recipe(recipe_id)
     }
 
     class PreviewManifestBuilder {
@@ -187,6 +194,7 @@ classDiagram
     VideoAssemblyFactoryService --> SqlAlchemyUnitOfWork
     SqlAlchemyUnitOfWork --> SqlAlchemyRecipeRepository
     SqlAlchemyUnitOfWork --> SqlAlchemyOutputRepository
+    SqlAlchemyUnitOfWork --> SqlAlchemyDecisionEventRepository
     SqlAlchemyRecipeRepository --> Recipe
     SqlAlchemyUnitOfWork --> Job
 ```
@@ -309,6 +317,7 @@ sequenceDiagram
     participant Factory as VideoAssemblyFactoryService
     participant Out as OutputRepository
     participant RecipeRepo as RecipeRepository
+    participant EventRepo as DecisionEventRepository
 
     User->>View: enter decision actor + note
     User->>View: approve output / approve recipe / reject recipe
@@ -316,6 +325,7 @@ sequenceDiagram
     VM->>Factory: action(..., actor, reason)
     Factory->>Out: update approval audit fields
     Factory->>RecipeRepo: update decision audit fields
+    Factory->>EventRepo: append immutable decision event
 ```
 
 ## Runtime Migration Sequence

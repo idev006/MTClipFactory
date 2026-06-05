@@ -66,7 +66,11 @@ def test_ensure_schema_current_upgrades_legacy_database(tmp_path: Path) -> None:
         (repo_root / "alembic" / "script.py.mako").read_text(encoding="utf-8"),
         encoding="utf-8",
     )
-    for migration_name in ("20260605_0001_initial_schema.py", "20260606_0002_approval_audit_fields.py"):
+    for migration_name in (
+        "20260605_0001_initial_schema.py",
+        "20260606_0002_approval_audit_fields.py",
+        "20260606_0003_decision_event_history.py",
+    ):
         source = repo_root / "alembic" / "versions" / migration_name
         target = versions_dir / migration_name
         target.write_text(source.read_text(encoding="utf-8"), encoding="utf-8")
@@ -114,10 +118,12 @@ def test_ensure_schema_current_upgrades_legacy_database(tmp_path: Path) -> None:
     inspector = inspect(engine)
     recipe_columns = {column["name"] for column in inspector.get_columns("recipes")}
     output_columns = {column["name"] for column in inspector.get_columns("outputs")}
+    decision_event_columns = {column["name"] for column in inspector.get_columns("decision_events")}
     assert "decision_actor" in recipe_columns
     assert "decision_at" in recipe_columns
     assert "decision_reason" in recipe_columns
     assert "approved_by" in output_columns
     assert "approved_at" in output_columns
     assert "approval_reason" in output_columns
+    assert {"recipe_id", "output_id", "event_type", "actor", "reason", "created_at"} <= decision_event_columns
     assert "alembic_version" in inspector.get_table_names()

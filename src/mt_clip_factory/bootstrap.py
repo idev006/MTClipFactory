@@ -10,6 +10,7 @@ from mt_clip_factory.control_center.services import DashboardService, SystemSett
 from mt_clip_factory.factory.preview_artifacts import PreviewManifestBuilder
 from mt_clip_factory.factory.renderers import FFmpegPreviewRenderer
 from mt_clip_factory.factory.services import VideoAssemblyFactoryService
+from mt_clip_factory.infrastructure.decision_event_repositories import SqlAlchemyDecisionEventRepository
 from mt_clip_factory.infrastructure.factory_repositories import SqlAlchemyRecipeRepository
 from mt_clip_factory.infrastructure.database import create_engine_from_path
 from mt_clip_factory.infrastructure.job_repositories import SqlAlchemyJobRepository
@@ -46,6 +47,7 @@ def build_product_service(workspace_root: Path) -> ProductApplicationService:
             job_repository_type=SqlAlchemyJobRepository,
             recipe_repository_type=SqlAlchemyRecipeRepository,
             output_repository_type=SqlAlchemyOutputRepository,
+            decision_event_repository_type=SqlAlchemyDecisionEventRepository,
         )
 
     return ProductApplicationService(unit_of_work_factory=uow_factory)
@@ -67,6 +69,7 @@ def build_resource_library_module(workspace_root: Path) -> ResourceLibraryModule
             job_repository_type=SqlAlchemyJobRepository,
             recipe_repository_type=SqlAlchemyRecipeRepository,
             output_repository_type=SqlAlchemyOutputRepository,
+            decision_event_repository_type=SqlAlchemyDecisionEventRepository,
         )
 
     product_service = ProductApplicationService(unit_of_work_factory=uow_factory)

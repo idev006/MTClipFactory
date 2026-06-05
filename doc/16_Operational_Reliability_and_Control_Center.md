@@ -85,6 +85,7 @@ The following must flow through config or services whenever user control is appr
 - output approval and recipe approval decisions captured in SSOT workflow
 - output lineage reporting derived from persisted jobs and outputs
 - migration-backed approval actor/time/reason fields
+- append-only decision-event history visible in the Recipe Builder workflow
 - configurable path roots through `[paths]` in `app_config.toml`
 - dashboard visibility of recent, queued, processing, and failed jobs
 - settings-based FFmpeg path control
@@ -95,7 +96,6 @@ The following must flow through config or services whenever user control is appr
 ## Current Gaps
 
 1. Recovery scope is still narrower for failed-job escalation and advanced orchestration rules.
-2. Approval audit depth is still limited to current actor/time/reason fields, not immutable history.
-3. Preview composition is still simple and not yet a full layered edit pipeline.
-4. Final render is still a foundation path and not yet a full recomposition pipeline.
-5. Path-root changes are not fully hot-reloaded across all runtime services.
+2. Preview composition is still simple and not yet a full layered edit pipeline.
+3. Final render is still a foundation path and not yet a full recomposition pipeline.
+4. Path-root changes are not fully hot-reloaded across all runtime services.

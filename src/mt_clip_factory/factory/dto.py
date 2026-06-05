@@ -80,6 +80,18 @@ class PreviewJobSummaryDTO:
 
 
 @dataclass(slots=True, frozen=True)
+class DecisionEventDTO:
+    event_id: int
+    recipe_id: int
+    event_type: str
+    actor: str
+    created_at: str
+    output_id: int | None = None
+    output_code: str | None = None
+    reason: str | None = None
+
+
+@dataclass(slots=True, frozen=True)
 class OutputSummaryDTO:
     output_id: int
     recipe_id: int

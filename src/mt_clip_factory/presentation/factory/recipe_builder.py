@@ -6,6 +6,7 @@ from mt_clip_factory.application.services import ProductApplicationService
 from mt_clip_factory.factory.dto import (
     AssignAssetToRecipeCommand,
     CreateRecipeCommand,
+    DecisionEventDTO,
     OutputSummaryDTO,
     RecipeItemDTO,
     RecipeSummaryDTO,
@@ -21,6 +22,7 @@ class RecipeBuilderViewModel(QObject):
     recipes_changed = Signal()
     recipe_items_changed = Signal()
     outputs_changed = Signal()
+    decision_events_changed = Signal()
     status_changed = Signal()
     feedback_changed = Signal()
 
@@ -39,6 +41,7 @@ class RecipeBuilderViewModel(QObject):
         self._recipes: list[RecipeSummaryDTO] = []
         self._recipe_items: list[RecipeItemDTO] = []
         self._outputs: list[OutputSummaryDTO] = []
+        self._decision_events: list[DecisionEventDTO] = []
         self._status = "idle"
         self._feedback = ""
         self._selected_recipe_id: int | None = None
@@ -84,6 +87,10 @@ class RecipeBuilderViewModel(QObject):
     def outputs(self) -> list[OutputSummaryDTO]:
         return list(self._outputs)
 
+    @property
+    def decision_events(self) -> list[DecisionEventDTO]:
+        return list(self._decision_events)
+
     def find_output(self, output_id: int) -> OutputSummaryDTO | None:
         for output in self._outputs:
             if output.output_id == output_id:
@@ -100,11 +107,13 @@ class RecipeBuilderViewModel(QObject):
         else:
             self._recipe_items = []
             self._outputs = []
+            self._decision_events = []
         self.products_changed.emit()
         self.assets_changed.emit()
         self.recipes_changed.emit()
         self.recipe_items_changed.emit()
         self.outputs_changed.emit()
+        self.decision_events_changed.emit()
         self._set_status("ready")
 
     def create_recipe(
@@ -152,6 +161,7 @@ class RecipeBuilderViewModel(QObject):
         self._load_selected_recipe_state(recipe_id)
         self.recipe_items_changed.emit()
         self.outputs_changed.emit()
+        self.decision_events_changed.emit()
 
     def assign_asset_to_recipe(self, *, recipe_id: int, asset_id: int, role: str) -> int:
         self._set_status("submitting")
@@ -241,7 +251,9 @@ class RecipeBuilderViewModel(QObject):
         if recipe_id is None:
             self._recipe_items = []
             self._outputs = []
+            self._decision_events = []
             return
         recipe = self._video_assembly_factory_service.get_recipe(recipe_id)
         self._recipe_items = list(recipe.items)
         self._outputs = self._video_assembly_factory_service.list_outputs(recipe_id=recipe_id)
+        self._decision_events = self._video_assembly_factory_service.list_decision_events(recipe_id)

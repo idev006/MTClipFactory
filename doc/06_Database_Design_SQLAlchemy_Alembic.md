@@ -16,8 +16,11 @@
 - `recipe_items`
 - `jobs`
 - `outputs`
+- `decision_events`
 
 ## Implementation Notes
+
+- immutable decision-event history is added by `alembic/versions/20260606_0003_decision_event_history.py`
 
 - SQLAlchemy models อยู่ที่ `src/mt_clip_factory/infrastructure/models.py`
 - migration เริ่มต้นอยู่ที่ `alembic/versions/20260605_0001_initial_schema.py`
@@ -41,6 +44,15 @@
 - database เดิมที่ยังไม่มี `alembic_version` จะถูก `stamp` ที่ baseline revision ก่อน แล้ว `upgrade head`
 - database ที่มี revision อยู่แล้วจะถูก `upgrade head` ตามปกติ
 - ห้ามอ้างว่า schema feature เสร็จ หากยังไม่มี migration และ runtime path รองรับจริง
+
+## Current Immutable Audit Ledger
+
+- `decision_events.recipe_id`
+- `decision_events.output_id`
+- `decision_events.event_type`
+- `decision_events.actor`
+- `decision_events.reason`
+- `decision_events.created_at`
 
 ## Migration Discipline
 

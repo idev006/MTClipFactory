@@ -219,10 +219,12 @@ def test_factory_service_approves_output_and_recipe(unit_of_work_factory, tmp_pa
 
     recipe = service.get_recipe(recipe_id)
     outputs = service.list_outputs(recipe_id=recipe_id, approved=True)
+    events = service.list_decision_events(recipe_id)
     assert recipe.status == "approved"
     assert recipe.decision_actor == "qa_lead"
     assert recipe.decision_reason == "creative approved"
     assert outputs[0].approved_by == "qa_lead"
+    assert [event.event_type for event in events] == ["recipe_approved", "output_approved"]
     assert len(outputs) == 1
 
 
@@ -234,9 +236,12 @@ def test_factory_service_rejects_recipe(unit_of_work_factory, tmp_path) -> None:
     service.reject_recipe(recipe_id, actor="editor", reason="hook too weak")
 
     recipe = service.get_recipe(recipe_id)
+    events = service.list_decision_events(recipe_id)
     assert recipe.status == "rejected"
     assert recipe.decision_actor == "editor"
     assert recipe.decision_reason == "hook too weak"
+    assert events[0].event_type == "recipe_rejected"
+    assert events[0].reason == "hook too weak"
 
 
 def test_factory_service_blocks_final_render_until_recipe_is_approved(unit_of_work_factory, tmp_path) -> None:
@@ -265,6 +270,7 @@ def test_factory_service_builds_final_render_job(unit_of_work_factory, tmp_path)
 
     jobs = service.list_final_render_jobs()
     outputs = service.list_outputs(recipe_id=recipe_id)
+    events = service.list_decision_events(recipe_id)
     products = ProductApplicationService(unit_of_work_factory=unit_of_work_factory).list_products()
     assert jobs[0].job_id == final_job_id
     assert jobs[0].job_type == "render_recipe_final"
@@ -277,7 +283,34 @@ def test_factory_service_builds_final_render_job(unit_of_work_factory, tmp_path)
     assert outputs[0].output_kind == "final"
     assert outputs[0].source_output_id is not None
     assert outputs[0].source_output_code is not None
+    assert events[0].event_type == "output_auto_approved"
+    assert events[0].output_id == outputs[0].output_id
     assert products[0].output_count == 2
+
+
+def test_factory_service_lists_append_only_decision_history(unit_of_work_factory, tmp_path) -> None:
+    product_id, asset_id = _register_ready_asset(unit_of_work_factory, tmp_path)
+    service = _build_factory_service(unit_of_work_factory, tmp_path / "previews")
+    recipe_id = service.create_recipe(CreateRecipeCommand(product_id=product_id, recipe_code="Honey Launch"))
+    service.assign_asset_to_recipe(AssignAssetToRecipeCommand(recipe_id=recipe_id, asset_id=asset_id, role="hero"))
+    preview_job_id = service.enqueue_preview_job(recipe_id)
+    service.run_preview_job(preview_job_id)
+    preview_output = service.list_outputs(recipe_id=recipe_id)[0]
+
+    service.approve_output(preview_output.output_id, actor="qa_lead", reason="ready to publish")
+    service.reject_recipe(recipe_id, actor="editor", reason="need stronger hook")
+    service.approve_recipe(recipe_id, actor="qa_lead", reason="creative approved")
+
+    events = service.list_decision_events(recipe_id)
+
+    assert [event.event_type for event in events] == [
+        "recipe_approved",
+        "recipe_rejected",
+        "output_approved",
+    ]
+    assert events[0].actor == "qa_lead"
+    assert events[1].actor == "editor"
+    assert events[2].output_code == preview_output.output_code
 
 
 def test_factory_service_reports_output_lineage(unit_of_work_factory, tmp_path) -> None:

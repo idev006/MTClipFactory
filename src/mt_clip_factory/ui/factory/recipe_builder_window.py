@@ -47,6 +47,7 @@ class RecipeBuilderWindow(QMainWindow):
         self._view_model.recipes_changed.connect(self._refresh_recipes_table)
         self._view_model.recipe_items_changed.connect(self._refresh_recipe_items_table)
         self._view_model.outputs_changed.connect(self._refresh_outputs_table)
+        self._view_model.decision_events_changed.connect(self._refresh_decision_history_table)
         self._view_model.feedback_changed.connect(self._refresh_feedback)
         self._view_model.status_changed.connect(self._refresh_feedback)
         self._refresh_feedback()
@@ -172,8 +173,16 @@ class RecipeBuilderWindow(QMainWindow):
         self.outputs_table.itemSelectionChanged.connect(self._refresh_selected_output_details)
         self.output_details_text = QTextEdit()
         self.output_details_text.setReadOnly(True)
+        self.decision_history_table = QTableWidget(0, 5)
+        self.decision_history_table.setHorizontalHeaderLabels(["At", "Event", "Actor", "Target", "Reason"])
+        self.decision_history_table.setSelectionBehavior(QTableWidget.SelectRows)
+        self.decision_history_table.setSelectionMode(QTableWidget.SingleSelection)
+        self.decision_history_table.setEditTriggers(QTableWidget.NoEditTriggers)
+        self.decision_history_table.horizontalHeader().setStretchLastSection(True)
         layout.addWidget(self.outputs_table)
         layout.addWidget(self.output_details_text)
+        layout.addWidget(QLabel("Decision History"))
+        layout.addWidget(self.decision_history_table)
         return group
 
     def _refresh_feedback(self) -> None:
@@ -250,6 +259,19 @@ class RecipeBuilderWindow(QMainWindow):
                 self.outputs_table.setItem(row_index, column_index, QTableWidgetItem(value))
         self._refresh_selected_output_details()
 
+    def _refresh_decision_history_table(self) -> None:
+        self.decision_history_table.setRowCount(len(self._view_model.decision_events))
+        for row_index, event in enumerate(self._view_model.decision_events):
+            values = [
+                event.created_at,
+                self._format_event_label(event.event_type),
+                event.actor,
+                self._format_event_target(event.output_id, event.output_code),
+                event.reason or "",
+            ]
+            for column_index, value in enumerate(values):
+                self.decision_history_table.setItem(row_index, column_index, QTableWidgetItem(value))
+
     def _selected_product_id(self) -> int | None:
         selected_items = self.product_picker.selectedItems()
         if not selected_items:
@@ -305,6 +327,16 @@ class RecipeBuilderWindow(QMainWindow):
                 ]
             )
         )
+
+    def _format_event_label(self, event_type: str) -> str:
+        return event_type.replace("_", " ").title()
+
+    def _format_event_target(self, output_id: int | None, output_code: str | None) -> str:
+        if output_id is None:
+            return "Recipe"
+        if output_code:
+            return f"Output #{output_id} | {output_code}"
+        return f"Output #{output_id}"
 
     def _create_recipe(self) -> None:
         product_id = self._selected_product_id()

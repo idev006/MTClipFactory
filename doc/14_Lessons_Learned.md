@@ -79,3 +79,13 @@
 
 - once approval audit moved into persisted fields, Alembic had to become part of the real startup path instead of a document-only promise
 - shipping schema changes without runtime upgrade support would have created a false sense of completeness
+
+## LL-017 | 2026-06-06 | Immutable Audit Needs Its Own Ledger
+
+- overwritten status fields help with the latest state, but they do not preserve review history well enough for operator trust
+- adding an append-only `decision_events` ledger created a cleaner seam for UI history, testing, and future governance rules
+
+## LL-018 | 2026-06-06 | Revision Checkpoints Prevent SSOT Drift
+
+- once multiple milestones land quickly, docs can become misleading even when code is correct
+- treating architecture/process review as a mandatory delivery checkpoint keeps project management artifacts useful instead of ceremonial

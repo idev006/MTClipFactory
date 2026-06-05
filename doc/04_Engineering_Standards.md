@@ -35,6 +35,8 @@
 
 ## Database Rules
 
+- immutable review or approval history must be stored as append-only records, not only overwritten status fields
+
 - ห้ามแก้ schema โดยตรงใน production DB
 - schema change ทุกครั้งต้องมี Alembic migration
 - SQLite เป็น source of truth สำหรับสถานะ workflow
@@ -54,6 +56,8 @@
 - ทุก failure path ต้องออกแบบให้ recover ได้
 
 ## Project Management Standards
+
+- every milestone must include a revision checkpoint that re-validates docs, architecture, process, and project status before merge
 
 - ต้อง maintain Kanban กลางของโครงการ
 - ต้องมี status report ที่ทีมอ่านแล้วเข้าใจภาพรวมได้ทันที

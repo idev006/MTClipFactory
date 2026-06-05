@@ -5,6 +5,7 @@ from contextlib import AbstractContextManager
 from typing import Protocol
 
 from mt_clip_factory.domain.assets import Asset, AssetSummary
+from mt_clip_factory.domain.decision_events import DecisionEvent
 from mt_clip_factory.domain.entities import Product, ProductSummary
 from mt_clip_factory.domain.jobs import Job, JobSummary
 from mt_clip_factory.domain.outputs import Output, OutputSummary
@@ -143,6 +144,14 @@ class OutputRepository(Protocol):
         ...
 
 
+class DecisionEventRepository(Protocol):
+    def add(self, event: DecisionEvent) -> DecisionEvent:
+        ...
+
+    def list_by_recipe(self, recipe_id: int) -> Sequence[DecisionEvent]:
+        ...
+
+
 class UnitOfWork(AbstractContextManager["UnitOfWork"], Protocol):
     products: ProductRepository
     assets: AssetRepository
@@ -150,6 +159,7 @@ class UnitOfWork(AbstractContextManager["UnitOfWork"], Protocol):
     jobs: JobRepository
     recipes: RecipeRepository
     outputs: OutputRepository
+    decision_events: DecisionEventRepository
 
     def commit(self) -> None:
         ...
