@@ -59,3 +59,8 @@
 
 - once library and factory jobs share one dashboard surface, operators stop guessing where work is stuck
 - a unified job vocabulary also makes retry behavior easier to explain, test, and document
+
+## LL-013 | 2026-06-06 | Recovery Should Start Narrow And Truthful
+
+- automatic recovery is safer when it begins with queued work only and leaves failed work under explicit human control
+- putting recovery policy behind settings keeps the system durable without hiding side effects from operators

@@ -40,6 +40,8 @@ Current editable fields:
 - preview worker limit
 - final worker limit
 - auto refresh cadence
+- auto recover queued jobs on startup
+- max recovery jobs per run
 
 ## Reliability Principles
 
@@ -53,6 +55,7 @@ Current editable fields:
 - jobs should be retryable from persisted state
 - artifact generation and preview generation should not require manual database repair after normal failures
 - operators must be able to tell whether work is queued, failed, or completed from the dashboard
+- automatic recovery should be policy-driven and visible, not hidden magic
 
 ## Durability Principles
 
@@ -76,16 +79,18 @@ The following must flow through config or services whenever user control is appr
 - persisted preview jobs for recipe preview outputs
 - persisted final-render jobs for recipe final-output foundation
 - uniform manual retry across artifact, preview, and final persisted jobs
+- configurable queued-job recovery orchestrator for dashboard/manual and startup execution
 - output approval and recipe approval decisions captured in SSOT workflow
 - configurable path roots through `[paths]` in `app_config.toml`
 - dashboard visibility of recent, queued, processing, and failed jobs
 - settings-based FFmpeg path control
 - automated tests for success and failure job paths
 - restart-style retry tests for factory jobs
+- queued-job orchestration tests plus startup policy coverage
 
 ## Current Gaps
 
-1. Automatic resume/orchestration after restart is not yet implemented.
+1. Recovery scope is still narrower for failed jobs and advanced orchestration rules.
 2. Preview composition is still simple and not yet a full layered edit pipeline.
 3. Final render is still a foundation path and not yet a full recomposition pipeline.
 4. Path-root changes are not fully hot-reloaded across all runtime services.

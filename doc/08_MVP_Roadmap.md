@@ -49,6 +49,7 @@
 - duplicate risk checks
 - quality gate
 - resumable orchestrator
+- queued-job recovery orchestrator
 
 ## Status Snapshot On 2026-06-06
 
@@ -56,10 +57,11 @@
 - Phase 2: functionally complete for MVP baseline
 - Phase 3: functionally complete for MVP baseline
 - Phase 4: started
-- Phase 5: not started
+- Phase 5: started
 
 ## Current Phase 4 Remaining
 
 1. Deepen preview composition beyond the current simple renderable-video path.
 2. Replace final-render foundation with richer composition and audio-aware rendering.
 3. Add output reporting and approval trail beyond the current basic foundation.
+4. Deepen queued-job orchestration beyond the current startup/manual recovery baseline.

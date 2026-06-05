@@ -76,6 +76,7 @@ Compose prepared assets into reviewable preview and later final-output workflows
 - unit of work
 - dashboard and settings aggregation
 - cross-capability job visibility
+- queued-job recovery orchestration
 
 ## Ownership Rule
 

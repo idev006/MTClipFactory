@@ -96,6 +96,8 @@ def build_resource_library_module(workspace_root: Path) -> ResourceLibraryModule
         tag_management_service=tag_management_service,
         system_settings_service=settings_service,
     )
+    if dashboard_service.should_auto_recover_queued_jobs():
+        dashboard_service.recover_queued_jobs(trigger="startup")
     return ResourceLibraryModule(
         product_service=product_service,
         asset_intake_service=asset_intake_service,

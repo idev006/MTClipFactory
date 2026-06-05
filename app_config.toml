@@ -17,3 +17,5 @@ disk_free_gb_min = 20
 max_preview_workers = 1
 max_final_workers = 1
 auto_refresh_seconds = 10
+auto_recover_queued_jobs = false
+max_recovery_jobs_per_run = 25

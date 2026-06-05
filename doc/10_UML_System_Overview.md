@@ -77,6 +77,8 @@ classDiagram
 
     class DashboardService {
         +build_summary()
+        +recover_queued_jobs(...)
+        +should_auto_recover_queued_jobs()
     }
 
     class SystemSettingsService {
@@ -288,6 +290,28 @@ sequenceDiagram
     Factory->>Render: run preview/final job again
     Factory->>JobRepo: update(done/failed)
     Factory->>DB: COMMIT
+```
+
+## Queued Recovery Sequence
+
+```mermaid
+sequenceDiagram
+    participant Boot as Bootstrap
+    participant Dash as DashboardService
+    participant Artifact as ArtifactGenerationService
+    participant Factory as VideoAssemblyFactoryService
+    participant DB as SQLite
+
+    Boot->>Dash: should_auto_recover_queued_jobs()
+    alt startup policy enabled
+        Boot->>Dash: recover_queued_jobs(trigger="startup")
+        Dash->>Artifact: run_job(queued artifact)
+        Dash->>Factory: run_preview_job(queued preview)
+        Dash->>Factory: run_final_render_job(queued final)
+        Dash->>DB: persisted state refreshed per job
+    else startup policy disabled
+        Boot-->>DB: no recovery side effect
+    end
 ```
 
 ## Workflow State Direction

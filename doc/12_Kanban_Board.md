@@ -8,7 +8,7 @@ This Markdown board is the SSOT Kanban for the repository.
 - duplicate risk evaluation
 - recipe scoring
 - quality gate automation
-- automatic resume orchestrator
+- failed-job escalation policy
 
 ## Ready
 
@@ -21,6 +21,7 @@ This Markdown board is the SSOT Kanban for the repository.
 
 - richer preview and final composition slice
 - approval and output auditability slice
+- broader recovery-orchestration scope
 
 ## Review
 
@@ -42,6 +43,7 @@ This Markdown board is the SSOT Kanban for the repository.
 - job persistence for library artifacts
 - unified persisted-job visibility on dashboard
 - manual retry for factory preview/final jobs
+- queued-job recovery orchestrator foundation
 - recipe persistence
 - recipe item assignment
 - preview render output job flow

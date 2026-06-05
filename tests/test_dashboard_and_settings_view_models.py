@@ -67,10 +67,27 @@ class FakeArtifactGenerationService:
             return list(self._failed_jobs)
         return [*self._queued_jobs, *self._failed_jobs]
 
+    def run_job(self, job_id: int) -> None:
+        for index, job in enumerate(self._queued_jobs):
+            if job.job_id != job_id:
+                continue
+            self._queued_jobs.pop(index)
+            return
+        raise ValueError(str(job_id))
+
 
 class FakeVideoAssemblyFactoryService:
     def __init__(self) -> None:
         self._jobs = [
+            PreviewJobSummaryDTO(
+                job_id=5,
+                job_code="preview_05",
+                recipe_id=3,
+                job_type="render_recipe_preview",
+                status="queued",
+                progress=0.0,
+                output_path=None,
+            ),
             PreviewJobSummaryDTO(
                 job_id=6,
                 job_code="final_06",
@@ -86,6 +103,37 @@ class FakeVideoAssemblyFactoryService:
         if status is None:
             return list(self._jobs)
         return [job for job in self._jobs if job.status == status]
+
+    def list_preview_jobs(self, *, status: str | None = None) -> list[PreviewJobSummaryDTO]:
+        jobs = [job for job in self._jobs if job.job_type == "render_recipe_preview"]
+        if status is None:
+            return jobs
+        return [job for job in jobs if job.status == status]
+
+    def list_final_render_jobs(self, *, status: str | None = None) -> list[PreviewJobSummaryDTO]:
+        jobs = [job for job in self._jobs if job.job_type == "render_recipe_final"]
+        if status is None:
+            return jobs
+        return [job for job in jobs if job.status == status]
+
+    def run_preview_job(self, job_id: int) -> None:
+        for index, job in enumerate(self._jobs):
+            if job.job_id != job_id:
+                continue
+            self._jobs[index] = PreviewJobSummaryDTO(
+                job_id=job.job_id,
+                job_code=job.job_code,
+                recipe_id=job.recipe_id,
+                job_type=job.job_type,
+                status="done",
+                progress=1.0,
+                output_path="F:/workspace/outputs/preview/5.mp4",
+            )
+            return
+        raise ValueError(str(job_id))
+
+    def run_final_render_job(self, job_id: int) -> None:
+        raise ValueError(str(job_id))
 
 
 def _build_asset_service(unit_of_work_factory, media_root: Path) -> AssetIntakeService:
@@ -121,6 +169,8 @@ def test_settings_view_model_loads_and_saves(tmp_path) -> None:
                 "max_preview_workers = 1",
                 "max_final_workers = 1",
                 "auto_refresh_seconds = 10",
+                "auto_recover_queued_jobs = false",
+                "max_recovery_jobs_per_run = 25",
                 "",
             ]
         ),
@@ -149,6 +199,8 @@ def test_settings_view_model_loads_and_saves(tmp_path) -> None:
             max_preview_workers=2,
             max_final_workers=1,
             auto_refresh_seconds=6,
+            auto_recover_queued_jobs=True,
+            max_recovery_jobs_per_run=12,
         )
     )
 
@@ -156,6 +208,8 @@ def test_settings_view_model_loads_and_saves(tmp_path) -> None:
     assert view_model.settings is not None
     assert view_model.settings.outputs_root.endswith("outputs")
     assert view_model.settings.cpu_limit_percent == 91
+    assert view_model.settings.auto_recover_queued_jobs is True
+    assert view_model.settings.max_recovery_jobs_per_run == 12
 
 
 def test_dashboard_view_model_loads_summary(unit_of_work_factory, tmp_path) -> None:
@@ -197,7 +251,35 @@ def test_dashboard_view_model_loads_summary(unit_of_work_factory, tmp_path) -> N
     assert view_model.summary.product_count == 1
     assert view_model.summary.recipe_count == 0
     assert view_model.summary.output_count == 0
-    assert view_model.summary.queued_job_count == 1
+    assert view_model.summary.queued_job_count == 2
     assert view_model.summary.processing_job_count == 1
     assert view_model.summary.failed_job_count == 1
     assert view_model.summary.recent_jobs[0].job_code == "final_06"
+
+
+def test_dashboard_view_model_recovers_queued_jobs(unit_of_work_factory, tmp_path) -> None:
+    workspace_root = tmp_path / "workspace"
+    workspace_root.mkdir()
+    config = default_config(workspace_root)
+    settings_service = SystemSettingsService(config.paths.app_config_path)
+    product_service = ProductApplicationService(unit_of_work_factory=unit_of_work_factory)
+    asset_service = _build_asset_service(unit_of_work_factory, tmp_path / "media_library")
+    tag_service = TagManagementService(unit_of_work_factory=unit_of_work_factory)
+    dashboard_service = DashboardService(
+        config=config,
+        product_service=product_service,
+        asset_intake_service=asset_service,
+        artifact_generation_service=FakeArtifactGenerationService(queued_count=1, failed_count=0),
+        video_assembly_factory_service=FakeVideoAssemblyFactoryService(),
+        tag_management_service=tag_service,
+        system_settings_service=settings_service,
+    )
+    view_model = DashboardViewModel(dashboard_service)
+
+    view_model.recover_queued_jobs()
+
+    assert view_model.status == "ready"
+    assert view_model.summary is not None
+    assert view_model.summary.queued_job_count == 0
+    assert view_model.summary.last_recovery_summary is not None
+    assert view_model.summary.last_recovery_summary.succeeded_job_count == 2

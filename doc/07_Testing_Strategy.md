@@ -8,7 +8,7 @@ MTClipFactory must stay easy to test with `pytest` from day one. The system is e
 
 - Python runtime: `F:\programming\python\MTClipFactory\.venv`
 - Test command: `python -m pytest`
-- Current automated baseline on 2026-06-06: `64 passed`
+- Current automated baseline on 2026-06-06: `66 passed`
 - Current UI smoke baseline on 2026-06-06: `6` PySide windows instantiated with `QT_QPA_PLATFORM=offscreen`
 
 ## Test Pyramid
@@ -62,6 +62,7 @@ MTClipFactory must stay easy to test with `pytest` from day one. The system is e
 - recipe approval/rejection decisions
 - final render foundation
 - preview/final factory job retry after restart-style service recreation
+- queued-job recovery orchestration through the dashboard and startup policy
 - recipe builder view model flow
 
 ## Conventions
@@ -84,4 +85,4 @@ MTClipFactory must stay easy to test with `pytest` from day one. The system is e
 
 1. Add integration coverage for the real FFmpeg preview and final renderers using controlled sample media.
 2. Add widget-level interaction tests for the expanded Recipe Builder window.
-3. Add deeper restart and auto-resume tests for future background orchestration behavior.
+3. Add deeper restart tests for broader orchestration policy, especially failed-job escalation and richer resume semantics.

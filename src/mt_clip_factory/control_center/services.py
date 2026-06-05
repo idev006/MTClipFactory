@@ -8,7 +8,12 @@ from typing import TYPE_CHECKING
 
 from mt_clip_factory.application.services import ProductApplicationService
 from mt_clip_factory.config import AppConfig
-from mt_clip_factory.control_center.dto import DashboardJobDTO, DashboardSummaryDTO, SystemSettingsDTO
+from mt_clip_factory.control_center.dto import (
+    DashboardJobDTO,
+    DashboardSummaryDTO,
+    RecoveryRunSummaryDTO,
+    SystemSettingsDTO,
+)
 from mt_clip_factory.library.services import AssetIntakeService
 from mt_clip_factory.library.tag_services import TagManagementService
 
@@ -56,6 +61,8 @@ class SystemSettingsService:
             max_preview_workers=int(system.get("max_preview_workers", 0)),
             max_final_workers=int(system.get("max_final_workers", 0)),
             auto_refresh_seconds=int(system.get("auto_refresh_seconds", 0)),
+            auto_recover_queued_jobs=_coerce_bool(system.get("auto_recover_queued_jobs", False)),
+            max_recovery_jobs_per_run=int(system.get("max_recovery_jobs_per_run", 25)),
         )
 
     def save(self, settings: SystemSettingsDTO) -> None:
@@ -80,6 +87,8 @@ class SystemSettingsService:
                 f"max_preview_workers = {settings.max_preview_workers}",
                 f"max_final_workers = {settings.max_final_workers}",
                 f"auto_refresh_seconds = {settings.auto_refresh_seconds}",
+                f"auto_recover_queued_jobs = {_format_toml_bool(settings.auto_recover_queued_jobs)}",
+                f"max_recovery_jobs_per_run = {settings.max_recovery_jobs_per_run}",
                 "",
             ]
         )
@@ -117,6 +126,7 @@ class DashboardService:
         self._video_assembly_factory_service = video_assembly_factory_service
         self._tag_management_service = tag_management_service
         self._system_settings_service = system_settings_service
+        self._last_recovery_summary: RecoveryRunSummaryDTO | None = None
 
     def build_summary(self) -> DashboardSummaryDTO:
         settings = self._system_settings_service.load()
@@ -147,6 +157,7 @@ class DashboardService:
             ffprobe_available=ffprobe_path.exists(),
             ffmpeg_available=ffmpeg_path.exists(),
             recent_jobs=tuple(dashboard_jobs[:8]),
+            last_recovery_summary=self._last_recovery_summary,
             workspace_root=str(self._config.paths.workspace_root),
             database_path=settings.database_path,
             media_root=settings.media_root,
@@ -161,6 +172,8 @@ class DashboardService:
             max_preview_workers=settings.max_preview_workers,
             max_final_workers=settings.max_final_workers,
             auto_refresh_seconds=settings.auto_refresh_seconds,
+            auto_recover_queued_jobs=settings.auto_recover_queued_jobs,
+            max_recovery_jobs_per_run=settings.max_recovery_jobs_per_run,
         )
 
     def _build_dashboard_jobs(self) -> list[DashboardJobDTO]:
@@ -193,9 +206,73 @@ class DashboardService:
         ]
         return sorted([*artifact_jobs, *factory_jobs], key=lambda job: job.job_id, reverse=True)
 
+    def recover_queued_jobs(self, *, trigger: str = "manual") -> RecoveryRunSummaryDTO:
+        settings = self._system_settings_service.load()
+        started_at = _utc_timestamp()
+        queued_jobs = self._queued_recovery_jobs()
+        attempted_jobs = queued_jobs if settings.max_recovery_jobs_per_run <= 0 else queued_jobs[: settings.max_recovery_jobs_per_run]
+        recovered_job_codes: list[str] = []
+        failed_job_codes: list[str] = []
+
+        for job in attempted_jobs:
+            try:
+                job["runner"](job["job_id"])
+                recovered_job_codes.append(str(job["job_code"]))
+            except Exception:  # noqa: BLE001
+                failed_job_codes.append(str(job["job_code"]))
+
+        summary = RecoveryRunSummaryDTO(
+            trigger=trigger,
+            started_at=started_at,
+            finished_at=_utc_timestamp(),
+            queued_job_count=len(queued_jobs),
+            attempted_job_count=len(attempted_jobs),
+            succeeded_job_count=len(recovered_job_codes),
+            failed_job_count=len(failed_job_codes),
+            recovered_job_codes=tuple(recovered_job_codes),
+            failed_job_codes=tuple(failed_job_codes),
+        )
+        self._last_recovery_summary = summary
+        return summary
+
+    def should_auto_recover_queued_jobs(self) -> bool:
+        return self._system_settings_service.load().auto_recover_queued_jobs
+
+    def _queued_recovery_jobs(self) -> list[dict[str, object]]:
+        jobs: list[dict[str, object]] = []
+        jobs.extend(
+            {
+                "job_id": job.job_id,
+                "job_code": job.job_code,
+                "runner": self._artifact_generation_service.run_job,
+            }
+            for job in self._artifact_generation_service.list_jobs(status="queued")
+        )
+        jobs.extend(
+            {
+                "job_id": job.job_id,
+                "job_code": job.job_code,
+                "runner": self._video_assembly_factory_service.run_preview_job,
+            }
+            for job in self._video_assembly_factory_service.list_preview_jobs(status="queued")
+        )
+        jobs.extend(
+            {
+                "job_id": job.job_id,
+                "job_code": job.job_code,
+                "runner": self._video_assembly_factory_service.run_final_render_job,
+            }
+            for job in self._video_assembly_factory_service.list_final_render_jobs(status="queued")
+        )
+        return jobs
+
 
 def _escape_toml(value: str) -> str:
     return value.replace("\\", "\\\\").replace('"', '\\"')
+
+
+def _format_toml_bool(value: bool) -> str:
+    return "true" if value else "false"
 
 
 def _resolve_runtime_path(workspace_root: Path, raw_value: str) -> str:
@@ -211,3 +288,11 @@ def _subject_reference(kind: str, subject_id: int | None) -> str:
 
 def _utc_timestamp() -> str:
     return datetime.now(UTC).strftime("%Y-%m-%d %H:%M:%S UTC")
+
+
+def _coerce_bool(value: object) -> bool:
+    if isinstance(value, bool):
+        return value
+    if isinstance(value, str):
+        return value.strip().lower() in {"1", "true", "yes", "on"}
+    return bool(value)

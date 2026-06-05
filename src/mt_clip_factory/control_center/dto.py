@@ -19,6 +19,8 @@ class SystemSettingsDTO:
     max_preview_workers: int
     max_final_workers: int
     auto_refresh_seconds: int
+    auto_recover_queued_jobs: bool
+    max_recovery_jobs_per_run: int
 
 
 @dataclass(slots=True, frozen=True)
@@ -32,6 +34,19 @@ class DashboardJobDTO:
     subject_reference: str
     output_path: str | None = None
     error_message: str | None = None
+
+
+@dataclass(slots=True, frozen=True)
+class RecoveryRunSummaryDTO:
+    trigger: str
+    started_at: str
+    finished_at: str
+    queued_job_count: int
+    attempted_job_count: int
+    succeeded_job_count: int
+    failed_job_count: int
+    recovered_job_codes: tuple[str, ...]
+    failed_job_codes: tuple[str, ...]
 
 
 @dataclass(slots=True, frozen=True)
@@ -52,6 +67,7 @@ class DashboardSummaryDTO:
     ffprobe_available: bool
     ffmpeg_available: bool
     recent_jobs: tuple[DashboardJobDTO, ...]
+    last_recovery_summary: RecoveryRunSummaryDTO | None
     workspace_root: str
     database_path: str
     media_root: str
@@ -66,3 +82,5 @@ class DashboardSummaryDTO:
     max_preview_workers: int
     max_final_workers: int
     auto_refresh_seconds: int
+    auto_recover_queued_jobs: bool
+    max_recovery_jobs_per_run: int

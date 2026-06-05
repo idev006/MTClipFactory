@@ -38,3 +38,10 @@ class DashboardViewModel(QObject):
         self.summary_changed.emit()
         self._set_status("ready")
 
+    @Slot()
+    def recover_queued_jobs(self) -> None:
+        self._set_status("recovering")
+        self._dashboard_service.recover_queued_jobs(trigger="manual")
+        self._summary = self._dashboard_service.build_summary()
+        self.summary_changed.emit()
+        self._set_status("ready")

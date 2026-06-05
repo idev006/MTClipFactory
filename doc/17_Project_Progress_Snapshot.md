@@ -23,14 +23,14 @@
 - `Resource Library Management` is at a useful MVP baseline.
 - `Video Assembly Factory` is at a working review-and-render foundation, not a full composition engine yet.
 - Dashboard and settings are now a stronger operational truth surface.
-- Automatic unattended recovery is not done yet. Manual retry is done.
+- Automatic queued-job recovery now exists when enabled. Failed-job handling is still a manual retry path.
 
 ## Delivered In The Latest Loop
 
-- dashboard now combines persisted jobs from library and factory workflows
-- dashboard now shows recent jobs and operational attention text
-- factory preview/final jobs now support manual retry from persisted state
-- factory retry behavior is covered with restart-style service recreation tests
+- dashboard can now trigger queued-job recovery and report the latest recovery summary
+- settings now control startup auto-recovery policy and recovery batch size
+- bootstrap can auto-recover queued jobs on startup when the policy is enabled
+- automated tests now cover recovery orchestration plus dashboard/view-model behavior
 - documents, Kanban, issues, and lessons learned were updated with the same milestone
 
 ## Still Open
@@ -38,10 +38,10 @@
 1. richer preview composition
 2. richer final-render composition
 3. output approval trail and reporting depth
-4. automatic resume/orchestrator behavior after restart
+4. broader failed-job escalation and orchestration policy
 5. optional hot-reload decision for path-root changes
 
 ## Verification Baseline
 
-- `python -m pytest` in `.venv`: `64 passed`
+- `python -m pytest` in `.venv`: `66 passed`
 - `QT_QPA_PLATFORM=offscreen` UI smoke: `6` main windows instantiated

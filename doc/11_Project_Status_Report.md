@@ -20,6 +20,7 @@
 - FFmpeg-backed thumbnail/proxy generation jobs
 - persisted job tracking with queued/failed visibility
 - dashboard recent-job visibility across library and factory workflows
+- queued-job recovery orchestrator with dashboard trigger and startup policy
 - initial Video Assembly Factory:
   - recipe persistence
   - recipe item assignment
@@ -32,10 +33,11 @@
   - output browsing/reporting foundation
   - manual retry for preview/final jobs
 - configurable path roots in `app_config.toml` for database, media, docs, outputs, and preview roots
+- configurable queued-job recovery policy in `app_config.toml`
 
 ## Verification Baseline
 
-- `python -m pytest` via `.venv`: `64 passed`
+- `python -m pytest` via `.venv`: `66 passed`
 - UI smoke via `QT_QPA_PLATFORM=offscreen`: `6` windows instantiated successfully
 
 ## Current Focus
@@ -43,14 +45,14 @@
 - deepen render fidelity beyond the current foundation
 - add richer auditability around approvals and outputs
 - decide whether runtime path changes should hot-reload or remain restart-driven
-- define future auto-resume orchestration beyond the current manual retry policy
+- deepen orchestration policy beyond the current queued-job recovery baseline
 
 ## Next Steps
 
 1. Add richer preview composition and asset-role handling.
 2. Replace final-render foundation with fuller composition and audio-aware rendering.
 3. Add stronger output reporting and approval trail.
-4. Design automatic resume/orchestrator behavior on top of persisted manual retry.
+4. Extend recovery orchestration beyond queued jobs and current sequential execution.
 
 ## Ownership
 

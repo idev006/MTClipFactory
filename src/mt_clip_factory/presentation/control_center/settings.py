@@ -55,5 +55,8 @@ class SettingsViewModel(QObject):
         self._settings_service.save(settings)
         self._settings = self._settings_service.load()
         self.settings_changed.emit()
-        self._set_feedback("System settings saved. Path-root changes apply fully on next application start.")
+        self._set_feedback(
+            "System settings saved. Path-root changes apply fully on next application start. "
+            "Auto-recovery policy applies on the next startup cycle."
+        )
         self._set_status("ready")

@@ -65,10 +65,27 @@ class FakeArtifactGenerationService:
             return list(self._failed_jobs)
         return [*self._queued_jobs, *self._failed_jobs]
 
+    def run_job(self, job_id: int) -> None:
+        for index, job in enumerate(self._queued_jobs):
+            if job.job_id != job_id:
+                continue
+            self._queued_jobs.pop(index)
+            return
+        raise ValueError(str(job_id))
+
 
 class FakeVideoAssemblyFactoryService:
     def __init__(self) -> None:
         self._jobs = [
+            PreviewJobSummaryDTO(
+                job_id=11,
+                job_code="preview_11",
+                recipe_id=5,
+                job_type="render_recipe_preview",
+                status="queued",
+                progress=0.0,
+                output_path=None,
+            ),
             PreviewJobSummaryDTO(
                 job_id=10,
                 job_code="final_10",
@@ -93,6 +110,42 @@ class FakeVideoAssemblyFactoryService:
         if status is None:
             return list(self._jobs)
         return [job for job in self._jobs if job.status == status]
+
+    def list_preview_jobs(self, *, status: str | None = None) -> list[PreviewJobSummaryDTO]:
+        jobs = [job for job in self._jobs if job.job_type == "render_recipe_preview"]
+        if status is None:
+            return jobs
+        return [job for job in jobs if job.status == status]
+
+    def list_final_render_jobs(self, *, status: str | None = None) -> list[PreviewJobSummaryDTO]:
+        jobs = [job for job in self._jobs if job.job_type == "render_recipe_final"]
+        if status is None:
+            return jobs
+        return [job for job in jobs if job.status == status]
+
+    def run_preview_job(self, job_id: int) -> None:
+        self._complete_job(job_id, "render_recipe_preview")
+
+    def run_final_render_job(self, job_id: int) -> None:
+        self._complete_job(job_id, "render_recipe_final")
+
+    def _complete_job(self, job_id: int, expected_type: str) -> None:
+        for index, job in enumerate(self._jobs):
+            if job.job_id != job_id:
+                continue
+            if job.job_type != expected_type:
+                raise ValueError(job.job_type)
+            self._jobs[index] = PreviewJobSummaryDTO(
+                job_id=job.job_id,
+                job_code=job.job_code,
+                recipe_id=job.recipe_id,
+                job_type=job.job_type,
+                status="done",
+                progress=1.0,
+                output_path=job.output_path or "F:/workspace/outputs/preview/recovered.mp4",
+            )
+            return
+        raise ValueError(str(job_id))
 
 
 def _build_asset_service(unit_of_work_factory, media_root: Path) -> AssetIntakeService:
@@ -128,6 +181,8 @@ def test_system_settings_service_reads_and_writes_toml(tmp_path) -> None:
                 "max_preview_workers = 1",
                 "max_final_workers = 1",
                 "auto_refresh_seconds = 10",
+                "auto_recover_queued_jobs = false",
+                "max_recovery_jobs_per_run = 25",
                 "",
             ]
         ),
@@ -153,6 +208,8 @@ def test_system_settings_service_reads_and_writes_toml(tmp_path) -> None:
         max_preview_workers=2,
         max_final_workers=1,
         auto_refresh_seconds=5,
+        auto_recover_queued_jobs=True,
+        max_recovery_jobs_per_run=12,
     )
     service.save(updated)
 
@@ -160,6 +217,8 @@ def test_system_settings_service_reads_and_writes_toml(tmp_path) -> None:
     assert loaded.database_path.endswith("db.sqlite")
     assert loaded.ffmpeg_root == r"F:\custom_ffmpeg"
     assert loaded.cpu_limit_percent == 88
+    assert loaded.auto_recover_queued_jobs is True
+    assert loaded.max_recovery_jobs_per_run == 12
     assert config_path.exists()
 
 
@@ -184,6 +243,8 @@ def test_dashboard_service_aggregates_system_information(unit_of_work_factory, t
             max_preview_workers=1,
             max_final_workers=1,
             auto_refresh_seconds=10,
+            auto_recover_queued_jobs=True,
+            max_recovery_jobs_per_run=3,
         )
     )
 
@@ -220,22 +281,75 @@ def test_dashboard_service_aggregates_system_information(unit_of_work_factory, t
     assert summary.output_count == 0
     assert summary.ready_asset_count == 1
     assert summary.tag_count == 1
-    assert summary.total_job_count == 5
-    assert summary.active_job_count == 3
-    assert summary.queued_job_count == 2
+    assert summary.total_job_count == 6
+    assert summary.active_job_count == 4
+    assert summary.queued_job_count == 3
     assert summary.processing_job_count == 1
     assert summary.failed_job_count == 1
+    assert summary.auto_recover_queued_jobs is True
+    assert summary.max_recovery_jobs_per_run == 3
     assert summary.recent_jobs[0] == DashboardJobDTO(
-        job_id=10,
-        job_code="final_10",
-        job_type="render_recipe_final",
+        job_id=11,
+        job_code="preview_11",
+        job_type="render_recipe_preview",
         job_source="factory",
-        status="processing",
-        progress=0.4,
-        subject_reference="recipe#3",
+        status="queued",
+        progress=0.0,
+        subject_reference="recipe#5",
         output_path=None,
         error_message=None,
     )
     assert summary.outputs_root.endswith("outputs")
     assert summary.preview_root.endswith("preview")
     assert summary.cpu_limit_percent == 90
+
+
+def test_dashboard_service_recovers_queued_jobs_and_records_summary(unit_of_work_factory, tmp_path) -> None:
+    workspace_root = tmp_path / "workspace"
+    workspace_root.mkdir()
+    config = default_config(workspace_root)
+    settings_service = SystemSettingsService(config.paths.app_config_path)
+    settings_service.save(
+        SystemSettingsDTO(
+            database_path=str(tmp_path / "workspace" / "ad_kitchen.db"),
+            media_root=str(tmp_path / "media_library"),
+            docs_root=str(tmp_path / "workspace" / "doc"),
+            outputs_root=str(tmp_path / "workspace" / "outputs"),
+            preview_root=str(tmp_path / "workspace" / "outputs" / "preview"),
+            ffmpeg_root=str(tmp_path / "ffmpeg"),
+            ffprobe_path=str(tmp_path / "ffmpeg" / "bin" / "ffprobe.exe"),
+            ffmpeg_path=str(tmp_path / "ffmpeg" / "bin" / "ffmpeg.exe"),
+            cpu_limit_percent=90,
+            ram_limit_percent=80,
+            disk_free_gb_min=20,
+            max_preview_workers=1,
+            max_final_workers=1,
+            auto_refresh_seconds=10,
+            auto_recover_queued_jobs=False,
+            max_recovery_jobs_per_run=2,
+        )
+    )
+    product_service = ProductApplicationService(unit_of_work_factory=unit_of_work_factory)
+    asset_service = _build_asset_service(unit_of_work_factory, tmp_path / "media_library")
+    tag_service = TagManagementService(unit_of_work_factory=unit_of_work_factory)
+    dashboard_service = DashboardService(
+        config=config,
+        product_service=product_service,
+        asset_intake_service=asset_service,
+        artifact_generation_service=FakeArtifactGenerationService(queued_count=2, failed_count=0),
+        video_assembly_factory_service=FakeVideoAssemblyFactoryService(),
+        tag_management_service=tag_service,
+        system_settings_service=settings_service,
+    )
+
+    result = dashboard_service.recover_queued_jobs(trigger="manual")
+    summary = dashboard_service.build_summary()
+
+    assert result.trigger == "manual"
+    assert result.queued_job_count == 3
+    assert result.attempted_job_count == 2
+    assert result.succeeded_job_count == 2
+    assert result.failed_job_count == 0
+    assert summary.queued_job_count == 1
+    assert summary.last_recovery_summary is not None
+    assert summary.last_recovery_summary.attempted_job_count == 2

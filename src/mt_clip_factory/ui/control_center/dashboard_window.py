@@ -66,12 +66,14 @@ class DashboardWindow(QMainWindow):
         group = QGroupBox("System Control")
         layout = QHBoxLayout(group)
         dashboard_refresh_button = QPushButton("Refresh Dashboard")
+        recover_jobs_button = QPushButton("Recover Queued Jobs")
         products_button = QPushButton("Products")
         assets_button = QPushButton("Assets")
         recipes_button = QPushButton("Recipes")
         tags_button = QPushButton("Tags")
         settings_button = QPushButton("Settings")
         dashboard_refresh_button.clicked.connect(self._view_model.load)
+        recover_jobs_button.clicked.connect(self._view_model.recover_queued_jobs)
         products_button.clicked.connect(self._open_products)
         assets_button.clicked.connect(self._open_assets)
         recipes_button.clicked.connect(self._open_recipes)
@@ -79,6 +81,7 @@ class DashboardWindow(QMainWindow):
         settings_button.clicked.connect(self._open_settings)
         for button in (
             dashboard_refresh_button,
+            recover_jobs_button,
             products_button,
             assets_button,
             recipes_button,
@@ -176,6 +179,8 @@ class DashboardWindow(QMainWindow):
                     f"Max Preview Workers: {summary.max_preview_workers}",
                     f"Max Final Workers: {summary.max_final_workers}",
                     f"Auto Refresh Seconds: {summary.auto_refresh_seconds}",
+                    f"Auto Recover Queued Jobs: {summary.auto_recover_queued_jobs}",
+                    f"Max Recovery Jobs Per Run: {summary.max_recovery_jobs_per_run}",
                 ]
             )
         )
@@ -192,6 +197,8 @@ def _format_operational_attention(summary) -> str:
     if not lines:
         lines.append("Attention: no active alerts.")
     lines.append("")
+    lines.extend(_format_recovery_summary(summary))
+    lines.append("")
     lines.append("Recent Jobs:")
     if not summary.recent_jobs:
         lines.append("- No persisted jobs yet.")
@@ -205,3 +212,24 @@ def _format_operational_attention(summary) -> str:
             f"{target} | progress={job.progress:.1f}{output}{error}"
         )
     return "\n".join(lines)
+
+
+def _format_recovery_summary(summary) -> list[str]:
+    if summary.last_recovery_summary is None:
+        return [
+            "Recovery Summary: none in this app session.",
+            f"Recovery Startup Policy: auto_recover_queued_jobs={summary.auto_recover_queued_jobs}",
+        ]
+    recovery = summary.last_recovery_summary
+    return [
+        "Recovery Summary:",
+        f"- Trigger: {recovery.trigger}",
+        f"- Started: {recovery.started_at}",
+        f"- Finished: {recovery.finished_at}",
+        f"- Queued Seen: {recovery.queued_job_count}",
+        f"- Attempted: {recovery.attempted_job_count}",
+        f"- Succeeded: {recovery.succeeded_job_count}",
+        f"- Failed: {recovery.failed_job_count}",
+        f"- Recovered Jobs: {', '.join(recovery.recovered_job_codes) or 'none'}",
+        f"- Failed Jobs: {', '.join(recovery.failed_job_codes) or 'none'}",
+    ]
