@@ -32,6 +32,10 @@
 
 เก็บ widget, window, dialog หรือ QML adapter ถ้ามี
 
+### Control Center
+
+เก็บ dashboard, settings, และ system-level orchestration view ที่รวมข้อมูลจากหลายโมดูลมาแสดงใน operational surface เดียว
+
 ## System Modules
 
 สถาปัตยกรรมเชิง business ถูกแบ่งเป็น 2 โมดูลหลักที่ใช้ domain และ infrastructure ร่วมกัน
@@ -58,6 +62,13 @@
 - การแยกนี้เป็น `module split` ก่อน ไม่ใช่ `repository split`
 - อนุญาตให้มีหลาย entry point ได้ในอนาคต
 - ยังไม่บังคับให้เป็น 2 executable apps ตั้งแต่ MVP
+
+## Control Center Architecture Rule
+
+- `Dashboard` ต้องเป็น entry surface หลักของระบบ
+- `Dashboard` ต้อง aggregate จาก service layer ไม่ query DB ตรงใน UI
+- `Settings` ต้องผ่าน service ที่ควบคุม source of truth อย่างชัดเจน
+- runtime paths และ operational thresholds ต้องถูกอ่านจาก config/service กลางเดียว
 
 ## Shared Core
 

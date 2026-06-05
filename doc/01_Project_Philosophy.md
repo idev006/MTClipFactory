@@ -22,6 +22,8 @@ MTClipFactory ถูกสร้างขึ้นเพื่อเป็นโ
 10. Recoverability is a feature, not a bonus.
 11. Tests are part of the design, not a cleanup step.
 12. Project visibility is part of engineering discipline.
+13. Dashboard is the operational truth surface for admin and user.
+14. Settings are a controlled god-mode interface, not hidden tribal knowledge.
 
 ## Non-Negotiable Rules
 
@@ -38,6 +40,8 @@ MTClipFactory ถูกสร้างขึ้นเพื่อเป็นโ
 - ทุก issue สำคัญต้องลงบันทึกใน issue log
 - ทุก milestone ต้องสรุป lesson learned
 - สถานะโครงการต้องถูกสื่อสารในเอกสาร PM และ Kanban อย่างต่อเนื่อง
+- ข้อมูลระบบสำคัญที่ admin/user ควรรู้ต้องถูกยกขึ้น dashboard
+- system settings สำคัญต้องแก้ได้จากหน้า settings โดยไม่ต้องแก้ไฟล์ด้วยมือเป็นหลัก
 - ทีมต้องไม่สร้างระบบเพื่อหลบการตรวจจับแพลตฟอร์ม หรือผลิต spam ปริมาณมากแบบคุณภาพต่ำ
 
 ## Working Mindset

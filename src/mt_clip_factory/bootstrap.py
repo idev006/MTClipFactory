@@ -6,6 +6,7 @@ from sqlalchemy.orm import sessionmaker
 
 from mt_clip_factory.application.services import ProductApplicationService
 from mt_clip_factory.config import AppConfig, default_config
+from mt_clip_factory.control_center.services import DashboardService, SystemSettingsService
 from mt_clip_factory.infrastructure.database import create_engine_from_path, create_schema
 from mt_clip_factory.infrastructure.repositories import (
     SqlAlchemyAssetRepository,
@@ -13,7 +14,7 @@ from mt_clip_factory.infrastructure.repositories import (
     SqlAlchemyTagRepository,
 )
 from mt_clip_factory.infrastructure.unit_of_work import SqlAlchemyUnitOfWork
-from mt_clip_factory.library.analyzers import BasicFileMetadataAnalyzer, FFprobeMetadataAnalyzer, FallbackMetadataAnalyzer
+from mt_clip_factory.library.analyzers import ConfiguredMetadataAnalyzer
 from mt_clip_factory.library.module import ResourceLibraryModule
 from mt_clip_factory.library.readiness import AssetReadinessEvaluator
 from mt_clip_factory.library.services import AssetIntakeService
@@ -43,6 +44,7 @@ def build_resource_library_module(workspace_root: Path) -> ResourceLibraryModule
     engine = create_engine_from_path(config.paths.database_path)
     create_schema(engine)
     session_factory = sessionmaker(bind=engine, expire_on_commit=False)
+    settings_service = SystemSettingsService(config.paths.app_config_path)
 
     def uow_factory() -> SqlAlchemyUnitOfWork:
         return SqlAlchemyUnitOfWork(
@@ -53,26 +55,24 @@ def build_resource_library_module(workspace_root: Path) -> ResourceLibraryModule
         )
 
     product_service = ProductApplicationService(unit_of_work_factory=uow_factory)
-    metadata_analyzer = _build_metadata_analyzer(config)
     asset_intake_service = AssetIntakeService(
         unit_of_work_factory=uow_factory,
         asset_storage=LocalAssetStorage(config.paths.media_root),
-        metadata_analyzer=metadata_analyzer,
+        metadata_analyzer=ConfiguredMetadataAnalyzer(settings_service),
         readiness_evaluator=AssetReadinessEvaluator(),
     )
     tag_management_service = TagManagementService(unit_of_work_factory=uow_factory)
+    dashboard_service = DashboardService(
+        config=config,
+        product_service=product_service,
+        asset_intake_service=asset_intake_service,
+        tag_management_service=tag_management_service,
+        system_settings_service=settings_service,
+    )
     return ResourceLibraryModule(
         product_service=product_service,
         asset_intake_service=asset_intake_service,
         tag_management_service=tag_management_service,
+        system_settings_service=settings_service,
+        dashboard_service=dashboard_service,
     )
-
-
-def _build_metadata_analyzer(config: AppConfig):
-    basic_analyzer = BasicFileMetadataAnalyzer()
-    if config.ffprobe_path and config.ffprobe_path.exists():
-        return FallbackMetadataAnalyzer(
-            primary_analyzer=FFprobeMetadataAnalyzer(config.ffprobe_path),
-            fallback_analyzer=basic_analyzer,
-        )
-    return basic_analyzer

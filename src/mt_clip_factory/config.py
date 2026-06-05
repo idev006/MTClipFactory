@@ -11,6 +11,7 @@ class AppPaths:
     database_path: Path
     media_root: Path
     docs_root: Path
+    app_config_path: Path
 
 
 @dataclass(slots=True, frozen=True)
@@ -44,6 +45,7 @@ def default_config(workspace_root: Path) -> AppConfig:
             database_path=workspace_root / "ad_kitchen.db",
             media_root=workspace_root / "media_library",
             docs_root=workspace_root / "doc",
+            app_config_path=config_file,
         ),
         ffmpeg_root=ffmpeg_root,
         ffprobe_path=ffprobe_path,

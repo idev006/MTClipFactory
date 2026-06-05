@@ -48,6 +48,8 @@
 ## Core Capabilities
 
 - Product-centric media organization
+- Operational dashboard for admin and user visibility
+- System settings control center
 - Tag-driven asset discovery
 - Recipe generation and scoring
 - Preview-first review workflow
@@ -56,6 +58,36 @@
 - Template-driven overlays
 - Quality gate before final output
 - Job orchestration with resumable state
+
+## Control Center Requirement
+
+ระบบต้องมี `Dashboard` กลางที่รวบรวมข้อมูลซึ่ง admin/user ควรรู้ เช่น:
+
+- จำนวน product, asset, tag, output, job
+- สถานะ asset readiness และ quality risk
+- runtime path และ dependency readiness
+- worker/resource limits และค่าควบคุมสำคัญ
+- issue หรือสัญญาณผิดปกติที่ควรถูกยกระดับ
+
+ระบบต้องมี `Settings` กลางที่ให้ admin/user ปรับค่าระบบสำคัญได้ในหน้าเดียว เช่น:
+
+- FFmpeg/FFprobe paths
+- resource thresholds
+- worker limits
+- auto refresh behavior
+- policy defaults ที่เกี่ยวกับ workflow
+
+## Reliability Requirement
+
+ระบบต้องถูกออกแบบให้:
+
+- reliable
+- recoverable
+- durable
+- performance-aware
+- component-based
+
+สิ่งเหล่านี้ไม่ใช่งานเสริม แต่เป็นข้อกำหนดหลักของระบบ
 
 ## MVP Boundary
 

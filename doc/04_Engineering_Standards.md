@@ -4,6 +4,7 @@
 
 - `src/mt_clip_factory/domain`
 - `src/mt_clip_factory/application`
+- `src/mt_clip_factory/control_center`
 - `src/mt_clip_factory/infrastructure`
 - `src/mt_clip_factory/presentation`
 - `src/mt_clip_factory/ui`
@@ -42,6 +43,8 @@
 - UI component ห้ามตัดสินใจเชิง domain เอง
 - UI ต้องแสดงสถานะงานจาก view model
 - Long-running work ต้องออกจาก main thread
+- dashboard ต้องเป็น operational summary ที่อ่านแล้วเข้าใจสภาพระบบได้เร็ว
+- settings UI ต้องทำงานผ่าน service และ persist อย่างชัดเจน
 
 ## Logging and Errors
 
@@ -55,3 +58,10 @@
 - ต้องมี status report ที่ทีมอ่านแล้วเข้าใจภาพรวมได้ทันที
 - ต้องมี issue log สำหรับปัญหา ความเสี่ยง และ blocker
 - ต้องมี lessons learned log สำหรับสรุปบทเรียนหลัง milestone หรือเหตุการณ์สำคัญ
+
+## Reliability Standards
+
+- ทุก component ควรแยกความรับผิดชอบชัดเจนและถอดเปลี่ยนได้
+- state สำคัญต้องมี persistence หรือ source of truth ที่ชัดเจน
+- config/runtime dependency ต้องตรวจสอบได้จาก dashboard
+- เมื่อ dependency หลักไม่พร้อม ระบบต้อง degrade gracefully เท่าที่ทำได้

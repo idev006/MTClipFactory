@@ -1,0 +1,115 @@
+from __future__ import annotations
+
+from dataclasses import asdict
+from pathlib import Path
+import tomllib
+
+from mt_clip_factory.application.services import ProductApplicationService
+from mt_clip_factory.config import AppConfig
+from mt_clip_factory.control_center.dto import DashboardSummaryDTO, SystemSettingsDTO
+from mt_clip_factory.library.services import AssetIntakeService
+from mt_clip_factory.library.tag_services import TagManagementService
+
+
+class SystemSettingsService:
+    def __init__(self, config_path: Path) -> None:
+        self._config_path = config_path
+
+    def load(self) -> SystemSettingsDTO:
+        data = self._read_raw()
+        ffmpeg = data.get("ffmpeg", {})
+        system = data.get("system", {})
+        return SystemSettingsDTO(
+            ffmpeg_root=str(ffmpeg.get("root", r"F:\ffmpeg")),
+            ffprobe_path=str(ffmpeg.get("ffprobe", r"F:\ffmpeg\bin\ffprobe.exe")),
+            ffmpeg_path=str(ffmpeg.get("ffmpeg", r"F:\ffmpeg\bin\ffmpeg.exe")),
+            cpu_limit_percent=int(system.get("cpu_limit_percent", 90)),
+            ram_limit_percent=int(system.get("ram_limit_percent", 80)),
+            disk_free_gb_min=int(system.get("disk_free_gb_min", 20)),
+            max_preview_workers=int(system.get("max_preview_workers", 1)),
+            max_final_workers=int(system.get("max_final_workers", 1)),
+            auto_refresh_seconds=int(system.get("auto_refresh_seconds", 10)),
+        )
+
+    def save(self, settings: SystemSettingsDTO) -> None:
+        content = "\n".join(
+            [
+                "[ffmpeg]",
+                f'root = "{_escape_toml(settings.ffmpeg_root)}"',
+                f'ffprobe = "{_escape_toml(settings.ffprobe_path)}"',
+                f'ffmpeg = "{_escape_toml(settings.ffmpeg_path)}"',
+                "",
+                "[system]",
+                f"cpu_limit_percent = {settings.cpu_limit_percent}",
+                f"ram_limit_percent = {settings.ram_limit_percent}",
+                f"disk_free_gb_min = {settings.disk_free_gb_min}",
+                f"max_preview_workers = {settings.max_preview_workers}",
+                f"max_final_workers = {settings.max_final_workers}",
+                f"auto_refresh_seconds = {settings.auto_refresh_seconds}",
+                "",
+            ]
+        )
+        self._config_path.write_text(content, encoding="utf-8")
+
+    def update(self, **kwargs) -> SystemSettingsDTO:
+        current = asdict(self.load())
+        current.update(kwargs)
+        updated = SystemSettingsDTO(**current)
+        self.save(updated)
+        return updated
+
+    def _read_raw(self) -> dict:
+        if not self._config_path.exists():
+            return {}
+        with self._config_path.open("rb") as file_handle:
+            return tomllib.load(file_handle)
+
+
+class DashboardService:
+    def __init__(
+        self,
+        config: AppConfig,
+        product_service: ProductApplicationService,
+        asset_intake_service: AssetIntakeService,
+        tag_management_service: TagManagementService,
+        system_settings_service: SystemSettingsService,
+    ) -> None:
+        self._config = config
+        self._product_service = product_service
+        self._asset_intake_service = asset_intake_service
+        self._tag_management_service = tag_management_service
+        self._system_settings_service = system_settings_service
+
+    def build_summary(self) -> DashboardSummaryDTO:
+        settings = self._system_settings_service.load()
+        products = self._product_service.list_products()
+        assets = self._asset_intake_service.list_assets()
+        tags = self._tag_management_service.list_tags()
+        ready_asset_count = sum(1 for asset in assets if asset.status == "ready")
+        needs_review_asset_count = sum(1 for asset in assets if asset.status == "needs_review")
+        ffprobe_path = Path(settings.ffprobe_path)
+        ffmpeg_path = Path(settings.ffmpeg_path)
+        return DashboardSummaryDTO(
+            product_count=len(products),
+            asset_count=len(assets),
+            ready_asset_count=ready_asset_count,
+            needs_review_asset_count=needs_review_asset_count,
+            tag_count=len(tags),
+            ffprobe_available=ffprobe_path.exists(),
+            ffmpeg_available=ffmpeg_path.exists(),
+            workspace_root=str(self._config.paths.workspace_root),
+            database_path=str(self._config.paths.database_path),
+            media_root=str(self._config.paths.media_root),
+            ffprobe_path=settings.ffprobe_path,
+            ffmpeg_path=settings.ffmpeg_path,
+            cpu_limit_percent=settings.cpu_limit_percent,
+            ram_limit_percent=settings.ram_limit_percent,
+            disk_free_gb_min=settings.disk_free_gb_min,
+            max_preview_workers=settings.max_preview_workers,
+            max_final_workers=settings.max_final_workers,
+            auto_refresh_seconds=settings.auto_refresh_seconds,
+        )
+
+
+def _escape_toml(value: str) -> str:
+    return value.replace("\\", "\\\\").replace('"', '\\"')

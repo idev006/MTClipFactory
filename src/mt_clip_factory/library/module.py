@@ -3,6 +3,7 @@ from __future__ import annotations
 from dataclasses import dataclass
 
 from mt_clip_factory.application.services import ProductApplicationService
+from mt_clip_factory.control_center.services import DashboardService, SystemSettingsService
 from mt_clip_factory.library.services import AssetIntakeService
 from mt_clip_factory.library.tag_services import TagManagementService
 
@@ -12,3 +13,5 @@ class ResourceLibraryModule:
     product_service: ProductApplicationService
     asset_intake_service: AssetIntakeService
     tag_management_service: TagManagementService
+    system_settings_service: SystemSettingsService
+    dashboard_service: DashboardService

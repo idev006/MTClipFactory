@@ -7,8 +7,10 @@
 ```mermaid
 flowchart TB
     UI["UI Layer"] --> VM["Presentation / ViewModel"]
+    UI --> CC["Control Center"]
     VM --> LIB["Resource Library Management"]
     VM --> FAC["Video Assembly Factory"]
+    CC --> APP
     LIB --> APP["Shared Application Services"]
     FAC --> APP
     APP --> DOMAIN["Domain"]
@@ -50,6 +52,21 @@ classDiagram
         +delete_product()
     }
 
+    class DashboardWindow {
+        +show()
+        +refresh_dashboard()
+        +open_products()
+        +open_assets()
+        +open_tags()
+        +open_settings()
+    }
+
+    class SettingsWindow {
+        +show()
+        +save_settings()
+        +reload()
+    }
+
     class AssetLibraryWindow {
         +show()
         +register_asset()
@@ -89,6 +106,19 @@ classDiagram
         +assets
     }
 
+    class DashboardViewModel {
+        +load()
+        +summary
+        +status
+    }
+
+    class SettingsViewModel {
+        +load()
+        +save(settings)
+        +settings
+        +feedback
+    }
+
     class ProductApplicationService {
         +create_product(command)
         +get_product(product_id)
@@ -106,6 +136,16 @@ classDiagram
         +create_tag(command)
         +list_tags(tag_group)
         +assign_tag_to_asset(command)
+    }
+
+    class DashboardService {
+        +build_summary()
+    }
+
+    class SystemSettingsService {
+        +load()
+        +save(settings)
+        +update(...)
     }
 
     class SqlAlchemyUnitOfWork {
@@ -159,15 +199,21 @@ classDiagram
     ProductLibraryWindow --> ProductLibraryViewModel
     AssetLibraryWindow --> AssetLibraryViewModel
     TagDictionaryWindow --> TagDictionaryViewModel
+    DashboardWindow --> DashboardViewModel
+    SettingsWindow --> SettingsViewModel
     ResourceLibraryModule --> ProductApplicationService
     ResourceLibraryModule --> AssetIntakeService
     ResourceLibraryModule --> TagManagementService
+    ResourceLibraryModule --> DashboardService
+    ResourceLibraryModule --> SystemSettingsService
     VideoAssemblyFactoryModule --> ProductApplicationService
     ProductLibraryViewModel --> ProductApplicationService
     AssetLibraryViewModel --> ProductApplicationService
     AssetLibraryViewModel --> AssetIntakeService
     TagDictionaryViewModel --> TagManagementService
     TagDictionaryViewModel --> AssetIntakeService
+    DashboardViewModel --> DashboardService
+    SettingsViewModel --> SystemSettingsService
     ProductApplicationService --> SqlAlchemyUnitOfWork
     AssetIntakeService --> SqlAlchemyUnitOfWork
     TagManagementService --> SqlAlchemyUnitOfWork
@@ -177,6 +223,30 @@ classDiagram
     SqlAlchemyProductRepository --> Product
     SqlAlchemyAssetRepository --> Asset
     SqlAlchemyTagRepository --> Tag
+```
+
+## Dashboard Aggregation Sequence
+
+```mermaid
+sequenceDiagram
+    actor User
+    participant View as DashboardWindow
+    participant VM as DashboardViewModel
+    participant Dash as DashboardService
+    participant Prod as ProductService
+    participant Asset as AssetIntakeService
+    participant Tag as TagManagementService
+    participant Settings as SystemSettingsService
+
+    User->>View: open dashboard or refresh
+    View->>VM: load()
+    VM->>Dash: build_summary()
+    Dash->>Prod: list_products()
+    Dash->>Asset: list_assets()
+    Dash->>Tag: list_tags()
+    Dash->>Settings: load()
+    Dash-->>VM: DashboardSummaryDTO
+    VM-->>View: refresh cards and status
 ```
 
 ## Product Creation Sequence

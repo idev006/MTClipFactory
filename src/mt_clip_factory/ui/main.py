@@ -6,9 +6,13 @@ import sys
 from PySide6.QtWidgets import QApplication
 
 from mt_clip_factory.bootstrap import build_resource_library_module
+from mt_clip_factory.presentation.control_center.dashboard import DashboardViewModel
+from mt_clip_factory.presentation.control_center.settings import SettingsViewModel
 from mt_clip_factory.presentation.library.asset_library import AssetLibraryViewModel
 from mt_clip_factory.presentation.library.product_library import ProductLibraryViewModel
 from mt_clip_factory.presentation.library.tag_dictionary import TagDictionaryViewModel
+from mt_clip_factory.ui.control_center.dashboard_window import DashboardWindow
+from mt_clip_factory.ui.control_center.settings_window import SettingsWindow
 from mt_clip_factory.ui.library.asset_library_window import AssetLibraryWindow
 from mt_clip_factory.ui.library.product_library_window import ProductLibraryWindow
 from mt_clip_factory.ui.library.tag_dictionary_window import TagDictionaryWindow
@@ -27,16 +31,26 @@ def main() -> int:
         tag_management_service=resource_library.tag_management_service,
         asset_intake_service=resource_library.asset_intake_service,
     )
+    dashboard_view_model = DashboardViewModel(resource_library.dashboard_service)
+    settings_view_model = SettingsViewModel(resource_library.system_settings_service)
     tag_window = TagDictionaryWindow(tag_view_model)
+    settings_window = SettingsWindow(settings_view_model)
     asset_window = AssetLibraryWindow(
         asset_view_model,
         open_tag_dictionary=lambda: _show_window(tag_window),
     )
-    window = ProductLibraryWindow(
+    product_window = ProductLibraryWindow(
         product_view_model,
         open_asset_intake=lambda: _show_window(asset_window),
     )
-    window.show()
+    dashboard_window = DashboardWindow(
+        dashboard_view_model,
+        open_products=lambda: _show_window(product_window),
+        open_assets=lambda: _show_window(asset_window),
+        open_tags=lambda: _show_window(tag_window),
+        open_settings=lambda: _show_window(settings_window),
+    )
+    dashboard_window.show()
     return app.exec()
 
 

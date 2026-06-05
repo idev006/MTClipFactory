@@ -9,7 +9,7 @@
 - Project phase: Foundation
 - Overall status: In Progress
 - Report date: 2026-06-05
-- Current focus: Resource Library Management milestone after delivering query/filter visibility on top of FFmpeg metadata and tags
+- Current focus: control-center milestone with dashboard, settings authority, and reliability foundations
 
 ## Completed
 
@@ -37,11 +37,16 @@
 - ยืนยันด้วย `pytest` 32 tests ผ่าน และ UI smoke test ของสามหน้าต่างผ่าน
 - เพิ่ม asset library filters และ tag visibility ใน asset list
 - ยืนยันรอบล่าสุดด้วย `pytest` 33 tests ผ่าน
+- ส่งมอบ `DashboardWindow`, `DashboardViewModel`, และ `DashboardService`
+- ส่งมอบ `SettingsWindow`, `SettingsViewModel`, และ `SystemSettingsService`
+- ยกระดับ `app_config.toml` ให้เป็น operational config surface ผ่าน UI
+- ยืนยันรอบล่าสุดด้วย `pytest` 37 tests ผ่าน และ UI smoke test ของ dashboard/settings ผ่าน
 
 ## In Progress
 
-- Define contracts that separate `Library` ownership from `Factory` ownership
+- Define `Library` to `Factory` contracts
 - Thumbnail/proxy generation planning on top of FFmpeg
+- Recovery and durability implementation planning beyond config/dashboard visibility
 
 ## Next Steps
 

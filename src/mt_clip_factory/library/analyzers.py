@@ -3,6 +3,7 @@ from __future__ import annotations
 import json
 from pathlib import Path
 import subprocess
+from typing import Protocol
 
 from mt_clip_factory.library.contracts import AnalyzedMediaMetadata
 
@@ -81,6 +82,28 @@ class FallbackMetadataAnalyzer:
             return self._primary_analyzer.analyze(file_path)
         except (subprocess.SubprocessError, FileNotFoundError, json.JSONDecodeError, ValueError):
             return self._fallback_analyzer.analyze(file_path)
+
+
+class SettingsReader(Protocol):
+    def load(self):
+        ...
+
+
+class ConfiguredMetadataAnalyzer:
+    def __init__(self, settings_service: SettingsReader) -> None:
+        self._settings_service = settings_service
+        self._fallback_analyzer = BasicFileMetadataAnalyzer()
+
+    def analyze(self, file_path: Path) -> AnalyzedMediaMetadata:
+        settings = self._settings_service.load()
+        ffprobe_path = Path(settings.ffprobe_path)
+        if ffprobe_path.exists():
+            analyzer = FallbackMetadataAnalyzer(
+                primary_analyzer=FFprobeMetadataAnalyzer(ffprobe_path),
+                fallback_analyzer=self._fallback_analyzer,
+            )
+            return analyzer.analyze(file_path)
+        return self._fallback_analyzer.analyze(file_path)
 
 
 def _parse_fps(raw_value: str | None) -> float | None:

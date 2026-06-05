@@ -17,6 +17,8 @@ python -m pytest
 mt-resource-library
 ```
 
+`mt-resource-library` now opens the dashboard/control-center window first, then lets the user open Products, Assets, Tags, and Settings from there.
+
 ## Runtime Config
 
 Runtime paths are stored in [app_config.toml](/F:/programming/python/MTClipFactory/app_config.toml).
