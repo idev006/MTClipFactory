@@ -20,3 +20,15 @@ class Output:
     created_at: datetime = field(default_factory=utc_now)
     id: int | None = None
 
+
+@dataclass(slots=True, frozen=True)
+class OutputSummary:
+    output_id: int
+    recipe_id: int
+    recipe_code: str
+    output_code: str
+    file_path: str
+    platform: str | None
+    ratio: str | None
+    approved: bool
+    created_at: datetime

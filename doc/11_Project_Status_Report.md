@@ -2,9 +2,9 @@
 
 ## Project Manager Snapshot
 
-- Report date: 2026-06-05
+- Report date: 2026-06-06
 - Overall status: In Progress
-- Current phase: Phase 3, Video Assembly Factory MVP
+- Current phase: Phase 4, Render Pipeline Foundation
 - Delivery mode: document-led SSOT with code and tests kept in sync
 
 ## What Is Done
@@ -23,28 +23,31 @@
   - recipe persistence
   - recipe item assignment
   - preview render job flow
+  - output approval workflow
+  - recipe approval / rejection workflow
   - recipe builder view model
   - recipe builder desktop window
-  - output registration foundation
+  - final render foundation
+  - output browsing/reporting foundation
 - configurable path roots in `app_config.toml` for database, media, docs, outputs, and preview roots
 
 ## Verification Baseline
 
-- `python -m pytest` via `.venv`: `53 passed`
+- `python -m pytest` via `.venv`: `61 passed`
 - UI smoke via `QT_QPA_PLATFORM=offscreen`: `6` windows instantiated successfully
 
 ## Current Focus
 
 - deepen recovery policy across jobs
-- add richer review/final-render workflow on top of the preview-output baseline
+- deepen render fidelity beyond the current foundation
 - decide whether runtime path changes should hot-reload or remain restart-driven
 
 ## Next Steps
 
-1. Add review decision workflow after preview build.
-2. Add richer preview composition and asset-role handling.
+1. Add richer preview composition and asset-role handling.
+2. Replace final-render foundation with fuller composition and audio-aware rendering.
 3. Add durable retry and resume policy for all job types.
-4. Add final render orchestration and output reports.
+4. Add stronger output reporting and approval trail.
 
 ## Ownership
 

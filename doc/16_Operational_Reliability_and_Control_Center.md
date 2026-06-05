@@ -68,6 +68,8 @@ The following must flow through config or services whenever user control is appr
 
 - persisted artifact jobs for thumbnail/proxy generation
 - persisted preview jobs for recipe preview outputs
+- persisted final-render jobs for recipe final-output foundation
+- output approval and recipe approval decisions captured in SSOT workflow
 - configurable path roots through `[paths]` in `app_config.toml`
 - dashboard visibility of queued and failed jobs
 - settings-based FFmpeg path control
@@ -77,5 +79,6 @@ The following must flow through config or services whenever user control is appr
 
 1. Recovery policy is not yet unified across all job types.
 2. Preview composition is still simple and not yet a full layered edit pipeline.
-3. Path-root changes are not fully hot-reloaded across all runtime services.
-4. Dashboard does not yet show detailed alert history, only summary counts.
+3. Final render is still a foundation path and not yet a full recomposition pipeline.
+4. Path-root changes are not fully hot-reloaded across all runtime services.
+5. Dashboard does not yet show detailed alert history, only summary counts.

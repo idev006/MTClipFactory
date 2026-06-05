@@ -5,16 +5,16 @@ This Markdown board is the SSOT Kanban for the repository.
 ## Backlog
 
 - final render workflow
-- output registration and approval trail
+- advanced output registration and approval trail
 - duplicate risk evaluation
 - recipe scoring
 - quality gate automation
 
 ## Ready
 
-- review decision workflow after preview generation
 - richer preview composition beyond simple renderable-video flow
-- output browsing/reporting in UI
+- richer final-render composition beyond preview-promotion foundation
+- detailed output reporting in UI
 
 ## In Progress
 
@@ -42,6 +42,9 @@ This Markdown board is the SSOT Kanban for the repository.
 - recipe persistence
 - recipe item assignment
 - preview render output job flow
+- review decision workflow
+- output browsing/reporting foundation in UI
+- final render foundation
 - recipe builder window and view model
 
 ## Board Policy

@@ -36,6 +36,7 @@ class RecipeBuilderWindow(QMainWindow):
         layout.addWidget(self._build_recipe_table_group(), 0, 1)
         layout.addWidget(self._build_asset_group(), 1, 0)
         layout.addWidget(self._build_recipe_items_group(), 1, 1)
+        layout.addWidget(self._build_outputs_group(), 2, 0, 1, 2)
         layout.setColumnStretch(0, 1)
         layout.setColumnStretch(1, 1)
         self.setCentralWidget(central)
@@ -44,6 +45,7 @@ class RecipeBuilderWindow(QMainWindow):
         self._view_model.assets_changed.connect(self._refresh_assets_table)
         self._view_model.recipes_changed.connect(self._refresh_recipes_table)
         self._view_model.recipe_items_changed.connect(self._refresh_recipe_items_table)
+        self._view_model.outputs_changed.connect(self._refresh_outputs_table)
         self._view_model.feedback_changed.connect(self._refresh_feedback)
         self._view_model.status_changed.connect(self._refresh_feedback)
         self._refresh_feedback()
@@ -81,14 +83,26 @@ class RecipeBuilderWindow(QMainWindow):
         create_button = QPushButton("Create Recipe")
         attach_button = QPushButton("Attach Selected Asset")
         preview_button = QPushButton("Build Preview")
+        approve_output_button = QPushButton("Approve Output")
+        approve_recipe_button = QPushButton("Approve Recipe")
+        reject_recipe_button = QPushButton("Reject Recipe")
+        final_render_button = QPushButton("Build Final")
         refresh_button = QPushButton("Refresh")
         create_button.clicked.connect(self._create_recipe)
         attach_button.clicked.connect(self._attach_asset)
         preview_button.clicked.connect(self._build_preview)
+        approve_output_button.clicked.connect(self._approve_output)
+        approve_recipe_button.clicked.connect(self._approve_recipe)
+        reject_recipe_button.clicked.connect(self._reject_recipe)
+        final_render_button.clicked.connect(self._build_final)
         refresh_button.clicked.connect(self._view_model.load)
         button_row.addWidget(create_button)
         button_row.addWidget(attach_button)
         button_row.addWidget(preview_button)
+        button_row.addWidget(approve_output_button)
+        button_row.addWidget(approve_recipe_button)
+        button_row.addWidget(reject_recipe_button)
+        button_row.addWidget(final_render_button)
         button_row.addWidget(refresh_button)
         layout.addLayout(button_row)
 
@@ -101,8 +115,8 @@ class RecipeBuilderWindow(QMainWindow):
     def _build_recipe_table_group(self) -> QGroupBox:
         group = QGroupBox("Recipes")
         layout = QVBoxLayout(group)
-        self.recipe_table = QTableWidget(0, 6)
-        self.recipe_table.setHorizontalHeaderLabels(["ID", "Product", "Code", "Platform", "Ratio", "Items"])
+        self.recipe_table = QTableWidget(0, 7)
+        self.recipe_table.setHorizontalHeaderLabels(["ID", "Product", "Code", "Platform", "Ratio", "Status", "Items"])
         self.recipe_table.setSelectionBehavior(QTableWidget.SelectRows)
         self.recipe_table.setSelectionMode(QTableWidget.SingleSelection)
         self.recipe_table.setEditTriggers(QTableWidget.NoEditTriggers)
@@ -135,6 +149,18 @@ class RecipeBuilderWindow(QMainWindow):
         layout.addWidget(self.recipe_items_table)
         return group
 
+    def _build_outputs_group(self) -> QGroupBox:
+        group = QGroupBox("Recipe Outputs")
+        layout = QVBoxLayout(group)
+        self.outputs_table = QTableWidget(0, 6)
+        self.outputs_table.setHorizontalHeaderLabels(["Output ID", "Code", "Recipe", "Platform", "Approved", "Path"])
+        self.outputs_table.setSelectionBehavior(QTableWidget.SelectRows)
+        self.outputs_table.setSelectionMode(QTableWidget.SingleSelection)
+        self.outputs_table.setEditTriggers(QTableWidget.NoEditTriggers)
+        self.outputs_table.horizontalHeader().setStretchLastSection(True)
+        layout.addWidget(self.outputs_table)
+        return group
+
     def _refresh_feedback(self) -> None:
         self.feedback_label.setText(f"Status: {self._view_model.status}\n{self._view_model.feedback}".strip())
 
@@ -157,6 +183,7 @@ class RecipeBuilderWindow(QMainWindow):
                 recipe.recipe_code,
                 recipe.target_platform or "",
                 recipe.target_ratio or "",
+                recipe.status,
                 str(recipe.item_count),
             ]
             for column_index, value in enumerate(values):
@@ -187,6 +214,20 @@ class RecipeBuilderWindow(QMainWindow):
             for column_index, value in enumerate(values):
                 self.recipe_items_table.setItem(row_index, column_index, QTableWidgetItem(value))
 
+    def _refresh_outputs_table(self) -> None:
+        self.outputs_table.setRowCount(len(self._view_model.outputs))
+        for row_index, output in enumerate(self._view_model.outputs):
+            values = [
+                str(output.output_id),
+                output.output_code,
+                output.recipe_code,
+                output.platform or "",
+                "Yes" if output.approved else "No",
+                output.file_path,
+            ]
+            for column_index, value in enumerate(values):
+                self.outputs_table.setItem(row_index, column_index, QTableWidgetItem(value))
+
     def _selected_product_id(self) -> int | None:
         selected_items = self.product_picker.selectedItems()
         if not selected_items:
@@ -204,6 +245,12 @@ class RecipeBuilderWindow(QMainWindow):
         if not selected_items:
             return None
         return int(self.assets_table.item(selected_items[0].row(), 0).text())
+
+    def _selected_output_id(self) -> int | None:
+        selected_items = self.outputs_table.selectedItems()
+        if not selected_items:
+            return None
+        return int(self.outputs_table.item(selected_items[0].row(), 0).text())
 
     def _create_recipe(self) -> None:
         product_id = self._selected_product_id()
@@ -249,6 +296,46 @@ class RecipeBuilderWindow(QMainWindow):
             self._view_model.queue_preview(recipe_id)
         except Exception as exc:  # noqa: BLE001
             QMessageBox.warning(self, "Build Preview", str(exc))
+
+    def _approve_output(self) -> None:
+        output_id = self._selected_output_id()
+        if output_id is None:
+            QMessageBox.warning(self, "Approve Output", "Select an output first.")
+            return
+        try:
+            self._view_model.approve_output(output_id)
+        except Exception as exc:  # noqa: BLE001
+            QMessageBox.warning(self, "Approve Output", str(exc))
+
+    def _approve_recipe(self) -> None:
+        recipe_id = self._selected_recipe_id()
+        if recipe_id is None:
+            QMessageBox.warning(self, "Approve Recipe", "Select a recipe first.")
+            return
+        try:
+            self._view_model.approve_recipe(recipe_id)
+        except Exception as exc:  # noqa: BLE001
+            QMessageBox.warning(self, "Approve Recipe", str(exc))
+
+    def _reject_recipe(self) -> None:
+        recipe_id = self._selected_recipe_id()
+        if recipe_id is None:
+            QMessageBox.warning(self, "Reject Recipe", "Select a recipe first.")
+            return
+        try:
+            self._view_model.reject_recipe(recipe_id)
+        except Exception as exc:  # noqa: BLE001
+            QMessageBox.warning(self, "Reject Recipe", str(exc))
+
+    def _build_final(self) -> None:
+        recipe_id = self._selected_recipe_id()
+        if recipe_id is None:
+            QMessageBox.warning(self, "Build Final", "Select a recipe first.")
+            return
+        try:
+            self._view_model.queue_final_render(recipe_id)
+        except Exception as exc:  # noqa: BLE001
+            QMessageBox.warning(self, "Build Final", str(exc))
 
     def _handle_recipe_selection(self) -> None:
         self._view_model.select_recipe(self._selected_recipe_id())

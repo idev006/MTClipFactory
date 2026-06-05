@@ -27,8 +27,11 @@
 - manual recipe builder
 - recipe item assignment
 - preview render job enqueue
+- output approval workflow
+- recipe approval / rejection workflow
 - preview status tracking
 - dashboard visibility for recipe/job counts
+- output browsing/reporting in UI
 
 ## Phase 4: Render Pipeline
 
@@ -49,12 +52,12 @@
 
 - Phase 1: complete
 - Phase 2: functionally complete for MVP baseline
-- Phase 3: in progress
+- Phase 3: functionally complete for MVP baseline
 - Phase 4: started
 - Phase 5: not started
 
-## Current Phase 3 Remaining
+## Current Phase 4 Remaining
 
-1. Add explicit review decision workflow after preview generation.
-2. Deepen preview composition beyond the current simple renderable-video path.
-3. Add final render orchestration and richer output registration/reporting.
+1. Deepen preview composition beyond the current simple renderable-video path.
+2. Replace final-render foundation with richer composition and audio-aware rendering.
+3. Add output reporting and approval trail beyond the current basic foundation.

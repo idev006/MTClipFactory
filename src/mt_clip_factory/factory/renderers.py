@@ -21,11 +21,11 @@ class FFmpegPreviewRenderer:
         self._settings_service = settings_service
         self._preview_root = preview_root
 
-    def render_preview(
+    def render_output(
         self,
         *,
         product_code: str,
-        recipe_code: str,
+        output_stem: str,
         source_files: list[Path],
     ) -> RenderedPreviewOutput:
         if not source_files:
@@ -34,7 +34,7 @@ class FFmpegPreviewRenderer:
         settings = self._settings_service.load()
         output_dir = self._preview_root / product_code / "videos"
         output_dir.mkdir(parents=True, exist_ok=True)
-        target_path = output_dir / f"{recipe_code}.mp4"
+        target_path = output_dir / f"{output_stem}.mp4"
 
         if len(source_files) == 1:
             self._run_ffmpeg(
@@ -93,6 +93,15 @@ class FFmpegPreviewRenderer:
             )
         return RenderedPreviewOutput(file_path=target_path)
 
+    def render_preview(
+        self,
+        *,
+        product_code: str,
+        recipe_code: str,
+        source_files: list[Path],
+    ) -> RenderedPreviewOutput:
+        return self.render_output(product_code=product_code, output_stem=recipe_code, source_files=source_files)
+
     def _run_ffmpeg(self, settings: SystemSettingsDTO, arguments: list[str]) -> None:
         ffmpeg_path = Path(settings.ffmpeg_path)
         if not ffmpeg_path.exists():
@@ -104,11 +113,11 @@ class LocalPreviewRenderer:
     def __init__(self, preview_root: Path) -> None:
         self._preview_root = preview_root
 
-    def render_preview(
+    def render_output(
         self,
         *,
         product_code: str,
-        recipe_code: str,
+        output_stem: str,
         source_files: list[Path],
     ) -> RenderedPreviewOutput:
         if not source_files:
@@ -116,9 +125,18 @@ class LocalPreviewRenderer:
         output_dir = self._preview_root / product_code / "videos"
         output_dir.mkdir(parents=True, exist_ok=True)
         suffix = source_files[0].suffix or ".bin"
-        target_path = output_dir / f"{recipe_code}{suffix}"
+        target_path = output_dir / f"{output_stem}{suffix}"
         shutil.copy2(source_files[0], target_path)
         return RenderedPreviewOutput(file_path=target_path)
+
+    def render_preview(
+        self,
+        *,
+        product_code: str,
+        recipe_code: str,
+        source_files: list[Path],
+    ) -> RenderedPreviewOutput:
+        return self.render_output(product_code=product_code, output_stem=recipe_code, source_files=source_files)
 
 
 def _escape_concat_path(file_path: Path) -> str:

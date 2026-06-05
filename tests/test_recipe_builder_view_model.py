@@ -2,7 +2,7 @@ from __future__ import annotations
 
 from mt_clip_factory.application.dto import CreateProductCommand
 from mt_clip_factory.application.services import ProductApplicationService
-from mt_clip_factory.factory.dto import RecipeDetailsDTO, RecipeItemDTO, RecipeSummaryDTO
+from mt_clip_factory.factory.dto import OutputSummaryDTO, RecipeDetailsDTO, RecipeItemDTO, RecipeSummaryDTO
 from mt_clip_factory.library.dto import AssetSummaryDTO
 from mt_clip_factory.presentation.factory.recipe_builder import RecipeBuilderViewModel
 
@@ -37,6 +37,7 @@ class FakeVideoAssemblyFactoryService:
     def __init__(self) -> None:
         self.recipes: list[RecipeSummaryDTO] = []
         self.items: dict[int, list[RecipeItemDTO]] = {}
+        self.outputs: dict[int, list[OutputSummaryDTO]] = {}
 
     def create_recipe(self, command) -> int:
         recipe_id = len(self.recipes) + 1
@@ -52,6 +53,7 @@ class FakeVideoAssemblyFactoryService:
         )
         self.recipes.append(summary)
         self.items[recipe_id] = []
+        self.outputs[recipe_id] = []
         return recipe_id
 
     def list_recipes(self, *, product_id: int | None = None, status: str | None = None) -> list[RecipeSummaryDTO]:
@@ -99,11 +101,93 @@ class FakeVideoAssemblyFactoryService:
         )
         return item_id
 
+    def list_outputs(self, *, recipe_id: int | None = None, approved: bool | None = None) -> list[OutputSummaryDTO]:
+        if recipe_id is None:
+            values = [output for outputs in self.outputs.values() for output in outputs]
+        else:
+            values = list(self.outputs.get(recipe_id, []))
+        if approved is None:
+            return values
+        return [output for output in values if output.approved == approved]
+
+    def approve_output(self, output_id: int) -> None:
+        for recipe_id, outputs in self.outputs.items():
+            for index, output in enumerate(outputs):
+                if output.output_id != output_id:
+                    continue
+                outputs[index] = OutputSummaryDTO(
+                    output_id=output.output_id,
+                    recipe_id=output.recipe_id,
+                    recipe_code=output.recipe_code,
+                    output_code=output.output_code,
+                    file_path=output.file_path,
+                    platform=output.platform,
+                    ratio=output.ratio,
+                    approved=True,
+                )
+                return
+        raise ValueError(str(output_id))
+
+    def approve_recipe(self, recipe_id: int) -> None:
+        recipe = next(recipe for recipe in self.recipes if recipe.recipe_id == recipe_id)
+        self.recipes[self.recipes.index(recipe)] = RecipeSummaryDTO(
+            recipe_id=recipe.recipe_id,
+            product_id=recipe.product_id,
+            product_code=recipe.product_code,
+            recipe_code=recipe.recipe_code,
+            target_platform=recipe.target_platform,
+            target_ratio=recipe.target_ratio,
+            status="approved",
+            item_count=recipe.item_count,
+        )
+
+    def reject_recipe(self, recipe_id: int) -> None:
+        recipe = next(recipe for recipe in self.recipes if recipe.recipe_id == recipe_id)
+        self.recipes[self.recipes.index(recipe)] = RecipeSummaryDTO(
+            recipe_id=recipe.recipe_id,
+            product_id=recipe.product_id,
+            product_code=recipe.product_code,
+            recipe_code=recipe.recipe_code,
+            target_platform=recipe.target_platform,
+            target_ratio=recipe.target_ratio,
+            status="rejected",
+            item_count=recipe.item_count,
+        )
+
     def enqueue_preview_job(self, recipe_id: int) -> int:
         return recipe_id
 
     def run_preview_job(self, job_id: int) -> None:
-        return None
+        self.outputs[job_id].append(
+            OutputSummaryDTO(
+                output_id=len(self.outputs[job_id]) + 1,
+                recipe_id=job_id,
+                recipe_code=next(recipe.recipe_code for recipe in self.recipes if recipe.recipe_id == job_id),
+                output_code=f"preview_output_{job_id}",
+                file_path=f"outputs/preview/{job_id}.mp4",
+                platform="tiktok",
+                ratio="9:16",
+                approved=False,
+            )
+        )
+
+    def enqueue_final_render_job(self, recipe_id: int) -> int:
+        return recipe_id + 100
+
+    def run_final_render_job(self, job_id: int) -> None:
+        recipe_id = job_id - 100
+        self.outputs[recipe_id].append(
+            OutputSummaryDTO(
+                output_id=len(self.outputs[recipe_id]) + 1,
+                recipe_id=recipe_id,
+                recipe_code=next(recipe.recipe_code for recipe in self.recipes if recipe.recipe_id == recipe_id),
+                output_code=f"final_output_{recipe_id}",
+                file_path=f"outputs/final/{recipe_id}.mp4",
+                platform="tiktok",
+                ratio="9:16",
+                approved=True,
+            )
+        )
 
 
 def test_recipe_builder_view_model_loads_products_assets_and_recipes(unit_of_work_factory) -> None:
@@ -121,6 +205,7 @@ def test_recipe_builder_view_model_loads_products_assets_and_recipes(unit_of_wor
     assert len(view_model.products) == 1
     assert len(view_model.assets) == 1
     assert view_model.recipes == []
+    assert view_model.outputs == []
 
 
 def test_recipe_builder_view_model_creates_recipe(unit_of_work_factory) -> None:
@@ -176,3 +261,63 @@ def test_recipe_builder_view_model_builds_preview(unit_of_work_factory) -> None:
     assert job_id == 1
     assert view_model.status == "ready"
     assert "Built preview output for recipe #1" in view_model.feedback
+    assert len(view_model.outputs) == 1
+
+
+def test_recipe_builder_view_model_approves_output_and_recipe(unit_of_work_factory) -> None:
+    product_service = ProductApplicationService(unit_of_work_factory=unit_of_work_factory)
+    product_service.create_product(CreateProductCommand(product_code="honey", product_name="Honey"))
+    factory_service = FakeVideoAssemblyFactoryService()
+    view_model = RecipeBuilderViewModel(
+        product_service=product_service,
+        asset_intake_service=FakeAssetIntakeService(),
+        video_assembly_factory_service=factory_service,
+    )
+    view_model.create_recipe(product_id=1, recipe_code="Honey Launch")
+    view_model.queue_preview(1)
+
+    view_model.approve_output(1)
+    view_model.approve_recipe(1)
+
+    assert view_model.outputs[0].approved is True
+    assert view_model.recipes[0].status == "approved"
+    assert "Approved recipe #1" in view_model.feedback
+
+
+def test_recipe_builder_view_model_rejects_recipe(unit_of_work_factory) -> None:
+    product_service = ProductApplicationService(unit_of_work_factory=unit_of_work_factory)
+    product_service.create_product(CreateProductCommand(product_code="honey", product_name="Honey"))
+    factory_service = FakeVideoAssemblyFactoryService()
+    view_model = RecipeBuilderViewModel(
+        product_service=product_service,
+        asset_intake_service=FakeAssetIntakeService(),
+        video_assembly_factory_service=factory_service,
+    )
+    view_model.create_recipe(product_id=1, recipe_code="Honey Launch")
+
+    view_model.reject_recipe(1)
+
+    assert view_model.recipes[0].status == "rejected"
+    assert "Rejected recipe #1" in view_model.feedback
+
+
+def test_recipe_builder_view_model_builds_final_render(unit_of_work_factory) -> None:
+    product_service = ProductApplicationService(unit_of_work_factory=unit_of_work_factory)
+    product_service.create_product(CreateProductCommand(product_code="honey", product_name="Honey"))
+    factory_service = FakeVideoAssemblyFactoryService()
+    view_model = RecipeBuilderViewModel(
+        product_service=product_service,
+        asset_intake_service=FakeAssetIntakeService(),
+        video_assembly_factory_service=factory_service,
+    )
+    view_model.create_recipe(product_id=1, recipe_code="Honey Launch")
+    view_model.queue_preview(1)
+    view_model.approve_output(1)
+    view_model.approve_recipe(1)
+
+    job_id = view_model.queue_final_render(1)
+
+    assert job_id == 101
+    assert len(view_model.outputs) == 2
+    assert view_model.outputs[-1].approved is True
+    assert "Built final render for recipe #1" in view_model.feedback

@@ -9,11 +9,14 @@
 | ISS-004 | 2026-06-05 | Medium | Recovery Depth | Job persistence exists, but recovery policy is not yet uniform across artifact and preview jobs. | Engineering | Open | Add resume/retry policy and restart tests. |
 | ISS-008 | 2026-06-06 | Medium | Path Reload Semantics | Path roots are now configurable, but a full runtime switch still assumes application restart for complete consistency. | Engineering | Open | Decide whether to keep restart semantics explicit or implement hot-reload for path-dependent services. |
 | ISS-009 | 2026-06-06 | Medium | Preview Composition Depth | Preview output currently supports a simple renderable-video path. It does not yet reflect layered composition, timing control, or audio mixing. | Engineering | Open | Add richer composition pipeline and explicit role-based render rules. |
+| ISS-010 | 2026-06-06 | Medium | Final Render Depth | Current final-render flow promotes from an approved preview output as a foundation. It is traceable and useful, but not yet a full recomposition pipeline. | Engineering | Open | Add richer final renderer with composition/audio-aware pipeline and stronger reporting. |
 
 ## Closed Issues
 
 | ID | Date Closed | Topic | Resolution |
 | --- | --- | --- | --- |
+| ISS-011-CLOSED | 2026-06-06 | Review Workflow Gap | Closed by delivering output approval plus recipe approval/rejection workflow. |
+| ISS-012-CLOSED | 2026-06-06 | Output Visibility Gap | Closed by delivering output browsing/reporting foundation in the Recipe Builder UI. |
 | ISS-003-CLOSED | 2026-06-06 | Preview Depth | Closed by delivering preview output rendering plus output registration foundation. |
 | ISS-005-CLOSED | 2026-06-06 | Path Configurability | Closed by adding `[paths]` support for database, media, docs, outputs, and preview roots. |
 | ISS-006-CLOSED | 2026-06-05 | Artifact Generation Gap | Closed by delivering persisted thumbnail/proxy generation jobs and dashboard visibility. |

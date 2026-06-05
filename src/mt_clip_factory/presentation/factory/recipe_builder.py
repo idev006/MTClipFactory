@@ -3,7 +3,13 @@ from __future__ import annotations
 from PySide6.QtCore import QObject, Property, Signal
 
 from mt_clip_factory.application.services import ProductApplicationService
-from mt_clip_factory.factory.dto import AssignAssetToRecipeCommand, CreateRecipeCommand, RecipeItemDTO, RecipeSummaryDTO
+from mt_clip_factory.factory.dto import (
+    AssignAssetToRecipeCommand,
+    CreateRecipeCommand,
+    OutputSummaryDTO,
+    RecipeItemDTO,
+    RecipeSummaryDTO,
+)
 from mt_clip_factory.factory.services import VideoAssemblyFactoryService
 from mt_clip_factory.library.dto import AssetSummaryDTO
 from mt_clip_factory.library.services import AssetIntakeService
@@ -14,6 +20,7 @@ class RecipeBuilderViewModel(QObject):
     assets_changed = Signal()
     recipes_changed = Signal()
     recipe_items_changed = Signal()
+    outputs_changed = Signal()
     status_changed = Signal()
     feedback_changed = Signal()
 
@@ -31,6 +38,7 @@ class RecipeBuilderViewModel(QObject):
         self._assets: list[AssetSummaryDTO] = []
         self._recipes: list[RecipeSummaryDTO] = []
         self._recipe_items: list[RecipeItemDTO] = []
+        self._outputs: list[OutputSummaryDTO] = []
         self._status = "idle"
         self._feedback = ""
         self._selected_recipe_id: int | None = None
@@ -72,17 +80,25 @@ class RecipeBuilderViewModel(QObject):
     def recipe_items(self) -> list[RecipeItemDTO]:
         return list(self._recipe_items)
 
+    @property
+    def outputs(self) -> list[OutputSummaryDTO]:
+        return list(self._outputs)
+
     def load(self) -> None:
         self._set_status("loading")
         self._products = self._product_service.list_products()
         self._assets = self._asset_intake_service.list_assets(status="ready")
         self._recipes = self._video_assembly_factory_service.list_recipes()
         if self._selected_recipe_id is not None:
-            self._load_recipe_items(self._selected_recipe_id)
+            self._load_selected_recipe_state(self._selected_recipe_id)
+        else:
+            self._recipe_items = []
+            self._outputs = []
         self.products_changed.emit()
         self.assets_changed.emit()
         self.recipes_changed.emit()
         self.recipe_items_changed.emit()
+        self.outputs_changed.emit()
         self._set_status("ready")
 
     def create_recipe(
@@ -127,8 +143,9 @@ class RecipeBuilderViewModel(QObject):
 
     def select_recipe(self, recipe_id: int | None) -> None:
         self._selected_recipe_id = recipe_id
-        self._load_recipe_items(recipe_id)
+        self._load_selected_recipe_state(recipe_id)
         self.recipe_items_changed.emit()
+        self.outputs_changed.emit()
 
     def assign_asset_to_recipe(self, *, recipe_id: int, asset_id: int, role: str) -> int:
         self._set_status("submitting")
@@ -161,9 +178,64 @@ class RecipeBuilderViewModel(QObject):
         self.load()
         return job_id
 
-    def _load_recipe_items(self, recipe_id: int | None) -> None:
+    def approve_output(self, output_id: int) -> None:
+        self._set_status("submitting")
+        try:
+            self._video_assembly_factory_service.approve_output(output_id)
+        except Exception as exc:  # noqa: BLE001
+            self._set_feedback(str(exc))
+            self._set_status("error")
+            raise
+
+        self._set_feedback(f"Approved output #{output_id}")
+        self.load()
+
+    def approve_recipe(self, recipe_id: int) -> None:
+        self._set_status("submitting")
+        try:
+            self._video_assembly_factory_service.approve_recipe(recipe_id)
+        except Exception as exc:  # noqa: BLE001
+            self._set_feedback(str(exc))
+            self._set_status("error")
+            raise
+
+        self._selected_recipe_id = recipe_id
+        self._set_feedback(f"Approved recipe #{recipe_id}")
+        self.load()
+
+    def reject_recipe(self, recipe_id: int) -> None:
+        self._set_status("submitting")
+        try:
+            self._video_assembly_factory_service.reject_recipe(recipe_id)
+        except Exception as exc:  # noqa: BLE001
+            self._set_feedback(str(exc))
+            self._set_status("error")
+            raise
+
+        self._selected_recipe_id = recipe_id
+        self._set_feedback(f"Rejected recipe #{recipe_id}")
+        self.load()
+
+    def queue_final_render(self, recipe_id: int) -> int:
+        self._set_status("processing")
+        try:
+            job_id = self._video_assembly_factory_service.enqueue_final_render_job(recipe_id)
+            self._video_assembly_factory_service.run_final_render_job(job_id)
+        except Exception as exc:  # noqa: BLE001
+            self._set_feedback(str(exc))
+            self._set_status("error")
+            raise
+
+        self._selected_recipe_id = recipe_id
+        self._set_feedback(f"Built final render for recipe #{recipe_id}")
+        self.load()
+        return job_id
+
+    def _load_selected_recipe_state(self, recipe_id: int | None) -> None:
         if recipe_id is None:
             self._recipe_items = []
+            self._outputs = []
             return
         recipe = self._video_assembly_factory_service.get_recipe(recipe_id)
         self._recipe_items = list(recipe.items)
+        self._outputs = self._video_assembly_factory_service.list_outputs(recipe_id=recipe_id)

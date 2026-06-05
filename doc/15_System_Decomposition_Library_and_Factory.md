@@ -46,6 +46,9 @@ Compose prepared assets into reviewable preview and later final-output workflows
 - recipe item assignment
 - preview job enqueue
 - preview output generation
+- output approval decisions
+- recipe approval / rejection decisions
+- final render foundation
 - preview job status tracking
 
 ### Future Responsibilities

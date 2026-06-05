@@ -5,7 +5,7 @@ from collections.abc import Callable
 from datetime import UTC, datetime
 from pathlib import Path
 
-from mt_clip_factory.domain.enums import JobStatus
+from mt_clip_factory.domain.enums import JobStatus, RecipeStatus
 from mt_clip_factory.domain.jobs import Job
 from mt_clip_factory.domain.outputs import Output
 from mt_clip_factory.domain.recipes import Recipe
@@ -13,6 +13,7 @@ from mt_clip_factory.domain.services import UnitOfWork
 from mt_clip_factory.factory.dto import (
     AssignAssetToRecipeCommand,
     CreateRecipeCommand,
+    OutputSummaryDTO,
     PreviewJobSummaryDTO,
     RecipeDetailsDTO,
     RecipeItemDTO,
@@ -47,18 +48,33 @@ class PreviewBuildInputError(ValueError):
     """Raised when a preview job cannot be built from current recipe state."""
 
 
+class OutputNotFoundError(ValueError):
+    """Raised when an output cannot be found."""
+
+
+class RecipeApprovalError(ValueError):
+    """Raised when a recipe approval decision is invalid."""
+
+
+class FinalRenderPrerequisiteError(ValueError):
+    """Raised when final render requirements are not satisfied."""
+
+
 class VideoAssemblyFactoryService:
     PREVIEW_JOB_TYPE = "render_recipe_preview"
+    FINAL_JOB_TYPE = "render_recipe_final"
 
     def __init__(
         self,
         unit_of_work_factory: Callable[[], UnitOfWork],
         preview_manifest_builder: PreviewManifestBuilder,
         preview_renderer,
+        final_renderer,
     ) -> None:
         self._unit_of_work_factory = unit_of_work_factory
         self._preview_manifest_builder = preview_manifest_builder
         self._preview_renderer = preview_renderer
+        self._final_renderer = final_renderer
 
     def create_recipe(self, command: CreateRecipeCommand) -> int:
         recipe_code = _slugify_recipe_code(command.recipe_code)
@@ -167,23 +183,68 @@ class VideoAssemblyFactoryService:
                 raise RuntimeError("Recipe item identifier was not assigned.")
             return item.id
 
-    def enqueue_preview_job(self, recipe_id: int) -> int:
+    def list_outputs(
+        self,
+        *,
+        recipe_id: int | None = None,
+        approved: bool | None = None,
+    ) -> list[OutputSummaryDTO]:
+        with self._unit_of_work_factory() as uow:
+            return [
+                OutputSummaryDTO(
+                    output_id=summary.output_id,
+                    recipe_id=summary.recipe_id,
+                    recipe_code=summary.recipe_code,
+                    output_code=summary.output_code,
+                    file_path=summary.file_path,
+                    platform=summary.platform,
+                    ratio=summary.ratio,
+                    approved=summary.approved,
+                )
+                for summary in uow.outputs.list_summaries(recipe_id=recipe_id, approved=approved)
+            ]
+
+    def approve_output(self, output_id: int) -> None:
+        with self._unit_of_work_factory() as uow:
+            output = uow.outputs.get_by_id(output_id)
+            if output is None or output.id is None:
+                raise OutputNotFoundError(str(output_id))
+            output.approved = True
+            uow.outputs.update(output)
+            uow.commit()
+
+    def approve_recipe(self, recipe_id: int) -> None:
         with self._unit_of_work_factory() as uow:
             recipe = uow.recipes.get_by_id(recipe_id)
             if recipe is None or recipe.id is None:
                 raise RecipeNotFoundError(str(recipe_id))
-            job = Job(
-                job_code=build_artifact_job_code("preview"),
-                job_type=self.PREVIEW_JOB_TYPE,
-                recipe_id=recipe_id,
-                status=JobStatus.QUEUED,
-                input_json=encode_job_input({"recipe_id": recipe_id}),
-            )
-            created = uow.jobs.add(job)
+            approved_outputs = list(uow.outputs.list_summaries(recipe_id=recipe_id, approved=True))
+            if not approved_outputs:
+                raise RecipeApprovalError("Approve at least one output before approving the recipe.")
+            recipe.status = RecipeStatus.APPROVED
+            uow.recipes.update(recipe)
             uow.commit()
-            if created.id is None:
-                raise RuntimeError("Preview job identifier was not assigned.")
-            return created.id
+
+    def reject_recipe(self, recipe_id: int) -> None:
+        with self._unit_of_work_factory() as uow:
+            recipe = uow.recipes.get_by_id(recipe_id)
+            if recipe is None or recipe.id is None:
+                raise RecipeNotFoundError(str(recipe_id))
+            recipe.status = RecipeStatus.REJECTED
+            uow.recipes.update(recipe)
+            uow.commit()
+
+    def enqueue_preview_job(self, recipe_id: int) -> int:
+        return self._enqueue_recipe_job(recipe_id=recipe_id, job_type=self.PREVIEW_JOB_TYPE, code_prefix="preview")
+
+    def enqueue_final_render_job(self, recipe_id: int) -> int:
+        with self._unit_of_work_factory() as uow:
+            recipe = uow.recipes.get_by_id(recipe_id)
+            if recipe is None or recipe.id is None:
+                raise RecipeNotFoundError(str(recipe_id))
+            if recipe.status != RecipeStatus.APPROVED:
+                raise FinalRenderPrerequisiteError("Approve the recipe before starting final render.")
+        return self._enqueue_recipe_job(recipe_id=recipe_id, job_type=self.FINAL_JOB_TYPE, code_prefix="final")
 
     def run_preview_job(self, job_id: int) -> None:
         with self._unit_of_work_factory() as uow:
@@ -242,9 +303,9 @@ class VideoAssemblyFactoryService:
                 ]
                 if not source_files:
                     raise PreviewBuildInputError(f"Recipe {recipe.recipe_code} has no renderable video assets.")
-                rendered_output = self._preview_renderer.render_preview(
+                rendered_output = self._preview_renderer.render_output(
                     product_code=product.product_code,
-                    recipe_code=recipe.recipe_code,
+                    output_stem=recipe.recipe_code,
                     source_files=source_files,
                 )
                 output = uow.outputs.add(
@@ -281,9 +342,85 @@ class VideoAssemblyFactoryService:
                 uow.commit()
                 raise
 
-    def list_preview_jobs(self, *, status: str | None = None) -> list[PreviewJobSummaryDTO]:
+    def run_final_render_job(self, job_id: int) -> None:
         with self._unit_of_work_factory() as uow:
-            jobs = uow.jobs.list_summaries(status=status, job_type=self.PREVIEW_JOB_TYPE)
+            job = uow.jobs.get_by_id(job_id)
+            if job is None or job.id is None:
+                raise ValueError(str(job_id))
+            if job.job_type != self.FINAL_JOB_TYPE:
+                raise ValueError(f"Unsupported final job type: {job.job_type}")
+
+            payload = decode_job_input(job.input_json)
+            recipe_id = int(payload.get("recipe_id") or job.recipe_id or 0)
+            recipe = uow.recipes.get_by_id(recipe_id)
+            if recipe is None or recipe.id is None:
+                raise RecipeNotFoundError(str(recipe_id))
+            if recipe.status != RecipeStatus.APPROVED:
+                raise FinalRenderPrerequisiteError("Approve the recipe before starting final render.")
+            product = uow.products.get_by_id(recipe.product_id)
+            if product is None:
+                raise ValueError(str(recipe.product_id))
+
+            job.status = JobStatus.PROCESSING
+            job.started_at = _utc_now()
+            job.progress = 0.1
+            uow.jobs.update(job)
+            uow.commit()
+
+            try:
+                approved_outputs = list(uow.outputs.list_summaries(recipe_id=recipe.id, approved=True))
+                if not approved_outputs:
+                    raise FinalRenderPrerequisiteError("Approve at least one output before final render.")
+
+                source_output = approved_outputs[0]
+                rendered_output = self._final_renderer.render_output(
+                    product_code=product.product_code,
+                    output_stem=f"{recipe.recipe_code}_final",
+                    source_files=[Path(source_output.file_path)],
+                )
+                output = uow.outputs.add(
+                    Output(
+                        recipe_id=recipe.id,
+                        output_code=build_artifact_job_code("final_output"),
+                        file_path=str(rendered_output.file_path),
+                        platform=recipe.target_platform,
+                        ratio=recipe.target_ratio,
+                        duration_sec=rendered_output.duration_sec,
+                        approved=True,
+                    )
+                )
+                job.status = JobStatus.DONE
+                job.progress = 1.0
+                job.output_json = json.dumps(
+                    {
+                        "output_id": output.id,
+                        "source_output_id": source_output.output_id,
+                        "final_output_path": str(rendered_output.file_path),
+                    },
+                    sort_keys=True,
+                )
+                job.error_message = None
+                job.finished_at = _utc_now()
+                uow.jobs.update(job)
+                uow.commit()
+            except Exception as exc:
+                job.status = JobStatus.FAILED
+                job.progress = 0.0
+                job.error_message = str(exc)
+                job.finished_at = _utc_now()
+                uow.jobs.update(job)
+                uow.commit()
+                raise
+
+    def list_preview_jobs(self, *, status: str | None = None) -> list[PreviewJobSummaryDTO]:
+        return self._list_jobs(job_type=self.PREVIEW_JOB_TYPE, status=status)
+
+    def list_final_render_jobs(self, *, status: str | None = None) -> list[PreviewJobSummaryDTO]:
+        return self._list_jobs(job_type=self.FINAL_JOB_TYPE, status=status)
+
+    def _list_jobs(self, *, job_type: str, status: str | None = None) -> list[PreviewJobSummaryDTO]:
+        with self._unit_of_work_factory() as uow:
+            jobs = uow.jobs.list_summaries(status=status, job_type=job_type)
             output_map = {
                 job.id: job.output_json
                 for job in (
@@ -297,6 +434,7 @@ class VideoAssemblyFactoryService:
                     job_id=summary.job_id,
                     job_code=summary.job_code,
                     recipe_id=summary.recipe_id,
+                    job_type=summary.job_type,
                     status=summary.status.value,
                     progress=summary.progress,
                     output_path=_extract_output_path(output_map.get(summary.job_id)),
@@ -304,6 +442,24 @@ class VideoAssemblyFactoryService:
                 )
                 for summary in jobs
             ]
+
+    def _enqueue_recipe_job(self, *, recipe_id: int, job_type: str, code_prefix: str) -> int:
+        with self._unit_of_work_factory() as uow:
+            recipe = uow.recipes.get_by_id(recipe_id)
+            if recipe is None or recipe.id is None:
+                raise RecipeNotFoundError(str(recipe_id))
+            job = Job(
+                job_code=build_artifact_job_code(code_prefix),
+                job_type=job_type,
+                recipe_id=recipe_id,
+                status=JobStatus.QUEUED,
+                input_json=encode_job_input({"recipe_id": recipe_id}),
+            )
+            created = uow.jobs.add(job)
+            uow.commit()
+            if created.id is None:
+                raise RuntimeError("Recipe job identifier was not assigned.")
+            return created.id
 
 
 def _slugify_recipe_code(value: str) -> str:
@@ -315,7 +471,7 @@ def _extract_output_path(output_json: str | None) -> str | None:
     if not output_json:
         return None
     payload = json.loads(output_json)
-    return payload.get("preview_output_path") or payload.get("preview_manifest_path")
+    return payload.get("final_output_path") or payload.get("preview_output_path") or payload.get("preview_manifest_path")
 
 
 def _is_renderable_preview_asset(asset_type: str) -> bool:

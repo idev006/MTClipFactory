@@ -7,7 +7,7 @@ from typing import Protocol
 from mt_clip_factory.domain.assets import Asset, AssetSummary
 from mt_clip_factory.domain.entities import Product, ProductSummary
 from mt_clip_factory.domain.jobs import Job, JobSummary
-from mt_clip_factory.domain.outputs import Output
+from mt_clip_factory.domain.outputs import Output, OutputSummary
 from mt_clip_factory.domain.recipes import Recipe, RecipeItem, RecipeSummary
 from mt_clip_factory.domain.tags import Tag, TagSummary
 
@@ -126,6 +126,20 @@ class RecipeRepository(Protocol):
 
 class OutputRepository(Protocol):
     def add(self, output: Output) -> Output:
+        ...
+
+    def get_by_id(self, output_id: int) -> Output | None:
+        ...
+
+    def update(self, output: Output) -> Output:
+        ...
+
+    def list_summaries(
+        self,
+        *,
+        recipe_id: int | None = None,
+        approved: bool | None = None,
+    ) -> Sequence[OutputSummary]:
         ...
 
 

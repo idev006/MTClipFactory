@@ -44,3 +44,13 @@
 
 - writing a preview file alone is not enough; registering an output record makes reporting and product-level counts much more useful
 - if work produces value, that value should usually enter the SSOT instead of living only on disk
+
+## LL-010 | 2026-06-06 | Review Needs Explicit State
+
+- “preview exists” and “content is approved” are different truths and should never be collapsed into one status
+- separating output approval from recipe approval made the workflow much easier to explain and test
+
+## LL-011 | 2026-06-06 | Final Render Can Start As Promotion Foundation
+
+- a first final-render slice does not need full composition logic if it creates traceable value and preserves a clean seam for deeper rendering later
+- promoting from an approved preview output gave us a safe bridge toward richer render orchestration without inventing hidden state

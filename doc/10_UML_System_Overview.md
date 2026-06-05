@@ -56,10 +56,17 @@ classDiagram
         +create_recipe(command)
         +list_recipes(...)
         +get_recipe(recipe_id)
+        +list_outputs(...)
+        +approve_output(output_id)
+        +approve_recipe(recipe_id)
+        +reject_recipe(recipe_id)
         +assign_asset_to_recipe(command)
         +enqueue_preview_job(recipe_id)
         +run_preview_job(job_id)
         +list_preview_jobs(...)
+        +enqueue_final_render_job(recipe_id)
+        +run_final_render_job(job_id)
+        +list_final_render_jobs(...)
     }
 
     class FFmpegPreviewRenderer {
@@ -226,6 +233,40 @@ sequenceDiagram
     VM-->>View: refresh recipes and feedback
 ```
 
+## Review And Final Sequence
+
+```mermaid
+sequenceDiagram
+    actor User
+    participant View as RecipeBuilderWindow
+    participant VM as RecipeBuilderViewModel
+    participant Factory as VideoAssemblyFactoryService
+    participant Out as OutputRepository
+    participant JobRepo as JobRepository
+    participant Render as FFmpegPreviewRenderer
+    participant DB as SQLite
+
+    User->>View: approve preview output
+    View->>VM: approve_output(output_id)
+    VM->>Factory: approve_output(output_id)
+    Factory->>Out: update(approved=True)
+    Factory->>DB: COMMIT
+    User->>View: approve recipe
+    View->>VM: approve_recipe(recipe_id)
+    VM->>Factory: approve_recipe(recipe_id)
+    Factory->>DB: COMMIT
+    User->>View: build final
+    View->>VM: queue_final_render(recipe_id)
+    VM->>Factory: enqueue_final_render_job(recipe_id)
+    Factory->>JobRepo: add(job)
+    Factory->>DB: COMMIT
+    VM->>Factory: run_final_render_job(job_id)
+    Factory->>Render: render_output(...)
+    Factory->>Out: add(final output)
+    Factory->>JobRepo: update(done/failed)
+    Factory->>DB: COMMIT
+```
+
 ## Workflow State Direction
 
 ```mermaid
@@ -236,8 +277,11 @@ stateDiagram-v2
     RECIPE_CANDIDATE --> PREVIEW_JOB_QUEUED
     PREVIEW_JOB_QUEUED --> PREVIEW_JOB_PROCESSING
     PREVIEW_JOB_PROCESSING --> PREVIEW_OUTPUT_READY
+    PREVIEW_OUTPUT_READY --> OUTPUT_APPROVED
     PREVIEW_OUTPUT_READY --> HUMAN_REVIEW
+    OUTPUT_APPROVED --> RECIPE_APPROVED
     HUMAN_REVIEW --> APPROVED
     HUMAN_REVIEW --> REJECTED
-    APPROVED --> FINAL_RENDER_PENDING
+    RECIPE_APPROVED --> FINAL_RENDER_PENDING
+    FINAL_RENDER_PENDING --> FINAL_RENDER_DONE
 ```
