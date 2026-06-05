@@ -1,30 +1,29 @@
 # Operational Reliability and Control Center
 
-เอกสารนี้นิยามข้อกำหนดด้าน dashboard, settings, reliability, recoverability, durability, performance, และ component-based design ของระบบ
+## Dashboard Requirements
 
-## Control Center Requirements
+The dashboard is the operational truth surface for both admin and user roles.
 
-### Dashboard
-
-Dashboard คือหน้าหลักของระบบ และต้องเป็น operational truth surface สำหรับ admin/user
-
-อย่างน้อย dashboard ต้องแสดง:
+It must show at least:
 
 - product count
 - asset count
-- ready / needs_review asset count
+- recipe count
+- output count
+- ready / needs-review asset counts
 - tag count
+- queued job count
+- failed job count
 - runtime dependency readiness
-- database path
-- media root
+- workspace, database, and media paths
 - FFmpeg / FFprobe paths
 - operational thresholds
 
-### Settings
+## Settings Requirements
 
-Settings คือหน้า system authority สำหรับ admin/user
+Settings are the current authority surface for editable runtime policy.
 
-อย่างน้อย settings ต้องควบคุมได้:
+Current editable fields:
 
 - FFmpeg root
 - FFprobe path
@@ -32,74 +31,50 @@ Settings คือหน้า system authority สำหรับ admin/user
 - CPU limit threshold
 - RAM limit threshold
 - disk free minimum
-- preview/final worker limits
+- preview worker limit
+- final worker limit
 - auto refresh cadence
 
 ## Reliability Principles
 
-ระบบต้อง:
-
-- survive partial dependency failures เมื่อทำได้
-- degrade gracefully เมื่อ dependency หลักไม่พร้อม
-- ให้ข้อมูลสถานะชัดเจนผ่าน dashboard
-- เก็บ source of truth อย่างเป็นระบบ
-- เลี่ยง hidden state ที่ตรวจสอบไม่ได้
+- state must be persisted before the system claims work exists
+- background processing must appear on the dashboard as job state, not hidden side effects
+- failures must become visible to operators immediately
+- partial dependency failure should degrade capability, not corrupt data
 
 ## Recoverability Principles
 
-ระบบต้องมุ่งไปสู่ความสามารถเหล่านี้:
-
-- resume งานจาก persisted state
-- retry เฉพาะ component ที่ล้มเหลว
-- ไม่ recompute ซ้ำโดยไม่จำเป็น
-- trace ปัญหาย้อนกลับได้
+- jobs should be retryable from persisted state
+- artifact generation and preview generation should not require manual database repair after normal failures
+- operators must be able to tell whether work is queued, failed, or completed from the dashboard
 
 ## Durability Principles
 
-- ไฟล์จริงเก็บใน media storage
-- ความหมายของระบบเก็บใน database และ config ที่ชัดเจน
-- runtime settings สำคัญต้อง persist
-- การเปลี่ยนค่า config ต้องตรวจสอบย้อนหลังได้
+- asset files and generated artifacts live in filesystem storage
+- metadata and job state live in SQLite
+- operational settings live in `app_config.toml`
 
 ## No-Hardcode Rule
 
-- runtime paths
-- thresholds
+The following must flow through config or services whenever user control is appropriate:
+
+- runtime tool paths
+- operational thresholds
 - worker limits
 - refresh cadence
-- policy defaults ที่ admin/user ควรควบคุมได้
+- path roots that the operator may need to relocate
 
-ทั้งหมดนี้ต้องไหลผ่าน config/service กลาง ไม่กระจายเป็น hardcoded literals ใน business code
+## Current Reliability Baseline
 
-## Performance Principles
+- persisted artifact jobs for thumbnail/proxy generation
+- persisted preview jobs for recipe preview manifests
+- dashboard visibility of queued and failed jobs
+- settings-based FFmpeg path control
+- automated tests for success and failure job paths
 
-- ใช้ FFprobe สำหรับ metadata phase
-- ใช้ caching และ artifact reuse
-- อย่าให้ UI query งานหนักเกินความจำเป็น
-- aggregate data ผ่าน service ที่ควบคุมได้
+## Current Gaps
 
-## Component-Based Design Rule
-
-ทุกความสามารถใหม่ควรถูกวางเป็น component ที่มี:
-
-- responsibility ชัดเจน
-- interface ชัดเจน
-- test seam ชัดเจน
-- persistence story ชัดเจน
-
-## Current Foundation Delivered
-
-- Dashboard window and view model
-- Settings window and service
-- FFmpeg/FFprobe config via `app_config.toml`
-- Asset readiness status
-- Tag dictionary and asset tagging
-
-## Next Reliability Slice
-
-สิ่งที่ยังควรทำต่อ:
-
-1. thumbnail/proxy generation with persisted artifacts
-2. job retry/recovery rules
-3. degraded-mode policies when FFmpeg parts fail
-4. richer system alerts surfaced on dashboard
+1. Preview jobs currently create manifests, not final preview videos.
+2. Recovery policy is not yet unified across all job types.
+3. Path-root configurability is still incomplete.
+4. Dashboard does not yet show detailed alert history, only summary counts.

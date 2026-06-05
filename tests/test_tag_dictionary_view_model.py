@@ -27,6 +27,8 @@ class FakeAssetIntakeService:
                 duration_sec=1.0,
                 file_size_mb=0.001,
                 tag_labels=("mood:warm",),
+                thumbnail_path=None,
+                proxy_path=None,
             )
         ]
 

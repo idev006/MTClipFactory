@@ -24,6 +24,7 @@ class DashboardWindow(QMainWindow):
         view_model: DashboardViewModel,
         open_products: Callable[[], None],
         open_assets: Callable[[], None],
+        open_recipes: Callable[[], None],
         open_tags: Callable[[], None],
         open_settings: Callable[[], None],
     ) -> None:
@@ -31,6 +32,7 @@ class DashboardWindow(QMainWindow):
         self._view_model = view_model
         self._open_products = open_products
         self._open_assets = open_assets
+        self._open_recipes = open_recipes
         self._open_tags = open_tags
         self._open_settings = open_settings
         self.setWindowTitle("MTClipFactory - Dashboard")
@@ -65,17 +67,20 @@ class DashboardWindow(QMainWindow):
         dashboard_refresh_button = QPushButton("Refresh Dashboard")
         products_button = QPushButton("Products")
         assets_button = QPushButton("Assets")
+        recipes_button = QPushButton("Recipes")
         tags_button = QPushButton("Tags")
         settings_button = QPushButton("Settings")
         dashboard_refresh_button.clicked.connect(self._view_model.load)
         products_button.clicked.connect(self._open_products)
         assets_button.clicked.connect(self._open_assets)
+        recipes_button.clicked.connect(self._open_recipes)
         tags_button.clicked.connect(self._open_tags)
         settings_button.clicked.connect(self._open_settings)
         for button in (
             dashboard_refresh_button,
             products_button,
             assets_button,
+            recipes_button,
             tags_button,
             settings_button,
         ):
@@ -122,9 +127,13 @@ class DashboardWindow(QMainWindow):
                 [
                     f"Products: {summary.product_count}",
                     f"Assets: {summary.asset_count}",
+                    f"Recipes: {summary.recipe_count}",
+                    f"Outputs: {summary.output_count}",
                     f"Ready Assets: {summary.ready_asset_count}",
                     f"Needs Review Assets: {summary.needs_review_asset_count}",
                     f"Tags: {summary.tag_count}",
+                    f"Queued Jobs: {summary.queued_job_count}",
+                    f"Failed Jobs: {summary.failed_job_count}",
                     f"FFprobe Available: {summary.ffprobe_available}",
                     f"FFmpeg Available: {summary.ffmpeg_available}",
                 ]
@@ -153,4 +162,3 @@ class DashboardWindow(QMainWindow):
                 ]
             )
         )
-

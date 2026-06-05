@@ -180,6 +180,32 @@ class SqlAlchemyAssetRepository:
             return None
         return self._to_entity(model)
 
+    def update(self, asset: Asset) -> Asset:
+        if asset.id is None:
+            raise ValueError("Asset id is required for update.")
+        model = self._session.get(AssetModel, asset.id)
+        if model is None:
+            raise ValueError(f"Unknown asset id: {asset.id}")
+
+        model.file_path = asset.file_path
+        model.file_name = asset.file_name
+        model.duration_sec = asset.duration_sec
+        model.width = asset.width
+        model.height = asset.height
+        model.fps = asset.fps
+        model.ratio = asset.ratio
+        model.file_size_mb = asset.file_size_mb
+        model.codec = asset.codec
+        model.has_audio = asset.has_audio
+        model.thumbnail_path = asset.thumbnail_path
+        model.proxy_path = asset.proxy_path
+        model.alpha_path = asset.alpha_path
+        model.rgba_cache_path = asset.rgba_cache_path
+        model.quality_score = asset.quality_score
+        model.status = asset.status
+        self._session.flush()
+        return asset
+
     def list_summaries(
         self,
         product_id: int | None = None,
@@ -198,6 +224,8 @@ class SqlAlchemyAssetRepository:
                 AssetModel.ratio,
                 AssetModel.duration_sec,
                 AssetModel.file_size_mb,
+                AssetModel.thumbnail_path,
+                AssetModel.proxy_path,
             )
             .join(ProductModel, ProductModel.id == AssetModel.product_id)
             .order_by(AssetModel.created_at.desc(), AssetModel.id.desc())
@@ -223,6 +251,8 @@ class SqlAlchemyAssetRepository:
                 duration_sec=row.duration_sec,
                 file_size_mb=row.file_size_mb,
                 tag_labels=self._load_tag_labels(row.id),
+                thumbnail_path=row.thumbnail_path,
+                proxy_path=row.proxy_path,
             )
             for row in rows
         ]

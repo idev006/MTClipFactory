@@ -7,6 +7,7 @@ from mt_clip_factory.application.services import ProductApplicationService
 from mt_clip_factory.config import default_config
 from mt_clip_factory.control_center.dto import SystemSettingsDTO
 from mt_clip_factory.control_center.services import DashboardService, SystemSettingsService
+from mt_clip_factory.library.artifact_dto import ArtifactJobSummaryDTO
 from mt_clip_factory.library.dto import RegisterAssetCommand
 from mt_clip_factory.library.readiness import AssetReadinessEvaluator
 from mt_clip_factory.library.services import AssetIntakeService
@@ -30,6 +31,40 @@ class FakeMetadataAnalyzer:
             codec="h264",
             has_audio=True,
         )
+
+
+class FakeArtifactGenerationService:
+    def __init__(self, queued_count: int = 0, failed_count: int = 0) -> None:
+        self._queued_jobs = [
+            ArtifactJobSummaryDTO(
+                job_id=index + 1,
+                job_code=f"queued_{index + 1}",
+                job_type="generate_thumbnail",
+                status="queued",
+                asset_id=1,
+                progress=0.0,
+            )
+            for index in range(queued_count)
+        ]
+        self._failed_jobs = [
+            ArtifactJobSummaryDTO(
+                job_id=queued_count + index + 1,
+                job_code=f"failed_{index + 1}",
+                job_type="generate_proxy",
+                status="failed",
+                asset_id=1,
+                progress=0.0,
+                error_message="job failed",
+            )
+            for index in range(failed_count)
+        ]
+
+    def list_jobs(self, *, status: str | None = None) -> list[ArtifactJobSummaryDTO]:
+        if status == "queued":
+            return list(self._queued_jobs)
+        if status == "failed":
+            return list(self._failed_jobs)
+        return [*self._queued_jobs, *self._failed_jobs]
 
 
 def _build_asset_service(unit_of_work_factory, media_root: Path) -> AssetIntakeService:
@@ -114,6 +149,7 @@ def test_dashboard_view_model_loads_summary(unit_of_work_factory, tmp_path) -> N
         config=config,
         product_service=product_service,
         asset_intake_service=asset_service,
+        artifact_generation_service=FakeArtifactGenerationService(queued_count=1, failed_count=1),
         tag_management_service=tag_service,
         system_settings_service=settings_service,
     )
@@ -124,3 +160,7 @@ def test_dashboard_view_model_loads_summary(unit_of_work_factory, tmp_path) -> N
     assert view_model.status == "ready"
     assert view_model.summary is not None
     assert view_model.summary.product_count == 1
+    assert view_model.summary.recipe_count == 0
+    assert view_model.summary.output_count == 0
+    assert view_model.summary.queued_job_count == 1
+    assert view_model.summary.failed_job_count == 1

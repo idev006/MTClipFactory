@@ -1,127 +1,39 @@
 # UML System Overview
 
-เอกสารนี้เป็น UML กลางของระบบสำหรับใช้สื่อสาร architecture กับทีม โดยใช้ Mermaid ใน Markdown เพื่อให้แก้ไขง่ายและเป็นส่วนหนึ่งของ SSOT
+This document is the living UML source of truth for the current implementation.
 
 ## Package Diagram
 
 ```mermaid
 flowchart TB
     UI["UI Layer"] --> VM["Presentation / ViewModel"]
-    UI --> CC["Control Center"]
     VM --> LIB["Resource Library Management"]
     VM --> FAC["Video Assembly Factory"]
-    CC --> APP
-    LIB --> APP["Shared Application Services"]
-    FAC --> APP
-    APP --> DOMAIN["Domain"]
-    APP --> INFRA["Infrastructure"]
-    INFRA --> DB["SQLite / SQLAlchemy"]
-    INFRA --> FS["Filesystem / Media Library"]
-    INFRA --> EXT["FFmpeg / External Tools"]
+    VM --> CC["Control Center"]
+    LIB --> CORE["Shared Domain + Infrastructure"]
+    FAC --> CORE
+    CC --> CORE
+    CORE --> DB["SQLite / SQLAlchemy"]
+    CORE --> FS["Filesystem / Media Library"]
+    CORE --> EXT["FFmpeg / FFprobe"]
 ```
 
-## Module Relationship
-
-```mermaid
-flowchart LR
-    L["Resource Library Management"] -->|"prepared assets"| F["Video Assembly Factory"]
-    L -->|"product, asset, tag SSOT"| DB["Shared SQLite"]
-    F -->|"recipe, job, output state"| DB
-```
-
-## Component Responsibilities
+## Current Component Map
 
 ```mermaid
 classDiagram
     class ResourceLibraryModule {
         +product_service
         +asset_intake_service
-    }
-
-    class VideoAssemblyFactoryModule {
-        +build_recipe()
-        +queue_preview()
-        +approve_recipe()
-        +queue_final_render()
-    }
-
-    class ProductLibraryWindow {
-        +show()
-        +create_product()
-        +update_product()
-        +delete_product()
-    }
-
-    class DashboardWindow {
-        +show()
-        +refresh_dashboard()
-        +open_products()
-        +open_assets()
-        +open_tags()
-        +open_settings()
-    }
-
-    class SettingsWindow {
-        +show()
-        +save_settings()
-        +reload()
-    }
-
-    class AssetLibraryWindow {
-        +show()
-        +register_asset()
-        +refresh()
-    }
-
-    class TagDictionaryWindow {
-        +show()
-        +create_tag()
-        +assign_tag()
-    }
-
-    class ProductLibraryViewModel {
-        +load()
-        +create_product(command)
-        +get_product(product_id)
-        +update_product(command)
-        +delete_product(product_id)
-        +status
-        +products
-        +feedback
-    }
-
-    class AssetLibraryViewModel {
-        +load()
-        +register_asset(...)
-        +products
-        +assets
-        +feedback
-    }
-
-    class TagDictionaryViewModel {
-        +load()
-        +create_tag(...)
-        +assign_tag_to_asset(...)
-        +tags
-        +assets
-    }
-
-    class DashboardViewModel {
-        +load()
-        +summary
-        +status
-    }
-
-    class SettingsViewModel {
-        +load()
-        +save(settings)
-        +settings
-        +feedback
+        +artifact_generation_service
+        +video_assembly_factory_service
+        +tag_management_service
+        +system_settings_service
+        +dashboard_service
     }
 
     class ProductApplicationService {
         +create_product(command)
-        +get_product(product_id)
         +update_product(command)
         +delete_product(product_id)
         +list_products()
@@ -129,13 +41,25 @@ classDiagram
 
     class AssetIntakeService {
         +register_asset(command)
-        +list_assets(product_id)
+        +list_assets(...)
     }
 
-    class TagManagementService {
-        +create_tag(command)
-        +list_tags(tag_group)
-        +assign_tag_to_asset(command)
+    class ArtifactGenerationService {
+        +enqueue_thumbnail_job(asset_id)
+        +enqueue_proxy_job(asset_id)
+        +run_job(job_id)
+        +retry_job(job_id)
+        +list_jobs(...)
+    }
+
+    class VideoAssemblyFactoryService {
+        +create_recipe(command)
+        +list_recipes(...)
+        +get_recipe(recipe_id)
+        +assign_asset_to_recipe(command)
+        +enqueue_preview_job(recipe_id)
+        +run_preview_job(job_id)
+        +list_preview_jobs(...)
     }
 
     class DashboardService {
@@ -148,213 +72,158 @@ classDiagram
         +update(...)
     }
 
+    class AssetLibraryViewModel {
+        +load()
+        +register_asset(...)
+        +generate_thumbnail(asset_id)
+        +generate_proxy(asset_id)
+    }
+
+    class RecipeBuilderViewModel {
+        +load()
+        +create_recipe(...)
+        +assign_asset_to_recipe(...)
+        +queue_preview(recipe_id)
+        +select_recipe(recipe_id)
+    }
+
+    class DashboardWindow {
+        +open_products()
+        +open_assets()
+        +open_recipes()
+        +open_tags()
+        +open_settings()
+    }
+
+    class RecipeBuilderWindow {
+        +create_recipe()
+        +attach_asset()
+        +build_preview()
+    }
+
     class SqlAlchemyUnitOfWork {
         +products
         +assets
         +tags
+        +jobs
+        +recipes
         +commit()
         +rollback()
     }
 
-    class SqlAlchemyProductRepository {
-        +add(product)
-        +get_by_code(product_code)
-        +list_summaries()
+    class SqlAlchemyRecipeRepository {
+        +add(recipe)
+        +get_by_id(recipe_id)
+        +get_by_code(recipe_code)
+        +list_summaries(...)
+        +add_item(recipe_id, asset_id, role)
+        +list_items(recipe_id)
     }
 
-    class SqlAlchemyAssetRepository {
-        +add(asset)
-        +get_by_id(asset_id)
-        +get_by_code(asset_code)
-        +list_summaries(product_id)
+    class PreviewManifestBuilder {
+        +write_manifest(...)
     }
 
-    class SqlAlchemyTagRepository {
-        +add(tag)
-        +get_by_id(tag_id)
-        +get_by_name_and_group(name, group)
-        +list_summaries(tag_group)
-    }
-
-    class Product {
+    class Recipe {
         +id
-        +product_code
-        +product_name
-    }
-
-    class Asset {
-        +id
-        +asset_code
-        +asset_type
-        +file_name
+        +product_id
+        +recipe_code
         +status
     }
 
-    class Tag {
+    class Job {
         +id
-        +tag_name
-        +tag_group
+        +job_code
+        +job_type
+        +status
+        +recipe_id
+        +asset_id
     }
 
-    ProductLibraryWindow --> ProductLibraryViewModel
-    AssetLibraryWindow --> AssetLibraryViewModel
-    TagDictionaryWindow --> TagDictionaryViewModel
-    DashboardWindow --> DashboardViewModel
-    SettingsWindow --> SettingsViewModel
     ResourceLibraryModule --> ProductApplicationService
     ResourceLibraryModule --> AssetIntakeService
-    ResourceLibraryModule --> TagManagementService
+    ResourceLibraryModule --> ArtifactGenerationService
+    ResourceLibraryModule --> VideoAssemblyFactoryService
     ResourceLibraryModule --> DashboardService
     ResourceLibraryModule --> SystemSettingsService
-    VideoAssemblyFactoryModule --> ProductApplicationService
-    ProductLibraryViewModel --> ProductApplicationService
-    AssetLibraryViewModel --> ProductApplicationService
     AssetLibraryViewModel --> AssetIntakeService
-    TagDictionaryViewModel --> TagManagementService
-    TagDictionaryViewModel --> AssetIntakeService
-    DashboardViewModel --> DashboardService
-    SettingsViewModel --> SystemSettingsService
+    AssetLibraryViewModel --> ArtifactGenerationService
+    RecipeBuilderViewModel --> ProductApplicationService
+    RecipeBuilderViewModel --> AssetIntakeService
+    RecipeBuilderViewModel --> VideoAssemblyFactoryService
+    DashboardWindow --> RecipeBuilderWindow
+    VideoAssemblyFactoryService --> PreviewManifestBuilder
     ProductApplicationService --> SqlAlchemyUnitOfWork
     AssetIntakeService --> SqlAlchemyUnitOfWork
-    TagManagementService --> SqlAlchemyUnitOfWork
-    SqlAlchemyUnitOfWork --> SqlAlchemyProductRepository
-    SqlAlchemyUnitOfWork --> SqlAlchemyAssetRepository
-    SqlAlchemyUnitOfWork --> SqlAlchemyTagRepository
-    SqlAlchemyProductRepository --> Product
-    SqlAlchemyAssetRepository --> Asset
-    SqlAlchemyTagRepository --> Tag
+    ArtifactGenerationService --> SqlAlchemyUnitOfWork
+    VideoAssemblyFactoryService --> SqlAlchemyUnitOfWork
+    SqlAlchemyUnitOfWork --> SqlAlchemyRecipeRepository
+    SqlAlchemyRecipeRepository --> Recipe
+    SqlAlchemyUnitOfWork --> Job
 ```
 
-## Dashboard Aggregation Sequence
-
-```mermaid
-sequenceDiagram
-    actor User
-    participant View as DashboardWindow
-    participant VM as DashboardViewModel
-    participant Dash as DashboardService
-    participant Prod as ProductService
-    participant Asset as AssetIntakeService
-    participant Tag as TagManagementService
-    participant Settings as SystemSettingsService
-
-    User->>View: open dashboard or refresh
-    View->>VM: load()
-    VM->>Dash: build_summary()
-    Dash->>Prod: list_products()
-    Dash->>Asset: list_assets()
-    Dash->>Tag: list_tags()
-    Dash->>Settings: load()
-    Dash-->>VM: DashboardSummaryDTO
-    VM-->>View: refresh cards and status
-```
-
-## Product Creation Sequence
-
-```mermaid
-sequenceDiagram
-    actor User
-    participant View as ProductLibraryWindow
-    participant VM as ProductLibraryViewModel
-    participant App as ProductApplicationService
-    participant UoW as SqlAlchemyUnitOfWork
-    participant Repo as SqlAlchemyProductRepository
-    participant DB as SQLite
-
-    User->>View: submit create product
-    View->>VM: trigger command
-    VM->>App: create_product(command)
-    App->>UoW: open
-    UoW->>Repo: get_by_code(product_code)
-    Repo->>DB: SELECT product
-    DB-->>Repo: result
-    App->>Repo: add(product)
-    Repo->>DB: INSERT product
-    App->>UoW: commit()
-    UoW->>DB: COMMIT
-    App-->>VM: product_id
-    VM-->>View: refresh state
-```
-
-## Asset Intake Sequence
+## Asset Artifact Sequence
 
 ```mermaid
 sequenceDiagram
     actor User
     participant View as AssetLibraryWindow
     participant VM as AssetLibraryViewModel
-    participant App as AssetIntakeService
-    participant Store as LocalAssetStorage
-    participant Analyze as MetadataAnalyzer
-    participant UoW as SqlAlchemyUnitOfWork
-    participant Repo as SqlAlchemyAssetRepository
+    participant Artifact as ArtifactGenerationService
+    participant JobRepo as JobRepository
+    participant FF as FFmpegArtifactGenerator
     participant DB as SQLite
 
-    User->>View: choose product, asset type, source file
-    View->>VM: register_asset(...)
-    VM->>App: register_asset(command)
-    App->>Store: store_asset(...)
-    Store-->>App: stored file path
-    App->>Analyze: analyze(file_path)
-    Analyze-->>App: metadata
-    App->>UoW: open
-    UoW->>Repo: add(asset)
-    Repo->>DB: INSERT asset
-    App->>UoW: commit()
-    UoW->>DB: COMMIT
-    App-->>VM: asset_id
-    VM-->>View: refresh state
+    User->>View: Generate Thumbnail / Proxy
+    View->>VM: generate_thumbnail(asset_id)
+    VM->>Artifact: enqueue job
+    Artifact->>JobRepo: add(job)
+    Artifact->>DB: COMMIT
+    VM->>Artifact: run_job(job_id)
+    Artifact->>FF: generate artifact
+    Artifact->>JobRepo: update(done/failed)
+    Artifact->>DB: COMMIT
+    VM-->>View: refresh assets and feedback
 ```
 
-## Tag Assignment Sequence
+## Recipe Preview Sequence
 
 ```mermaid
 sequenceDiagram
     actor User
-    participant View as TagDictionaryWindow
-    participant VM as TagDictionaryViewModel
-    participant App as TagManagementService
-    participant UoW as SqlAlchemyUnitOfWork
-    participant TagRepo as SqlAlchemyTagRepository
-    participant AssetRepo as SqlAlchemyAssetRepository
+    participant View as RecipeBuilderWindow
+    participant VM as RecipeBuilderViewModel
+    participant Factory as VideoAssemblyFactoryService
+    participant RecipeRepo as RecipeRepository
+    participant JobRepo as JobRepository
+    participant Preview as PreviewManifestBuilder
     participant DB as SQLite
 
-    User->>View: select tag and asset
-    View->>VM: assign_tag_to_asset(...)
-    VM->>App: assign_tag_to_asset(command)
-    App->>UoW: open
-    UoW->>AssetRepo: get_by_id(asset_id)
-    UoW->>TagRepo: get_by_id(tag_id)
-    UoW->>AssetRepo: assign_tag(asset_id, tag_id)
-    AssetRepo->>DB: INSERT asset_tags
-    App->>UoW: commit()
-    UoW->>DB: COMMIT
-    App-->>VM: success
-    VM-->>View: refresh state
+    User->>View: Build Preview
+    View->>VM: queue_preview(recipe_id)
+    VM->>Factory: enqueue_preview_job(recipe_id)
+    Factory->>JobRepo: add(job)
+    Factory->>DB: COMMIT
+    VM->>Factory: run_preview_job(job_id)
+    Factory->>RecipeRepo: list_items(recipe_id)
+    Factory->>Preview: write_manifest(...)
+    Factory->>JobRepo: update(done/failed)
+    Factory->>DB: COMMIT
+    VM-->>View: refresh recipes and feedback
 ```
 
 ## Workflow State Direction
 
 ```mermaid
 stateDiagram-v2
-    [*] --> CREATED
-    CREATED --> ASSETS_READY
-    ASSETS_READY --> PREVIEW_PENDING
-    PREVIEW_PENDING --> PREVIEW_RENDERING
-    PREVIEW_RENDERING --> PREVIEW_RENDERED
-    PREVIEW_RENDERED --> QUALITY_CHECK_PENDING
-    QUALITY_CHECK_PENDING --> QUALITY_CHECKED
-    QUALITY_CHECKED --> NEEDS_HUMAN_REVIEW
-    NEEDS_HUMAN_REVIEW --> APPROVED
-    NEEDS_HUMAN_REVIEW --> REJECTED
+    [*] --> PRODUCT_READY
+    PRODUCT_READY --> ASSET_READY
+    ASSET_READY --> RECIPE_CANDIDATE
+    RECIPE_CANDIDATE --> PREVIEW_JOB_QUEUED
+    PREVIEW_JOB_QUEUED --> PREVIEW_JOB_PROCESSING
+    PREVIEW_JOB_PROCESSING --> PREVIEW_MANIFEST_READY
+    PREVIEW_MANIFEST_READY --> HUMAN_REVIEW
+    HUMAN_REVIEW --> APPROVED
+    HUMAN_REVIEW --> REJECTED
     APPROVED --> FINAL_RENDER_PENDING
-    FINAL_RENDER_PENDING --> FINAL_RENDERING
-    FINAL_RENDERING --> FINAL_RENDERED
-    FINAL_RENDERED --> DONE
 ```
-
-## Responsibility Rule
-
-- `Resource Library Management` รับผิดชอบความพร้อมของวัตถุดิบ
-- `Video Assembly Factory` รับผิดชอบการประกอบและ workflow ของ output
-- ทั้งสองส่วนแชร์ SSOT เดียวกัน แต่ไม่ควรทับความรับผิดชอบกัน

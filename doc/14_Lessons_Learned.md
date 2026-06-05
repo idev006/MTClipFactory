@@ -1,51 +1,36 @@
 # Lessons Learned
 
-ไฟล์นี้ใช้สรุปบทเรียนที่ควรส่งต่อให้ทีมหลัง milestone หรือเหตุการณ์สำคัญ
+## LL-001 | 2026-06-05 | Document-First Helped
 
-## Entries
+- locking `.venv`, `.md`, `.toml`, SSOT, UML, Kanban, and issue logging early reduced project ambiguity
+- documentation quality directly improved implementation speed because the repo now has stable decision memory
 
-### LL-001 | 2026-06-05 | Foundation Setup
+## LL-002 | 2026-06-05 | Split By Business Capability
 
-- Blueprint ฝั่ง product/process มีความชัดเจนสูง แต่ implementation stack ต้องถูกล็อกใหม่ให้ชัดตั้งแต่ต้น
-- การสร้าง `document-first` และ `testable skeleton` ก่อน feature จริงช่วยลดความเสี่ยงการแก้สถาปัตยกรรมภายหลัง
-- การกำหนด `.venv`, `.md`, `.toml`, และ SSOT ตั้งแต่วันแรกช่วยลดความสับสนของทีมได้มาก
+- separating `Resource Library Management` from `Video Assembly Factory` is more useful than splitting by screens alone
+- shared core plus separate workflows kept the codebase cohesive without needing multiple repositories yet
 
-### LL-002 | 2026-06-05 | System Split Decision
+## LL-003 | 2026-06-05 | Testability Paid Off
 
-- การแยกเป็น `Resource Library Management` และ `Video Assembly Factory` ช่วยให้ขอบเขตธุรกิจชัดขึ้นมากกว่าการแยกตามหน้าจอ
-- ช่วง MVP ควรแยกเป็นโมดูลใน codebase เดียวก่อน ไม่ควรรีบแยกเป็นหลาย repo
-- ถ้าไม่ล็อก ownership ของ `Asset`, `Tag`, และ `Recipe` ตั้งแต่ต้น จะเกิด rule duplication ง่าย
+- keeping service seams around metadata analysis, asset generation, and preview generation made it easy to add new pytest coverage quickly
+- the project now benefits from fast in-memory repository tests and focused view model tests
 
-### LL-003 | 2026-06-05 | First Library Milestone
+## LL-004 | 2026-06-05 | Persisted Jobs Improve Truthfulness
 
-- การเริ่มจาก `Product CRUD foundation` ทำให้ทั้ง DB, service, ViewModel, UI, และ test seam ถูกเดินให้ครบเส้นครั้งแรก
-- การติดตั้ง package แบบ editable ช่วยลด friction ของทีมเวลาทดลอง UI และ import package ในงานพัฒนา
-- การทำ UI smoke test แบบ offscreen เป็นตัวช่วยที่ดีระหว่างยังไม่มี test harness ฝั่ง widget เต็มรูปแบบ
+- once artifact and preview work are represented as persisted jobs, dashboard reporting becomes much more honest
+- queued and failed counts are more useful than silent background actions
 
-### LL-004 | 2026-06-05 | Asset Intake Foundation
+## LL-005 | 2026-06-05 | Preview Build Is Not Approval
 
-- การแยก `AssetIntakeService`, `LocalAssetStorage`, และ `MetadataAnalyzer` ออกจากกันช่วยให้เปลี่ยน implementation จริงเป็น FFmpeg ภายหลังได้โดยไม่กระทบ use case
-- MVP ของ asset intake ควรเดินแบบ synchronous ก่อน เพื่อพิสูจน์สัญญาระหว่าง storage, analyzer, และ repository
-- การเพิ่มหน้าต่าง `AssetLibraryWindow` แบบแยกจาก product screen ช่วยควบคุมขนาดไฟล์และลดความเสี่ยง UI บวมเร็วเกินไป
+- generating a preview artifact is a processing milestone, not a business approval decision
+- workflow states must reflect reality or the dashboard will mislead operators
 
-### LL-005 | 2026-06-05 | FFmpeg and Tag Foundation
+## LL-006 | 2026-06-05 | Circular Imports Are Architectural Signals
 
-- การอ้าง FFmpeg path ผ่าน `app_config.toml` ช่วยให้ runtime tooling ชัดเจนและตรวจสอบได้
-- `ffprobe` เหมาะมากสำหรับ metadata phase และควรถูกแยกจากงาน render/proxy ที่จะตามมา
-- การทำ `Tag Dictionary` เป็นหน้าต่างแยกช่วยให้ขอบเขตของ library ชัดขึ้นและหลีกเลี่ยงการยัดทุกอย่างในหน้า asset intake
+- the circular import found between control-center and artifact code exposed an unhealthy runtime dependency shape
+- solving it with type-only imports kept the design cleaner and improved test collection stability
 
-### LL-006 | 2026-06-05 | Query Visibility Matters
+## LL-007 | 2026-06-05 | No-Hardcode Needs Constant Enforcement
 
-- เมื่อมี tag แล้ว ต้องรีบทำให้มองเห็นและกรองได้ ไม่อย่างนั้นคุณค่าของ dictionary จะยังไม่ส่งผลต่อ workflow จริง
-- การให้ query layer คืน `tag labels` พร้อม filter ช่วยลด logic กระจัดกระจายใน UI และทำให้การทดสอบง่ายกว่า
-
-### LL-007 | 2026-06-05 | Control Center First
-
-- เมื่อระบบเริ่มมีหลายโมดูล ควรยก dashboard และ settings ขึ้นเป็นของจริงเร็ว ไม่อย่างนั้นความรู้เรื่องระบบจะกระจายตามหน้าจอและไฟล์ config
-- การทำ settings ผ่าน service และ TOML กลางช่วยให้ admin/user คุมระบบได้โดยไม่ต้องไล่แก้หลายจุด
-
-
-## Lesson Rule
-
-- ทุก milestone ต้องมีอย่างน้อย 1 lesson learned ถ้ามีสาระสำคัญ
-- lesson learned ต้อง actionable และใช้ปรับวิธีทำงานของทีมได้จริง
+- moving operational thresholds into `app_config.toml` was a good step, but path configuration is still not complete
+- the team should treat remaining implicit defaults as active debt, not “good enough”

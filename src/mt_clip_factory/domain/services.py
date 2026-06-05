@@ -6,6 +6,8 @@ from typing import Protocol
 
 from mt_clip_factory.domain.assets import Asset, AssetSummary
 from mt_clip_factory.domain.entities import Product, ProductSummary
+from mt_clip_factory.domain.jobs import Job, JobSummary
+from mt_clip_factory.domain.recipes import Recipe, RecipeItem, RecipeSummary
 from mt_clip_factory.domain.tags import Tag, TagSummary
 
 
@@ -42,6 +44,9 @@ class AssetRepository(Protocol):
     def get_by_code(self, asset_code: str) -> Asset | None:
         ...
 
+    def update(self, asset: Asset) -> Asset:
+        ...
+
     def list_summaries(
         self,
         product_id: int | None = None,
@@ -71,10 +76,59 @@ class TagRepository(Protocol):
         ...
 
 
+class JobRepository(Protocol):
+    def add(self, job: Job) -> Job:
+        ...
+
+    def get_by_id(self, job_id: int) -> Job | None:
+        ...
+
+    def list_summaries(
+        self,
+        *,
+        status: str | None = None,
+        job_type: str | None = None,
+    ) -> Sequence[JobSummary]:
+        ...
+
+    def update(self, job: Job) -> Job:
+        ...
+
+
+class RecipeRepository(Protocol):
+    def add(self, recipe: Recipe) -> Recipe:
+        ...
+
+    def get_by_id(self, recipe_id: int) -> Recipe | None:
+        ...
+
+    def get_by_code(self, recipe_code: str) -> Recipe | None:
+        ...
+
+    def update(self, recipe: Recipe) -> Recipe:
+        ...
+
+    def list_summaries(
+        self,
+        *,
+        product_id: int | None = None,
+        status: str | None = None,
+    ) -> Sequence[RecipeSummary]:
+        ...
+
+    def add_item(self, recipe_id: int, asset_id: int, role: str) -> RecipeItem:
+        ...
+
+    def list_items(self, recipe_id: int) -> Sequence[RecipeItem]:
+        ...
+
+
 class UnitOfWork(AbstractContextManager["UnitOfWork"], Protocol):
     products: ProductRepository
     assets: AssetRepository
     tags: TagRepository
+    jobs: JobRepository
+    recipes: RecipeRepository
 
     def commit(self) -> None:
         ...

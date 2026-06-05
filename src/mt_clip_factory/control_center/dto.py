@@ -20,9 +20,13 @@ class SystemSettingsDTO:
 class DashboardSummaryDTO:
     product_count: int
     asset_count: int
+    recipe_count: int
+    output_count: int
     ready_asset_count: int
     needs_review_asset_count: int
     tag_count: int
+    queued_job_count: int
+    failed_job_count: int
     ffprobe_available: bool
     ffmpeg_available: bool
     workspace_root: str
@@ -36,4 +40,3 @@ class DashboardSummaryDTO:
     max_preview_workers: int
     max_final_workers: int
     auto_refresh_seconds: int
-

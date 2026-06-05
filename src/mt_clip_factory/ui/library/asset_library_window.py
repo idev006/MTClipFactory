@@ -102,14 +102,20 @@ class AssetLibraryWindow(QMainWindow):
 
         button_row = QHBoxLayout()
         self.register_button = QPushButton("Register")
+        self.thumbnail_button = QPushButton("Generate Thumbnail")
+        self.proxy_button = QPushButton("Generate Proxy")
         self.tags_button = QPushButton("Tag Dictionary")
         self.apply_filters_button = QPushButton("Apply Filters")
         self.refresh_button = QPushButton("Refresh")
         self.register_button.clicked.connect(self._register_asset)
+        self.thumbnail_button.clicked.connect(self._generate_thumbnail)
+        self.proxy_button.clicked.connect(self._generate_proxy)
         self.tags_button.clicked.connect(self._handle_open_tag_dictionary)
         self.apply_filters_button.clicked.connect(self._apply_filters)
         self.refresh_button.clicked.connect(self._view_model.load)
         button_row.addWidget(self.register_button)
+        button_row.addWidget(self.thumbnail_button)
+        button_row.addWidget(self.proxy_button)
         button_row.addWidget(self.tags_button)
         button_row.addWidget(self.apply_filters_button)
         button_row.addWidget(self.refresh_button)
@@ -125,9 +131,9 @@ class AssetLibraryWindow(QMainWindow):
     def _build_table_group(self) -> QGroupBox:
         group = QGroupBox("Registered Assets")
         layout = QVBoxLayout(group)
-        self.asset_table = QTableWidget(0, 9)
+        self.asset_table = QTableWidget(0, 11)
         self.asset_table.setHorizontalHeaderLabels(
-            ["ID", "Product", "Code", "Type", "File Name", "Status", "Ratio", "Size MB", "Tags"]
+            ["ID", "Product", "Code", "Type", "File Name", "Status", "Ratio", "Size MB", "Tags", "Thumbnail", "Proxy"]
         )
         self.asset_table.setSelectionBehavior(QTableWidget.SelectRows)
         self.asset_table.setSelectionMode(QTableWidget.SingleSelection)
@@ -176,6 +182,8 @@ class AssetLibraryWindow(QMainWindow):
                 asset.ratio or "",
                 "" if asset.file_size_mb is None else f"{asset.file_size_mb:.4f}",
                 ", ".join(asset.tag_labels),
+                "Yes" if asset.thumbnail_path else "No",
+                "Yes" if asset.proxy_path else "No",
             ]
             for column_index, value in enumerate(values):
                 self.asset_table.setItem(row_index, column_index, QTableWidgetItem(value))
@@ -214,3 +222,29 @@ class AssetLibraryWindow(QMainWindow):
             asset_type=self.filter_asset_type_combo.currentData(),
             status=self.filter_status_combo.currentData(),
         )
+
+    def _selected_asset_id(self) -> int | None:
+        selected_items = self.asset_table.selectedItems()
+        if not selected_items:
+            return None
+        return int(self.asset_table.item(selected_items[0].row(), 0).text())
+
+    def _generate_thumbnail(self) -> None:
+        asset_id = self._selected_asset_id()
+        if asset_id is None:
+            QMessageBox.warning(self, "Generate Thumbnail", "Select an asset first.")
+            return
+        try:
+            self._view_model.generate_thumbnail(asset_id)
+        except Exception as exc:  # noqa: BLE001
+            QMessageBox.warning(self, "Generate Thumbnail", str(exc))
+
+    def _generate_proxy(self) -> None:
+        asset_id = self._selected_asset_id()
+        if asset_id is None:
+            QMessageBox.warning(self, "Generate Proxy", "Select an asset first.")
+            return
+        try:
+            self._view_model.generate_proxy(asset_id)
+        except Exception as exc:  # noqa: BLE001
+            QMessageBox.warning(self, "Generate Proxy", str(exc))

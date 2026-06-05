@@ -45,3 +45,5 @@ class AssetSummary:
     duration_sec: float | None = None
     file_size_mb: float | None = None
     tag_labels: tuple[str, ...] = ()
+    thumbnail_path: str | None = None
+    proxy_path: str | None = None

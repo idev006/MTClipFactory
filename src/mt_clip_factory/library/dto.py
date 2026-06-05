@@ -25,3 +25,5 @@ class AssetSummaryDTO:
     duration_sec: float | None
     file_size_mb: float | None
     tag_labels: tuple[str, ...]
+    thumbnail_path: str | None
+    proxy_path: str | None

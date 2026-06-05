@@ -1,57 +1,50 @@
 # Kanban Board
 
-Kanban นี้คือบอร์ดกลางของโครงการในรูปแบบ Markdown และเป็นส่วนหนึ่งของ SSOT
+This Markdown board is the SSOT Kanban for the repository.
 
 ## Backlog
 
-- Manual recipe builder
-- Preview render job flow
-- Final render workflow
-- Quality gate
-- Duplicate risk evaluation
-- Factory approval workflow
+- final render workflow
+- output registration and approval trail
+- duplicate risk evaluation
+- recipe scoring
+- quality gate automation
 
 ## Ready
 
-- Thumbnail generation contract
-- Proxy generation contract
-- Richer asset preview artifacts
-- Reliability and recovery implementation slice
+- preview render adapter that produces a real video output
+- review decision workflow after preview generation
+- configurable path overrides in `app_config.toml`
 
 ## In Progress
 
-- Thumbnail generation contract
-- Proxy generation contract
-- Define `Library` to `Factory` contracts
+- recovery and retry policy for persisted jobs
+- move preview flow from manifest-only to render-capable scaffolding
 
 ## Review
 
-- None
+- none
 
 ## Done
 
-- Dashboard control center foundation
-- Settings authority foundation
-- Asset library query enhancements
-- Tag dictionary management
-- Asset readiness rules
-- FFprobe-backed metadata analysis
-- Asset registration domain and application design
-- Metadata analyzer contract
-- Asset intake flow in `Resource Library Management`
-- Product CRUD implementation in `Resource Library Management`
-- Basic desktop product dashboard
-- Two-module project direction agreed: `Resource Library Management` and `Video Assembly Factory`
-- Project governance uplift for SSOT, UML, issues, lessons learned, and PM reporting
-- Project architecture baseline
-- SQLAlchemy models baseline
-- Alembic initial migration
-- pytest baseline
-- Documentation baseline
+- documentation governance baseline
+- product CRUD
+- asset intake
+- FFprobe metadata analysis
+- asset readiness rules
+- tag dictionary and asset tagging
+- asset library filters
+- dashboard control center
+- settings authority surface
+- thumbnail/proxy artifact generation jobs
+- job persistence for library artifacts
+- recipe persistence
+- recipe item assignment
+- preview manifest job flow
+- recipe builder window and view model
 
-## Kanban Policy
+## Board Policy
 
-- งานใหม่ต้องเข้าที่ `Backlog` หรือ `Ready` ก่อน
-- งานที่เริ่มทำต้องย้ายไป `In Progress`
-- งานที่รอการตรวจหรือยืนยันให้ไป `Review`
-- งานจะไป `Done` ได้เมื่อเอกสารและเทสต์ที่เกี่ยวข้องครบ
+- every new feature enters `Backlog` or `Ready` first
+- work must move to `In Progress` before implementation
+- work enters `Done` only after code, tests, and docs are aligned

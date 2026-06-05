@@ -1,24 +1,23 @@
 # Issues Log
 
-ไฟล์นี้ใช้เก็บปัญหา ความเสี่ยง blocker และข้อสังเกตที่ต้องติดตาม
-
 ## Open Issues
 
 | ID | Date | Severity | Topic | Description | Owner | Status | Next Action |
 | --- | --- | --- | --- | --- | --- | --- | --- |
-| ISS-001 | 2026-06-05 | Medium | UI Direction | Blueprint เดิมอ้างอิง Streamlit แต่ implementation target ใช้ PySide6 + MVVM ต้องคุมการแปลแนวคิดให้สอดคล้อง | Engineering | Open | ยึด architecture docs ใหม่เป็น implementation SSOT |
-| ISS-002 | 2026-06-05 | Medium | Module Boundary | ต้องป้องกันไม่ให้ `Video Assembly Factory` ไปแก้ asset metadata หลักเองจนความรับผิดชอบซ้อนกับ `Resource Library Management` | Engineering | Open | นิยาม contract และ ownership ของข้อมูลร่วมในเอกสาร architecture และ domain |
-| ISS-003 | 2026-06-05 | Low | Packaging Contract | การรัน package ตรงจาก source ต้องมี contract ชัดเจนว่าจะใช้ editable install หรือ entry point อะไร | Engineering | Open | ใช้ `python -m pip install -e .[dev]` และ `mt-resource-library` เป็นทางหลักระหว่างพัฒนา |
-| ISS-004 | 2026-06-05 | Medium | Preview Artifacts | แม้ metadata ใช้ `ffprobe` จริงแล้ว แต่ thumbnail/proxy generation ยังไม่ถูกส่งมอบ | Engineering | Open | ออกแบบ FFmpeg-backed thumbnail/proxy contracts เป็น milestone ถัดไป |
-| ISS-005 | 2026-06-05 | Medium | Recovery Depth | dashboard/settings ช่วย visibility แล้ว แต่ crash recovery, retry ledger, และ durable recovery flow ยังไม่ถูก implement เชิงลึก | Engineering | Open | วาง recovery slice ถัดไปบน jobs/state persistence และ degraded-operation rules |
+| ISS-001 | 2026-06-05 | Medium | UI Direction | The original blueprint referenced Streamlit ideas, but the implementation SSOT is now PySide6 + MVVM. Team members must ignore legacy UI assumptions. | Engineering | Open | Continue updating docs and screens only from current repo behavior. |
+| ISS-002 | 2026-06-05 | Medium | Module Boundary | `Video Assembly Factory` must consume prepared assets without mutating core asset metadata ownership owned by `Resource Library Management`. | Engineering | Open | Keep ownership rule explicit in architecture and service contracts. |
+| ISS-003 | 2026-06-05 | Medium | Preview Depth | Current preview flow writes a persisted manifest, not a rendered preview video. This is intentional scaffolding, but not the final capability. | Engineering | Open | Add preview render adapter and output registration. |
+| ISS-004 | 2026-06-05 | Medium | Recovery Depth | Job persistence exists, but recovery policy is not yet uniform across artifact and preview jobs. | Engineering | Open | Add resume/retry policy and restart tests. |
+| ISS-005 | 2026-06-05 | Medium | Path Configurability | Some important roots still default from `workspace_root` instead of a user-editable `[paths]` config surface. This is below the desired no-hardcode bar. | Engineering | Open | Add `[paths]` support to `app_config.toml` for database, media, docs, and output roots. |
 
 ## Closed Issues
 
 | ID | Date Closed | Topic | Resolution |
 | --- | --- | --- | --- |
-| ISS-004-OLD | 2026-06-05 | Metadata Depth | ปิดด้วยการส่งมอบ `FFprobeMetadataAnalyzer` และ config ผ่าน `app_config.toml` |
+| ISS-006-CLOSED | 2026-06-05 | Artifact Generation Gap | Closed by delivering persisted thumbnail/proxy generation jobs and dashboard visibility. |
+| ISS-007-CLOSED | 2026-06-05 | Empty Factory Package | Closed by delivering recipe persistence, preview jobs, and recipe builder UI scaffolding. |
 
-## Issue Rule
+## Rule
 
-- issue ที่กระทบ scope, architecture, quality, schedule หรือ team alignment ต้องลงไฟล์นี้
-- เมื่อปิด issue ต้องสรุป resolution ให้ย้อนอ่านเข้าใจได้
+- anything affecting scope, architecture, reliability, or schedule goes here
+- closing an issue requires a concrete resolution statement, not only code merged

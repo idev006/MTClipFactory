@@ -5,6 +5,7 @@ from pathlib import Path
 from PySide6.QtCore import QObject, Property, Signal, Slot
 
 from mt_clip_factory.application.services import ProductApplicationService
+from mt_clip_factory.library.artifact_services import ArtifactGenerationService
 from mt_clip_factory.library.dto import AssetSummaryDTO, RegisterAssetCommand
 from mt_clip_factory.library.services import AssetCodeAlreadyExistsError, AssetIntakeService, AssetSourceFileMissingError
 
@@ -19,10 +20,12 @@ class AssetLibraryViewModel(QObject):
         self,
         product_service: ProductApplicationService,
         asset_intake_service: AssetIntakeService,
+        artifact_generation_service: ArtifactGenerationService,
     ) -> None:
         super().__init__()
         self._product_service = product_service
         self._asset_intake_service = asset_intake_service
+        self._artifact_generation_service = artifact_generation_service
         self._products = []
         self._assets: list[AssetSummaryDTO] = []
         self._status = "idle"
@@ -111,3 +114,31 @@ class AssetLibraryViewModel(QObject):
         self._set_feedback(f"Registered asset #{asset_id}")
         self.load()
         return asset_id
+
+    def generate_thumbnail(self, asset_id: int) -> int:
+        self._set_status("processing")
+        try:
+            job_id = self._artifact_generation_service.enqueue_thumbnail_job(asset_id)
+            self._artifact_generation_service.run_job(job_id)
+        except Exception as exc:  # noqa: BLE001
+            self._set_feedback(str(exc))
+            self._set_status("error")
+            raise
+
+        self._set_feedback(f"Generated thumbnail for asset #{asset_id}")
+        self.load()
+        return job_id
+
+    def generate_proxy(self, asset_id: int) -> int:
+        self._set_status("processing")
+        try:
+            job_id = self._artifact_generation_service.enqueue_proxy_job(asset_id)
+            self._artifact_generation_service.run_job(job_id)
+        except Exception as exc:  # noqa: BLE001
+            self._set_feedback(str(exc))
+            self._set_status("error")
+            raise
+
+        self._set_feedback(f"Generated proxy for asset #{asset_id}")
+        self.load()
+        return job_id

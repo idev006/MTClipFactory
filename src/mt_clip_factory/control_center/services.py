@@ -3,12 +3,16 @@ from __future__ import annotations
 from dataclasses import asdict
 from pathlib import Path
 import tomllib
+from typing import TYPE_CHECKING
 
 from mt_clip_factory.application.services import ProductApplicationService
 from mt_clip_factory.config import AppConfig
 from mt_clip_factory.control_center.dto import DashboardSummaryDTO, SystemSettingsDTO
 from mt_clip_factory.library.services import AssetIntakeService
 from mt_clip_factory.library.tag_services import TagManagementService
+
+if TYPE_CHECKING:
+    from mt_clip_factory.library.artifact_services import ArtifactGenerationService
 
 
 class SystemSettingsService:
@@ -80,12 +84,14 @@ class DashboardService:
         config: AppConfig,
         product_service: ProductApplicationService,
         asset_intake_service: AssetIntakeService,
+        artifact_generation_service: ArtifactGenerationService,
         tag_management_service: TagManagementService,
         system_settings_service: SystemSettingsService,
     ) -> None:
         self._config = config
         self._product_service = product_service
         self._asset_intake_service = asset_intake_service
+        self._artifact_generation_service = artifact_generation_service
         self._tag_management_service = tag_management_service
         self._system_settings_service = system_settings_service
 
@@ -93,6 +99,10 @@ class DashboardService:
         settings = self._system_settings_service.load()
         products = self._product_service.list_products()
         assets = self._asset_intake_service.list_assets()
+        recipe_count = sum(product.recipe_count for product in products)
+        output_count = sum(product.output_count for product in products)
+        queued_jobs = self._artifact_generation_service.list_jobs(status="queued")
+        failed_jobs = self._artifact_generation_service.list_jobs(status="failed")
         tags = self._tag_management_service.list_tags()
         ready_asset_count = sum(1 for asset in assets if asset.status == "ready")
         needs_review_asset_count = sum(1 for asset in assets if asset.status == "needs_review")
@@ -101,9 +111,13 @@ class DashboardService:
         return DashboardSummaryDTO(
             product_count=len(products),
             asset_count=len(assets),
+            recipe_count=recipe_count,
+            output_count=output_count,
             ready_asset_count=ready_asset_count,
             needs_review_asset_count=needs_review_asset_count,
             tag_count=len(tags),
+            queued_job_count=len(queued_jobs),
+            failed_job_count=len(failed_jobs),
             ffprobe_available=ffprobe_path.exists(),
             ffmpeg_available=ffmpeg_path.exists(),
             workspace_root=str(self._config.paths.workspace_root),

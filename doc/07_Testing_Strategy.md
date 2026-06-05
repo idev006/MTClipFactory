@@ -1,59 +1,83 @@
 # Testing Strategy
 
-## Testing Goals
+## Purpose
 
-ระบบต้องออกแบบให้เทสต์ได้ง่ายตั้งแต่ต้น โดยไม่ต้องพึ่ง UI จริงหรือ filesystem จริงในทุกกรณี
+MTClipFactory must stay easy to test with `pytest` from day one. The system is expected to evolve into a durable desktop workflow tool, so testability is a design requirement, not a cleanup task.
+
+## Current Baseline
+
+- Python runtime: `F:\programming\python\MTClipFactory\.venv`
+- Test command: `python -m pytest`
+- Current automated baseline on 2026-06-05: `51 passed`
+- Current UI smoke baseline on 2026-06-05: `6` PySide windows instantiated with `QT_QPA_PLATFORM=offscreen`
 
 ## Test Pyramid
 
 ### Unit Tests
 
-เทสต์ domain logic, use case, scoring rule, validator, mapper
+- domain rules
+- service validation
+- DTO mapping
+- workflow state changes
 
 ### Integration Tests
 
-เทสต์ repository, unit of work, migration, FFmpeg adapter contract
+- SQLAlchemy repository behavior with in-memory SQLite
+- unit-of-work persistence flow
+- local storage copy behavior
+- `ffprobe` adapter contract
+- artifact and preview job persistence
 
-ตัวอย่างปัจจุบัน:
+### ViewModel Tests
 
-- `ffprobe` metadata integration test
-- local asset storage copy behavior
-- tag assignment persistence
+- signal-safe state transitions
+- success and failure feedback
+- command forwarding to services
+- filtering and refresh behavior
 
-### UI/ViewModel Tests
+### UI Smoke Tests
 
-เทสต์ว่า ViewModel bind สถานะและเรียก use case ถูกต้อง โดยไม่ต้องเปิดหน้าจอเต็มรูปแบบ
+- import and instantiate all main windows offscreen
+- verify wiring after navigation or constructor changes
 
-## Module Testing Direction
+## Current Covered Areas
 
 ### Resource Library Management
 
-ควรมี test สำหรับ:
-
-- product and asset use cases
-- tag assignment rules
-- asset readiness logic
-- metadata ingestion contracts
+- product CRUD
+- asset intake
+- tag dictionary
+- asset readiness
+- asset filters
+- thumbnail/proxy job flow
+- dashboard/settings aggregation
 
 ### Video Assembly Factory
 
-ควรมี test สำหรับ:
+- recipe creation
+- recipe item assignment
+- preview job enqueue
+- preview manifest generation
+- recipe builder view model flow
 
-- recipe creation and validation
-- candidate scoring
-- job orchestration rules
-- approval and final-render gating
+## Conventions
 
-## Current Test Conventions
+- always activate `.venv` before running tests or installing packages
+- use in-memory SQLite for repository and application tests unless a filesystem contract is the subject of the test
+- isolate filesystem work under `tmp_path`
+- avoid depending on the production database file
+- keep UI logic in view models so it can be tested without opening real windows
 
-- ใช้ `pytest`
-- ใช้ in-memory SQLite สำหรับ repository/application tests
-- ไม่ผูก test กับ production DB file
-- test file ต้องอ่านแล้วเข้าใจ behavior ได้ทันที
+## Design Rules For Easy Testing
 
-## Design Rules for Easy Testing
+- keep business logic out of Qt widgets
+- inject adapters for filesystem, FFmpeg, metadata analysis, and preview generation
+- persist workflow state through repositories and jobs so retry and recovery can be tested
+- prefer small service seams over hidden module globals
+- treat circular imports as test failures in disguise and remove them immediately
 
-- อย่าซ่อน logic ไว้ใน signal handler ที่ฉีด dependency ไม่ได้
-- use case ต้องไม่รู้เรื่อง QWidget
-- repository ต้องถูกสลับ implementation ได้
-- time, filesystem, ffmpeg, random selection ควรถูก wrap เพื่อ mock ได้ภายหลัง
+## Next Testing Slice
+
+1. Add integration coverage for real FFmpeg thumbnail/proxy generation using controlled sample media.
+2. Add widget-level interaction tests for the new Recipe Builder window.
+3. Add recovery tests for cross-session job retry and restart behavior.

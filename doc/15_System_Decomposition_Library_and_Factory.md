@@ -1,107 +1,114 @@
 # System Decomposition: Library and Factory
 
-เอกสารนี้นิยามการแบ่งระบบเป็น 2 ส่วนอย่างเป็นทางการ และถือเป็นส่วนหนึ่งของ SSOT
+This document defines the required business split of the system.
 
 ## Decision
 
-MTClipFactory ถูกแบ่งเชิง business และ implementation ออกเป็น 2 ส่วนหลัก:
+MTClipFactory is intentionally divided into two major capabilities:
 
 1. `Resource Library Management`
 2. `Video Assembly Factory`
 
-## Why This Split
-
-- ลดการปะปนกันระหว่างงานเตรียมวัตถุดิบกับงานประกอบวิดีโอ
-- ทำให้ทีมออกแบบ workflow, test, และ UI ได้ตรงตามบทบาท
-- ลดโอกาสที่ business rules จะกระจายซ้ำในหลายจุด
-- ทำให้วาง roadmap และ owner ของงานชัดขึ้น
-
-## Module 1: Resource Library Management
+## Resource Library Management
 
 ### Purpose
 
-รับผิดชอบการจัดการวัตถุดิบและข้อมูลอ้างอิงทั้งหมดก่อนเข้าสู่การประกอบวิดีโอ
+Prepare and govern reusable video components before they enter assembly workflows.
 
-### Responsibilities
+### Current Responsibilities
 
-- create/update product
-- ingest assets
-- rename and place files by convention
-- analyze metadata
-- generate thumbnail / proxy
-- assign and validate tags
-- determine asset readiness
-- expose searchable library views
+- product creation and maintenance
+- asset intake
+- file placement by convention
+- metadata analysis
+- tag dictionary and tag assignment
+- asset readiness classification
+- thumbnail/proxy generation
+- searchable library views
 
-### Outputs to Other Modules
+### Owned SSOT
 
-- prepared assets
-- normalized metadata
-- tag dictionary references
-- readiness status
+- product identity
+- asset identity
+- asset metadata
+- asset tag relationships
+- asset readiness state
 
-## Module 2: Video Assembly Factory
+## Video Assembly Factory
 
 ### Purpose
 
-รับผิดชอบการเลือกวัตถุดิบที่พร้อมแล้วมาประกอบเป็นวิดีโอ preview/final ภายใต้ workflow ที่ตรวจสอบย้อนหลังได้
+Compose prepared assets into reviewable preview and later final-output workflows.
 
-### Responsibilities
+### Current Responsibilities
 
-- create and manage recipes
-- generate candidates
-- score and filter candidates
-- enqueue preview jobs
-- record review decisions
-- enqueue final render jobs
-- track outputs and reports
+- recipe creation
+- recipe item assignment
+- preview job enqueue
+- preview manifest generation
+- preview job status tracking
 
-### Inputs from Other Modules
+### Future Responsibilities
 
-- approved product data
-- ready assets
-- tag dictionary
-- asset metadata and quality signals
+- preview video rendering
+- review decision workflow
+- final render jobs
+- output registration
+- quality and duplicate-risk checks
 
-## Ownership Rules
+### Owned SSOT
 
-- `Library` เป็น owner ของ asset metadata หลัก
-- `Factory` เป็น owner ของ recipe, render job, review decision, และ output state
-- shared dictionary และ identity rules ต้องมี SSOT เดียว
-- ถ้า `Factory` ต้องเสนอการแก้ metadata ให้ทำผ่าน contract หรือ workflow ย้อนกลับไปที่ `Library`
+- recipe records
+- recipe item relationships
+- preview/final job state
+- review decisions
+- output records
 
-## Recommended Implementation Shape
+## Shared Core
 
-- ใช้ repo เดียว
-- ใช้ database เดียว
-- ใช้ shared domain/infrastructure
-- แยก application module และ UI flow คนละส่วน
+- SQLite database
+- SQLAlchemy models
+- job persistence
+- unit of work
+- dashboard and settings aggregation
 
-## Suggested Code Direction
+## Ownership Rule
+
+- `Library` may supply assets to `Factory`
+- `Factory` must not silently rewrite owned library metadata
+- cross-module changes must happen through explicit contracts and documented workflows
+
+## Current Implementation Shape
 
 ```text
 src/mt_clip_factory/
   domain/
   infrastructure/
-  presentation/
-  ui/
+  control_center/
   library/
   factory/
+  presentation/
+  ui/
 ```
 
-## UML Context Diagram
+## Context Diagram
 
 ```mermaid
 flowchart LR
     U["User"] --> L["Resource Library Management"]
     U --> F["Video Assembly Factory"]
+    U --> D["Dashboard / Settings"]
     L --> DB["Shared SQLite SSOT"]
     F --> DB
+    D --> DB
     L --> FS["Media Storage"]
     F --> FS
-    F --> R["Rendered Outputs"]
 ```
 
 ## Delivery Rule
 
-ก่อน implement feature ใหม่ ต้องระบุให้ชัดว่า feature นั้นอยู่ฝั่ง `Library`, `Factory`, หรือ `Shared Core`
+Before implementing any feature, classify it as:
+
+- `Library`
+- `Factory`
+- `Shared Core`

@@ -1,9 +1,12 @@
 from __future__ import annotations
 
+from dataclasses import replace
+
 import pytest
 
 from mt_clip_factory.application.dto import CreateProductCommand
 from mt_clip_factory.application.services import ProductApplicationService
+from mt_clip_factory.library.artifact_dto import ArtifactJobSummaryDTO
 from mt_clip_factory.library.dto import AssetSummaryDTO
 from mt_clip_factory.library.services import AssetSourceFileMissingError
 from mt_clip_factory.presentation.library.asset_library import AssetLibraryViewModel
@@ -34,6 +37,8 @@ class FakeAssetIntakeService:
                 duration_sec=None,
                 file_size_mb=0.001,
                 tag_labels=(),
+                thumbnail_path=None,
+                proxy_path=None,
             )
         )
         return asset_id
@@ -47,11 +52,57 @@ class FakeAssetIntakeService:
         return list(self.assets)
 
 
+class FakeArtifactGenerationService:
+    def __init__(self, asset_service: FakeAssetIntakeService) -> None:
+        self._asset_service = asset_service
+        self._jobs: dict[int, tuple[str, int]] = {}
+        self.calls: list[tuple[str, int]] = []
+        self._next_job_id = 1
+
+    def enqueue_thumbnail_job(self, asset_id: int) -> int:
+        return self._enqueue("thumbnail", asset_id)
+
+    def enqueue_proxy_job(self, asset_id: int) -> int:
+        return self._enqueue("proxy", asset_id)
+
+    def run_job(self, job_id: int) -> None:
+        job_type, asset_id = self._jobs[job_id]
+        for index, asset in enumerate(self._asset_service.assets):
+            if asset.asset_id != asset_id:
+                continue
+            if job_type == "thumbnail":
+                self._asset_service.assets[index] = replace(
+                    asset,
+                    thumbnail_path=f"cache/thumbnails/{asset.asset_code}.jpg",
+                )
+            else:
+                self._asset_service.assets[index] = replace(
+                    asset,
+                    proxy_path=f"cache/proxy/{asset.asset_code}.mp4",
+                )
+            break
+        self.calls.append((job_type, asset_id))
+
+    def list_jobs(self, *, status: str | None = None) -> list[ArtifactJobSummaryDTO]:
+        return []
+
+    def _enqueue(self, job_type: str, asset_id: int) -> int:
+        job_id = self._next_job_id
+        self._jobs[job_id] = (job_type, asset_id)
+        self._next_job_id += 1
+        return job_id
+
+
 def test_asset_view_model_loads_products_and_assets(unit_of_work_factory) -> None:
     product_service = ProductApplicationService(unit_of_work_factory=unit_of_work_factory)
     product_service.create_product(CreateProductCommand(product_code="honey", product_name="Honey"))
     asset_service = FakeAssetIntakeService()
-    view_model = AssetLibraryViewModel(product_service=product_service, asset_intake_service=asset_service)
+    artifact_service = FakeArtifactGenerationService(asset_service)
+    view_model = AssetLibraryViewModel(
+        product_service=product_service,
+        asset_intake_service=asset_service,
+        artifact_generation_service=artifact_service,
+    )
 
     view_model.load()
 
@@ -64,7 +115,12 @@ def test_asset_view_model_registers_asset_and_refreshes(unit_of_work_factory, tm
     product_service = ProductApplicationService(unit_of_work_factory=unit_of_work_factory)
     product_id = product_service.create_product(CreateProductCommand(product_code="honey", product_name="Honey"))
     asset_service = FakeAssetIntakeService()
-    view_model = AssetLibraryViewModel(product_service=product_service, asset_intake_service=asset_service)
+    artifact_service = FakeArtifactGenerationService(asset_service)
+    view_model = AssetLibraryViewModel(
+        product_service=product_service,
+        asset_intake_service=asset_service,
+        artifact_generation_service=artifact_service,
+    )
 
     asset_id = view_model.register_asset(
         product_id=product_id,
@@ -83,7 +139,12 @@ def test_asset_view_model_surfaces_register_errors(unit_of_work_factory, tmp_pat
     product_service = ProductApplicationService(unit_of_work_factory=unit_of_work_factory)
     product_id = product_service.create_product(CreateProductCommand(product_code="honey", product_name="Honey"))
     asset_service = FakeAssetIntakeService()
-    view_model = AssetLibraryViewModel(product_service=product_service, asset_intake_service=asset_service)
+    artifact_service = FakeArtifactGenerationService(asset_service)
+    view_model = AssetLibraryViewModel(
+        product_service=product_service,
+        asset_intake_service=asset_service,
+        artifact_generation_service=artifact_service,
+    )
 
     with pytest.raises(FileNotFoundError):
         view_model.register_asset(
@@ -101,8 +162,65 @@ def test_asset_view_model_applies_filters(unit_of_work_factory) -> None:
     product_service = ProductApplicationService(unit_of_work_factory=unit_of_work_factory)
     product_service.create_product(CreateProductCommand(product_code="honey", product_name="Honey"))
     asset_service = FakeAssetIntakeService()
-    view_model = AssetLibraryViewModel(product_service=product_service, asset_intake_service=asset_service)
+    artifact_service = FakeArtifactGenerationService(asset_service)
+    view_model = AssetLibraryViewModel(
+        product_service=product_service,
+        asset_intake_service=asset_service,
+        artifact_generation_service=artifact_service,
+    )
 
     view_model.apply_filters(product_id=1, asset_type="background_video", status="ready")
 
     assert view_model.status == "ready"
+
+
+def test_asset_view_model_generates_thumbnail_and_refreshes(unit_of_work_factory, tmp_path) -> None:
+    product_service = ProductApplicationService(unit_of_work_factory=unit_of_work_factory)
+    product_id = product_service.create_product(CreateProductCommand(product_code="honey", product_name="Honey"))
+    asset_service = FakeAssetIntakeService()
+    artifact_service = FakeArtifactGenerationService(asset_service)
+    view_model = AssetLibraryViewModel(
+        product_service=product_service,
+        asset_intake_service=asset_service,
+        artifact_generation_service=artifact_service,
+    )
+    view_model.register_asset(
+        product_id=product_id,
+        asset_type="background_video",
+        source_file_path=str(tmp_path / "hero.mp4"),
+        asset_code="hero_asset",
+    )
+
+    job_id = view_model.generate_thumbnail(1)
+
+    assert job_id == 1
+    assert view_model.status == "ready"
+    assert "Generated thumbnail for asset #1" in view_model.feedback
+    assert asset_service.assets[0].thumbnail_path is not None
+    assert artifact_service.calls == [("thumbnail", 1)]
+
+
+def test_asset_view_model_generates_proxy_and_refreshes(unit_of_work_factory, tmp_path) -> None:
+    product_service = ProductApplicationService(unit_of_work_factory=unit_of_work_factory)
+    product_id = product_service.create_product(CreateProductCommand(product_code="honey", product_name="Honey"))
+    asset_service = FakeAssetIntakeService()
+    artifact_service = FakeArtifactGenerationService(asset_service)
+    view_model = AssetLibraryViewModel(
+        product_service=product_service,
+        asset_intake_service=asset_service,
+        artifact_generation_service=artifact_service,
+    )
+    view_model.register_asset(
+        product_id=product_id,
+        asset_type="background_video",
+        source_file_path=str(tmp_path / "hero.mp4"),
+        asset_code="hero_asset",
+    )
+
+    job_id = view_model.generate_proxy(1)
+
+    assert job_id == 1
+    assert view_model.status == "ready"
+    assert "Generated proxy for asset #1" in view_model.feedback
+    assert asset_service.assets[0].proxy_path is not None
+    assert artifact_service.calls == [("proxy", 1)]

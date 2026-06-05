@@ -126,6 +126,8 @@ class AssetIntakeService:
                     duration_sec=summary.duration_sec,
                     file_size_mb=summary.file_size_mb,
                     tag_labels=summary.tag_labels,
+                    thumbnail_path=summary.thumbnail_path,
+                    proxy_path=summary.proxy_path,
                 )
                 for summary in uow.assets.list_summaries(
                     product_id=product_id,
