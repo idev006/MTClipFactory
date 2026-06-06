@@ -12,4 +12,7 @@ class ArtifactJobSummaryDTO:
     asset_id: int | None
     progress: float
     error_message: str | None = None
-
+    recovery_attempt_count: int = 0
+    consecutive_failure_count: int = 0
+    last_recovery_attempt_at: str | None = None
+    last_failure_at: str | None = None

@@ -33,7 +33,14 @@ class FakeMetadataAnalyzer:
 
 
 class FakeArtifactGenerationService:
-    def __init__(self, queued_count: int = 0, failed_count: int = 0) -> None:
+    def __init__(
+        self,
+        queued_count: int = 0,
+        failed_count: int = 0,
+        *,
+        failed_failure_streaks: list[int] | None = None,
+    ) -> None:
+        failed_failure_streaks = failed_failure_streaks or []
         self._queued_jobs = [
             ArtifactJobSummaryDTO(
                 job_id=index + 1,
@@ -54,6 +61,9 @@ class FakeArtifactGenerationService:
                 asset_id=1,
                 progress=0.0,
                 error_message="job failed",
+                consecutive_failure_count=(
+                    failed_failure_streaks[index] if index < len(failed_failure_streaks) else 1
+                ),
             )
             for index in range(failed_count)
         ]
@@ -83,7 +93,7 @@ class FakeArtifactGenerationService:
 
 
 class FakeVideoAssemblyFactoryService:
-    def __init__(self) -> None:
+    def __init__(self, *, failed_failure_streak: int = 1) -> None:
         self._recipes = [
             {"recipe_id": 5, "status": "needs_review"},
             {"recipe_id": 3, "status": "approved"},
@@ -125,6 +135,7 @@ class FakeVideoAssemblyFactoryService:
                 progress=0.0,
                 output_path=None,
                 error_message="render failed",
+                consecutive_failure_count=failed_failure_streak,
             ),
         ]
 
@@ -226,6 +237,7 @@ def test_system_settings_service_reads_and_writes_toml(tmp_path) -> None:
                 "auto_refresh_seconds = 10",
                 "auto_recover_queued_jobs = false",
                 "max_recovery_jobs_per_run = 25",
+                "failed_job_escalation_threshold = 2",
                 "",
             ]
         ),
@@ -253,6 +265,7 @@ def test_system_settings_service_reads_and_writes_toml(tmp_path) -> None:
         auto_refresh_seconds=5,
         auto_recover_queued_jobs=True,
         max_recovery_jobs_per_run=12,
+        failed_job_escalation_threshold=3,
         voice_loop_enabled=False,
         background_music_loop_enabled=True,
         music_duck_enabled=True,
@@ -271,6 +284,7 @@ def test_system_settings_service_reads_and_writes_toml(tmp_path) -> None:
     assert loaded.cpu_limit_percent == 88
     assert loaded.auto_recover_queued_jobs is True
     assert loaded.max_recovery_jobs_per_run == 12
+    assert loaded.failed_job_escalation_threshold == 3
     assert loaded.voice_loop_enabled is False
     assert loaded.background_music_loop_enabled is True
     assert loaded.music_duck_enabled is True
@@ -304,6 +318,7 @@ def test_dashboard_service_aggregates_system_information(unit_of_work_factory, t
             auto_refresh_seconds=10,
             auto_recover_queued_jobs=True,
             max_recovery_jobs_per_run=3,
+            failed_job_escalation_threshold=2,
             voice_loop_enabled=False,
             background_music_loop_enabled=True,
             music_duck_enabled=True,
@@ -355,8 +370,10 @@ def test_dashboard_service_aggregates_system_information(unit_of_work_factory, t
     assert summary.queued_job_count == 3
     assert summary.processing_job_count == 1
     assert summary.failed_job_count == 2
+    assert summary.escalated_job_count == 0
     assert summary.auto_recover_queued_jobs is True
     assert summary.max_recovery_jobs_per_run == 3
+    assert summary.failed_job_escalation_threshold == 2
     assert summary.voice_loop_enabled is False
     assert summary.background_music_loop_enabled is True
     assert summary.music_duck_enabled is True
@@ -405,6 +422,7 @@ def test_dashboard_service_recovers_queued_jobs_and_records_summary(unit_of_work
             auto_refresh_seconds=10,
             auto_recover_queued_jobs=False,
             max_recovery_jobs_per_run=2,
+            failed_job_escalation_threshold=2,
             voice_loop_enabled=False,
             background_music_loop_enabled=True,
             music_duck_enabled=True,
@@ -435,6 +453,7 @@ def test_dashboard_service_recovers_queued_jobs_and_records_summary(unit_of_work
     assert result.trigger == "manual"
     assert result.queued_job_count == 3
     assert result.attempted_job_count == 2
+    assert result.deferred_job_count == 1
     assert result.succeeded_job_count == 2
     assert result.failed_job_count == 0
     assert summary.queued_job_count == 1
@@ -466,6 +485,7 @@ def test_dashboard_service_retries_failed_jobs_and_records_summary(unit_of_work_
             auto_refresh_seconds=10,
             auto_recover_queued_jobs=False,
             max_recovery_jobs_per_run=5,
+            failed_job_escalation_threshold=2,
             voice_loop_enabled=False,
             background_music_loop_enabled=True,
             music_duck_enabled=True,
@@ -493,8 +513,75 @@ def test_dashboard_service_retries_failed_jobs_and_records_summary(unit_of_work_
     assert result.job_selection == "failed"
     assert result.matched_job_count == 2
     assert result.attempted_job_count == 2
+    assert result.deferred_job_count == 0
     assert result.succeeded_job_count == 2
     assert result.failed_job_count == 0
+    assert result.escalated_job_count == 0
     assert summary.failed_job_count == 0
     assert summary.last_recovery_summary is not None
     assert summary.last_recovery_summary.job_selection == "failed"
+
+
+def test_dashboard_service_prioritizes_non_escalated_failed_jobs(unit_of_work_factory, tmp_path) -> None:
+    workspace_root = tmp_path / "workspace"
+    workspace_root.mkdir()
+    config = default_config(workspace_root)
+    settings_service = SystemSettingsService(config.paths.app_config_path)
+    settings_service.save(
+        SystemSettingsDTO(
+            database_path=str(tmp_path / "workspace" / "ad_kitchen.db"),
+            media_root=str(tmp_path / "media_library"),
+            docs_root=str(tmp_path / "workspace" / "doc"),
+            outputs_root=str(tmp_path / "workspace" / "outputs"),
+            preview_root=str(tmp_path / "workspace" / "outputs" / "preview"),
+            ffmpeg_root=str(tmp_path / "ffmpeg"),
+            ffprobe_path=str(tmp_path / "ffmpeg" / "bin" / "ffprobe.exe"),
+            ffmpeg_path=str(tmp_path / "ffmpeg" / "bin" / "ffmpeg.exe"),
+            cpu_limit_percent=90,
+            ram_limit_percent=80,
+            disk_free_gb_min=20,
+            max_preview_workers=1,
+            max_final_workers=1,
+            auto_refresh_seconds=10,
+            auto_recover_queued_jobs=False,
+            max_recovery_jobs_per_run=1,
+            failed_job_escalation_threshold=2,
+            voice_loop_enabled=False,
+            background_music_loop_enabled=True,
+            music_duck_enabled=True,
+            music_duck_mode="sidechain_compressor",
+            music_duck_db=-15,
+            music_duck_attack_ms=250,
+            music_duck_release_ms=500,
+            music_duck_threshold_db=-24,
+            music_duck_ratio=8.0,
+        )
+    )
+    dashboard_service = DashboardService(
+        config=config,
+        product_service=ProductApplicationService(unit_of_work_factory=unit_of_work_factory),
+        asset_intake_service=_build_asset_service(unit_of_work_factory, tmp_path / "media_library"),
+        artifact_generation_service=FakeArtifactGenerationService(
+            queued_count=0,
+            failed_count=1,
+            failed_failure_streaks=[1],
+        ),
+        video_assembly_factory_service=FakeVideoAssemblyFactoryService(failed_failure_streak=3),
+        tag_management_service=TagManagementService(unit_of_work_factory=unit_of_work_factory),
+        system_settings_service=settings_service,
+    )
+
+    before = dashboard_service.build_summary()
+    result = dashboard_service.retry_failed_jobs(trigger="manual")
+    after = dashboard_service.build_summary()
+
+    assert before.escalated_job_count == 1
+    assert before.operator_playbook_lines
+    assert result.attempted_job_count == 1
+    assert result.deferred_job_count == 1
+    assert result.escalated_job_count == 1
+    assert result.recovered_job_codes == ("failed_1",)
+    assert result.deferred_job_codes == ("final_08",)
+    assert result.escalated_job_codes == ("final_08",)
+    assert after.failed_job_count == 1
+    assert after.escalated_job_count == 1

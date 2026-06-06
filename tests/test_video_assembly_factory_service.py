@@ -264,6 +264,8 @@ def test_factory_service_marks_preview_job_failed_when_recipe_has_no_items(unit_
     assert len(jobs) == 1
     assert jobs[0].job_id == job_id
     assert jobs[0].error_message is not None
+    assert jobs[0].consecutive_failure_count == 1
+    assert jobs[0].recovery_attempt_count == 0
 
 
 def test_factory_service_marks_preview_job_failed_when_recipe_has_no_renderable_visual_assets(unit_of_work_factory, tmp_path) -> None:
@@ -284,6 +286,7 @@ def test_factory_service_marks_preview_job_failed_when_recipe_has_no_renderable_
 
     failed_jobs = service.list_preview_jobs(status="failed")
     assert failed_jobs[0].job_id == job_id
+    assert failed_jobs[0].consecutive_failure_count == 1
 
 
 def test_factory_service_retries_failed_preview_job_after_restart(unit_of_work_factory, tmp_path) -> None:
@@ -306,6 +309,8 @@ def test_factory_service_retries_failed_preview_job_after_restart(unit_of_work_f
     outputs = restarted_service.list_outputs(recipe_id=recipe_id)
     assert jobs[0].job_id == job_id
     assert jobs[0].status == "done"
+    assert jobs[0].recovery_attempt_count == 1
+    assert jobs[0].consecutive_failure_count == 0
     assert len(outputs) == 1
     assert Path(outputs[0].file_path).exists()
 
@@ -526,6 +531,8 @@ def test_factory_service_retries_failed_final_job_after_restart(unit_of_work_fac
     outputs = restarted_service.list_outputs(recipe_id=recipe_id)
     assert jobs[0].job_id == final_job_id
     assert jobs[0].status == "done"
+    assert jobs[0].recovery_attempt_count == 1
+    assert jobs[0].consecutive_failure_count == 0
     assert len(outputs) == 2
     assert Path(outputs[0].file_path).exists()
 

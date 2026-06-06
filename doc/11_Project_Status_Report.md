@@ -41,6 +41,8 @@
 - configurable duck engine with `sidechain_compressor` default plus `windowed_volume_duck` fallback
 - settings-backed duck mode, threshold, and ratio controls surfaced through `.toml`, dashboard, and settings UI
 - manifest-visible runtime evidence for the applied duck mode and compressor tuning
+- persisted failed-job recovery-attempt metadata with configurable escalation threshold
+- dashboard-visible operator playbook guidance plus deferred bulk-retry handling for escalated failed jobs
 - initial Video Assembly Factory:
   - recipe persistence
   - recipe item assignment
@@ -59,24 +61,23 @@
 
 ## Verification Baseline
 
-- `python -m pytest` via `.venv`: `84 passed`
+- `python -m pytest` via `.venv`: `85 passed`
 - UI smoke via `QT_QPA_PLATFORM=offscreen`: `6` windows instantiated successfully
 
 ## Current Focus
 
 - deepen review signals beyond the current duration and visual-repetition heuristics
 - deepen runtime audio beyond the new configurable duck-engine baseline where needed
-- extend recovery and escalation policy beyond the current queued-startup and failed-manual retry baselines
 - decide whether runtime path changes should hot-reload or remain restart-driven
 - keep review and approval history truthful through append-only persistence
 - keep project documents truthful through per-milestone revision checkpoints
 
 ## Next Steps
 
-1. Start recovery escalation work beyond current sequential retry behavior and define operator playbooks.
-2. Decide whether path-root changes stay restart-driven or become hot-reload capable.
-3. Deepen review-gate signals with audio masking and emergency-fill detection when the supporting data is ready.
-4. Extend audio work from configurable ducking into richer multi-layer polish if operator feedback demands it.
+1. Decide whether path-root changes stay restart-driven or become hot-reload capable.
+2. Deepen review-gate signals with audio masking and emergency-fill detection when the supporting data is ready.
+3. Extend audio work from configurable ducking into richer multi-layer polish if operator feedback demands it.
+4. Revisit whether recovery history needs a dedicated audit schema beyond the current persisted job-payload seam.
 
 ## Direction Locked In This Documentation Revision
 
@@ -93,6 +94,7 @@
 - `IR-05b` now adds runtime voice/music mixing plus manifest-visible applied-audio evidence
 - `IR-06` now adds review gates, configurable thresholds, dashboard visibility, and manifest-backed operator evidence for risky compositions
 - `IR-07` now adds configurable duck modes, sidechain-compressor tuning, and higher-quality runtime audio evidence
+- `IR-08` now adds persisted failed-job recovery history, escalation thresholds, deferred bulk retry, and operator playbook visibility
 
 ## Ownership
 

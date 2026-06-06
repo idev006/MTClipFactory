@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-import json
+from mt_clip_factory.domain.job_recovery import decode_job_output_payload
 
 
 def build_output_lineage_context(*, requested_outputs, all_outputs, preview_jobs, final_jobs) -> dict[int, dict[str, object | None]]:
@@ -27,10 +27,7 @@ def build_output_lineage_context(*, requested_outputs, all_outputs, preview_jobs
 
 
 def decode_output_payload(output_json: str | None) -> dict[str, object]:
-    if not output_json:
-        return {}
-    payload = json.loads(output_json)
-    return payload if isinstance(payload, dict) else {}
+    return decode_job_output_payload(output_json)
 
 
 def resolve_output_kind(output_code: str, lineage: dict[str, object | None] | None, *, preview_job_type: str, final_job_type: str) -> str:

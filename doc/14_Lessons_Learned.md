@@ -144,3 +144,8 @@
 
 - moving straight from one duck strategy to another would have been risky; keeping a supported fallback mode made the audio upgrade safer and easier to verify
 - when production quality improves, the dashboard, settings UI, manifests, and tests all need to move together or operators lose trust in what “applied policy” really means
+
+## LL-030 | 2026-06-06 | Recovery Escalation Should Reuse SSOT Before Inventing New Tables
+
+- persisted recovery history became much easier to ship once the team treated job payload metadata as a practical SSOT seam instead of blocking on a larger schema redesign
+- bulk failed-job retry is more trustworthy when escalated jobs are surfaced explicitly and lower-risk retries use the limited recovery slots first

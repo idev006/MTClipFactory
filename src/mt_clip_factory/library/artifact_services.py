@@ -5,6 +5,12 @@ from datetime import datetime, UTC
 from pathlib import Path
 
 from mt_clip_factory.domain.enums import JobStatus
+from mt_clip_factory.domain.job_recovery import (
+    apply_job_failure_metadata,
+    apply_job_success_metadata,
+    prepare_job_output_for_retry,
+    recovery_metadata_from_output_json,
+)
 from mt_clip_factory.domain.jobs import Job
 from mt_clip_factory.domain.services import UnitOfWork
 from mt_clip_factory.library.artifact_dto import ArtifactJobSummaryDTO
@@ -71,8 +77,13 @@ class ArtifactGenerationService:
 
                 job.status = JobStatus.DONE
                 job.progress = 1.0
-                job.finished_at = _utc_now()
+                finished_at = _utc_now()
+                job.finished_at = finished_at
                 job.error_message = None
+                job.output_json = apply_job_success_metadata(
+                    job.output_json,
+                    succeeded_at=_format_timestamp(finished_at),
+                )
                 uow.assets.update(asset)
                 uow.jobs.update(job)
                 uow.commit()
@@ -80,7 +91,13 @@ class ArtifactGenerationService:
                 job.status = JobStatus.FAILED
                 job.progress = 0.0
                 job.error_message = str(exc)
-                job.finished_at = _utc_now()
+                finished_at = _utc_now()
+                job.finished_at = finished_at
+                job.output_json = apply_job_failure_metadata(
+                    job.output_json,
+                    failed_at=_format_timestamp(finished_at),
+                    error_message=str(exc),
+                )
                 uow.jobs.update(job)
                 uow.commit()
                 raise
@@ -94,12 +111,27 @@ class ArtifactGenerationService:
             job.error_message = None
             job.started_at = None
             job.finished_at = None
+            job.output_json = prepare_job_output_for_retry(
+                job.output_json,
+                attempted_at=_format_timestamp(_utc_now()),
+            )
             uow.jobs.update(job)
             uow.commit()
         self.run_job(job_id)
 
     def list_jobs(self, *, status: str | None = None) -> list[ArtifactJobSummaryDTO]:
         with self._unit_of_work_factory() as uow:
+            summaries = [
+                summary
+                for summary in uow.jobs.list_summaries(status=status)
+                if summary.job_type in {self.THUMBNAIL_JOB_TYPE, self.PROXY_JOB_TYPE}
+            ]
+            recovery_by_job_id = {}
+            for summary in summaries:
+                job = uow.jobs.get_by_id(summary.job_id)
+                if job is None or job.id is None:
+                    continue
+                recovery_by_job_id[job.id] = recovery_metadata_from_output_json(job.output_json)
             return [
                 ArtifactJobSummaryDTO(
                     job_id=summary.job_id,
@@ -109,8 +141,20 @@ class ArtifactGenerationService:
                     asset_id=summary.asset_id,
                     progress=summary.progress,
                     error_message=summary.error_message,
+                    recovery_attempt_count=recovery_by_job_id.get(summary.job_id).retry_count
+                    if summary.job_id in recovery_by_job_id
+                    else 0,
+                    consecutive_failure_count=recovery_by_job_id.get(summary.job_id).consecutive_failure_count
+                    if summary.job_id in recovery_by_job_id
+                    else 0,
+                    last_recovery_attempt_at=recovery_by_job_id.get(summary.job_id).last_retry_at
+                    if summary.job_id in recovery_by_job_id
+                    else None,
+                    last_failure_at=recovery_by_job_id.get(summary.job_id).last_failure_at
+                    if summary.job_id in recovery_by_job_id
+                    else None,
                 )
-                for summary in uow.jobs.list_summaries(status=status)
+                for summary in summaries
             ]
 
     def _enqueue_job(self, *, asset_id: int, job_type: str) -> int:
@@ -134,3 +178,7 @@ class ArtifactGenerationService:
 
 def _utc_now() -> datetime:
     return datetime.now(UTC).replace(tzinfo=None)
+
+
+def _format_timestamp(value: datetime) -> str:
+    return value.strftime("%Y-%m-%d %H:%M:%S")

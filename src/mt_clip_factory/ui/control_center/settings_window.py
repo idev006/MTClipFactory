@@ -67,6 +67,7 @@ class SettingsWindow(QMainWindow):
         self.auto_refresh_input = QSpinBox()
         self.auto_recover_input = QCheckBox("Enable queued-job auto recovery on startup")
         self.max_recovery_jobs_input = QSpinBox()
+        self.failed_job_escalation_threshold_input = QSpinBox()
         self.voice_loop_input = QCheckBox("Allow narration looping when timeline is longer than voice assets")
         self.music_loop_input = QCheckBox("Allow background music looping to fill timeline gaps")
         self.music_duck_input = QCheckBox("Enable music ducking while narration is active")
@@ -89,6 +90,7 @@ class SettingsWindow(QMainWindow):
             self.max_final_input,
             self.auto_refresh_input,
             self.max_recovery_jobs_input,
+            self.failed_job_escalation_threshold_input,
             self.music_duck_attack_input,
             self.music_duck_release_input,
             self.music_duck_threshold_input,
@@ -121,6 +123,7 @@ class SettingsWindow(QMainWindow):
         form_layout.addRow("Auto Refresh Seconds", self.auto_refresh_input)
         form_layout.addRow("Auto Recover Queued Jobs", self.auto_recover_input)
         form_layout.addRow("Max Recovery Jobs Per Run", self.max_recovery_jobs_input)
+        form_layout.addRow("Failed Job Escalation Threshold", self.failed_job_escalation_threshold_input)
         form_layout.addRow("Voice Loop Enabled", self.voice_loop_input)
         form_layout.addRow("Background Music Loop Enabled", self.music_loop_input)
         form_layout.addRow("Music Duck Enabled", self.music_duck_input)
@@ -172,6 +175,7 @@ class SettingsWindow(QMainWindow):
         self.auto_refresh_input.setValue(settings.auto_refresh_seconds)
         self.auto_recover_input.setChecked(settings.auto_recover_queued_jobs)
         self.max_recovery_jobs_input.setValue(settings.max_recovery_jobs_per_run)
+        self.failed_job_escalation_threshold_input.setValue(settings.failed_job_escalation_threshold)
         self.voice_loop_input.setChecked(settings.voice_loop_enabled)
         self.music_loop_input.setChecked(settings.background_music_loop_enabled)
         self.music_duck_input.setChecked(settings.music_duck_enabled)
@@ -209,6 +213,7 @@ class SettingsWindow(QMainWindow):
                     auto_refresh_seconds=self.auto_refresh_input.value(),
                     auto_recover_queued_jobs=self.auto_recover_input.isChecked(),
                     max_recovery_jobs_per_run=self.max_recovery_jobs_input.value(),
+                    failed_job_escalation_threshold=self.failed_job_escalation_threshold_input.value(),
                     voice_loop_enabled=self.voice_loop_input.isChecked(),
                     background_music_loop_enabled=self.music_loop_input.isChecked(),
                     music_duck_enabled=self.music_duck_input.isChecked(),

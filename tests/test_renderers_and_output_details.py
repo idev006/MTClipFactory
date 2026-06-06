@@ -49,6 +49,7 @@ def _settings(tmp_path: Path) -> SystemSettingsDTO:
         auto_refresh_seconds=10,
         auto_recover_queued_jobs=False,
         max_recovery_jobs_per_run=25,
+        failed_job_escalation_threshold=2,
         voice_loop_enabled=False,
         background_music_loop_enabled=True,
         music_duck_enabled=True,

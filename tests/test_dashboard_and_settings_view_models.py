@@ -214,6 +214,7 @@ def test_settings_view_model_loads_and_saves(tmp_path) -> None:
                 "auto_refresh_seconds = 10",
                 "auto_recover_queued_jobs = false",
                 "max_recovery_jobs_per_run = 25",
+                "failed_job_escalation_threshold = 2",
                 "",
                 "[audio]",
                 "voice_loop_enabled = false",
@@ -255,6 +256,7 @@ def test_settings_view_model_loads_and_saves(tmp_path) -> None:
             auto_refresh_seconds=6,
             auto_recover_queued_jobs=True,
             max_recovery_jobs_per_run=12,
+            failed_job_escalation_threshold=3,
             voice_loop_enabled=False,
             background_music_loop_enabled=True,
             music_duck_enabled=True,
@@ -273,6 +275,7 @@ def test_settings_view_model_loads_and_saves(tmp_path) -> None:
     assert view_model.settings.cpu_limit_percent == 91
     assert view_model.settings.auto_recover_queued_jobs is True
     assert view_model.settings.max_recovery_jobs_per_run == 12
+    assert view_model.settings.failed_job_escalation_threshold == 3
     assert view_model.settings.music_duck_mode == "windowed_volume_duck"
     assert view_model.settings.music_duck_db == -18
     assert view_model.settings.music_duck_threshold_db == -20

@@ -19,6 +19,7 @@ max_final_workers = 1
 auto_refresh_seconds = 10
 auto_recover_queued_jobs = false
 max_recovery_jobs_per_run = 25
+failed_job_escalation_threshold = 2
 
 [audio]
 voice_loop_enabled = false

@@ -44,6 +44,7 @@ Current editable fields:
 - auto refresh cadence
 - auto recover queued jobs on startup
 - max recovery jobs per run
+- failed-job escalation threshold
 - voice loop enabled
 - background music loop enabled
 - music duck enabled
@@ -79,6 +80,7 @@ Future composition-related settings should still include:
 - operators must be able to tell whether work is queued, failed, or completed from the dashboard
 - automatic recovery should be policy-driven and visible, not hidden magic
 - failed-job retry should remain an explicit operator decision unless a stronger policy is later designed
+- bulk failed-job retry should prioritize lower-risk retries first and surface escalated jobs with operator guidance
 
 ## Durability Principles
 
@@ -104,6 +106,9 @@ The following must flow through config or services whenever user control is appr
 - uniform manual retry across artifact, preview, and final persisted jobs
 - configurable queued-job recovery orchestrator for dashboard/manual and startup execution
 - dashboard-driven failed-job retry orchestration
+- persisted recovery-attempt metadata carried with jobs
+- failed-job escalation threshold with deferred bulk-retry ordering
+- dashboard operator playbook lines for current failed and escalated jobs
 - output approval and recipe approval decisions captured in SSOT workflow
 - output lineage reporting derived from persisted jobs and outputs
 - migration-backed approval actor/time/reason fields
@@ -129,10 +134,10 @@ The following must flow through config or services whenever user control is appr
 
 ## Current Gaps
 
-1. Recovery scope is still narrower for failed-job escalation and advanced orchestration rules.
-2. Preview and final now share a configurable duck-engine foundation, but richer multi-layer parity and deeper polish are still incomplete.
-3. Review gates now exist, but audio masking and emergency-fill signals are still shallow.
-4. Path-root changes are not fully hot-reloaded across all runtime services.
+1. Preview and final now share a configurable duck-engine foundation, but richer multi-layer parity and deeper polish are still incomplete.
+2. Review gates now exist, but audio masking and emergency-fill signals are still shallow.
+3. Path-root changes are not fully hot-reloaded across all runtime services.
+4. Recovery history currently rides on persisted job payload metadata rather than a dedicated audit schema.
 
 ## Composition Reliability Direction
 
@@ -143,3 +148,4 @@ To keep future renders trustworthy:
 - music ducking decisions must be explainable and visible to operators
 - duration mismatch handling must be logged instead of silently hidden
 - risky visual repetition must be routed to human review instead of being silently normalized
+- repeated failed-job retries must escalate visibly instead of blending into one generic failure count

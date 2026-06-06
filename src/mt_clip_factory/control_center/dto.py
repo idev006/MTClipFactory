@@ -21,6 +21,7 @@ class SystemSettingsDTO:
     auto_refresh_seconds: int
     auto_recover_queued_jobs: bool
     max_recovery_jobs_per_run: int
+    failed_job_escalation_threshold: int
     voice_loop_enabled: bool
     background_music_loop_enabled: bool
     music_duck_enabled: bool
@@ -47,6 +48,12 @@ class DashboardJobDTO:
     subject_reference: str
     output_path: str | None = None
     error_message: str | None = None
+    recovery_attempt_count: int = 0
+    consecutive_failure_count: int = 0
+    last_recovery_attempt_at: str | None = None
+    last_failure_at: str | None = None
+    recovery_escalated: bool = False
+    operator_playbook: str | None = None
 
 
 @dataclass(slots=True, frozen=True)
@@ -58,10 +65,14 @@ class RecoveryRunSummaryDTO:
     matched_job_count: int
     queued_job_count: int
     attempted_job_count: int
+    deferred_job_count: int
     succeeded_job_count: int
     failed_job_count: int
+    escalated_job_count: int
     recovered_job_codes: tuple[str, ...]
     failed_job_codes: tuple[str, ...]
+    deferred_job_codes: tuple[str, ...]
+    escalated_job_codes: tuple[str, ...]
 
 
 @dataclass(slots=True, frozen=True)
@@ -79,6 +90,7 @@ class DashboardSummaryDTO:
     queued_job_count: int
     processing_job_count: int
     failed_job_count: int
+    escalated_job_count: int
     generated_at: str
     ffprobe_available: bool
     ffmpeg_available: bool
@@ -100,6 +112,7 @@ class DashboardSummaryDTO:
     auto_refresh_seconds: int
     auto_recover_queued_jobs: bool
     max_recovery_jobs_per_run: int
+    failed_job_escalation_threshold: int
     voice_loop_enabled: bool
     background_music_loop_enabled: bool
     music_duck_enabled: bool
@@ -113,3 +126,4 @@ class DashboardSummaryDTO:
     review_max_looped_segments: int
     review_min_distinct_visual_assets: int
     review_max_consecutive_same_visual_segments: int
+    operator_playbook_lines: tuple[str, ...]

@@ -27,13 +27,14 @@ The project now uses two roadmap layers:
 - `IR-05b` Runtime audio ducking application: complete on 2026-06-06
 - `IR-06` Review gates and composition reliability controls: complete on 2026-06-06
 - `IR-07` Audio-mix quality refinement beyond windowed-duck baseline: complete on 2026-06-06
+- `IR-08` Recovery escalation rules and operator playbook: complete on 2026-06-06
 
 ## Current Execution Stream
 
 The next work should follow this order unless a documented issue changes priority:
 
-1. Recovery escalation rules and richer orchestration policy
-2. Optional path-root hot-reload support if restart semantics prove too costly
+1. Optional path-root hot-reload support if restart semantics prove too costly
+2. Deeper review-gate signals for audio masking and emergency-fill outcomes
 3. Richer multi-layer audio polish beyond the current duck-engine baseline
 
 ## IR-01 | Composition Data Model
@@ -255,6 +256,35 @@ Improve runtime narration/music mixing quality without sacrificing testability, 
 - wrote manifest-visible runtime evidence for the applied duck mode and its active tuning fields
 - extended Recipe Builder audio detail rendering to expose threshold/ratio evidence when present
 - covered new mode selection, fallback behavior, and settings persistence with pytest and re-verified the full suite plus UI smoke
+
+## IR-08 | Recovery Escalation Rules And Operator Playbook
+
+### Goal
+
+Make failed-job recovery more truthful and more actionable without silently widening automation scope.
+
+### Scope
+
+- persist recovery-attempt and failure-streak metadata on jobs
+- add a configurable failed-job escalation threshold in `.toml`, settings UI, and dashboard summary
+- prioritize non-escalated failed jobs first during bulk retry and defer escalated jobs when the configured run cap is reached
+- expose operator playbook guidance and escalated-job visibility through the dashboard
+
+### Acceptance Criteria
+
+- repeated failed retries become visible as escalated jobs instead of one flat failure bucket
+- dashboard recovery summaries show deferred and escalated job codes when relevant
+- failed-job bulk retry follows a documented prioritization rule instead of simple sequential order
+- pytest covers the new recovery metadata, prioritization, and dashboard visibility seams
+- roadmap, UML, reliability docs, Kanban, issues, and lessons learned stay aligned to the delivered baseline
+
+### Delivery Result
+
+- delivered persisted recovery metadata through shared job payload helpers used by artifact and factory job services
+- delivered settings-backed `failed_job_escalation_threshold` through `app_config.toml`, `SystemSettingsService`, settings UI, and dashboard summary
+- delivered deferred bulk-retry ordering that prioritizes lower-risk failed jobs ahead of escalated ones under `max_recovery_jobs_per_run`
+- delivered dashboard-visible escalated job counts, recovery summary details, and operator playbook guidance for current failed jobs
+- covered recovery metadata persistence, escalation ordering, and operator visibility with pytest
 
 ## Cross-Milestone Rules
 

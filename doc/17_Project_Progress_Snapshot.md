@@ -37,24 +37,25 @@
 - Preview and final renderers now emit manifest-visible runtime audio-mix evidence.
 - Preview and final renderers now also emit manifest-visible review-gate evidence plus quality/duplicate-risk summaries.
 - Preview and final renderers now support configurable duck modes with sidechain-compressor tuning evidence.
+- Failed jobs now retain persisted recovery-attempt history, escalate visibly after repeated failures, and surface operator playbook guidance on the dashboard.
 - The roadmap is now split into strategic and implementation layers so the next coding milestone is clearer.
 
 ## Delivered In The Latest Loop
 
-- configurable duck mode, threshold, and ratio now flow through `.toml`, settings UI, dashboard summary, and render services
-- preview/final outputs now store higher-quality duck-mode evidence in addition to earlier audio/review metadata
-- runtime renderer coverage now proves both `sidechain_compressor` and fallback `windowed_volume_duck` command paths
-- pytest now covers the delivered `IR-07` baseline end to end
-- architecture, reliability, roadmap, Kanban, issues, and lessons learned were aligned to the delivered `IR-07` baseline
+- persisted recovery-attempt metadata now flows through artifact/factory job services, dashboard summaries, and recent-job triage
+- failed-job recovery now uses a configurable escalation threshold plus deferred bulk-retry ordering under the existing run cap
+- dashboard attention now exposes escalated failed-job counts and operator playbook guidance for current failures
+- pytest now covers the delivered `IR-08` baseline end to end
+- architecture, reliability, roadmap, Kanban, issues, and lessons learned were aligned to the delivered `IR-08` baseline
 
 ## Still Open
 
-1. failed-job escalation policy beyond manual retry
-2. optional hot-reload decision for path-root changes
-3. deeper review gates for audio masking and emergency-fill outcomes
-4. richer multi-layer audio policy and polish beyond the current duck-engine baseline
+1. optional hot-reload decision for path-root changes
+2. deeper review gates for audio masking and emergency-fill outcomes
+3. richer multi-layer audio policy and polish beyond the current duck-engine baseline
+4. decide whether recovery history should remain payload-backed or move into a dedicated audit schema
 
 ## Verification Baseline
 
-- `python -m pytest` in `.venv`: `84 passed`
+- `python -m pytest` in `.venv`: `85 passed`
 - `QT_QPA_PLATFORM=offscreen` UI smoke: `6` main windows instantiated

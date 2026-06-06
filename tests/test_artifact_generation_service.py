@@ -148,6 +148,8 @@ def test_artifact_service_marks_failed_job_and_supports_retry(unit_of_work_facto
     assert len(failed_jobs) == 1
     assert failed_jobs[0].job_id == job_id
     assert failed_jobs[0].error_message == "thumbnail generation failed"
+    assert failed_jobs[0].consecutive_failure_count == 1
+    assert failed_jobs[0].recovery_attempt_count == 0
     assert asset_service.list_assets()[0].thumbnail_path is None
 
     service.retry_job(job_id)
@@ -155,4 +157,6 @@ def test_artifact_service_marks_failed_job_and_supports_retry(unit_of_work_facto
     jobs = service.list_jobs()
     assert jobs[0].status == JobStatus.DONE.value
     assert jobs[0].error_message is None
+    assert jobs[0].recovery_attempt_count == 1
+    assert jobs[0].consecutive_failure_count == 0
     assert asset_service.list_assets()[0].thumbnail_path is not None

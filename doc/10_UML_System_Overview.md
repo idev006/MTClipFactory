@@ -116,6 +116,8 @@ classDiagram
         +recover_queued_jobs(...)
         +retry_failed_jobs(...)
         +should_auto_recover_queued_jobs()
+        +failed_job_escalation_threshold
+        +operator_playbook_lines
         +needs_review_recipe_count
     }
 
@@ -123,9 +125,18 @@ classDiagram
         +load()
         +save(settings)
         +update(...)
+        +failed-job escalation threshold
         +audio policy fields
         +review threshold fields
         +duck mode tuning fields
+    }
+
+    class RecoveryMetadata {
+        +retry_count
+        +consecutive_failure_count
+        +last_retry_at
+        +last_failure_at
+        +last_success_at
     }
 
     class MigrationGuard {
@@ -231,6 +242,7 @@ classDiagram
         +status
         +recipe_id
         +asset_id
+        +output_json(recovery metadata)
     }
 
     ResourceLibraryModule --> ProductApplicationService
@@ -251,6 +263,7 @@ classDiagram
     VideoAssemblyFactoryService --> PreviewComposition
     VideoAssemblyFactoryService --> CompositionPlan
     VideoAssemblyFactoryService --> ReviewGateEvaluator
+    Job --> RecoveryMetadata
     CompositionPlan --> TimelineSegment
     CompositionPlan --> RenderDecisionLog
     PreviewComposition --> TimelineSegment
@@ -484,9 +497,14 @@ sequenceDiagram
 
     User->>DashView: Retry Failed Jobs
     DashView->>Dash: retry_failed_jobs(trigger="manual")
-    Dash->>Artifact: retry_job(failed artifact)
-    Dash->>Factory: retry_job(failed preview/final)
-    Dash-->>DashView: recovery summary (selection=failed)
+    Dash->>Dash: prioritize non-escalated failed jobs first
+    alt recovery limit reached before escalated jobs
+        Dash-->>DashView: recovery summary (selection=failed, deferred=escalated jobs)
+    else retry slot available
+        Dash->>Artifact: retry_job(failed artifact)
+        Dash->>Factory: retry_job(failed preview/final)
+        Dash-->>DashView: recovery summary (selection=failed, escalated visibility)
+    end
 ```
 
 ## Workflow State Direction

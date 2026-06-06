@@ -77,6 +77,10 @@ class PreviewJobSummaryDTO:
     progress: float
     output_path: str | None
     error_message: str | None = None
+    recovery_attempt_count: int = 0
+    consecutive_failure_count: int = 0
+    last_recovery_attempt_at: str | None = None
+    last_failure_at: str | None = None
 
 
 @dataclass(slots=True, frozen=True)

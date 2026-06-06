@@ -154,6 +154,7 @@ class DashboardWindow(QMainWindow):
                     f"Queued Jobs: {summary.queued_job_count}",
                     f"Processing Jobs: {summary.processing_job_count}",
                     f"Failed Jobs: {summary.failed_job_count}",
+                    f"Escalated Failed Jobs: {summary.escalated_job_count}",
                     f"FFprobe Available: {summary.ffprobe_available}",
                     f"FFmpeg Available: {summary.ffmpeg_available}",
                 ]
@@ -185,6 +186,7 @@ class DashboardWindow(QMainWindow):
                     f"Auto Refresh Seconds: {summary.auto_refresh_seconds}",
                     f"Auto Recover Queued Jobs: {summary.auto_recover_queued_jobs}",
                     f"Max Recovery Jobs Per Run: {summary.max_recovery_jobs_per_run}",
+                    f"Failed Job Escalation Threshold: {summary.failed_job_escalation_threshold}",
                     f"Voice Loop Enabled: {summary.voice_loop_enabled}",
                     f"Background Music Loop Enabled: {summary.background_music_loop_enabled}",
                     f"Music Duck Enabled: {summary.music_duck_enabled}",
@@ -207,6 +209,8 @@ def _format_operational_attention(summary) -> str:
     lines: list[str] = []
     if summary.failed_job_count > 0:
         lines.append("Attention: failed jobs need operator review or retry.")
+    if summary.escalated_job_count > 0:
+        lines.append("Attention: one or more failed jobs are now escalated after repeated recovery failures.")
     if summary.needs_review_asset_count > 0:
         lines.append("Attention: some assets are still waiting for review.")
     if summary.needs_review_recipe_count > 0:
@@ -215,6 +219,10 @@ def _format_operational_attention(summary) -> str:
         lines.append("Attention: one or more FFmpeg dependencies are unavailable.")
     if not lines:
         lines.append("Attention: no active alerts.")
+    if summary.operator_playbook_lines:
+        lines.append("")
+        lines.append("Operator Playbook:")
+        lines.extend(f"- {line}" for line in summary.operator_playbook_lines)
     lines.append("")
     lines.extend(_format_recovery_summary(summary))
     lines.append("")
@@ -226,9 +234,19 @@ def _format_operational_attention(summary) -> str:
         target = f"{job.subject_reference} | {job.job_source}"
         output = f" | output={job.output_path}" if job.output_path else ""
         error = f" | error={job.error_message}" if job.error_message else ""
+        recovery = ""
+        if job.recovery_attempt_count > 0 or job.consecutive_failure_count > 0:
+            recovery = (
+                f" | retries={job.recovery_attempt_count}"
+                f" | fail_streak={job.consecutive_failure_count}"
+            )
+        if job.recovery_escalated:
+            recovery += " | escalated"
+        if job.last_failure_at:
+            recovery += f" | last_failure={job.last_failure_at}"
         lines.append(
             f"- #{job.job_id} {job.job_code} [{job.status}] {job.job_type} "
-            f"{target} | progress={job.progress:.1f}{output}{error}"
+            f"{target} | progress={job.progress:.1f}{output}{error}{recovery}"
         )
     return "\n".join(lines)
 
@@ -238,6 +256,7 @@ def _format_recovery_summary(summary) -> list[str]:
         return [
             "Recovery Summary: none in this app session.",
             f"Recovery Startup Policy: auto_recover_queued_jobs={summary.auto_recover_queued_jobs}",
+            f"Recovery Escalation Threshold: {summary.failed_job_escalation_threshold}",
         ]
     recovery = summary.last_recovery_summary
     return [
@@ -248,8 +267,12 @@ def _format_recovery_summary(summary) -> list[str]:
         f"- Finished: {recovery.finished_at}",
         f"- Matched Jobs: {recovery.matched_job_count}",
         f"- Attempted: {recovery.attempted_job_count}",
+        f"- Deferred: {recovery.deferred_job_count}",
         f"- Succeeded: {recovery.succeeded_job_count}",
         f"- Failed: {recovery.failed_job_count}",
+        f"- Escalated: {recovery.escalated_job_count}",
         f"- Recovered Jobs: {', '.join(recovery.recovered_job_codes) or 'none'}",
         f"- Failed Jobs: {', '.join(recovery.failed_job_codes) or 'none'}",
+        f"- Deferred Jobs: {', '.join(recovery.deferred_job_codes) or 'none'}",
+        f"- Escalated Jobs: {', '.join(recovery.escalated_job_codes) or 'none'}",
     ]

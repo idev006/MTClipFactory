@@ -1,12 +1,17 @@
 from __future__ import annotations
-
-import json
 from collections.abc import Callable
 from datetime import UTC, datetime
 from pathlib import Path
 
 from mt_clip_factory.domain.decision_events import DecisionEvent
 from mt_clip_factory.domain.enums import JobStatus, RecipeStatus
+from mt_clip_factory.domain.job_recovery import (
+    apply_job_failure_metadata,
+    apply_job_success_metadata,
+    decode_job_output_payload,
+    prepare_job_output_for_retry,
+    recovery_metadata_from_output_json,
+)
 from mt_clip_factory.domain.jobs import Job
 from mt_clip_factory.domain.outputs import Output
 from mt_clip_factory.domain.recipes import Recipe
@@ -483,23 +488,31 @@ class VideoAssemblyFactoryService:
                 )
                 job.status = JobStatus.DONE
                 job.progress = 1.0
-                job.output_json = json.dumps(
-                    {
+                finished_at = _utc_now()
+                job.output_json = apply_job_success_metadata(
+                    job.output_json,
+                    succeeded_at=_format_timestamp(finished_at),
+                    payload_updates={
                         "output_id": output.id,
                         "preview_manifest_path": str(manifest_path),
                         "preview_output_path": str(rendered_output.file_path),
                     },
-                    sort_keys=True,
                 )
                 job.error_message = None
-                job.finished_at = _utc_now()
+                job.finished_at = finished_at
                 uow.jobs.update(job)
                 uow.commit()
             except Exception as exc:
                 job.status = JobStatus.FAILED
                 job.progress = 0.0
                 job.error_message = str(exc)
-                job.finished_at = _utc_now()
+                finished_at = _utc_now()
+                job.finished_at = finished_at
+                job.output_json = apply_job_failure_metadata(
+                    job.output_json,
+                    failed_at=_format_timestamp(finished_at),
+                    error_message=str(exc),
+                )
                 uow.jobs.update(job)
                 uow.commit()
                 raise
@@ -606,24 +619,32 @@ class VideoAssemblyFactoryService:
                 )
                 job.status = JobStatus.DONE
                 job.progress = 1.0
-                job.output_json = json.dumps(
-                    {
+                finished_at = _utc_now()
+                job.output_json = apply_job_success_metadata(
+                    job.output_json,
+                    succeeded_at=_format_timestamp(finished_at),
+                    payload_updates={
                         "output_id": output.id,
                         "preview_manifest_path": str(manifest_path),
                         "source_output_id": source_output.output_id,
                         "final_output_path": str(rendered_output.file_path),
                     },
-                    sort_keys=True,
                 )
                 job.error_message = None
-                job.finished_at = _utc_now()
+                job.finished_at = finished_at
                 uow.jobs.update(job)
                 uow.commit()
             except Exception as exc:
                 job.status = JobStatus.FAILED
                 job.progress = 0.0
                 job.error_message = str(exc)
-                job.finished_at = _utc_now()
+                finished_at = _utc_now()
+                job.finished_at = finished_at
+                job.output_json = apply_job_failure_metadata(
+                    job.output_json,
+                    failed_at=_format_timestamp(finished_at),
+                    error_message=str(exc),
+                )
                 uow.jobs.update(job)
                 uow.commit()
                 raise
@@ -653,7 +674,10 @@ class VideoAssemblyFactoryService:
             job.error_message = None
             job.started_at = None
             job.finished_at = None
-            job.output_json = None
+            job.output_json = prepare_job_output_for_retry(
+                job.output_json,
+                attempted_at=_format_timestamp(_utc_now()),
+            )
             uow.jobs.update(job)
             uow.commit()
 
@@ -674,16 +698,7 @@ class VideoAssemblyFactoryService:
                 if job is not None and job.id is not None
             }
             return [
-                PreviewJobSummaryDTO(
-                    job_id=summary.job_id,
-                    job_code=summary.job_code,
-                    recipe_id=summary.recipe_id,
-                    job_type=summary.job_type,
-                    status=summary.status.value,
-                    progress=summary.progress,
-                    output_path=_extract_output_path(output_map.get(summary.job_id)),
-                    error_message=summary.error_message,
-                )
+                _to_preview_job_summary(summary=summary, output_json=output_map.get(summary.job_id))
                 for summary in jobs
             ]
 
@@ -712,10 +727,26 @@ def _slugify_recipe_code(value: str) -> str:
 
 
 def _extract_output_path(output_json: str | None) -> str | None:
-    if not output_json:
-        return None
-    payload = json.loads(output_json)
+    payload = decode_job_output_payload(output_json)
     return payload.get("final_output_path") or payload.get("preview_output_path") or payload.get("preview_manifest_path")
+
+
+def _to_preview_job_summary(summary, *, output_json: str | None) -> PreviewJobSummaryDTO:
+    recovery = recovery_metadata_from_output_json(output_json)
+    return PreviewJobSummaryDTO(
+        job_id=summary.job_id,
+        job_code=summary.job_code,
+        recipe_id=summary.recipe_id,
+        job_type=summary.job_type,
+        status=summary.status.value,
+        progress=summary.progress,
+        output_path=_extract_output_path(output_json),
+        error_message=summary.error_message,
+        recovery_attempt_count=recovery.retry_count,
+        consecutive_failure_count=recovery.consecutive_failure_count,
+        last_recovery_attempt_at=recovery.last_retry_at,
+        last_failure_at=recovery.last_failure_at,
+    )
 
 
 def _utc_now() -> datetime:

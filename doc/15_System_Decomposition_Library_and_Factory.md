@@ -56,9 +56,10 @@ Compose prepared assets into reviewable preview and later final-output workflows
 - preview job status tracking
 - final job status tracking
 - manual retry for persisted factory jobs
+- persisted failed-job recovery history and escalation visibility
 - output lineage reporting
 - output quality/duplicate-risk visibility
-- dashboard-driven failed-job retry orchestration
+- dashboard-driven failed-job retry orchestration with deferred escalation handling
 - approval actor/time/reason persistence
 - immutable decision-event history
 
@@ -86,6 +87,7 @@ Compose prepared assets into reviewable preview and later final-output workflows
 - dashboard and settings aggregation
 - cross-capability job visibility
 - queued-job recovery orchestration
+- failed-job escalation policy and operator playbook visibility
 - runtime migration guard
 
 ## Ownership Rule

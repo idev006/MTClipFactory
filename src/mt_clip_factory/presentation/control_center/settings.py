@@ -57,6 +57,7 @@ class SettingsViewModel(QObject):
         self.settings_changed.emit()
         self._set_feedback(
             "System settings saved. Path-root changes apply fully on next application start. "
-            "Auto-recovery policy applies on the next startup cycle."
+            "Auto-recovery startup policy applies on the next startup cycle. "
+            "Failed-job escalation threshold applies on the next failed-job recovery run."
         )
         self._set_status("ready")

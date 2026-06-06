@@ -8,8 +8,8 @@ MTClipFactory must stay easy to test with `pytest` from day one. The system is e
 
 - Python runtime: `F:\programming\python\MTClipFactory\.venv`
 - Test command: `python -m pytest`
-- Current automated baseline on 2026-06-06: `84 passed`
-- audio-policy settings persistence, review-gate settings, and configurable duck-mode coverage are now part of that baseline
+- Current automated baseline on 2026-06-06: `85 passed`
+- audio-policy settings persistence, review-gate settings, and failed-job escalation coverage are now part of that baseline
 - Current UI smoke baseline on 2026-06-06: `6` PySide windows instantiated with `QT_QPA_PLATFORM=offscreen`
 
 ## Test Pyramid
@@ -66,6 +66,7 @@ MTClipFactory must stay easy to test with `pytest` from day one. The system is e
 - queued-job recovery orchestration through the dashboard and startup policy
 - output lineage reporting from persisted output and job records
 - failed-job retry orchestration from the dashboard
+- persisted recovery-attempt metadata with escalation thresholds and deferred bulk-retry ordering
 - Alembic-backed approval audit persistence and runtime migration guard
 - append-only decision-event history persistence and retrieval
 - composition-plan and render-decision persistence plus duration/layer inference
@@ -100,4 +101,4 @@ MTClipFactory must stay easy to test with `pytest` from day one. The system is e
 
 1. Add integration coverage for the real FFmpeg preview and final renderers using controlled sample media.
 2. Add widget-level interaction tests for the expanded Recipe Builder review-gate and audio-evidence surfaces.
-3. Add deeper restart tests for broader orchestration policy, especially failed-job escalation and richer resume semantics.
+3. Add deeper orchestration tests for future path hot-reload decisions and richer review/audio signals.
