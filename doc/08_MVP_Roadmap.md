@@ -72,7 +72,7 @@ For execution sequencing and acceptance criteria, use [19_Implementation_Roadmap
 1. Deepen review confidence beyond the current duration and visual-repetition heuristics.
 2. Deepen orchestration beyond current queued-startup and failed-manual retry baselines.
 3. Decide whether path-root changes remain restart-driven or move to hot-reload semantics.
-4. Refine runtime audio quality beyond the current windowed-duck foundation.
+4. Deepen runtime audio depth beyond the new configurable duck-engine baseline toward richer multi-layer polish.
 
 ## Composition Milestone Direction
 

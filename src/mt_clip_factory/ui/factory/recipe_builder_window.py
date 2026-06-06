@@ -517,6 +517,10 @@ def _build_manifest_audio_lines(manifest_path: str | None) -> list[str]:
         lines.append(f"- Duck Mode: {ducking.get('mode', ducking.get('reason', '-'))}")
         if ducking.get("duck_db") is not None:
             lines.append(f"- Duck Gain (dB): {ducking.get('duck_db')}")
+        if ducking.get("threshold_db") is not None:
+            lines.append(f"- Duck Threshold (dB): {ducking.get('threshold_db')}")
+        if ducking.get("ratio") is not None:
+            lines.append(f"- Duck Ratio: {ducking.get('ratio')}")
     voice_tracks = audio_mix.get("voice_tracks")
     music_tracks = audio_mix.get("music_tracks")
     if isinstance(voice_tracks, list):

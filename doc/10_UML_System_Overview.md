@@ -103,6 +103,7 @@ classDiagram
         +render_preview(...)
         +render_output(..., segment_clips)
         +runtime audio mix
+        +configurable duck mode
     }
 
     class PreviewComposition {
@@ -124,6 +125,7 @@ classDiagram
         +update(...)
         +audio policy fields
         +review threshold fields
+        +duck mode tuning fields
     }
 
     class MigrationGuard {
@@ -316,7 +318,7 @@ sequenceDiagram
     Factory->>Factory: map segments to preview visual clips
     Factory->>Factory: assess review gate + quality/risk
     Factory->>Preview: write_manifest(...)
-    Factory->>Render: render_preview(segment_clips)
+    Factory->>Render: render_preview(segment_clips + duck mode policy)
     Factory->>Out: add(output)
     Factory->>RecipeRepo: update(candidate or needs_review)
     Factory->>JobRepo: update(done/failed)
@@ -358,7 +360,7 @@ sequenceDiagram
     Factory->>Factory: persist composition plan + segments
     Factory->>Factory: map segments to final visual clips
     Factory->>Preview: write_manifest(final)
-    Factory->>Render: render_output(segment_clips)
+    Factory->>Render: render_output(segment_clips + duck mode policy)
     Factory->>Out: add(final output + lineage)
     Factory->>JobRepo: update(done/failed)
     Factory->>DB: COMMIT
@@ -517,11 +519,13 @@ sequenceDiagram
     participant Plan as CompositionPlan
     participant Render as Preview/Final Renderer
     participant Audit as RenderDecisionLog
+    participant Settings as SystemSettingsService
 
     User->>View: request preview/final render
     View->>VM: queue render(recipe_id)
     VM->>Factory: build composition plan
     Factory->>Plan: resolve master timeline + segments + layers
+    Factory->>Settings: load duck mode policy
     Plan-->>Factory: composition rules
     Factory->>View: expose composition-plan segments + render-decision summary
     Factory->>Render: render with loop/trim/duck policy

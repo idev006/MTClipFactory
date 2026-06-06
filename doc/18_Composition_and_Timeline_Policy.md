@@ -99,9 +99,13 @@ Priority rule:
 Recommended configurable policy:
 
 - `music_duck_enabled = true`
+- `music_duck_mode = "sidechain_compressor"` for higher-quality runtime mixing when available
+- `music_duck_mode = "windowed_volume_duck"` as a compatibility fallback
 - `music_duck_db = -12` to `-18`
 - `music_duck_attack_ms = 150-300`
 - `music_duck_release_ms = 300-800`
+- `music_duck_threshold_db = -30` to `-18`
+- `music_duck_ratio = 4.0` to `12.0`
 
 ## Visual Fill Policy
 
@@ -154,8 +158,8 @@ Current preview/final baseline:
 - Recipe Builder output inspection now exposes segment summaries and persisted render-decision summaries
 - preview and final now apply a runtime voice/music mix path
 - manifests now expose applied runtime audio-mix evidence
-- ducking currently uses a windowed-volume strategy driven by configured gain plus attack/release windows
-- richer multi-layer mixing is still future work after this runtime baseline
+- ducking now uses a configurable engine with `sidechain_compressor` as the default runtime path and `windowed_volume_duck` as fallback
+- richer multi-layer mixing is still future work after this stronger duck-engine baseline
 
 ## Review Gate Rule
 
@@ -195,13 +199,22 @@ Current implemented settings baseline on 2026-06-06:
 - `voice_loop_enabled`
 - `background_music_loop_enabled`
 - `music_duck_enabled`
+- `music_duck_mode`
 - `music_duck_db`
 - `music_duck_attack_ms`
 - `music_duck_release_ms`
+- `music_duck_threshold_db`
+- `music_duck_ratio`
 - `review_duration_mismatch_sec`
 - `review_max_looped_segments`
 - `review_min_distinct_visual_assets`
 - `review_max_consecutive_same_visual_segments`
+
+Current implemented duck-engine baseline on 2026-06-06:
+
+- `sidechain_compressor` is now the primary configurable duck mode
+- `windowed_volume_duck` remains available as a supported fallback mode
+- manifests now carry applied duck mode evidence plus threshold or gain details, depending on the selected strategy
 
 ## Current Data-Model Baseline
 

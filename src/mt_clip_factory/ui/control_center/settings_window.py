@@ -3,6 +3,8 @@ from __future__ import annotations
 from PySide6.QtCore import Qt
 from PySide6.QtWidgets import (
     QCheckBox,
+    QComboBox,
+    QDoubleSpinBox,
     QFormLayout,
     QGroupBox,
     QHBoxLayout,
@@ -68,9 +70,12 @@ class SettingsWindow(QMainWindow):
         self.voice_loop_input = QCheckBox("Allow narration looping when timeline is longer than voice assets")
         self.music_loop_input = QCheckBox("Allow background music looping to fill timeline gaps")
         self.music_duck_input = QCheckBox("Enable music ducking while narration is active")
+        self.music_duck_mode_input = QComboBox()
         self.music_duck_db_input = QSpinBox()
         self.music_duck_attack_input = QSpinBox()
         self.music_duck_release_input = QSpinBox()
+        self.music_duck_threshold_input = QSpinBox()
+        self.music_duck_ratio_input = QDoubleSpinBox()
         self.review_duration_mismatch_input = QSpinBox()
         self.review_max_looped_segments_input = QSpinBox()
         self.review_min_distinct_visual_assets_input = QSpinBox()
@@ -86,6 +91,7 @@ class SettingsWindow(QMainWindow):
             self.max_recovery_jobs_input,
             self.music_duck_attack_input,
             self.music_duck_release_input,
+            self.music_duck_threshold_input,
             self.review_duration_mismatch_input,
             self.review_max_looped_segments_input,
             self.review_min_distinct_visual_assets_input,
@@ -93,6 +99,11 @@ class SettingsWindow(QMainWindow):
         ):
             spinbox.setRange(0, 100000)
         self.music_duck_db_input.setRange(-60, 0)
+        self.music_duck_threshold_input.setRange(-60, 0)
+        self.music_duck_mode_input.addItems(["sidechain_compressor", "windowed_volume_duck"])
+        self.music_duck_ratio_input.setRange(1.0, 30.0)
+        self.music_duck_ratio_input.setDecimals(2)
+        self.music_duck_ratio_input.setSingleStep(0.5)
 
         form_layout.addRow("Database Path", self.database_path_input)
         form_layout.addRow("Media Root", self.media_root_input)
@@ -113,9 +124,12 @@ class SettingsWindow(QMainWindow):
         form_layout.addRow("Voice Loop Enabled", self.voice_loop_input)
         form_layout.addRow("Background Music Loop Enabled", self.music_loop_input)
         form_layout.addRow("Music Duck Enabled", self.music_duck_input)
+        form_layout.addRow("Music Duck Mode", self.music_duck_mode_input)
         form_layout.addRow("Music Duck Gain (dB)", self.music_duck_db_input)
         form_layout.addRow("Music Duck Attack (ms)", self.music_duck_attack_input)
         form_layout.addRow("Music Duck Release (ms)", self.music_duck_release_input)
+        form_layout.addRow("Music Duck Threshold (dB)", self.music_duck_threshold_input)
+        form_layout.addRow("Music Duck Ratio", self.music_duck_ratio_input)
         form_layout.addRow("Review Duration Mismatch (sec)", self.review_duration_mismatch_input)
         form_layout.addRow("Review Max Looped Segments", self.review_max_looped_segments_input)
         form_layout.addRow("Review Min Distinct Visual Assets", self.review_min_distinct_visual_assets_input)
@@ -161,9 +175,12 @@ class SettingsWindow(QMainWindow):
         self.voice_loop_input.setChecked(settings.voice_loop_enabled)
         self.music_loop_input.setChecked(settings.background_music_loop_enabled)
         self.music_duck_input.setChecked(settings.music_duck_enabled)
+        self.music_duck_mode_input.setCurrentText(settings.music_duck_mode)
         self.music_duck_db_input.setValue(settings.music_duck_db)
         self.music_duck_attack_input.setValue(settings.music_duck_attack_ms)
         self.music_duck_release_input.setValue(settings.music_duck_release_ms)
+        self.music_duck_threshold_input.setValue(settings.music_duck_threshold_db)
+        self.music_duck_ratio_input.setValue(settings.music_duck_ratio)
         self.review_duration_mismatch_input.setValue(settings.review_duration_mismatch_sec)
         self.review_max_looped_segments_input.setValue(settings.review_max_looped_segments)
         self.review_min_distinct_visual_assets_input.setValue(settings.review_min_distinct_visual_assets)
@@ -195,9 +212,12 @@ class SettingsWindow(QMainWindow):
                     voice_loop_enabled=self.voice_loop_input.isChecked(),
                     background_music_loop_enabled=self.music_loop_input.isChecked(),
                     music_duck_enabled=self.music_duck_input.isChecked(),
+                    music_duck_mode=self.music_duck_mode_input.currentText(),
                     music_duck_db=self.music_duck_db_input.value(),
                     music_duck_attack_ms=self.music_duck_attack_input.value(),
                     music_duck_release_ms=self.music_duck_release_input.value(),
+                    music_duck_threshold_db=self.music_duck_threshold_input.value(),
+                    music_duck_ratio=self.music_duck_ratio_input.value(),
                     review_duration_mismatch_sec=self.review_duration_mismatch_input.value(),
                     review_max_looped_segments=self.review_max_looped_segments_input.value(),
                     review_min_distinct_visual_assets=self.review_min_distinct_visual_assets_input.value(),

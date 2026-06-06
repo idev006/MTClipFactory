@@ -47,8 +47,11 @@ Current editable fields:
 - voice loop enabled
 - background music loop enabled
 - music duck enabled
+- music duck mode
 - music duck gain
 - music duck attack/release timing
+- music duck threshold
+- music duck ratio
 - review duration mismatch threshold
 - review max looped segments
 - review min distinct visual assets
@@ -114,6 +117,7 @@ The following must flow through config or services whenever user control is appr
 - dashboard visibility of recent, queued, processing, and failed jobs
 - settings-based FFmpeg path control
 - dashboard visibility of current narration/music loop and duck policy
+- dashboard visibility of duck mode selection and compressor tuning
 - runtime preview/final audio mixing with manifest-visible applied-audio evidence
 - review-gate routing with persisted `needs_review` recipe state
 - dashboard visibility of flagged recipe count plus configured review thresholds
@@ -126,7 +130,7 @@ The following must flow through config or services whenever user control is appr
 ## Current Gaps
 
 1. Recovery scope is still narrower for failed-job escalation and advanced orchestration rules.
-2. Preview and final now share a runtime voice/music mix foundation, but richer multi-layer parity and smoother duck behavior are still incomplete.
+2. Preview and final now share a configurable duck-engine foundation, but richer multi-layer parity and deeper polish are still incomplete.
 3. Review gates now exist, but audio masking and emergency-fill signals are still shallow.
 4. Path-root changes are not fully hot-reloaded across all runtime services.
 

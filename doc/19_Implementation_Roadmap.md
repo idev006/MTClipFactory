@@ -26,15 +26,15 @@ The project now uses two roadmap layers:
 - `IR-05a` Audio policy settings and operator-visible render decisions: complete on 2026-06-06
 - `IR-05b` Runtime audio ducking application: complete on 2026-06-06
 - `IR-06` Review gates and composition reliability controls: complete on 2026-06-06
-- `IR-07` Audio-mix quality refinement beyond windowed-duck baseline: ready
+- `IR-07` Audio-mix quality refinement beyond windowed-duck baseline: complete on 2026-06-06
 
 ## Current Execution Stream
 
 The next work should follow this order unless a documented issue changes priority:
 
-1. `IR-07` Audio-mix quality refinement beyond the current windowed-duck baseline
-2. Recovery escalation rules and richer orchestration policy
-3. Optional path-root hot-reload support if restart semantics prove too costly
+1. Recovery escalation rules and richer orchestration policy
+2. Optional path-root hot-reload support if restart semantics prove too costly
+3. Richer multi-layer audio polish beyond the current duck-engine baseline
 
 ## IR-01 | Composition Data Model
 
@@ -227,6 +227,34 @@ Prevent low-trust automatic renders from slipping through silently.
 - exposed review evidence in Recipe Builder output details and dashboard recipe-review counts
 - enforced explicit human reasoning when approving a recipe that was flagged for review
 - covered review-gate routing and approval enforcement with pytest
+
+## IR-07 | Audio-Mix Quality Refinement Beyond Windowed-Duck Baseline
+
+### Goal
+
+Improve runtime narration/music mixing quality without sacrificing testability, operator visibility, or configurability.
+
+### Scope
+
+- introduce configurable duck modes with a higher-quality default path
+- keep `windowed_volume_duck` as a supported fallback for safe compatibility
+- add sidechain-compressor tuning fields to settings, dashboard, and `.toml`
+- expose the applied duck mode and tuning evidence in runtime manifest summaries
+
+### Acceptance Criteria
+
+- preview and final renderers can use a configurable higher-quality duck mode
+- the chosen duck mode and tuning settings are visible in operator-facing evidence
+- tests cover settings persistence plus runtime command generation for the new mode
+- roadmap, architecture, UML, Kanban, issues, and lessons learned stay aligned to the delivered baseline
+
+### Delivery Result
+
+- delivered configurable duck modes with `sidechain_compressor` as the higher-quality default and `windowed_volume_duck` as a supported fallback
+- delivered settings-backed duck mode, threshold, and ratio fields through `app_config.toml`, `SystemSettingsService`, dashboard summary, and settings UI
+- wrote manifest-visible runtime evidence for the applied duck mode and its active tuning fields
+- extended Recipe Builder audio detail rendering to expose threshold/ratio evidence when present
+- covered new mode selection, fallback behavior, and settings persistence with pytest and re-verified the full suite plus UI smoke
 
 ## Cross-Milestone Rules
 

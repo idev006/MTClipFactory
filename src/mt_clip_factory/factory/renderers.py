@@ -9,6 +9,14 @@ from tempfile import TemporaryDirectory
 from mt_clip_factory.control_center.dto import SystemSettingsDTO
 from mt_clip_factory.control_center.services import SystemSettingsService
 from mt_clip_factory.factory.audio_composition import PreviewAudioMixPlan, PreviewAudioTrack
+from mt_clip_factory.factory.audio_ducking import (
+    build_sidechain_duck_filter_graph,
+    build_windowed_duck_filter_graph,
+    duck_gain,
+    merged_duck_intervals,
+    normalize_duck_mode,
+    sidechain_threshold_gain,
+)
 from mt_clip_factory.factory.preview_composition import PreviewSegmentClip
 
 
@@ -123,6 +131,7 @@ class FFmpegPreviewRenderer:
                 settings=settings,
                 temp_dir=temp_dir,
                 music_track_path=music_track_path,
+                voice_track_path=voice_track_path,
                 voice_tracks=audio_mix_plan.voice_tracks,
                 target_duration_sec=audio_mix_plan.target_duration_sec,
             )
@@ -440,6 +449,7 @@ class FFmpegPreviewRenderer:
         settings: SystemSettingsDTO,
         temp_dir: Path,
         music_track_path: Path | None,
+        voice_track_path: Path | None,
         voice_tracks: tuple[PreviewAudioTrack, ...],
         target_duration_sec: float,
     ) -> tuple[Path | None, dict]:
@@ -447,17 +457,88 @@ class FFmpegPreviewRenderer:
             return None, {"applied": False, "reason": "no_music_track"}
         if not settings.music_duck_enabled:
             return music_track_path, {"applied": False, "reason": "duck_disabled_in_settings"}
-        intervals = _merged_duck_intervals(
+        mode = normalize_duck_mode(settings.music_duck_mode)
+        if mode == "sidechain_compressor":
+            return self._apply_sidechain_ducking(
+                settings=settings,
+                temp_dir=temp_dir,
+                music_track_path=music_track_path,
+                voice_track_path=voice_track_path,
+            )
+        return self._apply_windowed_ducking(
+            settings=settings,
+            temp_dir=temp_dir,
+            music_track_path=music_track_path,
+            voice_tracks=voice_tracks,
+            target_duration_sec=target_duration_sec,
+        )
+
+    def _apply_sidechain_ducking(
+        self,
+        *,
+        settings: SystemSettingsDTO,
+        temp_dir: Path,
+        music_track_path: Path,
+        voice_track_path: Path | None,
+    ) -> tuple[Path, dict]:
+        if voice_track_path is None:
+            return music_track_path, {"applied": False, "reason": "no_voice_track", "requested_mode": settings.music_duck_mode}
+        threshold_gain = sidechain_threshold_gain(settings.music_duck_threshold_db)
+        filter_graph = build_sidechain_duck_filter_graph(
+            threshold_gain=threshold_gain,
+            ratio=settings.music_duck_ratio,
+            attack_ms=settings.music_duck_attack_ms,
+            release_ms=settings.music_duck_release_ms,
+        )
+        ducked_path = temp_dir / "music_ducked_sidechain.m4a"
+        self._run_ffmpeg(
+            settings=settings,
+            arguments=[
+                "-y",
+                "-i",
+                str(music_track_path),
+                "-i",
+                str(voice_track_path),
+                "-filter_complex",
+                filter_graph,
+                "-map",
+                "[ducked]",
+                "-c:a",
+                "aac",
+                str(ducked_path),
+            ],
+        )
+        return ducked_path, {
+            "applied": True,
+            "requested_mode": settings.music_duck_mode,
+            "mode": "sidechain_compressor",
+            "threshold_db": settings.music_duck_threshold_db,
+            "threshold_gain": threshold_gain,
+            "ratio": settings.music_duck_ratio,
+            "attack_ms": settings.music_duck_attack_ms,
+            "release_ms": settings.music_duck_release_ms,
+        }
+
+    def _apply_windowed_ducking(
+        self,
+        *,
+        settings: SystemSettingsDTO,
+        temp_dir: Path,
+        music_track_path: Path,
+        voice_tracks: tuple[PreviewAudioTrack, ...],
+        target_duration_sec: float,
+    ) -> tuple[Path, dict]:
+        intervals = merged_duck_intervals(
             voice_tracks=voice_tracks,
             attack_ms=settings.music_duck_attack_ms,
             release_ms=settings.music_duck_release_ms,
             target_duration_sec=target_duration_sec,
         )
         if not intervals:
-            return music_track_path, {"applied": False, "reason": "no_voice_intervals"}
-        gain = _duck_gain(settings.music_duck_db)
-        filter_graph = _build_duck_filter_graph(intervals=intervals, gain=gain)
-        ducked_path = temp_dir / "music_ducked.m4a"
+            return music_track_path, {"applied": False, "reason": "no_voice_intervals", "requested_mode": settings.music_duck_mode}
+        gain = duck_gain(settings.music_duck_db)
+        filter_graph = build_windowed_duck_filter_graph(intervals=intervals, gain=gain)
+        ducked_path = temp_dir / "music_ducked_windowed.m4a"
         self._run_ffmpeg(
             settings=settings,
             arguments=[
@@ -475,6 +556,7 @@ class FFmpegPreviewRenderer:
         )
         return ducked_path, {
             "applied": True,
+            "requested_mode": settings.music_duck_mode,
             "mode": "windowed_volume_duck",
             "duck_db": settings.music_duck_db,
             "duck_gain": gain,
@@ -608,49 +690,6 @@ def _track_summary(tracks: tuple[PreviewAudioTrack, ...]) -> list[dict]:
         }
         for track in tracks
     ]
-
-
-def _duck_gain(duck_db: int) -> float:
-    return round(10 ** (duck_db / 20), 6)
-
-
-def _merged_duck_intervals(
-    *,
-    voice_tracks: tuple[PreviewAudioTrack, ...],
-    attack_ms: int,
-    release_ms: int,
-    target_duration_sec: float,
-) -> list[tuple[float, float]]:
-    if not voice_tracks:
-        return []
-    attack_sec = max(attack_ms, 0) / 1000
-    release_sec = max(release_ms, 0) / 1000
-    windows = sorted(
-        (
-            max(track.start_sec - attack_sec, 0.0),
-            min(track.start_sec + track.playback_duration_sec + release_sec, target_duration_sec),
-        )
-        for track in voice_tracks
-    )
-    merged: list[tuple[float, float]] = []
-    for start_sec, end_sec in windows:
-        if not merged or start_sec > merged[-1][1]:
-            merged.append((start_sec, end_sec))
-            continue
-        merged[-1] = (merged[-1][0], max(merged[-1][1], end_sec))
-    return [(round(start_sec, 3), round(end_sec, 3)) for start_sec, end_sec in merged]
-
-
-def _build_duck_filter_graph(*, intervals: list[tuple[float, float]], gain: float) -> str:
-    filters: list[str] = []
-    source_label = "0:a"
-    for index, (start_sec, end_sec) in enumerate(intervals):
-        target_label = f"m{index}"
-        filters.append(
-            f"[{source_label}]volume=volume={gain}:enable='between(t,{start_sec},{end_sec})'[{target_label}]"
-        )
-        source_label = target_label
-    return ";".join(filters)
 
 
 def _escape_concat_path(file_path: Path) -> str:

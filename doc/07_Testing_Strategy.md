@@ -8,8 +8,8 @@ MTClipFactory must stay easy to test with `pytest` from day one. The system is e
 
 - Python runtime: `F:\programming\python\MTClipFactory\.venv`
 - Test command: `python -m pytest`
-- Current automated baseline on 2026-06-06: `83 passed`
-- audio-policy settings persistence, review-gate settings, and Recipe Builder composition visibility are now part of that baseline
+- Current automated baseline on 2026-06-06: `84 passed`
+- audio-policy settings persistence, review-gate settings, and configurable duck-mode coverage are now part of that baseline
 - Current UI smoke baseline on 2026-06-06: `6` PySide windows instantiated with `QT_QPA_PLATFORM=offscreen`
 
 ## Test Pyramid
@@ -78,6 +78,7 @@ MTClipFactory must stay easy to test with `pytest` from day one. The system is e
 - runtime audio-mix command path and manifest audio evidence
 - Recipe Builder output-detail helper for runtime audio-mix inspection
 - review-gate status routing, manifest evidence, and approval-reason enforcement for flagged recipes
+- sidechain duck-mode settings persistence plus fallback windowed-duck command coverage
 
 ## Conventions
 
@@ -98,5 +99,5 @@ MTClipFactory must stay easy to test with `pytest` from day one. The system is e
 ## Next Testing Slice
 
 1. Add integration coverage for the real FFmpeg preview and final renderers using controlled sample media.
-2. Add widget-level interaction tests for the expanded Recipe Builder review-gate surfaces.
+2. Add widget-level interaction tests for the expanded Recipe Builder review-gate and audio-evidence surfaces.
 3. Add deeper restart tests for broader orchestration policy, especially failed-job escalation and richer resume semantics.

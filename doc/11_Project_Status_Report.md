@@ -38,6 +38,9 @@
 - dashboard visibility for `needs_review` recipe count
 - Recipe Builder output-detail visibility for manifest-backed review-gate evidence plus quality/duplicate-risk signals
 - approval guard that requires an explicit human reason before approving a flagged recipe
+- configurable duck engine with `sidechain_compressor` default plus `windowed_volume_duck` fallback
+- settings-backed duck mode, threshold, and ratio controls surfaced through `.toml`, dashboard, and settings UI
+- manifest-visible runtime evidence for the applied duck mode and compressor tuning
 - initial Video Assembly Factory:
   - recipe persistence
   - recipe item assignment
@@ -56,13 +59,13 @@
 
 ## Verification Baseline
 
-- `python -m pytest` via `.venv`: `83 passed`
+- `python -m pytest` via `.venv`: `84 passed`
 - UI smoke via `QT_QPA_PLATFORM=offscreen`: `6` windows instantiated successfully
 
 ## Current Focus
 
 - deepen review signals beyond the current duration and visual-repetition heuristics
-- refine audio quality beyond the current windowed-duck implementation where needed
+- deepen runtime audio beyond the new configurable duck-engine baseline where needed
 - extend recovery and escalation policy beyond the current queued-startup and failed-manual retry baselines
 - decide whether runtime path changes should hot-reload or remain restart-driven
 - keep review and approval history truthful through append-only persistence
@@ -70,10 +73,10 @@
 
 ## Next Steps
 
-1. Start `IR-07` audio-mix quality refinement beyond the current windowed-duck baseline.
-2. Extend recovery orchestration beyond current sequential retry behavior and define escalation rules.
-3. Decide whether path-root changes stay restart-driven or become hot-reload capable.
-4. Deepen review-gate signals with audio masking and emergency-fill detection when the supporting data is ready.
+1. Start recovery escalation work beyond current sequential retry behavior and define operator playbooks.
+2. Decide whether path-root changes stay restart-driven or become hot-reload capable.
+3. Deepen review-gate signals with audio masking and emergency-fill detection when the supporting data is ready.
+4. Extend audio work from configurable ducking into richer multi-layer polish if operator feedback demands it.
 
 ## Direction Locked In This Documentation Revision
 
@@ -89,6 +92,7 @@
 - `IR-05a` now covers operator-controlled audio policy settings plus visible composition/render summaries, while runtime audio mixing remains a separate follow-up
 - `IR-05b` now adds runtime voice/music mixing plus manifest-visible applied-audio evidence
 - `IR-06` now adds review gates, configurable thresholds, dashboard visibility, and manifest-backed operator evidence for risky compositions
+- `IR-07` now adds configurable duck modes, sidechain-compressor tuning, and higher-quality runtime audio evidence
 
 ## Ownership
 

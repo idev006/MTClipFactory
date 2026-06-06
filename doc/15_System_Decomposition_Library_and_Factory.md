@@ -52,6 +52,7 @@ Compose prepared assets into reviewable preview and later final-output workflows
 - final-render composition parity
 - runtime voice/music mixing with manifest-visible audio evidence
 - review-threshold evaluation and `needs_review` workflow routing
+- configurable duck-mode orchestration for narration/music runtime mixing
 - preview job status tracking
 - final job status tracking
 - manual retry for persisted factory jobs

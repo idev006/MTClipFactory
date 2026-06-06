@@ -139,3 +139,8 @@
 
 - a `needs_review` state is much more trustworthy when the system also shows the exact trigger signals, thresholds, and quality/risk summary instead of only a red flag
 - review automation should route work toward humans, not pretend it replaced human judgment
+
+## LL-029 | 2026-06-06 | Audio Quality Improvements Need Configurable Migration Paths
+
+- moving straight from one duck strategy to another would have been risky; keeping a supported fallback mode made the audio upgrade safer and easier to verify
+- when production quality improves, the dashboard, settings UI, manifests, and tests all need to move together or operators lose trust in what “applied policy” really means

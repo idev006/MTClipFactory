@@ -36,24 +36,25 @@
 - Dashboard and Recipe Builder now show more of the composition/render story instead of only output lineage.
 - Preview and final renderers now emit manifest-visible runtime audio-mix evidence.
 - Preview and final renderers now also emit manifest-visible review-gate evidence plus quality/duplicate-risk summaries.
+- Preview and final renderers now support configurable duck modes with sidechain-compressor tuning evidence.
 - The roadmap is now split into strategic and implementation layers so the next coding milestone is clearer.
 
 ## Delivered In The Latest Loop
 
-- configurable review thresholds now flow through `.toml`, settings UI, dashboard summary, and factory services
-- preview/final outputs now store review-gate evidence, quality score, and duplicate-risk summary
-- risky preview compositions now route recipes into `needs_review`, and approving flagged recipes requires an explicit human reason
-- pytest now covers review-gate routing and approval enforcement alongside the previous render/audio baseline
-- architecture, reliability, roadmap, Kanban, issues, and lessons learned were aligned to the delivered `IR-06` baseline
+- configurable duck mode, threshold, and ratio now flow through `.toml`, settings UI, dashboard summary, and render services
+- preview/final outputs now store higher-quality duck-mode evidence in addition to earlier audio/review metadata
+- runtime renderer coverage now proves both `sidechain_compressor` and fallback `windowed_volume_duck` command paths
+- pytest now covers the delivered `IR-07` baseline end to end
+- architecture, reliability, roadmap, Kanban, issues, and lessons learned were aligned to the delivered `IR-07` baseline
 
 ## Still Open
 
 1. failed-job escalation policy beyond manual retry
 2. optional hot-reload decision for path-root changes
 3. deeper review gates for audio masking and emergency-fill outcomes
-4. smoother ducking and richer multi-layer audio policy
+4. richer multi-layer audio policy and polish beyond the current duck-engine baseline
 
 ## Verification Baseline
 
-- `python -m pytest` in `.venv`: `83 passed`
+- `python -m pytest` in `.venv`: `84 passed`
 - `QT_QPA_PLATFORM=offscreen` UI smoke: `6` main windows instantiated

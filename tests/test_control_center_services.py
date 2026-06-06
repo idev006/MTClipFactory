@@ -256,9 +256,12 @@ def test_system_settings_service_reads_and_writes_toml(tmp_path) -> None:
         voice_loop_enabled=False,
         background_music_loop_enabled=True,
         music_duck_enabled=True,
+        music_duck_mode="windowed_volume_duck",
         music_duck_db=-16,
         music_duck_attack_ms=220,
         music_duck_release_ms=480,
+        music_duck_threshold_db=-22,
+        music_duck_ratio=6.5,
     )
     service.save(updated)
 
@@ -271,7 +274,10 @@ def test_system_settings_service_reads_and_writes_toml(tmp_path) -> None:
     assert loaded.voice_loop_enabled is False
     assert loaded.background_music_loop_enabled is True
     assert loaded.music_duck_enabled is True
+    assert loaded.music_duck_mode == "windowed_volume_duck"
     assert loaded.music_duck_db == -16
+    assert loaded.music_duck_threshold_db == -22
+    assert loaded.music_duck_ratio == 6.5
     assert config_path.exists()
 
 
@@ -301,9 +307,12 @@ def test_dashboard_service_aggregates_system_information(unit_of_work_factory, t
             voice_loop_enabled=False,
             background_music_loop_enabled=True,
             music_duck_enabled=True,
+            music_duck_mode="sidechain_compressor",
             music_duck_db=-15,
             music_duck_attack_ms=250,
             music_duck_release_ms=500,
+            music_duck_threshold_db=-24,
+            music_duck_ratio=8.0,
         )
     )
 
@@ -351,7 +360,10 @@ def test_dashboard_service_aggregates_system_information(unit_of_work_factory, t
     assert summary.voice_loop_enabled is False
     assert summary.background_music_loop_enabled is True
     assert summary.music_duck_enabled is True
+    assert summary.music_duck_mode == "sidechain_compressor"
     assert summary.music_duck_db == -15
+    assert summary.music_duck_threshold_db == -24
+    assert summary.music_duck_ratio == 8.0
     assert summary.review_duration_mismatch_sec == 1
     assert summary.review_max_looped_segments == 2
     assert summary.recent_jobs[0] == DashboardJobDTO(
@@ -396,9 +408,12 @@ def test_dashboard_service_recovers_queued_jobs_and_records_summary(unit_of_work
             voice_loop_enabled=False,
             background_music_loop_enabled=True,
             music_duck_enabled=True,
+            music_duck_mode="sidechain_compressor",
             music_duck_db=-15,
             music_duck_attack_ms=250,
             music_duck_release_ms=500,
+            music_duck_threshold_db=-24,
+            music_duck_ratio=8.0,
         )
     )
     product_service = ProductApplicationService(unit_of_work_factory=unit_of_work_factory)
@@ -454,9 +469,12 @@ def test_dashboard_service_retries_failed_jobs_and_records_summary(unit_of_work_
             voice_loop_enabled=False,
             background_music_loop_enabled=True,
             music_duck_enabled=True,
+            music_duck_mode="sidechain_compressor",
             music_duck_db=-15,
             music_duck_attack_ms=250,
             music_duck_release_ms=500,
+            music_duck_threshold_db=-24,
+            music_duck_ratio=8.0,
         )
     )
     dashboard_service = DashboardService(

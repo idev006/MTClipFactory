@@ -24,9 +24,12 @@ class SystemSettingsDTO:
     voice_loop_enabled: bool
     background_music_loop_enabled: bool
     music_duck_enabled: bool
-    music_duck_db: int
-    music_duck_attack_ms: int
-    music_duck_release_ms: int
+    music_duck_mode: str = "sidechain_compressor"
+    music_duck_db: int = -15
+    music_duck_attack_ms: int = 250
+    music_duck_release_ms: int = 500
+    music_duck_threshold_db: int = -24
+    music_duck_ratio: float = 8.0
     review_duration_mismatch_sec: int = 1
     review_max_looped_segments: int = 2
     review_min_distinct_visual_assets: int = 2
@@ -100,9 +103,12 @@ class DashboardSummaryDTO:
     voice_loop_enabled: bool
     background_music_loop_enabled: bool
     music_duck_enabled: bool
+    music_duck_mode: str
     music_duck_db: int
     music_duck_attack_ms: int
     music_duck_release_ms: int
+    music_duck_threshold_db: int
+    music_duck_ratio: float
     review_duration_mismatch_sec: int
     review_max_looped_segments: int
     review_min_distinct_visual_assets: int
