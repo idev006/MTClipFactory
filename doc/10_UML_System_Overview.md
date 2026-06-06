@@ -95,6 +95,12 @@ classDiagram
 
     class FFmpegPreviewRenderer {
         +render_preview(...)
+        +render_output(..., segment_clips)
+    }
+
+    class PreviewComposition {
+        +segment_clips
+        +manifest_payload
     }
 
     class DashboardService {
@@ -227,9 +233,11 @@ classDiagram
     DashboardWindow --> RecipeBuilderWindow
     VideoAssemblyFactoryService --> PreviewManifestBuilder
     VideoAssemblyFactoryService --> FFmpegPreviewRenderer
+    VideoAssemblyFactoryService --> PreviewComposition
     VideoAssemblyFactoryService --> CompositionPlan
     CompositionPlan --> TimelineSegment
     CompositionPlan --> RenderDecisionLog
+    PreviewComposition --> TimelineSegment
     ProductApplicationService --> SqlAlchemyUnitOfWork
     AssetIntakeService --> SqlAlchemyUnitOfWork
     ArtifactGenerationService --> SqlAlchemyUnitOfWork
@@ -290,8 +298,10 @@ sequenceDiagram
     Factory->>DB: COMMIT
     VM->>Factory: run_preview_job(job_id)
     Factory->>RecipeRepo: list_items(recipe_id)
+    Factory->>Factory: persist composition plan + segments
+    Factory->>Factory: map segments to preview visual clips
     Factory->>Preview: write_manifest(...)
-    Factory->>Render: render_preview(...)
+    Factory->>Render: render_preview(segment_clips)
     Factory->>Out: add(output)
     Factory->>JobRepo: update(done/failed)
     Factory->>DB: COMMIT

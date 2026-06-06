@@ -27,6 +27,7 @@
 - append-only immutable decision-event history with Recipe Builder visibility
 - persisted composition-plan and render-decision foundation for recipe-level duration and layer planning
 - persisted timeline-segment foundation with contiguous semantic coverage validation
+- segment-aware preview composition with manifest-visible visual clip planning
 - initial Video Assembly Factory:
   - recipe persistence
   - recipe item assignment
@@ -45,7 +46,7 @@
 
 ## Verification Baseline
 
-- `python -m pytest` via `.venv`: `76 passed`
+- `python -m pytest` via `.venv`: `77 passed`
 - UI smoke via `QT_QPA_PLATFORM=offscreen`: `6` windows instantiated successfully
 
 ## Current Focus
@@ -53,17 +54,17 @@
 - deepen render fidelity beyond the current foundation
 - keep review and approval history truthful through append-only persistence
 - keep project documents truthful through per-milestone revision checkpoints
-- extend the new segment-planning foundation into real preview composition
-- turn persisted render decisions into operator-visible preview/final behavior
+- extend the new preview baseline into final-render parity
+- turn persisted render decisions into richer operator-visible preview/final behavior
 - runtime migration path now exists, so future schema work can be delivered more safely
 - decide whether runtime path changes should hot-reload or remain restart-driven
 - deepen orchestration policy beyond the current queued-startup and failed-manual retry baselines
 
 ## Next Steps
 
-1. Deliver `IR-03` segment-based preview composition and operator-visible planning behavior.
-2. Replace final-render foundation with fuller composition and audio-aware rendering.
-3. Implement audio-priority behavior and music ducking visibility.
+1. Deliver `IR-04` final-render composition parity on top of the preview composition baseline.
+2. Implement audio-priority behavior and music ducking visibility.
+3. Add review gates for low-confidence or mismatch-heavy composition cases.
 4. Extend recovery orchestration beyond current sequential retry behavior and define escalation rules.
 
 ## Direction Locked In This Documentation Revision
@@ -75,6 +76,7 @@
 - the roadmap is now split into strategic and implementation layers
 - `IR-01` composition-plan persistence is now implemented and becomes the baseline for `IR-02`
 - `IR-02` timeline-segment persistence and validation are now implemented and become the baseline for `IR-03`
+- `IR-03` preview composition now follows planned segments and becomes the baseline for `IR-04`
 
 ## Ownership
 

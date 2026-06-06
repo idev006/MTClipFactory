@@ -98,6 +98,7 @@ The following must flow through config or services whenever user control is appr
 - append-only decision-event history visible in the Recipe Builder workflow
 - persisted composition plans and render decisions for recipe-level duration and layer planning
 - persisted timeline segments with contiguous-duration validation
+- segment-aware preview manifests with chosen segment clip mapping
 - configurable path roots through `[paths]` in `app_config.toml`
 - dashboard visibility of recent, queued, processing, and failed jobs
 - settings-based FFmpeg path control
@@ -109,7 +110,7 @@ The following must flow through config or services whenever user control is appr
 ## Current Gaps
 
 1. Recovery scope is still narrower for failed-job escalation and advanced orchestration rules.
-2. Preview composition is still simple and not yet a full layered edit pipeline.
+2. Preview composition is now segment-aware for visual planning, but audio mixing and richer layer parity are still incomplete.
 3. Final render is still a foundation path and not yet a full recomposition pipeline.
 4. Path-root changes are not fully hot-reloaded across all runtime services.
 

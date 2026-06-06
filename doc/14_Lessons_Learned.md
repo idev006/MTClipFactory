@@ -114,3 +114,8 @@
 
 - once timeline segments become real persisted data, coverage rules like contiguous timing and full-duration closure should be validated immediately
 - delaying validation would make preview composition harder to trust because broken planning data could survive into later milestones
+
+## LL-024 | 2026-06-06 | Preview Composition Needs Inspectable Manifests
+
+- once preview composition stops being a simple file pass-through, the chosen segment order and clip mapping should be written somewhere operators can inspect
+- manifest visibility is a practical bridge while richer dashboard and UI surfaces are still being built

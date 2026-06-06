@@ -69,7 +69,7 @@ For execution sequencing and acceptance criteria, use [19_Implementation_Roadmap
 
 ## Current Phase 4 Remaining
 
-1. Deepen preview composition beyond the current simple renderable-video path.
+1. Deepen preview composition beyond the current segment-aware visual baseline toward fuller layer and audio parity.
 2. Replace final-render foundation with richer composition and audio-aware rendering.
 3. Deepen orchestration beyond current queued-startup and failed-manual retry baselines.
 4. Decide whether path-root changes remain restart-driven or move to hot-reload semantics.

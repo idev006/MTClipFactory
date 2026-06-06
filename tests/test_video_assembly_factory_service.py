@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import json
 from pathlib import Path
 
 import pytest
@@ -8,6 +9,7 @@ from mt_clip_factory.application.dto import CreateProductCommand
 from mt_clip_factory.application.services import ProductApplicationService
 from mt_clip_factory.factory.dto import AssignAssetToRecipeCommand, CreateRecipeCommand
 from mt_clip_factory.factory.preview_artifacts import PreviewManifestBuilder
+from mt_clip_factory.factory.preview_composition import PreviewSegmentClip
 from mt_clip_factory.factory.renderers import RenderedPreviewOutput
 from mt_clip_factory.factory.services import (
     FactoryJobNotFoundError,
@@ -49,33 +51,61 @@ def _build_asset_service(unit_of_work_factory, media_root: Path) -> AssetIntakeS
 
 def _build_factory_service(unit_of_work_factory, preview_root: Path) -> VideoAssemblyFactoryService:
     class FakePreviewRenderer:
-        def render_output(self, *, product_code: str, output_stem: str, source_files: list[Path]) -> RenderedPreviewOutput:
+        def __init__(self) -> None:
+            self.calls: list[dict] = []
+
+        def render_output(
+            self,
+            *,
+            product_code: str,
+            output_stem: str,
+            source_files: list[Path],
+            segment_clips: tuple[PreviewSegmentClip, ...] = (),
+        ) -> RenderedPreviewOutput:
             output_dir = preview_root / product_code / "videos"
             output_dir.mkdir(parents=True, exist_ok=True)
             target_path = output_dir / f"{output_stem}.mp4"
-            target_path.write_bytes(source_files[0].read_bytes())
-            return RenderedPreviewOutput(file_path=target_path, duration_sec=3.0)
+            self.calls.append(
+                {
+                    "output_stem": output_stem,
+                    "product_code": product_code,
+                    "segment_clips": segment_clips,
+                    "source_files": source_files,
+                }
+            )
+            payload = b"".join(segment.source_file.read_bytes() for segment in segment_clips) if segment_clips else source_files[0].read_bytes()
+            target_path.write_bytes(payload)
+            duration_sec = round(sum(segment.target_duration_sec for segment in segment_clips), 3) if segment_clips else 3.0
+            return RenderedPreviewOutput(file_path=target_path, duration_sec=duration_sec)
 
+    renderer = FakePreviewRenderer()
     return VideoAssemblyFactoryService(
         unit_of_work_factory=unit_of_work_factory,
         preview_manifest_builder=PreviewManifestBuilder(preview_root),
-        preview_renderer=FakePreviewRenderer(),
-        final_renderer=FakePreviewRenderer(),
+        preview_renderer=renderer,
+        final_renderer=renderer,
     )
 
 
-def _register_ready_asset(unit_of_work_factory, tmp_path: Path) -> tuple[int, int]:
+def _register_ready_asset(
+    unit_of_work_factory,
+    tmp_path: Path,
+    *,
+    asset_type: str = "background_video",
+    asset_code: str = "hero_asset",
+    file_name: str = "hero.mp4",
+) -> tuple[int, int]:
     product_service = ProductApplicationService(unit_of_work_factory=unit_of_work_factory)
     product_id = product_service.create_product(CreateProductCommand(product_code="honey", product_name="Honey"))
     asset_service = _build_asset_service(unit_of_work_factory, tmp_path / "media_library")
-    source_file = tmp_path / "hero.mp4"
-    source_file.write_bytes(b"video-bytes")
+    source_file = tmp_path / file_name
+    source_file.write_bytes(f"{asset_code}-bytes".encode("utf-8"))
     asset_id = asset_service.register_asset(
         RegisterAssetCommand(
             product_id=product_id,
-            asset_type="background_video",
+            asset_type=asset_type,
             source_file_path=source_file,
-            asset_code="hero_asset",
+            asset_code=asset_code,
         )
     )
     return product_id, asset_id
@@ -153,6 +183,11 @@ def test_factory_service_builds_preview_output_job(unit_of_work_factory, tmp_pat
     assert outputs[0].rendering_job_code is not None
     assert products[0].output_count == 1
 
+    manifest_payload = json.loads(Path(outputs[0].manifest_path).read_text(encoding="utf-8"))
+    assert manifest_payload["composition_plan"]["resolved_duration_sec"] == 3.0
+    assert [segment["segment_type"] for segment in manifest_payload["segments"]] == ["hook", "benefit", "cta"]
+    assert all(segment["layer_name"] == "background_visual" for segment in manifest_payload["segments"])
+
 
 def test_factory_service_marks_preview_job_failed_when_recipe_has_no_items(unit_of_work_factory, tmp_path) -> None:
     product_id, _ = _register_ready_asset(unit_of_work_factory, tmp_path)
@@ -167,6 +202,26 @@ def test_factory_service_marks_preview_job_failed_when_recipe_has_no_items(unit_
     assert len(jobs) == 1
     assert jobs[0].job_id == job_id
     assert jobs[0].error_message is not None
+
+
+def test_factory_service_marks_preview_job_failed_when_recipe_has_no_renderable_visual_assets(unit_of_work_factory, tmp_path) -> None:
+    product_id, voice_asset_id = _register_ready_asset(
+        unit_of_work_factory,
+        tmp_path,
+        asset_type="voiceover",
+        asset_code="voice_asset",
+        file_name="voice.mp3",
+    )
+    service = _build_factory_service(unit_of_work_factory, tmp_path / "previews")
+    recipe_id = service.create_recipe(CreateRecipeCommand(product_id=product_id, recipe_code="Voice Only"))
+    service.assign_asset_to_recipe(AssignAssetToRecipeCommand(recipe_id=recipe_id, asset_id=voice_asset_id, role="voice"))
+    job_id = service.enqueue_preview_job(recipe_id)
+
+    with pytest.raises(PreviewBuildInputError, match="no renderable video assets"):
+        service.run_preview_job(job_id)
+
+    failed_jobs = service.list_preview_jobs(status="failed")
+    assert failed_jobs[0].job_id == job_id
 
 
 def test_factory_service_retries_failed_preview_job_after_restart(unit_of_work_factory, tmp_path) -> None:

@@ -11,8 +11,8 @@ from mt_clip_factory.domain.jobs import Job
 from mt_clip_factory.domain.outputs import Output
 from mt_clip_factory.domain.recipes import Recipe
 from mt_clip_factory.domain.services import UnitOfWork
-from mt_clip_factory.factory.composition_mapping import bind_render_decision, bind_timeline_segment, to_composition_plan_dto
-from mt_clip_factory.factory.composition_planning import build_default_composition
+from mt_clip_factory.factory.composition_mapping import to_composition_plan_dto
+from mt_clip_factory.factory.composition_runtime import persist_composition
 from mt_clip_factory.factory.dto import (
     AssignAssetToRecipeCommand,
     CompositionPlanDTO,
@@ -25,6 +25,7 @@ from mt_clip_factory.factory.dto import (
     RecipeSummaryDTO,
 )
 from mt_clip_factory.factory.preview_artifacts import PreviewManifestBuilder
+from mt_clip_factory.factory.preview_composition import build_segmented_preview_composition
 from mt_clip_factory.factory.renderers import RenderedPreviewOutput
 from mt_clip_factory.library.artifacts import build_artifact_job_code, decode_job_input, encode_job_input
 
@@ -286,25 +287,12 @@ class VideoAssemblyFactoryService:
                 for asset in [uow.assets.get_by_id(item.asset_id)]
                 if asset is not None
             }
-            planned = build_default_composition(recipe, items, assets)
-            plan = uow.composition_plans.upsert(planned.plan)
-            if plan.id is None:
-                raise RuntimeError("Composition plan identifier was not assigned.")
-            decisions = [
-                bind_render_decision(decision, composition_plan_id=plan.id)
-                for decision in planned.decisions
-            ]
-            segments = [
-                bind_timeline_segment(segment, composition_plan_id=plan.id)
-                for segment in planned.segments
-            ]
-            uow.timeline_segments.replace_for_plan(plan.id, segments)
-            uow.render_decisions.replace_for_plan(plan.id, decisions)
+            persisted = persist_composition(uow, recipe=recipe, items=items, assets=assets)
             uow.commit()
             return to_composition_plan_dto(
-                plan,
-                tuple(uow.timeline_segments.list_by_plan(plan.id)),
-                tuple(uow.render_decisions.list_by_plan(plan.id)),
+                persisted.plan,
+                tuple(uow.timeline_segments.list_by_plan(persisted.plan.id)),
+                tuple(uow.render_decisions.list_by_plan(persisted.plan.id)),
                 format_timestamp=_format_timestamp,
             )
 
@@ -410,6 +398,12 @@ class VideoAssemblyFactoryService:
             if product is None:
                 raise ValueError(str(recipe.product_id))
             items = list(uow.recipes.list_items(recipe.id))
+            assets = {
+                item.asset_id: asset
+                for item in items
+                for asset in [uow.assets.get_by_id(item.asset_id)]
+                if asset is not None
+            }
 
             job.status = JobStatus.PROCESSING
             job.started_at = _utc_now()
@@ -421,39 +415,27 @@ class VideoAssemblyFactoryService:
                 if not items:
                     raise PreviewBuildInputError(f"Recipe {recipe.recipe_code} has no items.")
 
+                persisted = persist_composition(uow, recipe=recipe, items=items, assets=assets)
+                composition = build_segmented_preview_composition(
+                    recipe=recipe,
+                    product_code=product.product_code,
+                    items=items,
+                    assets=assets,
+                    plan=persisted.plan,
+                    segments=persisted.segments,
+                )
                 manifest_path = self._preview_manifest_builder.write_manifest(
                     product_code=product.product_code,
                     recipe_code=recipe.recipe_code,
-                    payload={
-                        "recipe_code": recipe.recipe_code,
-                        "product_code": product.product_code,
-                        "target_platform": recipe.target_platform,
-                        "target_ratio": recipe.target_ratio,
-                        "duration_sec": recipe.duration_sec,
-                        "status": recipe.status.value,
-                        "items": [
-                            {
-                                "asset_id": item.asset_id,
-                                "asset_code": item.asset_code,
-                                "asset_type": item.asset_type,
-                                "role": item.role,
-                            }
-                            for item in items
-                        ],
-                    },
+                    payload=composition.manifest_payload,
                 )
-                source_files = [
-                    Path(asset.file_path)
-                    for item in items
-                    for asset in [uow.assets.get_by_id(item.asset_id)]
-                    if asset is not None and _is_renderable_preview_asset(asset.asset_type.value)
-                ]
-                if not source_files:
+                if not composition.source_files:
                     raise PreviewBuildInputError(f"Recipe {recipe.recipe_code} has no renderable video assets.")
                 rendered_output = self._preview_renderer.render_output(
                     product_code=product.product_code,
                     output_stem=recipe.recipe_code,
-                    source_files=source_files,
+                    source_files=list(composition.source_files),
+                    segment_clips=composition.segment_clips,
                 )
                 output = uow.outputs.add(
                     Output(
@@ -662,10 +644,6 @@ def _extract_output_path(output_json: str | None) -> str | None:
         return None
     payload = json.loads(output_json)
     return payload.get("final_output_path") or payload.get("preview_output_path") or payload.get("preview_manifest_path")
-
-
-def _is_renderable_preview_asset(asset_type: str) -> bool:
-    return asset_type in {"background_video", "foreground_video"}
 
 
 def _utc_now() -> datetime:

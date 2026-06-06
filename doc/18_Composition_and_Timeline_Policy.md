@@ -55,6 +55,7 @@ Current implemented baseline on 2026-06-06:
 - semantic segments are now persisted in `timeline_segments`
 - segment timing is currently inferred from resolved duration bands
 - contiguous coverage validation is enforced before segment plans are accepted
+- preview now uses segment-aware visual clip mapping and writes inspectable manifest details
 
 ## Layer Model
 
@@ -143,6 +144,12 @@ These decisions should later be visible in:
 - preview and final render should follow the same composition logic
 - the main difference should be output quality, not business behavior
 - a preview must not promise a composition policy that the final render ignores
+
+Current preview baseline:
+
+- preview follows semantic segment order for visual clip assembly
+- preview writes segment clip choices and fill mode into the manifest
+- preview is still ahead of final render in composition semantics until `IR-04` lands
 
 ## Review Gate Rule
 

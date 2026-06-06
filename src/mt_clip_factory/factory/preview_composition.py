@@ -1,0 +1,213 @@
+from __future__ import annotations
+
+from collections.abc import Sequence
+from dataclasses import dataclass
+from pathlib import Path
+
+from mt_clip_factory.domain.assets import Asset
+from mt_clip_factory.domain.composition_plans import CompositionPlan
+from mt_clip_factory.domain.recipes import Recipe, RecipeItem
+from mt_clip_factory.domain.timeline_segments import TimelineSegment
+
+
+VISUAL_LAYER_FALLBACK = ("product_focus_visual", "background_visual")
+
+
+@dataclass(slots=True, frozen=True)
+class PreviewSegmentClip:
+    sequence_index: int
+    segment_type: str
+    layer_name: str
+    asset_id: int
+    asset_code: str
+    source_file: Path
+    start_sec: float
+    end_sec: float
+    target_duration_sec: float
+    fill_mode: str
+    message_text: str | None = None
+    text_rule: str | None = None
+    audio_policy: str | None = None
+
+
+@dataclass(slots=True, frozen=True)
+class PreviewComposition:
+    manifest_payload: dict
+    source_files: tuple[Path, ...]
+    segment_clips: tuple[PreviewSegmentClip, ...]
+
+
+def build_segmented_preview_composition(
+    *,
+    recipe: Recipe,
+    product_code: str,
+    items: Sequence[RecipeItem],
+    assets: dict[int, Asset],
+    plan: CompositionPlan,
+    segments: Sequence[TimelineSegment],
+) -> PreviewComposition:
+    visual_assets_by_layer = _build_visual_assets_by_layer(plan, assets)
+    if not visual_assets_by_layer:
+        return PreviewComposition(
+            manifest_payload=_build_manifest_payload(
+                recipe=recipe,
+                product_code=product_code,
+                items=items,
+                plan=plan,
+                segments=(),
+            ),
+            source_files=(),
+            segment_clips=(),
+        )
+
+    segment_clips = tuple(
+        _build_segment_clip(segment, visual_assets_by_layer)
+        for segment in segments
+    )
+    if not segment_clips:
+        source_files = tuple(_dedupe_files(asset.file_path for layer_assets in visual_assets_by_layer.values() for asset in layer_assets))
+        return PreviewComposition(
+            manifest_payload=_build_manifest_payload(
+                recipe=recipe,
+                product_code=product_code,
+                items=items,
+                plan=plan,
+                segments=(),
+            ),
+            source_files=source_files,
+            segment_clips=(),
+        )
+    return PreviewComposition(
+        manifest_payload=_build_manifest_payload(
+            recipe=recipe,
+            product_code=product_code,
+            items=items,
+            plan=plan,
+            segments=segment_clips,
+        ),
+        source_files=tuple(clip.source_file for clip in segment_clips),
+        segment_clips=segment_clips,
+    )
+
+
+def _build_visual_assets_by_layer(plan: CompositionPlan, assets: dict[int, Asset]) -> dict[str, tuple[Asset, ...]]:
+    result: dict[str, tuple[Asset, ...]] = {}
+    for assignment in plan.layer_assignments:
+        if assignment.layer_name not in VISUAL_LAYER_FALLBACK:
+            continue
+        layer_assets = tuple(
+            asset
+            for asset_id in assignment.asset_ids
+            for asset in [assets.get(asset_id)]
+            if asset is not None
+        )
+        if layer_assets:
+            result[assignment.layer_name] = layer_assets
+    return result
+
+
+def _build_segment_clip(
+    segment: TimelineSegment,
+    visual_assets_by_layer: dict[str, tuple[Asset, ...]],
+) -> PreviewSegmentClip:
+    layer_name, candidate_assets = _resolve_candidate_assets(segment, visual_assets_by_layer)
+    asset = candidate_assets[(segment.sequence_index - 1) % len(candidate_assets)]
+    fill_mode = _resolve_fill_mode(asset.duration_sec, segment.target_duration_sec)
+    return PreviewSegmentClip(
+        sequence_index=segment.sequence_index,
+        segment_type=segment.segment_type,
+        layer_name=layer_name,
+        asset_id=asset.id or 0,
+        asset_code=asset.asset_code,
+        source_file=Path(asset.file_path),
+        start_sec=segment.start_sec,
+        end_sec=segment.end_sec,
+        target_duration_sec=segment.target_duration_sec,
+        fill_mode=fill_mode,
+        message_text=segment.message_text,
+        text_rule=segment.text_rule,
+        audio_policy=segment.audio_policy,
+    )
+
+
+def _resolve_candidate_assets(
+    segment: TimelineSegment,
+    visual_assets_by_layer: dict[str, tuple[Asset, ...]],
+) -> tuple[str, tuple[Asset, ...]]:
+    for layer_name in segment.preferred_layers:
+        candidate_assets = visual_assets_by_layer.get(layer_name)
+        if candidate_assets:
+            return layer_name, candidate_assets
+    for layer_name in VISUAL_LAYER_FALLBACK:
+        candidate_assets = visual_assets_by_layer.get(layer_name)
+        if candidate_assets:
+            return layer_name, candidate_assets
+    raise ValueError(f"Segment {segment.segment_type} has no renderable visual assets.")
+
+
+def _resolve_fill_mode(source_duration_sec: float | None, target_duration_sec: float) -> str:
+    if source_duration_sec is None or source_duration_sec <= 0:
+        return "duration_unknown"
+    if source_duration_sec >= target_duration_sec:
+        return "trim_to_segment"
+    return "loop_to_segment"
+
+
+def _build_manifest_payload(
+    *,
+    recipe: Recipe,
+    product_code: str,
+    items: Sequence[RecipeItem],
+    plan: CompositionPlan,
+    segments: Sequence[PreviewSegmentClip],
+) -> dict:
+    return {
+        "composition_plan": {
+            "duration_source": plan.duration_source,
+            "resolved_duration_sec": plan.resolved_duration_sec,
+            "target_duration_sec": plan.target_duration_sec,
+        },
+        "items": [
+            {
+                "asset_code": item.asset_code,
+                "asset_id": item.asset_id,
+                "asset_type": item.asset_type,
+                "role": item.role,
+            }
+            for item in items
+        ],
+        "product_code": product_code,
+        "recipe_code": recipe.recipe_code,
+        "segments": [
+            {
+                "asset_code": segment.asset_code,
+                "asset_id": segment.asset_id,
+                "audio_policy": segment.audio_policy,
+                "end_sec": segment.end_sec,
+                "fill_mode": segment.fill_mode,
+                "layer_name": segment.layer_name,
+                "message_text": segment.message_text,
+                "segment_type": segment.segment_type,
+                "sequence_index": segment.sequence_index,
+                "source_file": str(segment.source_file),
+                "start_sec": segment.start_sec,
+                "target_duration_sec": segment.target_duration_sec,
+                "text_rule": segment.text_rule,
+            }
+            for segment in segments
+        ],
+        "status": recipe.status.value,
+        "target_platform": recipe.target_platform,
+        "target_ratio": recipe.target_ratio,
+    }
+
+
+def _dedupe_files(file_paths: Sequence[str]) -> list[Path]:
+    seen: set[str] = set()
+    ordered: list[Path] = []
+    for file_path in file_paths:
+        if file_path in seen:
+            continue
+        seen.add(file_path)
+        ordered.append(Path(file_path))
+    return ordered

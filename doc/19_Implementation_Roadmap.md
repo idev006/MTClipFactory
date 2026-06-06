@@ -21,7 +21,7 @@ The project now uses two roadmap layers:
 
 - `IR-01` Composition data model: complete on 2026-06-06
 - `IR-02` Timeline segment model: complete on 2026-06-06
-- `IR-03` Segment-based preview composition: ready
+- `IR-03` Segment-based preview composition: complete on 2026-06-06
 - `IR-04` Final-render composition parity: queued
 - `IR-05` Audio ducking and operator-visible render decisions: queued
 - `IR-06` Review gates and composition reliability controls: queued
@@ -30,10 +30,9 @@ The project now uses two roadmap layers:
 
 The next work should follow this order unless a documented issue changes priority:
 
-1. `IR-03` Segment-based preview composition
-2. `IR-04` Final-render composition parity
-3. `IR-05` Audio ducking and operator-visible render decisions
-4. `IR-06` Review gates and composition reliability controls
+1. `IR-04` Final-render composition parity
+2. `IR-05` Audio ducking and operator-visible render decisions
+3. `IR-06` Review gates and composition reliability controls
 
 ## IR-01 | Composition Data Model
 
@@ -109,6 +108,13 @@ Replace the current simple preview render path with a segment-aware preview pipe
 - pytest covers timeline resolution and preview composition behavior
 - preview output/reporting exposes enough detail to inspect the chosen composition path
 - docs, UML, and progress artifacts are updated in the same loop
+
+### Delivery Result
+
+- delivered segment-aware preview composition built from persisted composition plans and timeline segments
+- added manifest-visible segment clip mapping and fill-mode reporting
+- covered preview composition behavior and no-visual failure handling with pytest
+- left final-render parity and audio ducking for the next milestones
 
 ## IR-04 | Final-Render Composition Parity
 
