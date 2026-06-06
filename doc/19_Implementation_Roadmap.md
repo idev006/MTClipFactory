@@ -1,0 +1,167 @@
+# Implementation Roadmap
+
+This document is the execution-facing roadmap for turning the current composition policy into code.
+
+It complements [08_MVP_Roadmap.md](/F:/programming/python/MTClipFactory/doc/08_MVP_Roadmap.md), which remains the strategic roadmap.
+
+## Purpose
+
+- translate the strategic roadmap into implementation-sized milestones
+- define sequencing and acceptance criteria before deeper render work begins
+- keep code, UML, tests, dashboard visibility, and settings work aligned in one delivery path
+
+## Planning Model
+
+The project now uses two roadmap layers:
+
+- `Strategic roadmap`: phase-level direction and project scope
+- `Implementation roadmap`: milestone-level execution order and acceptance criteria
+
+## Current Execution Stream
+
+The next work should follow this order unless a documented issue changes priority:
+
+1. `IR-01` Composition data model
+2. `IR-02` Timeline segment model
+3. `IR-03` Segment-based preview composition
+4. `IR-04` Final-render composition parity
+5. `IR-05` Audio ducking and operator-visible render decisions
+6. `IR-06` Review gates and composition reliability controls
+
+## IR-01 | Composition Data Model
+
+### Goal
+
+Create the first persistent planning model for timeline-driven composition.
+
+### Scope
+
+- introduce a `composition_plan` concept for one recipe/render
+- define master duration source and resolved duration
+- define layer assignment structure
+- define a persisted render-decision structure direction
+
+### Acceptance Criteria
+
+- SSOT docs and UML describe the chosen model
+- persistence direction is documented clearly enough for Alembic planning
+- preview/final services have a clean seam for using a composition plan later
+- open questions are logged in issues if not implemented yet
+
+## IR-02 | Timeline Segment Model
+
+### Goal
+
+Represent semantic segments such as `hook`, `problem`, `benefit`, `proof`, and `cta`.
+
+### Scope
+
+- define `timeline_segment`
+- define segment timing fields
+- define segment-to-layer expectations
+- define minimal validation rules
+
+### Acceptance Criteria
+
+- UML shows segment flow inside the composition plan
+- domain model and architecture docs are updated
+- segment validation rules are testable and documented
+- Kanban and issues reflect any remaining gaps
+
+## IR-03 | Segment-Based Preview Composition
+
+### Goal
+
+Replace the current simple preview render path with a segment-aware preview pipeline.
+
+### Scope
+
+- resolve one master timeline for preview
+- apply background fill policy for preview visuals
+- keep narration non-looping
+- use policy-driven music fill behavior
+- preserve existing job persistence and output registration
+
+### Acceptance Criteria
+
+- preview follows the composition plan instead of a simple renderable-video path
+- pytest covers timeline resolution and preview composition behavior
+- preview output/reporting exposes enough detail to inspect the chosen composition path
+- docs, UML, and progress artifacts are updated in the same loop
+
+## IR-04 | Final-Render Composition Parity
+
+### Goal
+
+Make final render follow the same composition semantics as preview.
+
+### Scope
+
+- final render uses the composition plan, not only preview promotion
+- align preview/final behavior except for quality/runtime differences
+- keep lineage reporting truthful
+
+### Acceptance Criteria
+
+- preview and final use the same business rules
+- differences between preview and final are documented and intentional
+- lineage and render-decision visibility remain truthful
+- tests prove preview/final policy parity for core scenarios
+
+## IR-05 | Audio Ducking And Render Decision Visibility
+
+### Goal
+
+Implement the agreed audio-priority behavior and expose render decisions to operators.
+
+### Scope
+
+- implement configurable music ducking
+- keep narration as the foreground message layer
+- persist or expose render decisions such as loop, trim, freeze, duck, and silence fill
+- surface those decisions in factory UI and/or dashboard views
+
+### Acceptance Criteria
+
+- narration never auto-loops in supported composition paths
+- music ducking is configurable through settings and `.toml`
+- operator-facing surfaces show render decisions clearly
+- tests cover ducking configuration and decision visibility
+
+## IR-06 | Review Gates And Composition Reliability
+
+### Goal
+
+Prevent low-trust automatic renders from slipping through silently.
+
+### Scope
+
+- add review thresholds for duration mismatch
+- add loop repetition warnings
+- add emergency-fill or low-confidence review states
+- align reliability reporting with dashboard visibility
+
+### Acceptance Criteria
+
+- risky composition cases trigger reviewable outcomes instead of silent completion
+- dashboard or factory UI can show why review is required
+- issues and lessons learned capture important reliability tradeoffs
+- final roadmap/status docs reflect the new baseline honestly
+
+## Cross-Milestone Rules
+
+- every milestone must update related SSOT docs in the same loop
+- every architecture or workflow change must update UML
+- every persistence change must have an Alembic plan
+- every implemented milestone must add or update pytest coverage
+- every operator-visible automation rule must be explainable from dashboard or project docs
+
+## Exit Condition For This Roadmap Slice
+
+This roadmap slice is complete when:
+
+- preview and final are both timeline-driven
+- narration remains non-looping by rule
+- music ducking is implemented and configurable
+- render decisions are visible and trustworthy
+- risky cases are routed into review instead of silent low-quality automation

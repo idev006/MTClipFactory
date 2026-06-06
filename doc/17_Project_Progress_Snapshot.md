@@ -27,6 +27,7 @@
 - Output lineage is now visible from persisted output/job records.
 - Approval actor/time/reason is persisted with migration support, and immutable decision-event history is now available in the Recipe Builder workflow.
 - The composition direction is now documented: master timeline, semantic segments, `voice no-loop`, and `music ducking`.
+- The roadmap is now split into strategic and implementation layers so the next coding milestone is clearer.
 
 ## Delivered In The Latest Loop
 
@@ -35,15 +36,17 @@
 - the project now has an explicit rule that narration must not auto-loop
 - the project now has an explicit rule that music may loop and must duck under narration
 - the roadmap and issue log now show the next implementation slice as timeline/data-model work before deeper render automation
+- the execution roadmap now defines milestone order and acceptance criteria for the next composition work
 
 ## Still Open
 
 1. richer preview composition
-2. richer final-render composition
-3. timeline/composition data model
-4. audio priority and music ducking implementation
-5. failed-job escalation policy beyond manual retry
-6. optional hot-reload decision for path-root changes
+2. timeline/composition data model
+3. timeline segment model
+4. richer final-render composition
+5. audio priority and music ducking implementation
+6. failed-job escalation policy beyond manual retry
+7. optional hot-reload decision for path-root changes
 
 ## Verification Baseline
 

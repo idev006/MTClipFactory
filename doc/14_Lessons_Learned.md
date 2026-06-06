@@ -99,3 +99,8 @@
 
 - narration usually carries the selling message, so it should remain the foreground truth layer
 - looping music is usually acceptable, but looping narration is usually not
+
+## LL-021 | 2026-06-06 | Broad Roadmaps Need Execution Milestones
+
+- once composition scope became more concrete, the phase-level roadmap was no longer detailed enough to guide implementation safely
+- splitting strategy from execution helps the team preserve direction while still writing code in a disciplined order

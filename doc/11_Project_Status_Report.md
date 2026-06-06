@@ -52,6 +52,7 @@
 - keep review and approval history truthful through append-only persistence
 - keep project documents truthful through per-milestone revision checkpoints
 - lock the future composition direction before deeper render code is written
+- refine the roadmap from strategic phases into execution milestones with acceptance criteria
 - runtime migration path now exists, so future schema work can be delivered more safely
 - decide whether runtime path changes should hot-reload or remain restart-driven
 - deepen orchestration policy beyond the current queued-startup and failed-manual retry baselines
@@ -69,6 +70,7 @@
 - narration must not auto-loop
 - background music may loop and must duck under narration
 - loop/trim/freeze/duck decisions must become operator-visible and persistable
+- the roadmap is now split into strategic and implementation layers
 
 ## Ownership
 

@@ -12,6 +12,7 @@
 | ISS-014 | 2026-06-06 | Medium | Recovery Scope | Startup queued-job recovery and manual failed-job retry now exist, but failed-job escalation and richer orchestration policy are still limited. | Engineering | Open | Expand recovery semantics beyond current sequential retry flow and document escalation rules. |
 | ISS-017 | 2026-06-06 | Medium | Timeline Composition Model | The project now has direction for master timeline, semantic segments, and layered composition, but the actual data model and implementation are not built yet. | Engineering | Open | Design the composition-plan, segment, and render-decision model from the new SSOT policy. |
 | ISS-018 | 2026-06-06 | Medium | Audio Priority Policy | The team has aligned on `voice no-loop` and `music ducking`, but those rules are not yet implemented in preview/final render flows. | Engineering | Open | Implement configurable narration/music policy with operator-visible render decisions. |
+| ISS-019 | 2026-06-06 | Medium | Execution Roadmap Discipline | The project now needs implementation milestones with acceptance criteria so composition work lands in a controlled sequence instead of broad feature waves. | Project Management | Open | Maintain the implementation roadmap and keep Kanban/issues aligned to the current milestone. |
 
 ## Closed Issues
 

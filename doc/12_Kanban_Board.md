@@ -11,7 +11,8 @@ This Markdown board is the SSOT Kanban for the repository.
 
 ## Ready
 
-- timeline/composition data model and policy implementation
+- `IR-01` composition data model
+- `IR-02` timeline segment model
 - richer preview composition beyond simple renderable-video flow
 - richer final-render composition beyond preview-promotion foundation
 - path-root hot-reload decision
@@ -46,6 +47,7 @@ This Markdown board is the SSOT Kanban for the repository.
 - migration-backed approval actor/time/reason persistence
 - immutable approval history log
 - composition policy and architecture alignment
+- implementation roadmap with milestone acceptance criteria
 - milestone revision checkpoint policy across docs, Kanban, issues, and lessons learned
 - recipe persistence
 - recipe item assignment

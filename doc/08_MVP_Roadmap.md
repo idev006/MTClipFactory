@@ -1,5 +1,9 @@
 # MVP Roadmap
 
+This is the strategic roadmap.
+
+For execution sequencing and acceptance criteria, use [19_Implementation_Roadmap.md](/F:/programming/python/MTClipFactory/doc/19_Implementation_Roadmap.md).
+
 ## Phase 1: Foundation
 
 - project skeleton
@@ -79,3 +83,9 @@ The next composition-oriented milestones should be approached in this order:
 3. implement segment-based preview composition
 4. implement final-render composition parity
 5. add configurable music ducking and operator-visible render decisions
+
+## Roadmap Structure
+
+- `08_MVP_Roadmap.md` is the phase-level strategic roadmap
+- `19_Implementation_Roadmap.md` is the implementation-level execution roadmap
+- when the two appear to disagree, the execution roadmap may refine sequencing but must not violate the strategic scope without a documented revision
