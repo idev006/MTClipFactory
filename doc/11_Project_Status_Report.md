@@ -33,7 +33,7 @@
 - dashboard and Recipe Builder visibility for composition-plan segments and render-decision summaries
 - runtime voice/music mix path for preview and final render flows
 - manifest-visible runtime audio-mix evidence for operator inspection
-- review-gate reliability controls for low-diversity, loop-heavy, or mismatch-heavy preview/final compositions
+- review-gate reliability controls for low-diversity, loop-heavy, mismatch-heavy, audio-masking-risk, or emergency-fill preview/final compositions
 - settings-backed review thresholds in `app_config.toml`, settings UI, and dashboard summary
 - dashboard visibility for `needs_review` recipe count
 - Recipe Builder output-detail visibility for manifest-backed review-gate evidence plus quality/duplicate-risk signals
@@ -62,22 +62,20 @@
 
 ## Verification Baseline
 
-- `python -m pytest` via `.venv`: `86 passed`
+- `python -m pytest` via `.venv`: `91 passed`
 - UI smoke via `QT_QPA_PLATFORM=offscreen`: `6` windows instantiated successfully
 
 ## Current Focus
 
-- deepen review signals beyond the current duration and visual-repetition heuristics
 - deepen runtime audio beyond the new configurable duck-engine baseline where needed
-- keep review and approval history truthful through append-only persistence
+- keep richer review signals and approval history truthful through append-only persistence
 - keep project documents truthful through per-milestone revision checkpoints
 
 ## Next Steps
 
-1. Deepen review-gate signals with audio masking and emergency-fill detection when the supporting data is ready.
-2. Extend audio work from configurable ducking into richer multi-layer polish if operator feedback demands it.
-3. Revisit whether recovery history needs a dedicated audit schema beyond the current persisted job-payload seam.
-4. Consider optional path-root hot-reload only if the restart-driven policy becomes operationally too costly.
+1. Extend audio work from configurable ducking into richer multi-layer polish if operator feedback demands it.
+2. Revisit whether recovery history needs a dedicated audit schema beyond the current persisted job-payload seam.
+3. Consider optional path-root hot-reload only if the restart-driven policy becomes operationally too costly.
 
 ## Direction Locked In This Documentation Revision
 
@@ -96,6 +94,7 @@
 - `IR-07` now adds configurable duck modes, sidechain-compressor tuning, and higher-quality runtime audio evidence
 - `IR-08` now adds persisted failed-job recovery history, escalation thresholds, deferred bulk retry, and operator playbook visibility
 - `IR-09` now locks path-root reload semantics to restart-driven behavior and makes runtime-vs-configured path truth explicit to operators
+- `IR-10` now adds runtime-backed audio masking review signals plus duration-unknown emergency-fill detection in manifest-backed review evidence
 
 ## Ownership
 

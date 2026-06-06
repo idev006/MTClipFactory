@@ -7,7 +7,7 @@ from pathlib import Path
 from mt_clip_factory.control_center.dto import SystemSettingsDTO
 from mt_clip_factory.factory.audio_composition import PreviewAudioMixPlan, PreviewAudioTrack
 from mt_clip_factory.factory.renderers import FFmpegPreviewRenderer, LocalPreviewRenderer
-from mt_clip_factory.ui.factory.recipe_builder_window import _build_manifest_audio_lines
+from mt_clip_factory.ui.factory.recipe_builder_window import _build_manifest_audio_lines, _build_manifest_review_lines
 
 
 class StaticSettingsService:
@@ -187,3 +187,37 @@ def test_output_detail_helper_reads_runtime_audio_mix_from_manifest(tmp_path) ->
     assert "- Duck Threshold (dB): -24" in lines
     assert "- Duck Ratio: 8.0" in lines
     assert "- Music Track Count: 1" in lines
+
+
+def test_output_detail_helper_reads_review_metrics_from_manifest(tmp_path) -> None:
+    manifest_path = tmp_path / "preview_manifest.json"
+    manifest_path.write_text(
+        json.dumps(
+            {
+                "review_gate": {
+                    "required": True,
+                    "duplicate_risk": 0.5,
+                    "quality_score": 0.5,
+                    "summary": "Review required.",
+                    "signals": [
+                        {
+                            "code": "audio_masking_risk",
+                            "metric_value": "duck_disabled_in_settings",
+                            "threshold": "ducking_applied",
+                        }
+                    ],
+                    "metrics": {
+                        "duration_unknown_audio_tracks": 1,
+                        "voice_track_count": 1,
+                    },
+                }
+            }
+        ),
+        encoding="utf-8",
+    )
+
+    lines = _build_manifest_review_lines(str(manifest_path))
+
+    assert "- Signal: audio_masking_risk | value=duck_disabled_in_settings | threshold=ducking_applied" in lines
+    assert "- Metric: duration_unknown_audio_tracks=1" in lines
+    assert "- Metric: voice_track_count=1" in lines

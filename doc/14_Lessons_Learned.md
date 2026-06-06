@@ -154,3 +154,8 @@
 
 - once multiple services are wired with path roots at startup, pretending they hot-reload would be less honest than explicitly exposing runtime-active paths alongside configured next-start paths
 - restart-driven policy becomes much easier for operators to trust when the dashboard says exactly which path roots are pending and which ones are currently active
+
+## LL-032 | 2026-06-06 | Review Signals Need Runtime Evidence
+
+- audio-risk review rules became much more trustworthy once the review gate waited for renderer audio evidence instead of inferring masking risk only from planning intent
+- duration-unknown fill paths are worth surfacing as first-class review evidence because fallback behavior is operationally important even when a render technically succeeds

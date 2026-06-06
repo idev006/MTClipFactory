@@ -496,6 +496,10 @@ def _build_manifest_review_lines(manifest_path: str | None) -> list[str]:
             lines.append(
                 f"- Signal: {signal.get('code', '-')} | value={signal.get('metric_value', '-')} | threshold={signal.get('threshold', '-')}"
             )
+    metrics = review_gate.get("metrics")
+    if isinstance(metrics, dict):
+        for metric_name, metric_value in sorted(metrics.items()):
+            lines.append(f"- Metric: {metric_name}={metric_value}")
     return lines
 
 

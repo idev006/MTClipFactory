@@ -65,9 +65,11 @@ def assess_review_gate(
     plan: CompositionPlan,
     composition: PreviewComposition,
     settings: ReviewSettings,
+    audio_mix_summary: dict | None = None,
 ) -> ReviewAssessment:
     signals: list[ReviewSignal] = []
     segment_clips = composition.segment_clips
+    audio_mix_plan = composition.audio_mix_plan
     target_duration_sec = plan.target_duration_sec
     resolved_duration_sec = plan.resolved_duration_sec
     if target_duration_sec is not None and resolved_duration_sec is not None:
@@ -111,6 +113,37 @@ def assess_review_gate(
                 threshold=settings.max_consecutive_same_visual_segments,
             )
         )
+    duration_unknown_visual_segments = sum(1 for clip in segment_clips if clip.fill_mode == "duration_unknown")
+    duration_unknown_audio_tracks = 0
+    if audio_mix_plan is not None:
+        duration_unknown_audio_tracks = sum(
+            1
+            for track in (*audio_mix_plan.voice_tracks, *audio_mix_plan.music_tracks)
+            if track.fill_mode == "duration_unknown"
+        )
+    emergency_fill_count = duration_unknown_visual_segments + duration_unknown_audio_tracks
+    if emergency_fill_count > 0:
+        signals.append(
+            ReviewSignal(
+                code="emergency_fill_detected",
+                message="Composition used duration-unknown emergency fill for one or more media layers.",
+                metric_value=emergency_fill_count,
+                threshold=0,
+            )
+        )
+    voice_track_count = _resolve_track_count(audio_mix_summary, track_key="voice_tracks", count_key="voice_track_count")
+    music_track_count = _resolve_track_count(audio_mix_summary, track_key="music_tracks", count_key="music_track_count")
+    if voice_track_count > 0 and music_track_count > 0:
+        ducking_applied = _resolve_ducking_applied(audio_mix_summary)
+        if ducking_applied is False:
+            signals.append(
+                ReviewSignal(
+                    code="audio_masking_risk",
+                    message="Narration and music overlap without confirmed ducking protection.",
+                    metric_value=_resolve_ducking_status(audio_mix_summary),
+                    threshold="ducking_applied",
+                )
+            )
     duplicate_risk = _duplicate_risk(signals)
     quality_score = round(max(0.0, 1.0 - duplicate_risk), 3)
     summary = "Review required." if signals else "No review gate triggered."
@@ -127,6 +160,10 @@ def assess_review_gate(
             "looped_segments": looped_segments,
             "max_consecutive_same_asset_segments": max_consecutive_same_asset,
             "segment_count": len(segment_clips),
+            "duration_unknown_visual_segments": duration_unknown_visual_segments,
+            "duration_unknown_audio_tracks": duration_unknown_audio_tracks,
+            "voice_track_count": voice_track_count,
+            "music_track_count": music_track_count,
         },
     )
 
@@ -192,3 +229,43 @@ def _duplicate_risk(signals: list[ReviewSignal]) -> float:
     if not signals:
         return 0.0
     return round(min(1.0, 0.25 * len(signals)), 3)
+
+
+def _resolve_track_count(
+    audio_mix_summary: dict | None,
+    *,
+    track_key: str,
+    count_key: str,
+) -> int:
+    if not isinstance(audio_mix_summary, dict):
+        return 0
+    tracks = audio_mix_summary.get(track_key)
+    if isinstance(tracks, list):
+        return len(tracks)
+    count = audio_mix_summary.get(count_key)
+    return int(count) if isinstance(count, int | float) else 0
+
+
+def _resolve_ducking_applied(audio_mix_summary: dict | None) -> bool | None:
+    if not isinstance(audio_mix_summary, dict):
+        return None
+    ducking = audio_mix_summary.get("ducking")
+    if not isinstance(ducking, dict):
+        return None
+    applied = ducking.get("applied")
+    return applied if isinstance(applied, bool) else None
+
+
+def _resolve_ducking_status(audio_mix_summary: dict | None) -> str:
+    if not isinstance(audio_mix_summary, dict):
+        return "unknown"
+    ducking = audio_mix_summary.get("ducking")
+    if not isinstance(ducking, dict):
+        return "ducking_missing"
+    reason = ducking.get("reason")
+    if isinstance(reason, str) and reason:
+        return reason
+    mode = ducking.get("mode")
+    if isinstance(mode, str) and mode:
+        return mode
+    return "not_applied"

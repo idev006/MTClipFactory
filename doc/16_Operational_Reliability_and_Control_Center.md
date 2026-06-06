@@ -129,7 +129,7 @@ The following must flow through config or services whenever user control is appr
 - runtime preview/final audio mixing with manifest-visible applied-audio evidence
 - review-gate routing with persisted `needs_review` recipe state
 - dashboard visibility of flagged recipe count plus configured review thresholds
-- Recipe Builder visibility for manifest-backed review signals, quality score, and duplicate risk
+- Recipe Builder visibility for manifest-backed review signals, metrics, quality score, and duplicate risk
 - automated tests for success and failure job paths
 - restart-style retry tests for factory jobs
 - queued-job orchestration tests plus startup policy coverage
@@ -138,7 +138,7 @@ The following must flow through config or services whenever user control is appr
 ## Current Gaps
 
 1. Preview and final now share a configurable duck-engine foundation, but richer multi-layer parity and deeper polish are still incomplete.
-2. Review gates now exist, but audio masking and emergency-fill signals are still shallow.
+2. Review gates now cover audio masking loss and emergency fill, but broader composition-confidence scoring is still heuristic.
 3. Recovery history currently rides on persisted job payload metadata rather than a dedicated audit schema.
 4. Optional path-root hot-reload remains a future backlog item if restart-driven semantics become operationally too costly.
 

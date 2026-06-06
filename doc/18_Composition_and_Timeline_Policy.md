@@ -175,6 +175,9 @@ Current implemented baseline on 2026-06-06:
 
 - review thresholds are configurable for duration mismatch, looped segment count, minimum distinct visual assets, and maximum consecutive same-asset segments
 - preview and final manifests now persist `review_gate` evidence with `required`, `summary`, `signals`, `quality_score`, and `duplicate_risk`
+- review assessment now combines composition evidence with renderer-provided audio evidence before finalizing risk signals
+- duration-unknown visual or audio layers now raise manifest-visible `emergency_fill_detected` review signals
+- narration/music overlap without confirmed ducking protection now raises manifest-visible `audio_masking_risk`
 - recipes can be routed to `needs_review` automatically after preview generation
 - human approval remains possible, but flagged recipes must carry an explicit approval reason
 

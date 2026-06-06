@@ -582,6 +582,7 @@ sequenceDiagram
     Factory->>View: expose composition-plan segments + render-decision summary
     Factory->>Render: render with loop/trim/duck policy
     Render-->>Factory: output + audio_mix_summary
+    Factory->>Factory: assess review gate from composition + runtime audio evidence
     Factory->>Audit: persist render decisions
-    Factory-->>VM: output summary + operator-visible decisions
+    Factory-->>VM: output summary + review signals + operator-visible decisions
 ```

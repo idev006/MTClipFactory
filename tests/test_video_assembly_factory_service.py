@@ -50,7 +50,13 @@ def _build_asset_service(unit_of_work_factory, media_root: Path) -> AssetIntakeS
     )
 
 
-def _build_factory_service(unit_of_work_factory, preview_root: Path) -> VideoAssemblyFactoryService:
+def _build_factory_service(
+    unit_of_work_factory,
+    preview_root: Path,
+    *,
+    render_ducking_applied: bool | None = None,
+    render_ducking_reason: str = "fake_renderer",
+) -> VideoAssemblyFactoryService:
     class FakePreviewRenderer:
         def __init__(self) -> None:
             self.calls: list[dict] = []
@@ -81,13 +87,19 @@ def _build_factory_service(unit_of_work_factory, preview_root: Path) -> VideoAss
             duration_sec = round(sum(segment.target_duration_sec for segment in segment_clips), 3) if segment_clips else 3.0
             audio_mix_summary = None
             if audio_mix_plan is not None:
+                ducking_applied = (
+                    render_ducking_applied
+                    if render_ducking_applied is not None
+                    else bool(audio_mix_plan.voice_tracks and audio_mix_plan.music_tracks)
+                )
                 audio_mix_summary = {
                     "mode": "fake_audio_mix",
                     "target_duration_sec": audio_mix_plan.target_duration_sec,
                     "voice_track_count": len(audio_mix_plan.voice_tracks),
                     "music_track_count": len(audio_mix_plan.music_tracks),
                     "ducking": {
-                        "applied": bool(audio_mix_plan.voice_tracks and audio_mix_plan.music_tracks),
+                        "applied": ducking_applied,
+                        "reason": render_ducking_reason,
                     },
                 }
             return RenderedPreviewOutput(
@@ -249,6 +261,50 @@ def test_factory_service_writes_runtime_audio_mix_summary_to_manifest(unit_of_wo
     assert manifest_payload["audio_mix"]["voice_track_count"] == 1
     assert manifest_payload["audio_mix"]["music_track_count"] == 1
     assert manifest_payload["audio_mix"]["ducking"]["applied"] is True
+
+
+def test_factory_service_routes_audio_masking_risk_to_review_manifest(unit_of_work_factory, tmp_path) -> None:
+    product_id, visual_asset_id = _register_ready_asset(unit_of_work_factory, tmp_path)
+    _, voice_asset_id = _register_ready_asset(
+        unit_of_work_factory,
+        tmp_path,
+        asset_type="voiceover",
+        asset_code="voice_asset",
+        file_name="voice.mp3",
+    )
+    _, music_asset_id = _register_ready_asset(
+        unit_of_work_factory,
+        tmp_path,
+        asset_type="background_music",
+        asset_code="music_asset",
+        file_name="music.mp3",
+    )
+    service = _build_factory_service(
+        unit_of_work_factory,
+        tmp_path / "previews",
+        render_ducking_applied=False,
+        render_ducking_reason="duck_disabled_in_settings",
+    )
+    recipe_id = service.create_recipe(CreateRecipeCommand(product_id=product_id, recipe_code="Audio Review"))
+    service.assign_asset_to_recipe(AssignAssetToRecipeCommand(recipe_id=recipe_id, asset_id=visual_asset_id, role="hero"))
+    service.assign_asset_to_recipe(AssignAssetToRecipeCommand(recipe_id=recipe_id, asset_id=voice_asset_id, role="voice"))
+    service.assign_asset_to_recipe(AssignAssetToRecipeCommand(recipe_id=recipe_id, asset_id=music_asset_id, role="music"))
+
+    job_id = service.enqueue_preview_job(recipe_id)
+    service.run_preview_job(job_id)
+
+    output = service.list_outputs(recipe_id=recipe_id)[0]
+    recipe = service.get_recipe(recipe_id)
+    manifest_payload = json.loads(Path(output.manifest_path).read_text(encoding="utf-8"))
+    signal_codes = [signal["code"] for signal in manifest_payload["review_gate"]["signals"]]
+
+    assert recipe.status == "needs_review"
+    assert manifest_payload["review_gate"]["required"] is True
+    assert "audio_masking_risk" in signal_codes
+    assert any(
+        signal["code"] == "audio_masking_risk" and signal["metric_value"] == "duck_disabled_in_settings"
+        for signal in manifest_payload["review_gate"]["signals"]
+    )
 
 
 def test_factory_service_marks_preview_job_failed_when_recipe_has_no_items(unit_of_work_factory, tmp_path) -> None:

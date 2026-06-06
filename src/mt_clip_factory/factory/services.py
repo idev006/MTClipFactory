@@ -2,7 +2,6 @@ from __future__ import annotations
 from collections.abc import Callable
 from datetime import UTC, datetime
 from pathlib import Path
-
 from mt_clip_factory.domain.decision_events import DecisionEvent
 from mt_clip_factory.domain.enums import JobStatus, RecipeStatus
 from mt_clip_factory.domain.job_recovery import (
@@ -440,11 +439,6 @@ class VideoAssemblyFactoryService:
                     plan=persisted.plan,
                     segments=persisted.segments,
                 )
-                review_assessment = assess_review_gate(
-                    plan=persisted.plan,
-                    composition=composition,
-                    settings=review_settings_from_provider(self._system_settings_service),
-                )
                 if not composition.source_files:
                     raise PreviewBuildInputError(f"Recipe {recipe.recipe_code} has no renderable video assets.")
                 rendered_output = self._preview_renderer.render_output(
@@ -453,6 +447,12 @@ class VideoAssemblyFactoryService:
                     source_files=list(composition.source_files),
                     segment_clips=composition.segment_clips,
                     audio_mix_plan=composition.audio_mix_plan,
+                )
+                review_assessment = assess_review_gate(
+                    plan=persisted.plan,
+                    composition=composition,
+                    settings=review_settings_from_provider(self._system_settings_service),
+                    audio_mix_summary=rendered_output.audio_mix_summary,
                 )
                 manifest_payload = dict(composition.manifest_payload)
                 manifest_payload["review_gate"] = review_gate_manifest_payload(review_assessment)
@@ -566,11 +566,6 @@ class VideoAssemblyFactoryService:
                     plan=persisted.plan,
                     segments=persisted.segments,
                 )
-                review_assessment = assess_review_gate(
-                    plan=persisted.plan,
-                    composition=composition,
-                    settings=review_settings_from_provider(self._system_settings_service),
-                )
                 if not composition.source_files:
                     raise FinalRenderPrerequisiteError(f"Recipe {recipe.recipe_code} has no renderable video assets.")
                 rendered_output = self._final_renderer.render_output(
@@ -579,6 +574,12 @@ class VideoAssemblyFactoryService:
                     source_files=list(composition.source_files),
                     segment_clips=composition.segment_clips,
                     audio_mix_plan=composition.audio_mix_plan,
+                )
+                review_assessment = assess_review_gate(
+                    plan=persisted.plan,
+                    composition=composition,
+                    settings=review_settings_from_provider(self._system_settings_service),
+                    audio_mix_summary=rendered_output.audio_mix_summary,
                 )
                 manifest_payload = dict(composition.manifest_payload)
                 manifest_payload["review_gate"] = review_gate_manifest_payload(review_assessment)

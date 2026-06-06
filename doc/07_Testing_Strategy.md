@@ -8,7 +8,7 @@ MTClipFactory must stay easy to test with `pytest` from day one. The system is e
 
 - Python runtime: `F:\programming\python\MTClipFactory\.venv`
 - Test command: `python -m pytest`
-- Current automated baseline on 2026-06-06: `86 passed`
+- Current automated baseline on 2026-06-06: `91 passed`
 - audio-policy settings persistence, failed-job escalation coverage, and restart-driven path-root visibility coverage are now part of that baseline
 - Current UI smoke baseline on 2026-06-06: `6` PySide windows instantiated with `QT_QPA_PLATFORM=offscreen`
 

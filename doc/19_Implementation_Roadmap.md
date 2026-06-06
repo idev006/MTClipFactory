@@ -29,13 +29,14 @@ The project now uses two roadmap layers:
 - `IR-07` Audio-mix quality refinement beyond windowed-duck baseline: complete on 2026-06-06
 - `IR-08` Recovery escalation rules and operator playbook: complete on 2026-06-06
 - `IR-09` Path-root reload decision and runtime truthfulness: complete on 2026-06-06
+- `IR-10` Runtime-backed review signals for audio masking and emergency fill: complete on 2026-06-06
 
 ## Current Execution Stream
 
 The next work should follow this order unless a documented issue changes priority:
 
-1. Deeper review-gate signals for audio masking and emergency-fill outcomes
-2. Richer multi-layer audio polish beyond the current duck-engine baseline
+1. Richer multi-layer audio polish beyond the current duck-engine baseline
+2. Decide whether recovery history should remain payload-backed or move into a dedicated audit schema
 3. Optional path-root hot-reload support if restart semantics prove too costly
 
 ## IR-01 | Composition Data Model
@@ -313,6 +314,34 @@ Lock path-root reload semantics to a truthful, operator-visible baseline instead
 - delivered runtime-active versus configured-next-start path visibility across dashboard summary and path detail surfaces
 - delivered restart-pending operator feedback when saved path roots diverge from the running app configuration
 - covered fresh-start and save-before-restart path semantics with pytest
+
+## IR-10 | Runtime-Backed Review Signals For Audio Masking And Emergency Fill
+
+### Goal
+
+Deepen review gating with runtime-backed evidence so risky audio overlap and emergency-fill outcomes become operator-visible instead of implicit.
+
+### Scope
+
+- move review assessment to the point where renderer audio evidence is available
+- add `audio_masking_risk` when narration and music coexist without confirmed ducking
+- add `emergency_fill_detected` for duration-unknown visual or audio layers
+- persist supporting review metrics through manifest-backed review evidence
+- cover the new unit and service seams with pytest
+
+### Acceptance Criteria
+
+- runtime audio evidence can change the preview/final review result when masking protection is missing
+- duration-unknown emergency-fill outcomes are visible in review signals and metrics
+- tests cover direct review evaluation and service-level manifest routing
+- roadmap, UML, reliability docs, Kanban, issues, and lessons learned stay aligned to the delivered baseline
+
+### Delivery Result
+
+- delivered review assessment ordering that now consumes renderer audio evidence before finalizing review state
+- delivered manifest-visible `audio_masking_risk` when narration and music overlap without confirmed ducking protection
+- delivered manifest-visible `emergency_fill_detected` across duration-unknown visual clips and audio tracks
+- covered unit-level review evaluation plus service-level manifest routing with pytest
 
 ## Cross-Milestone Rules
 
