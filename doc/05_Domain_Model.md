@@ -26,6 +26,18 @@
 
 ไฟล์ผลลัพธ์ preview/final ที่ trace กลับไปหา recipe และ product ได้
 
+### CompositionPlan
+
+A future planning concept that resolves one recipe into a master timeline, layer assignments, and render policy decisions.
+
+### TimelineSegment
+
+A future semantic unit such as `hook`, `problem`, `benefit`, `proof`, or `cta` with timing and preferred asset behavior.
+
+### RenderDecisionLog
+
+A future trace object that records whether the system looped, trimmed, froze, ducked, or otherwise adjusted media to complete a render.
+
 ## Context Split
 
 ### Library Context
@@ -45,6 +57,9 @@
 - `Job`
 - `Output`
 - `ApprovalDecision`
+- `CompositionPlan`
+- `TimelineSegment`
+- `RenderDecisionLog`
 
 ### Shared Concepts
 
@@ -60,6 +75,9 @@
 - Job และ Output ต้อง trace ถึง Recipe หรือ Asset ที่เกี่ยวข้องได้
 
 ## Invariants
+
+- narration must not be auto-looped by future composition logic
+- music may fill timeline gaps, but only through explicit loop/duck policy
 
 - `product_code` ต้อง unique
 - recipe ต้องผูกกับ product

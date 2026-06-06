@@ -25,6 +25,7 @@ MTClipFactory ถูกสร้างขึ้นเพื่อเป็นโ
 13. Dashboard is the operational truth surface for admin and user.
 14. Settings are a controlled god-mode interface, not hidden tribal knowledge.
 15. Approval and review history must be append-only once recorded.
+16. Composition decisions must be explicit, reviewable, and documented before automation.
 
 ## Non-Negotiable Rules
 
@@ -51,6 +52,8 @@ MTClipFactory ถูกสร้างขึ้นเพื่อเป็นโ
 - the checkpoint must revisit architecture, process, Kanban, issues, lessons learned, and status wording when behavior changed
 
 ## Working Mindset
+
+- when composition behavior affects user trust, the team writes the rule before writing the automation
 
 - เอกสารคือสัญญาระหว่างทีม
 - โค้ดคือ implementation ของเอกสาร

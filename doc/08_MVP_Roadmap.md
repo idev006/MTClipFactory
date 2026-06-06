@@ -69,3 +69,13 @@
 2. Replace final-render foundation with richer composition and audio-aware rendering.
 3. Deepen orchestration beyond current queued-startup and failed-manual retry baselines.
 4. Decide whether path-root changes remain restart-driven or move to hot-reload semantics.
+
+## Composition Milestone Direction
+
+The next composition-oriented milestones should be approached in this order:
+
+1. finalize SSOT policy for master timeline, segment semantics, and audio priority
+2. design timeline and render-decision data model
+3. implement segment-based preview composition
+4. implement final-render composition parity
+5. add configurable music ducking and operator-visible render decisions

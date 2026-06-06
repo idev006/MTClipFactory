@@ -72,6 +72,23 @@ classDiagram
         +retry_job(job_id)
     }
 
+    class CompositionPlan {
+        +master_duration
+        +duration_source
+    }
+
+    class TimelineSegment {
+        +segment_type
+        +start_sec
+        +end_sec
+    }
+
+    class RenderDecisionLog {
+        +decision_type
+        +asset_role
+        +detail
+    }
+
     class FFmpegPreviewRenderer {
         +render_preview(...)
     }
@@ -188,6 +205,9 @@ classDiagram
     DashboardWindow --> RecipeBuilderWindow
     VideoAssemblyFactoryService --> PreviewManifestBuilder
     VideoAssemblyFactoryService --> FFmpegPreviewRenderer
+    VideoAssemblyFactoryService --> CompositionPlan
+    CompositionPlan --> TimelineSegment
+    CompositionPlan --> RenderDecisionLog
     ProductApplicationService --> SqlAlchemyUnitOfWork
     AssetIntakeService --> SqlAlchemyUnitOfWork
     ArtifactGenerationService --> SqlAlchemyUnitOfWork
@@ -427,4 +447,27 @@ stateDiagram-v2
     HUMAN_REVIEW --> REJECTED
     RECIPE_APPROVED --> FINAL_RENDER_PENDING
     FINAL_RENDER_PENDING --> FINAL_RENDER_DONE
+```
+
+## Future Composition Direction
+
+```mermaid
+sequenceDiagram
+    actor User
+    participant View as RecipeBuilderWindow
+    participant VM as RecipeBuilderViewModel
+    participant Factory as VideoAssemblyFactoryService
+    participant Plan as CompositionPlan
+    participant Render as Preview/Final Renderer
+    participant Audit as RenderDecisionLog
+
+    User->>View: request preview/final render
+    View->>VM: queue render(recipe_id)
+    VM->>Factory: build composition plan
+    Factory->>Plan: resolve master timeline + segments + layers
+    Plan-->>Factory: composition rules
+    Factory->>Render: render with loop/trim/duck policy
+    Render-->>Factory: output + decisions
+    Factory->>Audit: persist render decisions
+    Factory-->>VM: output summary + operator-visible decisions
 ```

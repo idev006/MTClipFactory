@@ -43,6 +43,16 @@ Current editable fields:
 - auto recover queued jobs on startup
 - max recovery jobs per run
 
+Future composition-related settings should include:
+
+- master duration source
+- voice fill mode
+- background video fill mode
+- background music fill mode
+- duck enable/disable
+- duck level and attack/release timing
+- loop warning thresholds
+
 ## Reliability Principles
 
 - state must be persisted before the system claims work exists
@@ -92,6 +102,7 @@ The following must flow through config or services whenever user control is appr
 - automated tests for success and failure job paths
 - restart-style retry tests for factory jobs
 - queued-job orchestration tests plus startup policy coverage
+- document-led composition policy for narration, music ducking, and timeline fill behavior
 
 ## Current Gaps
 
@@ -99,3 +110,12 @@ The following must flow through config or services whenever user control is appr
 2. Preview composition is still simple and not yet a full layered edit pipeline.
 3. Final render is still a foundation path and not yet a full recomposition pipeline.
 4. Path-root changes are not fully hot-reloaded across all runtime services.
+
+## Composition Reliability Direction
+
+To keep future renders trustworthy:
+
+- narration must not auto-loop
+- music may loop only under explicit policy
+- music ducking decisions must be explainable and eventually visible to operators
+- duration mismatch handling must be logged instead of silently hidden

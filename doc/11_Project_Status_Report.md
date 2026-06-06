@@ -51,6 +51,7 @@
 - deepen render fidelity beyond the current foundation
 - keep review and approval history truthful through append-only persistence
 - keep project documents truthful through per-milestone revision checkpoints
+- lock the future composition direction before deeper render code is written
 - runtime migration path now exists, so future schema work can be delivered more safely
 - decide whether runtime path changes should hot-reload or remain restart-driven
 - deepen orchestration policy beyond the current queued-startup and failed-manual retry baselines
@@ -61,6 +62,13 @@
 2. Replace final-render foundation with fuller composition and audio-aware rendering.
 3. Extend recovery orchestration beyond current sequential retry behavior and define escalation rules.
 4. Decide whether path-root changes stay restart-driven or become hot-reload capable.
+
+## Direction Locked In This Documentation Revision
+
+- future composition is timeline-driven, not simple file stitching
+- narration must not auto-loop
+- background music may loop and must duck under narration
+- loop/trim/freeze/duck decisions must become operator-visible and persistable
 
 ## Ownership
 

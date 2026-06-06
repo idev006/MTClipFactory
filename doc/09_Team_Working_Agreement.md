@@ -29,6 +29,11 @@
 
 ## Decision Rule
 
+For composition behavior specifically:
+
+- follow [18_Composition_and_Timeline_Policy.md](/F:/programming/python/MTClipFactory/doc/18_Composition_and_Timeline_Policy.md)
+- do not implement silent loop/trim/duck behavior that is not described in SSOT
+
 ถ้าโค้ดกับเอกสารขัดกัน ให้ถือว่า implementation ยังไม่สมบูรณ์ จนกว่าจะปรับให้ตรงกันหรือแก้เอกสารอย่างเป็นทางการ
 
 ## Project Manager Cadence

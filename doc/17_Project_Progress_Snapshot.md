@@ -26,27 +26,24 @@
 - Automatic queued-job recovery now exists when enabled. Failed jobs can now be retried from the dashboard, but they are still not auto-startup work.
 - Output lineage is now visible from persisted output/job records.
 - Approval actor/time/reason is persisted with migration support, and immutable decision-event history is now available in the Recipe Builder workflow.
+- The composition direction is now documented: master timeline, semantic segments, `voice no-loop`, and `music ducking`.
 
 ## Delivered In The Latest Loop
 
-- dashboard can now trigger queued-job recovery and report the latest recovery summary
-- settings now control startup auto-recovery policy and recovery batch size
-- bootstrap can auto-recover queued jobs on startup when the policy is enabled
-- automated tests now cover recovery orchestration plus dashboard/view-model behavior
-- recipe builder now shows output kind, creation time, render job code, manifest, and source-output lineage
-- dashboard can now retry failed jobs and report the latest failed-retry summary
-- runtime startup now upgrades schema safely enough for approval audit fields
-- recipe builder now captures decision actor and note for output/recipe approvals and rejections
-- recipe builder now shows append-only decision history sourced from persisted `decision_events`
-- philosophy, standards, working agreement, architecture, and PM docs were revised through a milestone review checkpoint
-- documents, Kanban, issues, and lessons learned were updated with the same milestone
+- composition and timeline policy was written as SSOT before deeper render coding
+- architecture, domain, reliability, roadmap, UML, Kanban, issues, and lessons learned were aligned to the new composition direction
+- the project now has an explicit rule that narration must not auto-loop
+- the project now has an explicit rule that music may loop and must duck under narration
+- the roadmap and issue log now show the next implementation slice as timeline/data-model work before deeper render automation
 
 ## Still Open
 
 1. richer preview composition
 2. richer final-render composition
-3. failed-job escalation policy beyond manual retry
-4. optional hot-reload decision for path-root changes
+3. timeline/composition data model
+4. audio priority and music ducking implementation
+5. failed-job escalation policy beyond manual retry
+6. optional hot-reload decision for path-root changes
 
 ## Verification Baseline
 

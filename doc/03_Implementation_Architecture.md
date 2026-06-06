@@ -56,6 +56,22 @@
 - orchestration ของ preview/final workflow
 - quality gate, approval, output tracking
 
+## Timeline-Driven Composition Rule
+
+Future render architecture must evolve toward:
+
+- `master timeline` resolution
+- semantic segment planning
+- layered audio/visual composition
+- configurable loop, trim, and duck policy
+- persisted render-decision reporting
+
+The architecture must keep `voice-over` as a foreground layer:
+
+- narration does not auto-loop
+- music may loop
+- music ducks while narration is active
+
 ## Deployment Guidance
 
 - ช่วงแรกให้ใช้ codebase เดียวและฐานข้อมูลเดียว

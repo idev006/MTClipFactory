@@ -89,3 +89,13 @@
 
 - once multiple milestones land quickly, docs can become misleading even when code is correct
 - treating architecture/process review as a mandatory delivery checkpoint keeps project management artifacts useful instead of ceremonial
+
+## LL-019 | 2026-06-06 | Composition Rules Need To Be Written Before They Are Automated
+
+- render systems become untrustworthy quickly when looping, trimming, and filling behavior are left implicit
+- locking timeline, narration, and music policy in the documents first reduces the chance of building a clever but wrong editor
+
+## LL-020 | 2026-06-06 | Audio Priority Must Stay Human-Centric
+
+- narration usually carries the selling message, so it should remain the foreground truth layer
+- looping music is usually acceptable, but looping narration is usually not

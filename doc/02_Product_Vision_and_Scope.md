@@ -59,6 +59,23 @@
 - Quality gate before final output
 - Job orchestration with resumable state
 
+## Composition Direction
+
+Future render depth must follow a `timeline-driven composition` direction instead of simple file stitching.
+
+That direction includes:
+
+- one master timeline per recipe/render
+- semantic segments such as `hook`, `problem`, `benefit`, `proof`, and `cta`
+- clear separation between narration, music, background visuals, and product-focus visuals
+- explicit operator-visible decisions when the system loops, trims, freezes, or ducks media
+
+Voice-over policy for future implementation:
+
+- product narration must not loop automatically
+- background music may loop
+- background music must duck under narration
+
 ## Control Center Requirement
 
 ระบบต้องมี `Dashboard` กลางที่รวบรวมข้อมูลซึ่ง admin/user ควรรู้ เช่น:

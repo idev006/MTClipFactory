@@ -23,6 +23,13 @@
 
 ## Coding Rules
 
+## Composition Rules
+
+- future composition logic must resolve one master timeline per render
+- narration must not be auto-looped
+- background music may loop only through explicit policy
+- ducking, trim, freeze, and loop decisions must be operator-visible and testable
+
 - ใช้ `src/` layout เสมอ
 - ใช้ type hints ใน public API
 - เขียน class/function ให้มี dependency ชัดเจนและ inject ได้

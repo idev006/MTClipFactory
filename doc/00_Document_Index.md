@@ -23,6 +23,7 @@ When code changes, the related Markdown documents in this folder must be updated
 15. [15_System_Decomposition_Library_and_Factory.md](/F:/programming/python/MTClipFactory/doc/15_System_Decomposition_Library_and_Factory.md)
 16. [16_Operational_Reliability_and_Control_Center.md](/F:/programming/python/MTClipFactory/doc/16_Operational_Reliability_and_Control_Center.md)
 17. [17_Project_Progress_Snapshot.md](/F:/programming/python/MTClipFactory/doc/17_Project_Progress_Snapshot.md)
+18. [18_Composition_and_Timeline_Policy.md](/F:/programming/python/MTClipFactory/doc/18_Composition_and_Timeline_Policy.md)
 
 ## Governance
 
