@@ -107,7 +107,7 @@ class DashboardWindow(QMainWindow):
         return group
 
     def _build_paths_group(self) -> QGroupBox:
-        group = QGroupBox("Configured Paths")
+        group = QGroupBox("Path Activation")
         layout = QVBoxLayout(group)
         self.paths_text = QTextEdit()
         self.paths_text.setReadOnly(True)
@@ -155,6 +155,8 @@ class DashboardWindow(QMainWindow):
                     f"Processing Jobs: {summary.processing_job_count}",
                     f"Failed Jobs: {summary.failed_job_count}",
                     f"Escalated Failed Jobs: {summary.escalated_job_count}",
+                    f"Path Reload Policy: {summary.path_reload_policy}",
+                    f"Path Restart Required: {summary.path_restart_required}",
                     f"FFprobe Available: {summary.ffprobe_available}",
                     f"FFmpeg Available: {summary.ffmpeg_available}",
                 ]
@@ -164,11 +166,24 @@ class DashboardWindow(QMainWindow):
             "\n".join(
                 [
                     f"Workspace: {summary.workspace_root}",
-                    f"Database: {summary.database_path}",
-                    f"Media Root: {summary.media_root}",
-                    f"Docs Root: {summary.docs_root}",
-                    f"Outputs Root: {summary.outputs_root}",
-                    f"Preview Root: {summary.preview_root}",
+                    f"Reload Policy: {summary.path_reload_policy}",
+                    f"Restart Required: {summary.path_restart_required}",
+                    f"Changed Path Roots: {', '.join(summary.changed_path_roots) or 'none'}",
+                    "",
+                    "Runtime Active Paths:",
+                    f"- Database: {summary.runtime_database_path}",
+                    f"- Media Root: {summary.runtime_media_root}",
+                    f"- Docs Root: {summary.runtime_docs_root}",
+                    f"- Outputs Root: {summary.runtime_outputs_root}",
+                    f"- Preview Root: {summary.runtime_preview_root}",
+                    "",
+                    "Configured Next Start Paths:",
+                    f"- Database: {summary.database_path}",
+                    f"- Media Root: {summary.media_root}",
+                    f"- Docs Root: {summary.docs_root}",
+                    f"- Outputs Root: {summary.outputs_root}",
+                    f"- Preview Root: {summary.preview_root}",
+                    "",
                     f"FFprobe: {summary.ffprobe_path}",
                     f"FFmpeg: {summary.ffmpeg_path}",
                 ]
@@ -211,6 +226,10 @@ def _format_operational_attention(summary) -> str:
         lines.append("Attention: failed jobs need operator review or retry.")
     if summary.escalated_job_count > 0:
         lines.append("Attention: one or more failed jobs are now escalated after repeated recovery failures.")
+    if summary.path_restart_required:
+        lines.append(
+            "Attention: configured path-root changes are pending and require an application restart to become active."
+        )
     if summary.needs_review_asset_count > 0:
         lines.append("Attention: some assets are still waiting for review.")
     if summary.needs_review_recipe_count > 0:

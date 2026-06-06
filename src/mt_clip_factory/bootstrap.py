@@ -6,6 +6,7 @@ from sqlalchemy.orm import sessionmaker
 
 from mt_clip_factory.application.services import ProductApplicationService
 from mt_clip_factory.config import AppConfig, default_config
+from mt_clip_factory.control_center.dto import PathRootsDTO
 from mt_clip_factory.control_center.services import DashboardService, SystemSettingsService
 from mt_clip_factory.factory.preview_artifacts import PreviewManifestBuilder
 from mt_clip_factory.factory.renderers import FFmpegPreviewRenderer
@@ -58,7 +59,10 @@ def build_resource_library_module(workspace_root: Path) -> ResourceLibraryModule
     ensure_schema_current(workspace_root, config.paths.database_path)
     engine = create_engine_from_path(config.paths.database_path)
     session_factory = sessionmaker(bind=engine, expire_on_commit=False)
-    settings_service = SystemSettingsService(config.paths.app_config_path)
+    settings_service = SystemSettingsService(
+        config.paths.app_config_path,
+        runtime_path_roots=_runtime_path_roots_from_config(config),
+    )
 
     def uow_factory() -> SqlAlchemyUnitOfWork:
         return SqlAlchemyUnitOfWork(
@@ -111,4 +115,14 @@ def build_resource_library_module(workspace_root: Path) -> ResourceLibraryModule
         tag_management_service=tag_management_service,
         system_settings_service=settings_service,
         dashboard_service=dashboard_service,
+    )
+
+
+def _runtime_path_roots_from_config(config: AppConfig) -> PathRootsDTO:
+    return PathRootsDTO(
+        database_path=str(config.paths.database_path),
+        media_root=str(config.paths.media_root),
+        docs_root=str(config.paths.docs_root),
+        outputs_root=str(config.paths.outputs_root),
+        preview_root=str(config.paths.preview_root),
     )

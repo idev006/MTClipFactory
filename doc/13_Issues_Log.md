@@ -6,7 +6,6 @@
 | --- | --- | --- | --- | --- | --- | --- | --- |
 | ISS-001 | 2026-06-05 | Medium | UI Direction | The original blueprint referenced Streamlit ideas, but the implementation SSOT is now PySide6 + MVVM. Team members must ignore legacy UI assumptions. | Engineering | Open | Continue updating docs and screens only from current repo behavior. |
 | ISS-002 | 2026-06-05 | Medium | Module Boundary | `Video Assembly Factory` must consume prepared assets without mutating core asset metadata ownership owned by `Resource Library Management`. | Engineering | Open | Keep ownership rule explicit in architecture and service contracts. |
-| ISS-008 | 2026-06-06 | Medium | Path Reload Semantics | Path roots are now configurable, but a full runtime switch still assumes application restart for complete consistency. | Engineering | Open | Decide whether to keep restart semantics explicit or implement hot-reload for path-dependent services. |
 | ISS-023 | 2026-06-06 | Medium | Review Gate Depth | Review gating now exists, but the current heuristic covers duration mismatch and visual repetition more strongly than audio masking, emergency fill, or richer composition confidence signals. | Engineering | Open | Extend review assessment once stronger audio and fill metrics are available. |
 | ISS-025 | 2026-06-06 | Medium | Multi-Layer Audio Depth | Configurable duck modes now exist, but richer multi-layer audio balancing, polish, and broader effect policy are still limited. | Engineering | Open | Extend the audio pipeline beyond duck-mode refinement if operator feedback or production needs justify it. |
 | ISS-026 | 2026-06-06 | Low | Recovery Audit Shape | Failed-job recovery history now exists, but it currently rides on persisted job payload metadata instead of a dedicated audit schema. | Engineering | Open | Decide whether recovery history should remain payload-backed or move into first-class persistence if operational complexity grows. |
@@ -17,6 +16,7 @@
 
 | ID | Date Closed | Topic | Resolution |
 | --- | --- | --- | --- |
+| ISS-008-CLOSED | 2026-06-06 | Path Reload Semantics | Closed by explicitly locking path-root reload semantics to restart-driven behavior, exposing runtime-vs-configured path roots on the dashboard, and surfacing restart-required path changes in operator feedback. |
 | ISS-014-CLOSED | 2026-06-06 | Recovery Scope | Closed by delivering persisted recovery-attempt metadata, configurable failed-job escalation thresholds, deferred bulk-retry ordering, dashboard-visible escalated-job counts, and operator playbook guidance. |
 | ISS-022-CLOSED | 2026-06-06 | Audio Mix Sophistication | Closed by delivering configurable duck modes, `sidechain_compressor` tuning fields, dashboard/settings visibility, runtime manifest evidence, and pytest coverage for both the new primary mode and fallback windowed mode. |
 | ISS-024-CLOSED | 2026-06-06 | Composition Review Visibility | Closed by delivering configurable review thresholds, automatic `needs_review` routing, dashboard visibility for flagged recipes, manifest-backed review evidence, and pytest coverage for the new workflow. |

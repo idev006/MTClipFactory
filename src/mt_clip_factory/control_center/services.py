@@ -11,6 +11,8 @@ from mt_clip_factory.config import AppConfig
 from mt_clip_factory.control_center.dto import (
     DashboardJobDTO,
     DashboardSummaryDTO,
+    PathRootStatusDTO,
+    PathRootsDTO,
     RecoveryRunSummaryDTO,
     SystemSettingsDTO,
 )
@@ -24,8 +26,9 @@ if TYPE_CHECKING:
 
 
 class SystemSettingsService:
-    def __init__(self, config_path: Path) -> None:
+    def __init__(self, config_path: Path, *, runtime_path_roots: PathRootsDTO | None = None) -> None:
         self._config_path = config_path
+        self._runtime_path_roots = runtime_path_roots
 
     def load(self) -> SystemSettingsDTO:
         data = self._read_raw()
@@ -136,6 +139,29 @@ class SystemSettingsService:
         self.save(updated)
         return updated
 
+    def path_root_status(self, *, configured_settings: SystemSettingsDTO | None = None) -> PathRootStatusDTO:
+        settings = configured_settings or self.load()
+        configured_paths = _path_roots_from_settings(settings)
+        runtime_paths = self._runtime_path_roots or configured_paths
+        changed_path_roots = tuple(
+            path_name
+            for path_name in (
+                "database_path",
+                "media_root",
+                "docs_root",
+                "outputs_root",
+                "preview_root",
+            )
+            if getattr(runtime_paths, path_name) != getattr(configured_paths, path_name)
+        )
+        return PathRootStatusDTO(
+            runtime_paths=runtime_paths,
+            configured_paths=configured_paths,
+            changed_path_roots=changed_path_roots,
+            restart_required=bool(changed_path_roots),
+            reload_policy="restart_required",
+        )
+
     def _read_raw(self) -> dict:
         if not self._config_path.exists():
             return {}
@@ -165,6 +191,7 @@ class DashboardService:
 
     def build_summary(self) -> DashboardSummaryDTO:
         settings = self._system_settings_service.load()
+        path_root_status = self._system_settings_service.path_root_status(configured_settings=settings)
         products = self._product_service.list_products()
         assets = self._asset_intake_service.list_assets()
         recipe_count = sum(product.recipe_count for product in products)
@@ -199,11 +226,19 @@ class DashboardService:
             recent_jobs=tuple(dashboard_jobs[:8]),
             last_recovery_summary=self._last_recovery_summary,
             workspace_root=str(self._config.paths.workspace_root),
-            database_path=settings.database_path,
-            media_root=settings.media_root,
-            docs_root=settings.docs_root,
-            outputs_root=settings.outputs_root,
-            preview_root=settings.preview_root,
+            runtime_database_path=path_root_status.runtime_paths.database_path,
+            runtime_media_root=path_root_status.runtime_paths.media_root,
+            runtime_docs_root=path_root_status.runtime_paths.docs_root,
+            runtime_outputs_root=path_root_status.runtime_paths.outputs_root,
+            runtime_preview_root=path_root_status.runtime_paths.preview_root,
+            database_path=path_root_status.configured_paths.database_path,
+            media_root=path_root_status.configured_paths.media_root,
+            docs_root=path_root_status.configured_paths.docs_root,
+            outputs_root=path_root_status.configured_paths.outputs_root,
+            preview_root=path_root_status.configured_paths.preview_root,
+            changed_path_roots=path_root_status.changed_path_roots,
+            path_restart_required=path_root_status.restart_required,
+            path_reload_policy=path_root_status.reload_policy,
             ffprobe_path=settings.ffprobe_path,
             ffmpeg_path=settings.ffmpeg_path,
             cpu_limit_percent=settings.cpu_limit_percent,
@@ -451,6 +486,16 @@ def _resolve_runtime_path(workspace_root: Path, raw_value: str) -> str:
 
 def _subject_reference(kind: str, subject_id: int | None) -> str:
     return f"{kind}#{subject_id}" if subject_id is not None else f"{kind}#-"
+
+
+def _path_roots_from_settings(settings: SystemSettingsDTO) -> PathRootsDTO:
+    return PathRootsDTO(
+        database_path=settings.database_path,
+        media_root=settings.media_root,
+        docs_root=settings.docs_root,
+        outputs_root=settings.outputs_root,
+        preview_root=settings.preview_root,
+    )
 
 
 def _is_recovery_escalated(*, status: str, consecutive_failure_count: int, threshold: int) -> bool:

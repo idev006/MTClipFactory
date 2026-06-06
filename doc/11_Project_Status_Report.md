@@ -43,6 +43,7 @@
 - manifest-visible runtime evidence for the applied duck mode and compressor tuning
 - persisted failed-job recovery-attempt metadata with configurable escalation threshold
 - dashboard-visible operator playbook guidance plus deferred bulk-retry handling for escalated failed jobs
+- restart-driven path-root policy with runtime-vs-configured dashboard truthfulness and restart-pending visibility
 - initial Video Assembly Factory:
   - recipe persistence
   - recipe item assignment
@@ -61,23 +62,22 @@
 
 ## Verification Baseline
 
-- `python -m pytest` via `.venv`: `85 passed`
+- `python -m pytest` via `.venv`: `86 passed`
 - UI smoke via `QT_QPA_PLATFORM=offscreen`: `6` windows instantiated successfully
 
 ## Current Focus
 
 - deepen review signals beyond the current duration and visual-repetition heuristics
 - deepen runtime audio beyond the new configurable duck-engine baseline where needed
-- decide whether runtime path changes should hot-reload or remain restart-driven
 - keep review and approval history truthful through append-only persistence
 - keep project documents truthful through per-milestone revision checkpoints
 
 ## Next Steps
 
-1. Decide whether path-root changes stay restart-driven or become hot-reload capable.
-2. Deepen review-gate signals with audio masking and emergency-fill detection when the supporting data is ready.
-3. Extend audio work from configurable ducking into richer multi-layer polish if operator feedback demands it.
-4. Revisit whether recovery history needs a dedicated audit schema beyond the current persisted job-payload seam.
+1. Deepen review-gate signals with audio masking and emergency-fill detection when the supporting data is ready.
+2. Extend audio work from configurable ducking into richer multi-layer polish if operator feedback demands it.
+3. Revisit whether recovery history needs a dedicated audit schema beyond the current persisted job-payload seam.
+4. Consider optional path-root hot-reload only if the restart-driven policy becomes operationally too costly.
 
 ## Direction Locked In This Documentation Revision
 
@@ -95,6 +95,7 @@
 - `IR-06` now adds review gates, configurable thresholds, dashboard visibility, and manifest-backed operator evidence for risky compositions
 - `IR-07` now adds configurable duck modes, sidechain-compressor tuning, and higher-quality runtime audio evidence
 - `IR-08` now adds persisted failed-job recovery history, escalation thresholds, deferred bulk retry, and operator playbook visibility
+- `IR-09` now locks path-root reload semantics to restart-driven behavior and makes runtime-vs-configured path truth explicit to operators
 
 ## Ownership
 

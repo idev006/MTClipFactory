@@ -71,8 +71,8 @@ For execution sequencing and acceptance criteria, use [19_Implementation_Roadmap
 
 1. Deepen review confidence beyond the current duration and visual-repetition heuristics.
 2. Deepen orchestration beyond current queued-startup and failed-manual retry baselines.
-3. Decide whether path-root changes remain restart-driven or move to hot-reload semantics.
-4. Deepen runtime audio depth beyond the new configurable duck-engine baseline toward richer multi-layer polish.
+3. Deepen runtime audio depth beyond the new configurable duck-engine baseline toward richer multi-layer polish.
+4. Implement optional path-root hot-reload only if the now-documented restart-driven policy proves too costly in practice.
 
 ## Composition Milestone Direction
 

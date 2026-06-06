@@ -21,6 +21,7 @@ It must show at least:
 - operational thresholds
 - review thresholds
 - recent persisted jobs with enough detail for operator triage
+- runtime-active and configured-next-start path roots
 
 ## Settings Requirements
 
@@ -81,6 +82,7 @@ Future composition-related settings should still include:
 - automatic recovery should be policy-driven and visible, not hidden magic
 - failed-job retry should remain an explicit operator decision unless a stronger policy is later designed
 - bulk failed-job retry should prioritize lower-risk retries first and surface escalated jobs with operator guidance
+- path-root activation policy should be explicit; operators must not be told a runtime root changed when the running services still use the old root
 
 ## Durability Principles
 
@@ -118,6 +120,7 @@ The following must flow through config or services whenever user control is appr
 - segment-aware preview manifests with chosen segment clip mapping
 - segment-aware final manifests with composition-based rerender lineage
 - configurable path roots through `[paths]` in `app_config.toml`
+- restart-driven path-root activation with runtime/configured divergence visibility
 - configurable audio policy through `[audio]` in `app_config.toml`
 - dashboard visibility of recent, queued, processing, and failed jobs
 - settings-based FFmpeg path control
@@ -136,8 +139,8 @@ The following must flow through config or services whenever user control is appr
 
 1. Preview and final now share a configurable duck-engine foundation, but richer multi-layer parity and deeper polish are still incomplete.
 2. Review gates now exist, but audio masking and emergency-fill signals are still shallow.
-3. Path-root changes are not fully hot-reloaded across all runtime services.
-4. Recovery history currently rides on persisted job payload metadata rather than a dedicated audit schema.
+3. Recovery history currently rides on persisted job payload metadata rather than a dedicated audit schema.
+4. Optional path-root hot-reload remains a future backlog item if restart-driven semantics become operationally too costly.
 
 ## Composition Reliability Direction
 

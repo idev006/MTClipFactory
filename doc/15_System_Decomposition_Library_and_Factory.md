@@ -88,6 +88,7 @@ Compose prepared assets into reviewable preview and later final-output workflows
 - cross-capability job visibility
 - queued-job recovery orchestration
 - failed-job escalation policy and operator playbook visibility
+- runtime-vs-configured path-root truth surface with restart-driven activation policy
 - runtime migration guard
 
 ## Ownership Rule

@@ -54,10 +54,21 @@ class SettingsViewModel(QObject):
         self._set_status("saving")
         self._settings_service.save(settings)
         self._settings = self._settings_service.load()
+        path_root_status = self._settings_service.path_root_status(configured_settings=self._settings)
         self.settings_changed.emit()
-        self._set_feedback(
-            "System settings saved. Path-root changes apply fully on next application start. "
-            "Auto-recovery startup policy applies on the next startup cycle. "
-            "Failed-job escalation threshold applies on the next failed-job recovery run."
-        )
+        changed_paths = ", ".join(path_root_status.changed_path_roots) or "none"
+        if path_root_status.restart_required:
+            feedback = (
+                "System settings saved. Path-root reload policy is restart-driven. "
+                f"Restart required for path roots: {changed_paths}. "
+                "Auto-recovery startup policy applies on the next startup cycle. "
+                "Failed-job escalation threshold applies on the next failed-job recovery run."
+            )
+        else:
+            feedback = (
+                "System settings saved. Path-root reload policy is restart-driven and no path-root restart is pending. "
+                "Auto-recovery startup policy applies on the next startup cycle. "
+                "Failed-job escalation threshold applies on the next failed-job recovery run."
+            )
+        self._set_feedback(feedback)
         self._set_status("ready")

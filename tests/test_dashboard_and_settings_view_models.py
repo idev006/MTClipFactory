@@ -5,7 +5,7 @@ from pathlib import Path
 from mt_clip_factory.application.dto import CreateProductCommand
 from mt_clip_factory.application.services import ProductApplicationService
 from mt_clip_factory.config import default_config
-from mt_clip_factory.control_center.dto import SystemSettingsDTO
+from mt_clip_factory.control_center.dto import PathRootsDTO, SystemSettingsDTO
 from mt_clip_factory.control_center.services import DashboardService, SystemSettingsService
 from mt_clip_factory.factory.dto import PreviewJobSummaryDTO
 from mt_clip_factory.library.artifact_dto import ArtifactJobSummaryDTO
@@ -188,6 +188,16 @@ def _build_asset_service(unit_of_work_factory, media_root: Path) -> AssetIntakeS
     )
 
 
+def _runtime_path_roots_from_config(config) -> PathRootsDTO:
+    return PathRootsDTO(
+        database_path=str(config.paths.database_path),
+        media_root=str(config.paths.media_root),
+        docs_root=str(config.paths.docs_root),
+        outputs_root=str(config.paths.outputs_root),
+        preview_root=str(config.paths.preview_root),
+    )
+
+
 def test_settings_view_model_loads_and_saves(tmp_path) -> None:
     config_path = tmp_path / "app_config.toml"
     config_path.write_text(
@@ -231,7 +241,16 @@ def test_settings_view_model_loads_and_saves(tmp_path) -> None:
         ),
         encoding="utf-8",
     )
-    service = SystemSettingsService(config_path)
+    service = SystemSettingsService(
+        config_path,
+        runtime_path_roots=PathRootsDTO(
+            database_path=str(tmp_path / "ad_kitchen.db"),
+            media_root=str(tmp_path / "media_library"),
+            docs_root=str(tmp_path / "doc"),
+            outputs_root=str(tmp_path / "outputs"),
+            preview_root=str(tmp_path / "outputs" / "preview"),
+        ),
+    )
     view_model = SettingsViewModel(service)
 
     view_model.load()
@@ -281,15 +300,45 @@ def test_settings_view_model_loads_and_saves(tmp_path) -> None:
     assert view_model.settings.music_duck_threshold_db == -20
     assert view_model.settings.music_duck_ratio == 5.5
     assert view_model.settings.review_duration_mismatch_sec == 1
+    assert "restart-driven" in view_model.feedback
+    assert "Restart required for path roots" in view_model.feedback
 
 
 def test_dashboard_view_model_loads_summary(unit_of_work_factory, tmp_path) -> None:
     workspace_root = tmp_path / "workspace"
     workspace_root.mkdir()
+    settings_service = SystemSettingsService(workspace_root / "app_config.toml")
+    settings_service.save(
+        SystemSettingsDTO(
+            database_path=str(workspace_root / "ad_kitchen.db"),
+            media_root=str(workspace_root / "media_library"),
+            docs_root=str(workspace_root / "doc"),
+            outputs_root=str(workspace_root / "outputs"),
+            preview_root=str(workspace_root / "outputs" / "preview"),
+            ffmpeg_root="",
+            ffprobe_path="",
+            ffmpeg_path="",
+            cpu_limit_percent=0,
+            ram_limit_percent=0,
+            disk_free_gb_min=0,
+            max_preview_workers=0,
+            max_final_workers=0,
+            auto_refresh_seconds=0,
+            auto_recover_queued_jobs=False,
+            max_recovery_jobs_per_run=25,
+            failed_job_escalation_threshold=2,
+            voice_loop_enabled=False,
+            background_music_loop_enabled=True,
+            music_duck_enabled=True,
+        )
+    )
     config = default_config(workspace_root)
-    settings_service = SystemSettingsService(config.paths.app_config_path)
+    settings_service = SystemSettingsService(
+        config.paths.app_config_path,
+        runtime_path_roots=_runtime_path_roots_from_config(config),
+    )
     product_service = ProductApplicationService(unit_of_work_factory=unit_of_work_factory)
-    asset_service = _build_asset_service(unit_of_work_factory, tmp_path / "media_library")
+    asset_service = _build_asset_service(unit_of_work_factory, workspace_root / "media_library")
     tag_service = TagManagementService(unit_of_work_factory=unit_of_work_factory)
 
     product_id = product_service.create_product(CreateProductCommand(product_code="honey", product_name="Honey"))
@@ -325,6 +374,7 @@ def test_dashboard_view_model_loads_summary(unit_of_work_factory, tmp_path) -> N
     assert view_model.summary.queued_job_count == 2
     assert view_model.summary.processing_job_count == 1
     assert view_model.summary.failed_job_count == 2
+    assert view_model.summary.path_restart_required is False
     assert view_model.summary.music_duck_enabled is True
     assert view_model.summary.music_duck_mode == "sidechain_compressor"
     assert view_model.summary.needs_review_recipe_count == 1
@@ -334,10 +384,38 @@ def test_dashboard_view_model_loads_summary(unit_of_work_factory, tmp_path) -> N
 def test_dashboard_view_model_recovers_queued_jobs(unit_of_work_factory, tmp_path) -> None:
     workspace_root = tmp_path / "workspace"
     workspace_root.mkdir()
+    settings_service = SystemSettingsService(workspace_root / "app_config.toml")
+    settings_service.save(
+        SystemSettingsDTO(
+            database_path=str(workspace_root / "ad_kitchen.db"),
+            media_root=str(workspace_root / "media_library"),
+            docs_root=str(workspace_root / "doc"),
+            outputs_root=str(workspace_root / "outputs"),
+            preview_root=str(workspace_root / "outputs" / "preview"),
+            ffmpeg_root="",
+            ffprobe_path="",
+            ffmpeg_path="",
+            cpu_limit_percent=0,
+            ram_limit_percent=0,
+            disk_free_gb_min=0,
+            max_preview_workers=0,
+            max_final_workers=0,
+            auto_refresh_seconds=0,
+            auto_recover_queued_jobs=False,
+            max_recovery_jobs_per_run=25,
+            failed_job_escalation_threshold=2,
+            voice_loop_enabled=False,
+            background_music_loop_enabled=True,
+            music_duck_enabled=True,
+        )
+    )
     config = default_config(workspace_root)
-    settings_service = SystemSettingsService(config.paths.app_config_path)
+    settings_service = SystemSettingsService(
+        config.paths.app_config_path,
+        runtime_path_roots=_runtime_path_roots_from_config(config),
+    )
     product_service = ProductApplicationService(unit_of_work_factory=unit_of_work_factory)
-    asset_service = _build_asset_service(unit_of_work_factory, tmp_path / "media_library")
+    asset_service = _build_asset_service(unit_of_work_factory, workspace_root / "media_library")
     tag_service = TagManagementService(unit_of_work_factory=unit_of_work_factory)
     dashboard_service = DashboardService(
         config=config,
@@ -362,10 +440,38 @@ def test_dashboard_view_model_recovers_queued_jobs(unit_of_work_factory, tmp_pat
 def test_dashboard_view_model_retries_failed_jobs(unit_of_work_factory, tmp_path) -> None:
     workspace_root = tmp_path / "workspace"
     workspace_root.mkdir()
+    settings_service = SystemSettingsService(workspace_root / "app_config.toml")
+    settings_service.save(
+        SystemSettingsDTO(
+            database_path=str(workspace_root / "ad_kitchen.db"),
+            media_root=str(workspace_root / "media_library"),
+            docs_root=str(workspace_root / "doc"),
+            outputs_root=str(workspace_root / "outputs"),
+            preview_root=str(workspace_root / "outputs" / "preview"),
+            ffmpeg_root="",
+            ffprobe_path="",
+            ffmpeg_path="",
+            cpu_limit_percent=0,
+            ram_limit_percent=0,
+            disk_free_gb_min=0,
+            max_preview_workers=0,
+            max_final_workers=0,
+            auto_refresh_seconds=0,
+            auto_recover_queued_jobs=False,
+            max_recovery_jobs_per_run=25,
+            failed_job_escalation_threshold=2,
+            voice_loop_enabled=False,
+            background_music_loop_enabled=True,
+            music_duck_enabled=True,
+        )
+    )
     config = default_config(workspace_root)
-    settings_service = SystemSettingsService(config.paths.app_config_path)
+    settings_service = SystemSettingsService(
+        config.paths.app_config_path,
+        runtime_path_roots=_runtime_path_roots_from_config(config),
+    )
     product_service = ProductApplicationService(unit_of_work_factory=unit_of_work_factory)
-    asset_service = _build_asset_service(unit_of_work_factory, tmp_path / "media_library")
+    asset_service = _build_asset_service(unit_of_work_factory, workspace_root / "media_library")
     tag_service = TagManagementService(unit_of_work_factory=unit_of_work_factory)
     dashboard_service = DashboardService(
         config=config,

@@ -149,3 +149,8 @@
 
 - persisted recovery history became much easier to ship once the team treated job payload metadata as a practical SSOT seam instead of blocking on a larger schema redesign
 - bulk failed-job retry is more trustworthy when escalated jobs are surfaced explicitly and lower-risk retries use the limited recovery slots first
+
+## LL-031 | 2026-06-06 | Path Config Truth Matters More Than Half-Hot-Reload
+
+- once multiple services are wired with path roots at startup, pretending they hot-reload would be less honest than explicitly exposing runtime-active paths alongside configured next-start paths
+- restart-driven policy becomes much easier for operators to trust when the dashboard says exactly which path roots are pending and which ones are currently active

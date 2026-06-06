@@ -116,6 +116,7 @@ classDiagram
         +recover_queued_jobs(...)
         +retry_failed_jobs(...)
         +should_auto_recover_queued_jobs()
+        +path_root_status()
         +failed_job_escalation_threshold
         +operator_playbook_lines
         +needs_review_recipe_count
@@ -125,10 +126,19 @@ classDiagram
         +load()
         +save(settings)
         +update(...)
+        +path_root_status(...)
         +failed-job escalation threshold
         +audio policy fields
         +review threshold fields
         +duck mode tuning fields
+    }
+
+    class PathRootStatus {
+        +runtime_paths
+        +configured_paths
+        +changed_path_roots
+        +restart_required
+        +reload_policy
     }
 
     class RecoveryMetadata {
@@ -252,6 +262,7 @@ classDiagram
     ResourceLibraryModule --> DashboardService
     ResourceLibraryModule --> SystemSettingsService
     ResourceLibraryModule --> MigrationGuard
+    DashboardService --> PathRootStatus
     AssetLibraryViewModel --> AssetIntakeService
     AssetLibraryViewModel --> ArtifactGenerationService
     RecipeBuilderViewModel --> ProductApplicationService
@@ -483,6 +494,29 @@ sequenceDiagram
     else startup policy disabled
         Boot-->>DB: no recovery side effect
     end
+```
+
+## Path-Root Activation Sequence
+
+```mermaid
+sequenceDiagram
+    actor User
+    participant SettingsView as SettingsWindow
+    participant SettingsVM as SettingsViewModel
+    participant Settings as SystemSettingsService
+    participant Dash as DashboardService
+    participant Runtime as Startup-Wired Services
+
+    User->>SettingsView: save path-root changes
+    SettingsView->>SettingsVM: save(settings)
+    SettingsVM->>Settings: save(settings)
+    SettingsVM->>Settings: path_root_status(configured_settings)
+    Settings-->>SettingsVM: restart_required + changed path roots
+    SettingsVM-->>SettingsView: restart-driven feedback
+    User->>Dash: refresh dashboard
+    Dash->>Settings: path_root_status(current settings)
+    Dash-->>User: runtime active paths + configured next-start paths
+    Note over Runtime: injected roots stay active until next app start
 ```
 
 ## Failed Retry Sequence

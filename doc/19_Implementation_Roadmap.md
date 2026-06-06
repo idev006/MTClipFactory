@@ -28,14 +28,15 @@ The project now uses two roadmap layers:
 - `IR-06` Review gates and composition reliability controls: complete on 2026-06-06
 - `IR-07` Audio-mix quality refinement beyond windowed-duck baseline: complete on 2026-06-06
 - `IR-08` Recovery escalation rules and operator playbook: complete on 2026-06-06
+- `IR-09` Path-root reload decision and runtime truthfulness: complete on 2026-06-06
 
 ## Current Execution Stream
 
 The next work should follow this order unless a documented issue changes priority:
 
-1. Optional path-root hot-reload support if restart semantics prove too costly
-2. Deeper review-gate signals for audio masking and emergency-fill outcomes
-3. Richer multi-layer audio polish beyond the current duck-engine baseline
+1. Deeper review-gate signals for audio masking and emergency-fill outcomes
+2. Richer multi-layer audio polish beyond the current duck-engine baseline
+3. Optional path-root hot-reload support if restart semantics prove too costly
 
 ## IR-01 | Composition Data Model
 
@@ -285,6 +286,33 @@ Make failed-job recovery more truthful and more actionable without silently wide
 - delivered deferred bulk-retry ordering that prioritizes lower-risk failed jobs ahead of escalated ones under `max_recovery_jobs_per_run`
 - delivered dashboard-visible escalated job counts, recovery summary details, and operator playbook guidance for current failed jobs
 - covered recovery metadata persistence, escalation ordering, and operator visibility with pytest
+
+## IR-09 | Path-Root Reload Decision And Runtime Truthfulness
+
+### Goal
+
+Lock path-root reload semantics to a truthful, operator-visible baseline instead of implying unsupported hot reload.
+
+### Scope
+
+- declare path-root reload policy as restart-driven
+- expose runtime-active and configured-next-start path roots separately in the dashboard
+- surface restart-required path changes in operator attention and settings feedback
+- cover the new path-status seams with pytest
+
+### Acceptance Criteria
+
+- operators can tell which path roots are active now versus only configured for next startup
+- path-root changes no longer appear to hot-apply when runtime services are still using startup-wired roots
+- settings feedback and dashboard attention both explain when restart is required
+- roadmap, UML, Kanban, issues, lessons learned, and reliability docs reflect the locked decision honestly
+
+### Delivery Result
+
+- delivered shared path-root status reporting through `SystemSettingsService` and dashboard summaries
+- delivered runtime-active versus configured-next-start path visibility across dashboard summary and path detail surfaces
+- delivered restart-pending operator feedback when saved path roots diverge from the running app configuration
+- covered fresh-start and save-before-restart path semantics with pytest
 
 ## Cross-Milestone Rules
 

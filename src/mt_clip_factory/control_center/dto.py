@@ -38,6 +38,24 @@ class SystemSettingsDTO:
 
 
 @dataclass(slots=True, frozen=True)
+class PathRootsDTO:
+    database_path: str
+    media_root: str
+    docs_root: str
+    outputs_root: str
+    preview_root: str
+
+
+@dataclass(slots=True, frozen=True)
+class PathRootStatusDTO:
+    runtime_paths: PathRootsDTO
+    configured_paths: PathRootsDTO
+    changed_path_roots: tuple[str, ...]
+    restart_required: bool
+    reload_policy: str
+
+
+@dataclass(slots=True, frozen=True)
 class DashboardJobDTO:
     job_id: int
     job_code: str
@@ -97,11 +115,19 @@ class DashboardSummaryDTO:
     recent_jobs: tuple[DashboardJobDTO, ...]
     last_recovery_summary: RecoveryRunSummaryDTO | None
     workspace_root: str
+    runtime_database_path: str
+    runtime_media_root: str
+    runtime_docs_root: str
+    runtime_outputs_root: str
+    runtime_preview_root: str
     database_path: str
     media_root: str
     docs_root: str
     outputs_root: str
     preview_root: str
+    changed_path_roots: tuple[str, ...]
+    path_restart_required: bool
+    path_reload_policy: str
     ffprobe_path: str
     ffmpeg_path: str
     cpu_limit_percent: int
