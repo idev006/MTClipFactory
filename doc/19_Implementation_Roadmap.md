@@ -22,17 +22,16 @@ The project now uses two roadmap layers:
 - `IR-01` Composition data model: complete on 2026-06-06
 - `IR-02` Timeline segment model: complete on 2026-06-06
 - `IR-03` Segment-based preview composition: complete on 2026-06-06
-- `IR-04` Final-render composition parity: queued
-- `IR-05` Audio ducking and operator-visible render decisions: queued
-- `IR-06` Review gates and composition reliability controls: queued
+- `IR-04` Final-render composition parity: complete on 2026-06-06
+- `IR-05` Audio ducking and operator-visible render decisions: ready
+- `IR-06` Review gates and composition reliability controls: ready
 
 ## Current Execution Stream
 
 The next work should follow this order unless a documented issue changes priority:
 
-1. `IR-04` Final-render composition parity
-2. `IR-05` Audio ducking and operator-visible render decisions
-3. `IR-06` Review gates and composition reliability controls
+1. `IR-05` Audio ducking and operator-visible render decisions
+2. `IR-06` Review gates and composition reliability controls
 
 ## IR-01 | Composition Data Model
 
@@ -134,6 +133,13 @@ Make final render follow the same composition semantics as preview.
 - differences between preview and final are documented and intentional
 - lineage and render-decision visibility remain truthful
 - tests prove preview/final policy parity for core scenarios
+
+### Delivery Result
+
+- delivered composition-based final rerendering from persisted plans and timeline segments
+- preserved approved-preview lineage while removing dependence on the preview file as the final render source
+- added final manifest visibility and a corruption-proof parity test
+- left audio ducking and richer operator-facing render decision surfaces for the next milestones
 
 ## IR-05 | Audio Ducking And Render Decision Visibility
 

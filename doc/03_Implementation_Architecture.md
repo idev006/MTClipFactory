@@ -72,7 +72,7 @@ Current implemented baseline now includes:
 - persisted `timeline_segments`
 - persisted `render_decisions`
 - service-level composition plan retrieval with validation-backed segment planning
-- segment-aware preview composition with manifest-guided visual clip selection
+- segment-aware preview/final composition with manifest-guided visual clip selection
 
 The architecture must keep `voice-over` as a foreground layer:
 

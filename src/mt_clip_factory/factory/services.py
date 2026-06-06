@@ -489,6 +489,13 @@ class VideoAssemblyFactoryService:
             product = uow.products.get_by_id(recipe.product_id)
             if product is None:
                 raise ValueError(str(recipe.product_id))
+            items = list(uow.recipes.list_items(recipe.id))
+            assets = {
+                item.asset_id: asset
+                for item in items
+                for asset in [uow.assets.get_by_id(item.asset_id)]
+                if asset is not None
+            }
 
             job.status = JobStatus.PROCESSING
             job.started_at = _utc_now()
@@ -500,12 +507,31 @@ class VideoAssemblyFactoryService:
                 approved_outputs = list(uow.outputs.list_summaries(recipe_id=recipe.id, approved=True))
                 if not approved_outputs:
                     raise FinalRenderPrerequisiteError("Approve at least one output before final render.")
+                if not items:
+                    raise FinalRenderPrerequisiteError(f"Recipe {recipe.recipe_code} has no items.")
 
                 source_output = approved_outputs[0]
+                persisted = persist_composition(uow, recipe=recipe, items=items, assets=assets)
+                composition = build_segmented_preview_composition(
+                    recipe=recipe,
+                    product_code=product.product_code,
+                    items=items,
+                    assets=assets,
+                    plan=persisted.plan,
+                    segments=persisted.segments,
+                )
+                manifest_path = self._preview_manifest_builder.write_manifest(
+                    product_code=product.product_code,
+                    recipe_code=f"{recipe.recipe_code}_final",
+                    payload=composition.manifest_payload,
+                )
+                if not composition.source_files:
+                    raise FinalRenderPrerequisiteError(f"Recipe {recipe.recipe_code} has no renderable video assets.")
                 rendered_output = self._final_renderer.render_output(
                     product_code=product.product_code,
                     output_stem=f"{recipe.recipe_code}_final",
-                    source_files=[Path(source_output.file_path)],
+                    source_files=list(composition.source_files),
+                    segment_clips=composition.segment_clips,
                 )
                 approved_at = _utc_now()
                 output = uow.outputs.add(
@@ -538,6 +564,7 @@ class VideoAssemblyFactoryService:
                 job.output_json = json.dumps(
                     {
                         "output_id": output.id,
+                        "preview_manifest_path": str(manifest_path),
                         "source_output_id": source_output.output_id,
                         "final_output_path": str(rendered_output.file_path),
                     },

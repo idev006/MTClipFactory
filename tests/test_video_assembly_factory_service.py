@@ -336,6 +336,7 @@ def test_factory_service_builds_final_render_job(unit_of_work_factory, tmp_path)
     assert outputs[0].approved is True
     assert outputs[0].approved_by == "system_final_render"
     assert outputs[0].output_kind == "final"
+    assert outputs[0].manifest_path is not None
     assert outputs[0].source_output_id is not None
     assert outputs[0].source_output_code is not None
     assert events[0].event_type == "output_auto_approved"
@@ -387,11 +388,34 @@ def test_factory_service_reports_output_lineage(unit_of_work_factory, tmp_path) 
 
     assert final_output.output_kind == "final"
     assert final_output.rendering_job_code is not None
+    assert final_output.manifest_path is not None
     assert final_output.source_output_id == preview_output.output_id
     assert final_output.source_output_code == preview_output.output_code
     assert final_output.source_output_path == preview_output.file_path
     assert preview_output.output_kind == "preview"
     assert preview_output.manifest_path is not None
+
+
+def test_factory_service_final_render_uses_composition_not_preview_file(unit_of_work_factory, tmp_path) -> None:
+    product_id, asset_id = _register_ready_asset(unit_of_work_factory, tmp_path)
+    service = _build_factory_service(unit_of_work_factory, tmp_path / "previews")
+    recipe_id = service.create_recipe(CreateRecipeCommand(product_id=product_id, recipe_code="Honey Launch"))
+    service.assign_asset_to_recipe(AssignAssetToRecipeCommand(recipe_id=recipe_id, asset_id=asset_id, role="hero"))
+    preview_job_id = service.enqueue_preview_job(recipe_id)
+    service.run_preview_job(preview_job_id)
+    preview_output = service.list_outputs(recipe_id=recipe_id)[0]
+    Path(preview_output.file_path).write_bytes(b"corrupted-preview")
+    service.approve_output(preview_output.output_id, actor="qa_lead", reason="ready to publish")
+    service.approve_recipe(recipe_id, actor="qa_lead", reason="creative approved")
+
+    final_job_id = service.enqueue_final_render_job(recipe_id)
+    service.run_final_render_job(final_job_id)
+
+    final_output = service.list_outputs(recipe_id=recipe_id)[0]
+    final_bytes = Path(final_output.file_path).read_bytes()
+
+    assert final_bytes != b"corrupted-preview"
+    assert b"hero_asset-bytes" in final_bytes
 
 
 def test_factory_service_retries_failed_final_job_after_restart(unit_of_work_factory, tmp_path) -> None:

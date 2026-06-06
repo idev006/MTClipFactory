@@ -336,8 +336,11 @@ sequenceDiagram
     Factory->>JobRepo: add(job)
     Factory->>DB: COMMIT
     VM->>Factory: run_final_render_job(job_id)
-    Factory->>Render: render_output(...)
-    Factory->>Out: add(final output)
+    Factory->>Factory: persist composition plan + segments
+    Factory->>Factory: map segments to final visual clips
+    Factory->>Preview: write_manifest(final)
+    Factory->>Render: render_output(segment_clips)
+    Factory->>Out: add(final output + lineage)
     Factory->>JobRepo: update(done/failed)
     Factory->>DB: COMMIT
 ```

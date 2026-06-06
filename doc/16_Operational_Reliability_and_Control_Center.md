@@ -99,6 +99,7 @@ The following must flow through config or services whenever user control is appr
 - persisted composition plans and render decisions for recipe-level duration and layer planning
 - persisted timeline segments with contiguous-duration validation
 - segment-aware preview manifests with chosen segment clip mapping
+- segment-aware final manifests with composition-based rerender lineage
 - configurable path roots through `[paths]` in `app_config.toml`
 - dashboard visibility of recent, queued, processing, and failed jobs
 - settings-based FFmpeg path control
@@ -110,8 +111,8 @@ The following must flow through config or services whenever user control is appr
 ## Current Gaps
 
 1. Recovery scope is still narrower for failed-job escalation and advanced orchestration rules.
-2. Preview composition is now segment-aware for visual planning, but audio mixing and richer layer parity are still incomplete.
-3. Final render is still a foundation path and not yet a full recomposition pipeline.
+2. Preview and final now share visual composition parity, but audio mixing and richer layer parity are still incomplete.
+3. Render decisions are persisted, but they are not yet surfaced richly enough for operators.
 4. Path-root changes are not fully hot-reloaded across all runtime services.
 
 ## Composition Reliability Direction

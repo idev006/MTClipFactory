@@ -48,7 +48,8 @@ Compose prepared assets into reviewable preview and later final-output workflows
 - preview output generation
 - output approval decisions
 - recipe approval / rejection decisions
-- final render foundation
+- segment-aware preview composition
+- final-render composition parity
 - preview job status tracking
 - final job status tracking
 - manual retry for persisted factory jobs
@@ -59,8 +60,7 @@ Compose prepared assets into reviewable preview and later final-output workflows
 
 ### Future Responsibilities
 
-- layered preview composition
-- richer final render composition
+- richer audio-aware preview/final composition
 - quality and duplicate-risk checks
 
 ### Owned SSOT

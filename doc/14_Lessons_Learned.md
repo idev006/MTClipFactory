@@ -119,3 +119,8 @@
 
 - once preview composition stops being a simple file pass-through, the chosen segment order and clip mapping should be written somewhere operators can inspect
 - manifest visibility is a practical bridge while richer dashboard and UI surfaces are still being built
+
+## LL-025 | 2026-06-06 | Final Parity Needs A Corruption-Proof Test
+
+- proving final render parity is easier when a test deliberately corrupts the approved preview file and confirms final render still rebuilds from the composition plan
+- parity claims are much stronger when the test would fail under preview-promotion shortcuts

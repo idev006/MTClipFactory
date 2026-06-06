@@ -11,7 +11,8 @@ This Markdown board is the SSOT Kanban for the repository.
 
 ## Ready
 
-- richer final-render composition beyond preview-promotion foundation
+- `IR-05` audio ducking and render decision visibility
+- `IR-06` review gates and composition reliability controls
 - path-root hot-reload decision
 
 ## In Progress
@@ -49,12 +50,13 @@ This Markdown board is the SSOT Kanban for the repository.
 - `IR-01` composition data model
 - `IR-02` timeline segment model
 - `IR-03` segment-based preview composition
+- `IR-04` final-render composition parity
 - recipe persistence
 - recipe item assignment
 - preview render output job flow
 - review decision workflow
 - output browsing/reporting foundation in UI
-- final render foundation
+- final render composition parity
 - recipe builder window and view model
 
 ## Board Policy
