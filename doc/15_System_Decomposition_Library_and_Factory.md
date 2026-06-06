@@ -63,6 +63,7 @@ Compose prepared assets into reviewable preview and later final-output workflows
 - output lineage reporting
 - output quality/duplicate-risk visibility
 - recipe score/risk visibility
+- runtime-safe rebind when path-root dependent services are hot reloaded
 - dashboard-driven failed-job retry orchestration with deferred escalation handling
 - approval actor/time/reason persistence
 - immutable decision-event history
@@ -92,7 +93,7 @@ Compose prepared assets into reviewable preview and later final-output workflows
 - cross-capability job visibility
 - queued-job recovery orchestration
 - failed-job escalation policy and operator playbook visibility
-- runtime-vs-configured path-root truth surface with restart-driven activation policy
+- runtime-vs-configured path-root truth surface with desktop-app hot reload support
 - runtime migration guard
 
 ## Ownership Rule

@@ -54,7 +54,12 @@ def build_product_service(workspace_root: Path) -> ProductApplicationService:
     return ProductApplicationService(unit_of_work_factory=uow_factory)
 
 
-def build_resource_library_module(workspace_root: Path) -> ResourceLibraryModule:
+def build_resource_library_module(
+    workspace_root: Path,
+    *,
+    run_startup_recovery: bool = True,
+    path_reload_policy: str = "restart_required",
+) -> ResourceLibraryModule:
     config: AppConfig = default_config(workspace_root)
     ensure_schema_current(workspace_root, config.paths.database_path)
     engine = create_engine_from_path(config.paths.database_path)
@@ -62,6 +67,7 @@ def build_resource_library_module(workspace_root: Path) -> ResourceLibraryModule
     settings_service = SystemSettingsService(
         config.paths.app_config_path,
         runtime_path_roots=_runtime_path_roots_from_config(config),
+        reload_policy=path_reload_policy,
     )
 
     def uow_factory() -> SqlAlchemyUnitOfWork:
@@ -105,7 +111,7 @@ def build_resource_library_module(workspace_root: Path) -> ResourceLibraryModule
         tag_management_service=tag_management_service,
         system_settings_service=settings_service,
     )
-    if dashboard_service.should_auto_recover_queued_jobs():
+    if run_startup_recovery and dashboard_service.should_auto_recover_queued_jobs():
         dashboard_service.recover_queued_jobs(trigger="startup")
     return ResourceLibraryModule(
         product_service=product_service,

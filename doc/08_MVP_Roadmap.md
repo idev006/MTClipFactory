@@ -70,7 +70,6 @@ For execution sequencing and acceptance criteria, use [19_Implementation_Roadmap
 ## Current Phase 5 Remaining
 
 1. Calibrate recipe scoring further only if the new metadata, asset-diversity, and runtime-evidence baseline stops being operationally useful.
-2. Implement optional path-root hot-reload only if the now-documented restart-driven policy proves too costly in practice.
 
 ## Composition Milestone Direction
 

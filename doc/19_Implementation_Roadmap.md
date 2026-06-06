@@ -33,6 +33,7 @@ The project now uses two roadmap layers:
 - `IR-11` Voice-priority gain staging and audio-balance visibility: complete on 2026-06-06
 - `IR-12` Payload-backed recovery audit decision: complete on 2026-06-06
 - `IR-13` Recipe scoring refinement and operator-visible score/risk summaries: complete on 2026-06-06
+- `IR-14` Path-root runtime hot reload: complete on 2026-06-06
 
 ## Current Execution Stream
 
@@ -40,8 +41,7 @@ There is no active mandatory implementation milestone right now.
 
 Backlog activation rules:
 
-1. Optional path-root hot-reload support only activates if restart-driven path semantics become operationally too costly.
-2. Further recipe-score calibration only activates if the delivered metadata, asset-diversity, and runtime-evidence baseline stops being operationally useful.
+1. Further recipe-score calibration only activates if the delivered metadata, asset-diversity, and runtime-evidence baseline stops being operationally useful.
 
 ## IR-01 | Composition Data Model
 
@@ -429,6 +429,34 @@ Make recipe-level confidence scoring operationally useful instead of leaving per
 - delivered persisted recipe-level `recipe_score` and `duplicate_risk` refresh during recipe create, asset attach, preview render, and final render flows
 - delivered score/risk propagation through repository summaries, service DTOs, and Recipe Builder recipe-list visibility
 - covered the scoring heuristic directly plus service/view-model propagation with pytest
+
+## IR-14 | Path-Root Runtime Hot Reload
+
+### Goal
+
+Apply configured path-root changes inside the live desktop app without forcing a full restart, while keeping runtime truthfulness intact.
+
+### Scope
+
+- introduce a desktop-app runtime coordinator that can rebuild the path-root dependent service module
+- keep view-model references stable by swapping live service proxies instead of reconstructing every window
+- apply newly configured database, media, docs, outputs, and preview roots together as one runtime rebind
+- surface hot-reload feedback through settings and dashboard path summaries
+- cover pending-status, runtime-rebind, and settings-triggered hot-reload seams with pytest
+
+### Acceptance Criteria
+
+- saving changed path roots from the desktop app makes the new roots active without a full process restart
+- dashboard path summaries stay truthful about runtime-active versus configured roots before and after reload
+- view models can keep operating after a runtime path reload without being manually reconstructed
+- roadmap, UML, architecture, issues, lessons learned, and PM status docs remain aligned to the delivered baseline
+
+### Delivery Result
+
+- delivered `ApplicationRuntime` plus reloadable service proxies so the desktop app can rebuild and swap the entire path-root dependent module at runtime
+- delivered settings-driven runtime hot reload that refreshes bound view models after a successful path-root rebind
+- delivered dashboard-path truth surfaces that now distinguish restart-required behavior from hot-reload-capable runtime behavior
+- covered pending hot-reload status, database-root rebind behavior, and settings-view-model signaling with pytest
 
 ## Cross-Milestone Rules
 

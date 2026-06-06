@@ -10,10 +10,12 @@ class SettingsViewModel(QObject):
     settings_changed = Signal()
     status_changed = Signal()
     feedback_changed = Signal()
+    runtime_reloaded = Signal()
 
-    def __init__(self, settings_service: SystemSettingsService) -> None:
+    def __init__(self, settings_service: SystemSettingsService, runtime_path_reloader=None) -> None:
         super().__init__()
         self._settings_service = settings_service
+        self._runtime_path_reloader = runtime_path_reloader
         self._settings: SystemSettingsDTO | None = None
         self._status = "idle"
         self._feedback = ""
@@ -55,13 +57,30 @@ class SettingsViewModel(QObject):
         self._settings_service.save(settings)
         self._settings = self._settings_service.load()
         path_root_status = self._settings_service.path_root_status(configured_settings=self._settings)
-        self.settings_changed.emit()
         changed_paths = ", ".join(path_root_status.changed_path_roots) or "none"
-        if path_root_status.restart_required:
+        if self._runtime_path_reloader is not None and path_root_status.changed_path_roots:
+            path_root_status = self._runtime_path_reloader.reload_path_roots()
+            self._settings = self._settings_service.load()
+            self.runtime_reloaded.emit()
+        self.settings_changed.emit()
+        if self._runtime_path_reloader is not None and changed_paths != "none":
+            feedback = (
+                "System settings saved. Runtime hot reload applied for path roots: "
+                f"{changed_paths}. Existing screens refresh on their next load cycle. "
+                "Auto-recovery startup policy still applies on the next startup cycle. "
+                "Failed-job escalation threshold applies on the next failed-job recovery run."
+            )
+        elif path_root_status.restart_required:
             feedback = (
                 "System settings saved. Path-root reload policy is restart-driven. "
                 f"Restart required for path roots: {changed_paths}. "
                 "Auto-recovery startup policy applies on the next startup cycle. "
+                "Failed-job escalation threshold applies on the next failed-job recovery run."
+            )
+        elif self._runtime_path_reloader is not None:
+            feedback = (
+                "System settings saved. Runtime hot reload is available and no path-root change was detected. "
+                "Auto-recovery startup policy still applies on the next startup cycle. "
                 "Failed-job escalation threshold applies on the next failed-job recovery run."
             )
         else:

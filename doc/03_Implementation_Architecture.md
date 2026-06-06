@@ -80,6 +80,7 @@ Current implemented baseline now includes:
 - review-gate assessment with configurable duration and visual-repetition thresholds
 - manifest-backed review evidence plus output quality/duplicate-risk summaries
 - recipe-level score/risk persistence derived from metadata completeness, asset diversity, and runtime review evidence
+- desktop app runtime path reload via whole-module rebuild plus reloadable service proxies
 
 The architecture must keep `voice-over` as a foreground layer:
 

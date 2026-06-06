@@ -137,6 +137,15 @@ class DashboardWindow(QMainWindow):
         summary = self._view_model.summary
         if summary is None:
             return
+        configured_heading = (
+            "Configured Active Paths:"
+            if summary.path_reload_policy == "runtime_hot_reload" and not summary.changed_path_roots
+            else (
+                "Configured Pending Runtime Reload Paths:"
+                if summary.path_reload_policy == "runtime_hot_reload"
+                else "Configured Next Start Paths:"
+            )
+        )
         self.system_summary_text.setPlainText(
             "\n".join(
                 [
@@ -177,7 +186,7 @@ class DashboardWindow(QMainWindow):
                     f"- Outputs Root: {summary.runtime_outputs_root}",
                     f"- Preview Root: {summary.runtime_preview_root}",
                     "",
-                    "Configured Next Start Paths:",
+                    configured_heading,
                     f"- Database: {summary.database_path}",
                     f"- Media Root: {summary.media_root}",
                     f"- Docs Root: {summary.docs_root}",
@@ -231,6 +240,10 @@ def _format_operational_attention(summary) -> str:
     if summary.path_restart_required:
         lines.append(
             "Attention: configured path-root changes are pending and require an application restart to become active."
+        )
+    elif summary.changed_path_roots:
+        lines.append(
+            "Attention: configured path-root changes are pending runtime hot reload or were edited outside the live settings workflow."
         )
     if summary.needs_review_asset_count > 0:
         lines.append("Attention: some assets are still waiting for review.")

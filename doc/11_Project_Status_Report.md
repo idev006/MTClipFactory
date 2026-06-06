@@ -47,7 +47,7 @@
 - persisted failed-job recovery-attempt metadata with configurable escalation threshold
 - dashboard-visible operator playbook guidance plus deferred bulk-retry handling for escalated failed jobs
 - payload-backed recovery metadata retained as the current audit seam by explicit architecture decision
-- restart-driven path-root policy with runtime-vs-configured dashboard truthfulness and restart-pending visibility
+- desktop-app runtime hot reload for path-root dependent services with runtime-vs-configured dashboard truthfulness
 - initial Video Assembly Factory:
   - recipe persistence
   - recipe item assignment
@@ -66,20 +66,19 @@
 
 ## Verification Baseline
 
-- `python -m pytest` via `.venv`: `94 passed`
+- `python -m pytest` via `.venv`: `97 passed`
 - UI smoke via `QT_QPA_PLATFORM=offscreen`: `6` windows instantiated successfully
 
 ## Current Focus
 
 - keep richer review signals and approval history truthful through append-only persistence
-- monitor whether restart-driven path-root activation remains operationally acceptable
+- monitor whether runtime path reload stays truthful and easy for operators to understand
 - monitor whether the new recipe scoring baseline stays operationally useful for operators
 - keep project documents truthful through per-milestone revision checkpoints
 
 ## Next Steps
 
-1. Consider optional path-root hot-reload only if the restart-driven policy becomes operationally too costly.
-2. Recalibrate recipe scoring only if operator feedback shows the new metadata, asset-diversity, and runtime-evidence baseline is not useful enough.
+1. Recalibrate recipe scoring only if operator feedback shows the new metadata, asset-diversity, and runtime-evidence baseline is not useful enough.
 
 ## Direction Locked In This Documentation Revision
 
@@ -102,6 +101,7 @@
 - `IR-11` now adds settings-backed voice/music gain staging with runtime manifest evidence and operator-visible balance controls
 - `IR-12` now locks recovery audit shape to the current payload-backed seam until stronger cross-job audit requirements justify schema promotion
 - `IR-13` now persists recipe-level score/risk summaries derived from metadata, asset composition, and runtime review evidence, and exposes them in Recipe Builder recipe surfaces
+- `IR-14` now hot-reloads path-root dependent desktop services by rebuilding the runtime module and swapping live service proxies instead of requiring an app restart
 
 ## Ownership
 

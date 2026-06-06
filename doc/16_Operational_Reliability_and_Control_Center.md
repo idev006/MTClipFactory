@@ -21,7 +21,7 @@ It must show at least:
 - operational thresholds
 - review thresholds
 - recent persisted jobs with enough detail for operator triage
-- runtime-active and configured-next-start path roots
+- runtime-active and configured path roots
 
 ## Settings Requirements
 
@@ -84,7 +84,7 @@ Future composition-related settings should still include:
 - automatic recovery should be policy-driven and visible, not hidden magic
 - failed-job retry should remain an explicit operator decision unless a stronger policy is later designed
 - bulk failed-job retry should prioritize lower-risk retries first and surface escalated jobs with operator guidance
-- path-root activation policy should be explicit; operators must not be told a runtime root changed when the running services still use the old root
+- path-root activation policy should be explicit; operators must be able to tell whether roots are already active in the live runtime or still pending a manual external reload path
 
 ## Durability Principles
 
@@ -123,7 +123,7 @@ The following must flow through config or services whenever user control is appr
 - segment-aware preview manifests with chosen segment clip mapping
 - segment-aware final manifests with composition-based rerender lineage
 - configurable path roots through `[paths]` in `app_config.toml`
-- restart-driven path-root activation with runtime/configured divergence visibility
+- desktop-app runtime path-root hot reload with runtime/configured visibility and whole-module rebind
 - configurable audio policy through `[audio]` in `app_config.toml`
 - dashboard visibility of recent, queued, processing, and failed jobs
 - settings-based FFmpeg path control
@@ -144,7 +144,7 @@ The following must flow through config or services whenever user control is appr
 ## Current Gaps
 
 1. Recipe scoring now uses metadata, asset diversity, and runtime review evidence, but further calibration remains a future decision if operators find the baseline misleading.
-2. Optional path-root hot-reload remains a future backlog item if restart-driven semantics become operationally too costly.
+2. Recipe-score calibration remains a future decision if the new scoring baseline proves misleading in real operator use.
 
 ## Composition Reliability Direction
 

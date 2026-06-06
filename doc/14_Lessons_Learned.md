@@ -174,3 +174,8 @@
 
 - recipe-level scoring became more useful once it stopped being only metadata math and started reusing the same asset diversity and runtime review evidence the operators already trust elsewhere
 - a score is easier to defend operationally when the UI can show both the summary number and the underlying duplicate-risk context instead of hiding the heuristic behind one badge
+
+## LL-036 | 2026-06-06 | Whole-Module Rebind Is Safer Than Partial Path Mutation
+
+- once path roots affect the database engine, asset storage, preview manifests, and output renderers together, hot reload is safer when the app rebuilds one coherent runtime module instead of mutating each service in place
+- proxy-swapping the live service set kept runtime hot reload truthful because view models could keep their references while new path-root dependent dependencies took effect together

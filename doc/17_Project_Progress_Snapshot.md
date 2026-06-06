@@ -41,23 +41,22 @@
 - Preview and final renderers now also support configurable voice/music gain staging with manifest-visible balance evidence.
 - Failed jobs now retain persisted recovery-attempt history, escalate visibly after repeated failures, and surface operator playbook guidance on the dashboard.
 - Recovery history now remains intentionally payload-backed on the `jobs` record until stronger cross-job audit needs appear.
-- Path roots now follow an explicit restart-driven activation policy, with runtime-active and configured-next-start roots shown separately for operator truthfulness.
+- Path roots can now hot-reload inside the desktop app through a whole-module runtime rebind, and the dashboard still shows runtime-active versus configured paths truthfully.
 - Recipe records now retain persisted score/risk summaries derived from metadata, asset composition, and runtime review evidence, and Recipe Builder now shows those summaries in the recipe list.
 - The roadmap is now split into strategic and implementation layers, and the current mandatory implementation slice is complete.
 
 ## Delivered In The Latest Loop
 
-- recipe scoring is now recalculated from recipe metadata, attached-asset composition, and runtime review evidence instead of remaining a dormant persistence field
-- Recipe Builder recipe summaries now surface `recipe_score` and recipe-level `duplicate_risk` so operators can triage recipes earlier
-- pytest now covers the scoring heuristic directly plus service/view-model propagation of score/risk values
-- architecture, reliability, roadmap, Kanban, issues, lessons learned, and UML were aligned to the delivered `IR-13` baseline
+- desktop app path-root changes now hot-reload by rebuilding the runtime service module and swapping live service proxies instead of waiting for a full restart
+- settings save now emits runtime hot-reload feedback, and dashboard/path summaries stay aligned to the newly active roots
+- pytest now covers pending hot-reload status, runtime module rebind, and settings-view-model hot-reload signaling
+- architecture, reliability, roadmap, Kanban, issues, lessons learned, and UML were aligned to the delivered `IR-14` baseline
 
 ## Still Open
 
-1. implement optional path-root hot-reload only if restart-driven semantics become too costly in practice
-2. recalibrate recipe scoring only if the current metadata, asset-diversity, and runtime-evidence baseline stops being operationally useful
+1. recalibrate recipe scoring only if the current metadata, asset-diversity, and runtime-evidence baseline stops being operationally useful
 
 ## Verification Baseline
 
-- `python -m pytest` in `.venv`: `94 passed`
+- `python -m pytest` in `.venv`: `97 passed`
 - `QT_QPA_PLATFORM=offscreen` UI smoke: `6` main windows instantiated

@@ -5,7 +5,7 @@ import sys
 
 from PySide6.QtWidgets import QApplication
 
-from mt_clip_factory.bootstrap import build_resource_library_module
+from mt_clip_factory.app_runtime import ApplicationRuntime
 from mt_clip_factory.presentation.control_center.dashboard import DashboardViewModel
 from mt_clip_factory.presentation.control_center.settings import SettingsViewModel
 from mt_clip_factory.presentation.factory.recipe_builder import RecipeBuilderViewModel
@@ -23,7 +23,8 @@ from mt_clip_factory.ui.library.tag_dictionary_window import TagDictionaryWindow
 def main() -> int:
     app = QApplication(sys.argv)
     workspace_root = Path.cwd()
-    resource_library = build_resource_library_module(workspace_root)
+    runtime = ApplicationRuntime(workspace_root)
+    resource_library = runtime.module
     product_view_model = ProductLibraryViewModel(resource_library.product_service)
     asset_view_model = AssetLibraryViewModel(
         product_service=resource_library.product_service,
@@ -40,7 +41,15 @@ def main() -> int:
         video_assembly_factory_service=resource_library.video_assembly_factory_service,
     )
     dashboard_view_model = DashboardViewModel(resource_library.dashboard_service)
-    settings_view_model = SettingsViewModel(resource_library.system_settings_service)
+    settings_view_model = SettingsViewModel(
+        resource_library.system_settings_service,
+        runtime_path_reloader=runtime,
+    )
+    settings_view_model.runtime_reloaded.connect(product_view_model.load)
+    settings_view_model.runtime_reloaded.connect(asset_view_model.load)
+    settings_view_model.runtime_reloaded.connect(tag_view_model.load)
+    settings_view_model.runtime_reloaded.connect(recipe_view_model.load)
+    settings_view_model.runtime_reloaded.connect(dashboard_view_model.load)
     tag_window = TagDictionaryWindow(tag_view_model)
     recipe_window = RecipeBuilderWindow(recipe_view_model)
     settings_window = SettingsWindow(settings_view_model)

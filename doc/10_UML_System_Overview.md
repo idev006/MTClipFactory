@@ -128,6 +128,15 @@ classDiagram
         +needs_review_recipe_count
     }
 
+    class ApplicationRuntime {
+        +module
+        +reload_path_roots()
+    }
+
+    class ReloadableServiceProxy {
+        +set_target(service)
+    }
+
     class SystemSettingsService {
         +load()
         +save(settings)
@@ -266,6 +275,8 @@ classDiagram
     }
 
     ResourceLibraryModule --> ProductApplicationService
+    ApplicationRuntime --> ResourceLibraryModule
+    ApplicationRuntime --> ReloadableServiceProxy
     ResourceLibraryModule --> AssetIntakeService
     ResourceLibraryModule --> ArtifactGenerationService
     ResourceLibraryModule --> VideoAssemblyFactoryService
@@ -517,19 +528,24 @@ sequenceDiagram
     participant SettingsView as SettingsWindow
     participant SettingsVM as SettingsViewModel
     participant Settings as SystemSettingsService
+    participant Runtime as ApplicationRuntime
     participant Dash as DashboardService
-    participant Runtime as Startup-Wired Services
 
     User->>SettingsView: save path-root changes
     SettingsView->>SettingsVM: save(settings)
     SettingsVM->>Settings: save(settings)
     SettingsVM->>Settings: path_root_status(configured_settings)
-    Settings-->>SettingsVM: restart_required + changed path roots
-    SettingsVM-->>SettingsView: restart-driven feedback
+    alt changed path roots
+        SettingsVM->>Runtime: reload_path_roots()
+        Runtime->>Runtime: rebuild module + swap live service proxies
+        SettingsVM-->>SettingsView: runtime hot-reload feedback
+    else no path changes
+        SettingsVM-->>SettingsView: save feedback without runtime rebind
+    end
     User->>Dash: refresh dashboard
     Dash->>Settings: path_root_status(current settings)
-    Dash-->>User: runtime active paths + configured next-start paths
-    Note over Runtime: injected roots stay active until next app start
+    Dash-->>User: runtime active paths + configured paths
+    Note over Runtime: path-root dependent services reload as one coherent runtime module
 ```
 
 ## Failed Retry Sequence

@@ -26,9 +26,16 @@ if TYPE_CHECKING:
 
 
 class SystemSettingsService:
-    def __init__(self, config_path: Path, *, runtime_path_roots: PathRootsDTO | None = None) -> None:
+    def __init__(
+        self,
+        config_path: Path,
+        *,
+        runtime_path_roots: PathRootsDTO | None = None,
+        reload_policy: str = "restart_required",
+    ) -> None:
         self._config_path = config_path
         self._runtime_path_roots = runtime_path_roots
+        self._reload_policy = reload_policy
 
     def load(self) -> SystemSettingsDTO:
         data = self._read_raw()
@@ -162,8 +169,8 @@ class SystemSettingsService:
             runtime_paths=runtime_paths,
             configured_paths=configured_paths,
             changed_path_roots=changed_path_roots,
-            restart_required=bool(changed_path_roots),
-            reload_policy="restart_required",
+            restart_required=bool(changed_path_roots) and self._reload_policy == "restart_required",
+            reload_policy=self._reload_policy,
         )
 
     def _read_raw(self) -> dict:
