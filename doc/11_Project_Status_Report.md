@@ -4,7 +4,7 @@
 
 - Report date: 2026-06-06
 - Overall status: In Progress
-- Current phase: Phase 5, Automation and Quality
+- Current phase: Phase 5, Automation and Quality baseline complete; backlog-triggered follow-ups only
 - Delivery mode: document-led SSOT with code and tests kept in sync
 
 ## What Is Done
@@ -72,6 +72,7 @@
 
 - keep richer review signals and approval history truthful through append-only persistence
 - monitor whether restart-driven path-root activation remains operationally acceptable
+- monitor whether heuristic scoring and review confidence need a broader next slice
 - keep project documents truthful through per-milestone revision checkpoints
 
 ## Next Steps

@@ -42,7 +42,7 @@
 - Failed jobs now retain persisted recovery-attempt history, escalate visibly after repeated failures, and surface operator playbook guidance on the dashboard.
 - Recovery history now remains intentionally payload-backed on the `jobs` record until stronger cross-job audit needs appear.
 - Path roots now follow an explicit restart-driven activation policy, with runtime-active and configured-next-start roots shown separately for operator truthfulness.
-- The roadmap is now split into strategic and implementation layers so the next coding milestone is clearer.
+- The roadmap is now split into strategic and implementation layers, and the current mandatory implementation slice is complete.
 
 ## Delivered In The Latest Loop
 

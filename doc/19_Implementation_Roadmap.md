@@ -418,3 +418,7 @@ This roadmap slice is complete when:
 - music ducking is implemented and configurable in runtime render flows
 - render decisions are visible and trustworthy
 - risky cases are routed into review instead of silent low-quality automation
+
+Status on 2026-06-06:
+
+- achieved

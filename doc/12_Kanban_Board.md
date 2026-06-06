@@ -55,6 +55,7 @@ This Markdown board is the SSOT Kanban for the repository.
 - `IR-09` path-root reload decision and runtime path truthfulness
 - `IR-10` runtime-backed review signals for audio masking and emergency fill
 - `IR-11` voice-priority gain staging and audio-balance visibility
+- `IR-12` payload-backed recovery audit decision
 - recipe persistence
 - recipe item assignment
 - preview render output job flow

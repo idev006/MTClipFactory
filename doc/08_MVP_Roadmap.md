@@ -65,14 +65,13 @@ For execution sequencing and acceptance criteria, use [19_Implementation_Roadmap
 - Phase 2: functionally complete for MVP baseline
 - Phase 3: functionally complete for MVP baseline
 - Phase 4: functionally complete for current baseline
-- Phase 5: in progress
+- Phase 5: baseline slice complete; additional work is now backlog-triggered
 
 ## Current Phase 5 Remaining
 
-1. Deepen review confidence beyond the current duration and visual-repetition heuristics.
-2. Deepen orchestration beyond current queued-startup and failed-manual retry baselines.
-3. Deepen runtime audio depth beyond the new configurable duck-engine baseline toward richer multi-layer polish.
-4. Implement optional path-root hot-reload only if the now-documented restart-driven policy proves too costly in practice.
+1. Refine recipe scoring beyond the current heuristic baseline if product needs justify it.
+2. Broaden composition-confidence scoring only if current review heuristics stop being operationally useful.
+3. Implement optional path-root hot-reload only if the now-documented restart-driven policy proves too costly in practice.
 
 ## Composition Milestone Direction
 
