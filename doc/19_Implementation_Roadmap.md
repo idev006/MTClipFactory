@@ -31,13 +31,16 @@ The project now uses two roadmap layers:
 - `IR-09` Path-root reload decision and runtime truthfulness: complete on 2026-06-06
 - `IR-10` Runtime-backed review signals for audio masking and emergency fill: complete on 2026-06-06
 - `IR-11` Voice-priority gain staging and audio-balance visibility: complete on 2026-06-06
+- `IR-12` Payload-backed recovery audit decision: complete on 2026-06-06
 
 ## Current Execution Stream
 
-The next work should follow this order unless a documented issue changes priority:
+There is no active mandatory implementation milestone right now.
 
-1. Decide whether recovery history should remain payload-backed or move into a dedicated audit schema
-2. Optional path-root hot-reload support if restart semantics prove too costly
+Backlog activation rules:
+
+1. Optional path-root hot-reload support only activates if restart-driven path semantics become operationally too costly.
+2. Broader composition-confidence scoring only activates if current review heuristics stop being operationally useful.
 
 ## IR-01 | Composition Data Model
 
@@ -370,6 +373,33 @@ Improve runtime audio polish with configurable layer balance so narration stays 
 - delivered runtime FFmpeg gain staging for voice and music layers before the final mix path
 - delivered manifest-visible `mix_balance` evidence plus Recipe Builder audio-detail visibility for applied gain settings
 - covered renderer, settings, dashboard, manifest, and service-level seams with pytest
+
+## IR-12 | Payload-Backed Recovery Audit Decision
+
+### Goal
+
+Lock the recovery-audit architecture to a truthful baseline instead of leaving future schema work implied without evidence.
+
+### Scope
+
+- audit how recovery metadata is currently written, read, and surfaced across library, factory, and dashboard flows
+- decide whether the existing payload-backed seam is sufficient for the current operational scope
+- document the trigger conditions that would justify a dedicated recovery-audit schema later
+- align roadmap, issues, architecture, and reliability docs to the chosen decision
+
+### Acceptance Criteria
+
+- the project states clearly whether recovery metadata is intentionally payload-backed or only temporarily so
+- issue tracking and reliability docs explain when schema promotion would become justified
+- UML and architecture docs remain truthful about where recovery metadata lives today
+- no migration or table is introduced without a demonstrated operational need
+
+### Delivery Result
+
+- delivered an explicit architecture decision to keep recovery history payload-backed inside `jobs.output_json` for the current scope
+- documented schema-promotion triggers around cross-job analytics, governance retention, and independent query/reporting needs
+- closed the open recovery-audit-shape issue without inventing unused persistence
+- aligned roadmap, status, Kanban, UML, and reliability docs to the locked decision
 
 ## Cross-Milestone Rules
 

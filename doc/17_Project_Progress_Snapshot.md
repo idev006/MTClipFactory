@@ -40,21 +40,21 @@
 - Preview and final renderers now support configurable duck modes with sidechain-compressor tuning evidence.
 - Preview and final renderers now also support configurable voice/music gain staging with manifest-visible balance evidence.
 - Failed jobs now retain persisted recovery-attempt history, escalate visibly after repeated failures, and surface operator playbook guidance on the dashboard.
+- Recovery history now remains intentionally payload-backed on the `jobs` record until stronger cross-job audit needs appear.
 - Path roots now follow an explicit restart-driven activation policy, with runtime-active and configured-next-start roots shown separately for operator truthfulness.
 - The roadmap is now split into strategic and implementation layers so the next coding milestone is clearer.
 
 ## Delivered In The Latest Loop
 
-- settings now expose voice and music mix gains alongside the existing duck policy
-- FFmpeg runtime mixing now applies configurable gain staging before the final voice/music mix
-- manifests and Recipe Builder audio details now expose gain-stage balance evidence for operator inspection
-- pytest now covers the delivered `IR-11` baseline end to end
-- architecture, reliability, roadmap, Kanban, issues, and lessons learned were aligned to the delivered `IR-11` baseline
+- recovery audit shape is now explicitly locked to the current payload-backed `jobs.output_json` seam instead of being left ambiguous
+- docs now record the concrete trigger conditions that would justify promoting recovery history into a dedicated schema later
+- pytest remains aligned with the delivered `IR-12` baseline because no runtime code path changed in this decision milestone
+- architecture, reliability, roadmap, Kanban, issues, and lessons learned were aligned to the delivered `IR-12` baseline
 
 ## Still Open
 
-1. decide whether recovery history should remain payload-backed or move into a dedicated audit schema
-2. implement optional path-root hot-reload only if restart-driven semantics become too costly in practice
+1. implement optional path-root hot-reload only if restart-driven semantics become too costly in practice
+2. broaden composition-confidence scoring only if current review heuristics stop being operationally useful
 
 ## Verification Baseline
 

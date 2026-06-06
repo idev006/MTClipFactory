@@ -9,7 +9,7 @@ This Markdown board is the SSOT Kanban for the repository.
 
 ## Ready
 
-- recovery audit-shape decision for persisted job history
+- none
 
 ## In Progress
 

@@ -45,6 +45,7 @@
 - manifest-visible runtime evidence for applied voice/music balance during audio mixing
 - persisted failed-job recovery-attempt metadata with configurable escalation threshold
 - dashboard-visible operator playbook guidance plus deferred bulk-retry handling for escalated failed jobs
+- payload-backed recovery metadata retained as the current audit seam by explicit architecture decision
 - restart-driven path-root policy with runtime-vs-configured dashboard truthfulness and restart-pending visibility
 - initial Video Assembly Factory:
   - recipe persistence
@@ -69,14 +70,14 @@
 
 ## Current Focus
 
-- decide whether recovery history needs first-class audit persistence beyond the current job-payload seam
 - keep richer review signals and approval history truthful through append-only persistence
+- monitor whether restart-driven path-root activation remains operationally acceptable
 - keep project documents truthful through per-milestone revision checkpoints
 
 ## Next Steps
 
-1. Revisit whether recovery history needs a dedicated audit schema beyond the current persisted job-payload seam.
-2. Consider optional path-root hot-reload only if the restart-driven policy becomes operationally too costly.
+1. Consider optional path-root hot-reload only if the restart-driven policy becomes operationally too costly.
+2. Broaden composition-confidence scoring only if current review heuristics stop being operationally useful.
 
 ## Direction Locked In This Documentation Revision
 
@@ -97,6 +98,7 @@
 - `IR-09` now locks path-root reload semantics to restart-driven behavior and makes runtime-vs-configured path truth explicit to operators
 - `IR-10` now adds runtime-backed audio masking review signals plus duration-unknown emergency-fill detection in manifest-backed review evidence
 - `IR-11` now adds settings-backed voice/music gain staging with runtime manifest evidence and operator-visible balance controls
+- `IR-12` now locks recovery audit shape to the current payload-backed seam until stronger cross-job audit requirements justify schema promotion
 
 ## Ownership
 

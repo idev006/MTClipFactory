@@ -113,6 +113,7 @@ The following must flow through config or services whenever user control is appr
 - persisted recovery-attempt metadata carried with jobs
 - failed-job escalation threshold with deferred bulk-retry ordering
 - dashboard operator playbook lines for current failed and escalated jobs
+- payload-backed recovery metadata retained intentionally until stronger audit-query requirements exist
 - output approval and recipe approval decisions captured in SSOT workflow
 - output lineage reporting derived from persisted jobs and outputs
 - migration-backed approval actor/time/reason fields
@@ -142,8 +143,7 @@ The following must flow through config or services whenever user control is appr
 ## Current Gaps
 
 1. Review gates now cover audio masking loss and emergency fill, but broader composition-confidence scoring is still heuristic.
-2. Recovery history currently rides on persisted job payload metadata rather than a dedicated audit schema.
-3. Optional path-root hot-reload remains a future backlog item if restart-driven semantics become operationally too costly.
+2. Optional path-root hot-reload remains a future backlog item if restart-driven semantics become operationally too costly.
 
 ## Composition Reliability Direction
 

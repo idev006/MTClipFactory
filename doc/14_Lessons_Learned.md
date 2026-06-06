@@ -164,3 +164,8 @@
 
 - once duck-mode quality improved, the next reliability gap was simple layer balance: a voice-priority system still needs explicit voice/music gain staging instead of assuming a flat 1:1 final mix
 - exposing mix gains through settings, dashboard, and manifest evidence keeps audio polish operator-visible instead of hiding it inside FFmpeg command details
+
+## LL-034 | 2026-06-06 | Payload-Backed Audit Can Be A Deliberate End State
+
+- recovery metadata proved valuable because it stayed attached to the job records operators already inspect, rather than waiting for a separate audit table before shipping visibility
+- a dedicated schema should be triggered by real cross-job reporting or governance needs, not by discomfort with JSON alone

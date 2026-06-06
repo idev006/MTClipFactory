@@ -254,7 +254,7 @@ classDiagram
         +status
         +recipe_id
         +asset_id
-        +output_json(recovery metadata)
+        +output_json(payload-backed recovery metadata)
     }
 
     ResourceLibraryModule --> ProductApplicationService
