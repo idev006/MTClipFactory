@@ -8,6 +8,7 @@ from sqlalchemy.orm import Session
 from mt_clip_factory.infrastructure.composition_repositories import (
     SqlAlchemyCompositionPlanRepository,
     SqlAlchemyRenderDecisionRepository,
+    SqlAlchemyTimelineSegmentRepository,
 )
 from mt_clip_factory.infrastructure.decision_event_repositories import SqlAlchemyDecisionEventRepository
 from mt_clip_factory.infrastructure.factory_repositories import SqlAlchemyRecipeRepository
@@ -33,6 +34,7 @@ class SqlAlchemyUnitOfWork:
         decision_event_repository_type: type[SqlAlchemyDecisionEventRepository] = SqlAlchemyDecisionEventRepository,
         composition_plan_repository_type: type[SqlAlchemyCompositionPlanRepository] = SqlAlchemyCompositionPlanRepository,
         render_decision_repository_type: type[SqlAlchemyRenderDecisionRepository] = SqlAlchemyRenderDecisionRepository,
+        timeline_segment_repository_type: type[SqlAlchemyTimelineSegmentRepository] = SqlAlchemyTimelineSegmentRepository,
     ) -> None:
         self._session_factory = session_factory
         self._product_repository_type = product_repository_type
@@ -44,6 +46,7 @@ class SqlAlchemyUnitOfWork:
         self._decision_event_repository_type = decision_event_repository_type
         self._composition_plan_repository_type = composition_plan_repository_type
         self._render_decision_repository_type = render_decision_repository_type
+        self._timeline_segment_repository_type = timeline_segment_repository_type
         self.session: Session | None = None
         self.products: SqlAlchemyProductRepository
         self.assets: SqlAlchemyAssetRepository
@@ -54,6 +57,7 @@ class SqlAlchemyUnitOfWork:
         self.decision_events: SqlAlchemyDecisionEventRepository
         self.composition_plans: SqlAlchemyCompositionPlanRepository
         self.render_decisions: SqlAlchemyRenderDecisionRepository
+        self.timeline_segments: SqlAlchemyTimelineSegmentRepository
 
     def __enter__(self) -> "SqlAlchemyUnitOfWork":
         self.session = self._session_factory()
@@ -66,6 +70,7 @@ class SqlAlchemyUnitOfWork:
         self.decision_events = self._decision_event_repository_type(self.session)
         self.composition_plans = self._composition_plan_repository_type(self.session)
         self.render_decisions = self._render_decision_repository_type(self.session)
+        self.timeline_segments = self._timeline_segment_repository_type(self.session)
         return self
 
     def __exit__(

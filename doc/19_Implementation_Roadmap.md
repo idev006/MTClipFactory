@@ -20,8 +20,8 @@ The project now uses two roadmap layers:
 ## Delivery Status
 
 - `IR-01` Composition data model: complete on 2026-06-06
-- `IR-02` Timeline segment model: ready
-- `IR-03` Segment-based preview composition: ready after `IR-02`
+- `IR-02` Timeline segment model: complete on 2026-06-06
+- `IR-03` Segment-based preview composition: ready
 - `IR-04` Final-render composition parity: queued
 - `IR-05` Audio ducking and operator-visible render decisions: queued
 - `IR-06` Review gates and composition reliability controls: queued
@@ -30,11 +30,10 @@ The project now uses two roadmap layers:
 
 The next work should follow this order unless a documented issue changes priority:
 
-1. `IR-02` Timeline segment model
-2. `IR-03` Segment-based preview composition
-3. `IR-04` Final-render composition parity
-4. `IR-05` Audio ducking and operator-visible render decisions
-5. `IR-06` Review gates and composition reliability controls
+1. `IR-03` Segment-based preview composition
+2. `IR-04` Final-render composition parity
+3. `IR-05` Audio ducking and operator-visible render decisions
+4. `IR-06` Review gates and composition reliability controls
 
 ## IR-01 | Composition Data Model
 
@@ -82,6 +81,13 @@ Represent semantic segments such as `hook`, `problem`, `benefit`, `proof`, and `
 - domain model and architecture docs are updated
 - segment validation rules are testable and documented
 - Kanban and issues reflect any remaining gaps
+
+### Delivery Result
+
+- delivered persisted `timeline_segments` with Alembic migration `20260606_0005`
+- added contiguous-coverage validation for semantic segment timing
+- extended composition-plan retrieval to return segment DTOs
+- logged the remaining heuristic-planning gap for later preview and authoring work
 
 ## IR-03 | Segment-Based Preview Composition
 

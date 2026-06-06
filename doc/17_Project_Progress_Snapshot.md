@@ -28,25 +28,25 @@
 - Approval actor/time/reason is persisted with migration support, and immutable decision-event history is now available in the Recipe Builder workflow.
 - The composition direction is now documented: master timeline, semantic segments, `voice no-loop`, and `music ducking`.
 - The first composition persistence seam now exists through `composition_plans` and `render_decisions`.
+- Semantic segment persistence now exists through `timeline_segments` with baseline contiguous-coverage validation.
 - The roadmap is now split into strategic and implementation layers so the next coding milestone is clearer.
 
 ## Delivered In The Latest Loop
 
-- persisted `composition_plans` and `render_decisions` were added with Alembic-backed schema support
-- `VideoAssemblyFactoryService` can now build and return a recipe-level composition plan
-- composition duration resolution and layer inference now have pytest coverage
-- architecture, reliability, roadmap, Kanban, issues, and lessons learned are being aligned to the delivered `IR-01` baseline
+- persisted `timeline_segments` were added with Alembic-backed schema support
+- `VideoAssemblyFactoryService` now returns semantic segments as part of the recipe-level composition plan
+- timeline-segment coverage and validation now have pytest coverage
+- architecture, reliability, roadmap, Kanban, issues, and lessons learned are being aligned to the delivered `IR-02` baseline
 
 ## Still Open
 
 1. richer preview composition
-2. timeline segment model
-3. richer final-render composition
-4. audio priority and music ducking implementation
-5. failed-job escalation policy beyond manual retry
-6. optional hot-reload decision for path-root changes
+2. richer final-render composition
+3. audio priority and music ducking implementation
+4. failed-job escalation policy beyond manual retry
+5. optional hot-reload decision for path-root changes
 
 ## Verification Baseline
 
-- `python -m pytest` in `.venv`: `74 passed`
+- `python -m pytest` in `.venv`: `76 passed`
 - `QT_QPA_PLATFORM=offscreen` UI smoke: `6` main windows instantiated

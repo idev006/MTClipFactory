@@ -50,6 +50,12 @@ Each segment should eventually support:
 - text/subtitle rule
 - audio priority rule
 
+Current implemented baseline on 2026-06-06:
+
+- semantic segments are now persisted in `timeline_segments`
+- segment timing is currently inferred from resolved duration bands
+- contiguous coverage validation is enforced before segment plans are accepted
+
 ## Layer Model
 
 The composition engine should treat these as separate layers:
@@ -164,17 +170,21 @@ These policies should become configurable through settings and backed by `.toml`
 - `loop_warning_threshold_sec`
 - `max_speed_adjust_ratio`
 
-## Planned Data-Model Direction
+## Current Data-Model Baseline
 
-Future implementation should likely add or formalize concepts such as:
+Current implementation now formalizes:
 
 - `timeline_segment`
 - `composition_plan`
 - `layer_assignment`
 - `render_decision_log`
-- `audio_mix_policy`
 
-The exact schema may change, but the policy in this document should stay stable unless the team deliberately revises project direction.
+Still future or incomplete:
+
+- richer `audio_mix_policy`
+- segment authoring/refinement controls beyond heuristic planning
+
+The exact schema may continue to evolve, but the policy in this document should stay stable unless the team deliberately revises project direction.
 
 ## UML Direction
 

@@ -8,7 +8,8 @@ from sqlalchemy.orm import Session
 
 from mt_clip_factory.domain.composition_plans import CompositionLayerAssignment, CompositionPlan
 from mt_clip_factory.domain.render_decisions import RenderDecision
-from mt_clip_factory.infrastructure.models import CompositionPlanModel, RenderDecisionModel
+from mt_clip_factory.domain.timeline_segments import TimelineSegment
+from mt_clip_factory.infrastructure.models import CompositionPlanModel, RenderDecisionModel, TimelineSegmentModel
 
 
 class SqlAlchemyCompositionPlanRepository:
@@ -113,6 +114,57 @@ class SqlAlchemyRenderDecisionRepository:
                 asset_role=model.asset_role,
                 action=model.action,
                 details_json=model.details_json,
+                created_at=model.created_at,
+            )
+            for model in models
+        ]
+
+
+class SqlAlchemyTimelineSegmentRepository:
+    def __init__(self, session: Session) -> None:
+        self._session = session
+
+    def replace_for_plan(self, composition_plan_id: int, segments: Sequence[TimelineSegment]) -> None:
+        self._session.execute(delete(TimelineSegmentModel).where(TimelineSegmentModel.composition_plan_id == composition_plan_id))
+        for segment in segments:
+            model = TimelineSegmentModel(
+                composition_plan_id=composition_plan_id,
+                recipe_id=segment.recipe_id,
+                segment_type=segment.segment_type,
+                sequence_index=segment.sequence_index,
+                start_sec=segment.start_sec,
+                end_sec=segment.end_sec,
+                target_duration_sec=segment.target_duration_sec,
+                message_text=segment.message_text,
+                preferred_layers_json=json.dumps(list(segment.preferred_layers), sort_keys=True),
+                text_rule=segment.text_rule,
+                audio_policy=segment.audio_policy,
+                created_at=segment.created_at,
+            )
+            self._session.add(model)
+        self._session.flush()
+
+    def list_by_plan(self, composition_plan_id: int) -> Sequence[TimelineSegment]:
+        statement = (
+            select(TimelineSegmentModel)
+            .where(TimelineSegmentModel.composition_plan_id == composition_plan_id)
+            .order_by(TimelineSegmentModel.sequence_index.asc())
+        )
+        models = self._session.execute(statement).scalars().all()
+        return [
+            TimelineSegment(
+                id=model.id,
+                composition_plan_id=model.composition_plan_id,
+                recipe_id=model.recipe_id,
+                segment_type=model.segment_type,
+                sequence_index=model.sequence_index,
+                start_sec=model.start_sec,
+                end_sec=model.end_sec,
+                target_duration_sec=model.target_duration_sec,
+                message_text=model.message_text,
+                preferred_layers=tuple(json.loads(model.preferred_layers_json)),
+                text_rule=model.text_rule,
+                audio_policy=model.audio_policy,
                 created_at=model.created_at,
             )
             for model in models

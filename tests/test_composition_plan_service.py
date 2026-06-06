@@ -113,9 +113,19 @@ def test_composition_plan_prefers_recipe_duration_and_infers_layers(unit_of_work
         "background_music",
         "background_visual",
     ]
+    assert [segment.segment_type for segment in plan.segments] == [
+        "hook",
+        "problem",
+        "benefit",
+        "proof",
+        "cta",
+    ]
+    assert plan.segments[0].start_sec == 0.0
+    assert plan.segments[-1].end_sec == 30.0
     assert {decision.decision_type for decision in plan.decisions} == {
         "master_duration_resolved",
         "layer_assignment_inferred",
+        "timeline_segment_planned",
     }
 
 
@@ -142,4 +152,5 @@ def test_composition_plan_falls_back_to_voiceover_duration(unit_of_work_factory,
     assert plan.duration_source == "voiceover_total_duration"
     assert plan.target_duration_sec is None
     assert plan.resolved_duration_sec == 6.0
-    assert len(plan.decisions) == 2
+    assert [segment.segment_type for segment in plan.segments] == ["hook", "benefit", "cta"]
+    assert len(plan.decisions) == 5

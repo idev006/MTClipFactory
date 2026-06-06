@@ -28,15 +28,15 @@
 
 ### CompositionPlan
 
-A future planning concept that resolves one recipe into a master timeline, layer assignments, and render policy decisions.
+A persisted planning concept that resolves one recipe into a master timeline, layer assignments, and render policy decisions.
 
 ### TimelineSegment
 
-A future semantic unit such as `hook`, `problem`, `benefit`, `proof`, or `cta` with timing and preferred asset behavior.
+A persisted semantic unit such as `hook`, `problem`, `benefit`, `proof`, or `cta` with timing and preferred asset behavior.
 
 ### RenderDecisionLog
 
-A future trace object that records whether the system looped, trimmed, froze, ducked, or otherwise adjusted media to complete a render.
+A persisted trace object that records whether the system looped, trimmed, froze, ducked, or otherwise adjusted media to complete a render.
 
 ## Context Split
 
@@ -78,6 +78,7 @@ A future trace object that records whether the system looped, trimmed, froze, du
 
 - narration must not be auto-looped by future composition logic
 - music may fill timeline gaps, but only through explicit loop/duck policy
+- timeline segments must stay contiguous and cover the resolved master duration when segment planning is available
 
 - `product_code` ต้อง unique
 - recipe ต้องผูกกับ product

@@ -109,3 +109,8 @@
 
 - locking a minimal `composition_plan` and `render_decision` seam before deeper preview/final work makes later render behavior easier to test honestly
 - when planning state is persisted early, Kanban, issues, UML, tests, and services can all move together instead of drifting around hidden assumptions
+
+## LL-023 | 2026-06-06 | Segment Validation Should Arrive With Segment Persistence
+
+- once timeline segments become real persisted data, coverage rules like contiguous timing and full-duration closure should be validated immediately
+- delaying validation would make preview composition harder to trust because broken planning data could survive into later milestones

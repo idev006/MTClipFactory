@@ -12,11 +12,13 @@
 | ISS-014 | 2026-06-06 | Medium | Recovery Scope | Startup queued-job recovery and manual failed-job retry now exist, but failed-job escalation and richer orchestration policy are still limited. | Engineering | Open | Expand recovery semantics beyond current sequential retry flow and document escalation rules. |
 | ISS-018 | 2026-06-06 | Medium | Audio Priority Policy | The team has aligned on `voice no-loop` and `music ducking`, but those rules are not yet implemented in preview/final render flows. | Engineering | Open | Implement configurable narration/music policy with operator-visible render decisions. |
 | ISS-019 | 2026-06-06 | Medium | Execution Roadmap Discipline | The project now needs implementation milestones with acceptance criteria so composition work lands in a controlled sequence instead of broad feature waves. | Project Management | Open | Maintain the implementation roadmap and keep Kanban/issues aligned to the current milestone. |
+| ISS-020 | 2026-06-06 | Medium | Segment Heuristic Depth | Timeline segments are now persisted and validated, but segment content is still inferred from duration bands and recipe metadata instead of operator-authored structure. | Engineering | Open | Use the segment model in preview composition and later expose stronger segment authoring or refinement controls. |
 
 ## Closed Issues
 
 | ID | Date Closed | Topic | Resolution |
 | --- | --- | --- | --- |
+| ISS-021-CLOSED | 2026-06-06 | Timeline Segment Model | Closed by delivering persisted `timeline_segments`, Alembic migration coverage, validation rules, and service-level composition-plan retrieval with semantic segment output. |
 | ISS-017-CLOSED | 2026-06-06 | Timeline Composition Model | Closed by delivering persisted `composition_plans` and `render_decisions`, service-level composition-plan retrieval, migration coverage, and pytest-backed duration/layer inference. |
 | ISS-016-CLOSED | 2026-06-06 | Approval History Depth | Closed by delivering an append-only `decision_events` ledger, migration coverage, service retrieval, and Recipe Builder visibility. |
 | ISS-015-CLOSED | 2026-06-06 | Approval Audit Depth | Closed by delivering Alembic-backed approval actor/time/reason persistence plus runtime migration support. |

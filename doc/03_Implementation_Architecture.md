@@ -66,6 +66,13 @@ Future render architecture must evolve toward:
 - configurable loop, trim, and duck policy
 - persisted render-decision reporting
 
+Current implemented baseline now includes:
+
+- persisted `composition_plans`
+- persisted `timeline_segments`
+- persisted `render_decisions`
+- service-level composition plan retrieval with validation-backed segment planning
+
 The architecture must keep `voice-over` as a foreground layer:
 
 - narration does not auto-loop

@@ -19,10 +19,12 @@
 - `decision_events`
 - `composition_plans`
 - `render_decisions`
+- `timeline_segments`
 
 ## Implementation Notes
 
 - composition data model is added by `alembic/versions/20260606_0004_composition_plan_models.py`
+- timeline segment model is added by `alembic/versions/20260606_0005_timeline_segments.py`
 
 - immutable decision-event history is added by `alembic/versions/20260606_0003_decision_event_history.py`
 
@@ -71,6 +73,16 @@
 - `render_decisions.asset_role`
 - `render_decisions.action`
 - `render_decisions.details_json`
+- `timeline_segments.composition_plan_id`
+- `timeline_segments.recipe_id`
+- `timeline_segments.segment_type`
+- `timeline_segments.sequence_index`
+- `timeline_segments.start_sec`
+- `timeline_segments.end_sec`
+- `timeline_segments.target_duration_sec`
+- `timeline_segments.preferred_layers_json`
+- `timeline_segments.text_rule`
+- `timeline_segments.audio_policy`
 
 ## Migration Discipline
 

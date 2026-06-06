@@ -13,6 +13,7 @@ from mt_clip_factory.domain.outputs import Output, OutputSummary
 from mt_clip_factory.domain.recipes import Recipe, RecipeItem, RecipeSummary
 from mt_clip_factory.domain.render_decisions import RenderDecision
 from mt_clip_factory.domain.tags import Tag, TagSummary
+from mt_clip_factory.domain.timeline_segments import TimelineSegment
 
 
 class ProductRepository(Protocol):
@@ -170,6 +171,14 @@ class RenderDecisionRepository(Protocol):
         ...
 
 
+class TimelineSegmentRepository(Protocol):
+    def replace_for_plan(self, composition_plan_id: int, segments: Sequence[TimelineSegment]) -> None:
+        ...
+
+    def list_by_plan(self, composition_plan_id: int) -> Sequence[TimelineSegment]:
+        ...
+
+
 class UnitOfWork(AbstractContextManager["UnitOfWork"], Protocol):
     products: ProductRepository
     assets: AssetRepository
@@ -180,6 +189,7 @@ class UnitOfWork(AbstractContextManager["UnitOfWork"], Protocol):
     decision_events: DecisionEventRepository
     composition_plans: CompositionPlanRepository
     render_decisions: RenderDecisionRepository
+    timeline_segments: TimelineSegmentRepository
 
     def commit(self) -> None:
         ...

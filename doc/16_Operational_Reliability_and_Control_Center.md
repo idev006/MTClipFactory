@@ -97,6 +97,7 @@ The following must flow through config or services whenever user control is appr
 - migration-backed approval actor/time/reason fields
 - append-only decision-event history visible in the Recipe Builder workflow
 - persisted composition plans and render decisions for recipe-level duration and layer planning
+- persisted timeline segments with contiguous-duration validation
 - configurable path roots through `[paths]` in `app_config.toml`
 - dashboard visibility of recent, queued, processing, and failed jobs
 - settings-based FFmpeg path control

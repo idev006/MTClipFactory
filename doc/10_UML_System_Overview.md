@@ -76,12 +76,15 @@ classDiagram
     class CompositionPlan {
         +master_duration
         +duration_source
+        +segment_count
     }
 
     class TimelineSegment {
         +segment_type
+        +sequence_index
         +start_sec
         +end_sec
+        +target_duration_sec
     }
 
     class RenderDecisionLog {
@@ -151,6 +154,7 @@ classDiagram
         +decision_events
         +composition_plans
         +render_decisions
+        +timeline_segments
         +commit()
         +rollback()
     }
@@ -180,6 +184,11 @@ classDiagram
 
     class SqlAlchemyRenderDecisionRepository {
         +replace_for_plan(composition_plan_id, decisions)
+        +list_by_plan(composition_plan_id)
+    }
+
+    class SqlAlchemyTimelineSegmentRepository {
+        +replace_for_plan(composition_plan_id, segments)
         +list_by_plan(composition_plan_id)
     }
 
@@ -230,6 +239,7 @@ classDiagram
     SqlAlchemyUnitOfWork --> SqlAlchemyDecisionEventRepository
     SqlAlchemyUnitOfWork --> SqlAlchemyCompositionPlanRepository
     SqlAlchemyUnitOfWork --> SqlAlchemyRenderDecisionRepository
+    SqlAlchemyUnitOfWork --> SqlAlchemyTimelineSegmentRepository
     SqlAlchemyRecipeRepository --> Recipe
     SqlAlchemyUnitOfWork --> Job
 ```

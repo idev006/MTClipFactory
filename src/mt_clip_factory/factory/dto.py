@@ -109,6 +109,20 @@ class RenderDecisionDTO:
 
 
 @dataclass(slots=True, frozen=True)
+class TimelineSegmentDTO:
+    segment_id: int
+    segment_type: str
+    sequence_index: int
+    start_sec: float
+    end_sec: float
+    target_duration_sec: float
+    message_text: str | None = None
+    text_rule: str | None = None
+    audio_policy: str | None = None
+    preferred_layers: tuple[str, ...] = ()
+
+
+@dataclass(slots=True, frozen=True)
 class CompositionPlanDTO:
     plan_id: int
     recipe_id: int
@@ -118,6 +132,7 @@ class CompositionPlanDTO:
     updated_at: str
     layers: tuple[CompositionLayerDTO, ...]
     decisions: tuple[RenderDecisionDTO, ...]
+    segments: tuple[TimelineSegmentDTO, ...] = ()
 
 
 @dataclass(slots=True, frozen=True)

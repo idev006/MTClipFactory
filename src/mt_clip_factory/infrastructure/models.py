@@ -173,3 +173,22 @@ class RenderDecisionModel(Base):
     action: Mapped[str] = mapped_column(String(64), nullable=False)
     details_json: Mapped[str | None] = mapped_column(Text, nullable=True)
     created_at: Mapped[datetime] = mapped_column(DateTime, nullable=False, default=func.now())
+
+
+class TimelineSegmentModel(Base):
+    __tablename__ = "timeline_segments"
+    __table_args__ = (UniqueConstraint("composition_plan_id", "sequence_index", name="uq_timeline_segments_plan_order"),)
+
+    id: Mapped[int] = mapped_column(Integer, primary_key=True, autoincrement=True)
+    composition_plan_id: Mapped[int] = mapped_column(ForeignKey("composition_plans.id"), nullable=False)
+    recipe_id: Mapped[int] = mapped_column(ForeignKey("recipes.id"), nullable=False)
+    segment_type: Mapped[str] = mapped_column(String(64), nullable=False)
+    sequence_index: Mapped[int] = mapped_column(Integer, nullable=False)
+    start_sec: Mapped[float] = mapped_column(Float, nullable=False)
+    end_sec: Mapped[float] = mapped_column(Float, nullable=False)
+    target_duration_sec: Mapped[float] = mapped_column(Float, nullable=False)
+    message_text: Mapped[str | None] = mapped_column(String(512), nullable=True)
+    preferred_layers_json: Mapped[str] = mapped_column(Text, nullable=False, default="[]")
+    text_rule: Mapped[str | None] = mapped_column(String(128), nullable=True)
+    audio_policy: Mapped[str | None] = mapped_column(String(128), nullable=True)
+    created_at: Mapped[datetime] = mapped_column(DateTime, nullable=False, default=func.now())
