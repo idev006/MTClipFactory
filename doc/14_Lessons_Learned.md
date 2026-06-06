@@ -169,3 +169,8 @@
 
 - recovery metadata proved valuable because it stayed attached to the job records operators already inspect, rather than waiting for a separate audit table before shipping visibility
 - a dedicated schema should be triggered by real cross-job reporting or governance needs, not by discomfort with JSON alone
+
+## LL-035 | 2026-06-06 | Scoring Gets Better When It Reuses Runtime Evidence
+
+- recipe-level scoring became more useful once it stopped being only metadata math and started reusing the same asset diversity and runtime review evidence the operators already trust elsewhere
+- a score is easier to defend operationally when the UI can show both the summary number and the underlying duplicate-risk context instead of hiding the heuristic behind one badge

@@ -51,3 +51,5 @@ class RecipeSummary:
     decision_actor: str | None
     decision_at: datetime | None
     item_count: int
+    recipe_score: float = 0.0
+    duplicate_risk: float = 0.0

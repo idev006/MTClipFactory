@@ -182,6 +182,8 @@ Current implemented baseline on 2026-06-06:
 - narration/music overlap without confirmed ducking protection now raises manifest-visible `audio_masking_risk`
 - recipes can be routed to `needs_review` automatically after preview generation
 - human approval remains possible, but flagged recipes must carry an explicit approval reason
+- recipe records now also persist `recipe_score` and recipe-level `duplicate_risk` derived from metadata completeness, asset diversity, and runtime review evidence
+- Recipe Builder recipe summaries now surface recipe score/risk before operators drill into output manifests
 
 ## Settings Direction
 
@@ -232,6 +234,7 @@ Current implementation now formalizes:
 - `composition_plan`
 - `layer_assignment`
 - `render_decision_log`
+- recipe-level `recipe_score` and `duplicate_risk`
 
 Still future or incomplete:
 

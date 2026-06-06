@@ -32,50 +32,38 @@ from mt_clip_factory.factory.output_lineage import build_output_lineage_context,
 from mt_clip_factory.factory.preview_artifacts import PreviewManifestBuilder
 from mt_clip_factory.factory.preview_composition import build_segmented_preview_composition
 from mt_clip_factory.factory.renderers import RenderedPreviewOutput
+from mt_clip_factory.factory.recipe_scoring import score_and_persist_recipe
 from mt_clip_factory.factory.review_gate import apply_review_gate, assess_review_gate, review_gate_manifest_payload, review_settings_from_provider
 from mt_clip_factory.library.artifacts import build_artifact_job_code, decode_job_input, encode_job_input
-
-
 class RecipeAlreadyExistsError(ValueError):
     """Raised when a recipe code already exists."""
-
 
 class RecipeNotFoundError(ValueError):
     """Raised when a recipe does not exist."""
 
-
 class RecipeAssetMismatchError(ValueError):
     """Raised when an asset belongs to a different product than the recipe."""
-
 
 class AssetNotReadyForRecipeError(ValueError):
     """Raised when an asset is not ready to be used in a recipe."""
 
-
 class RecipeItemAlreadyExistsError(ValueError):
     """Raised when the same asset role is already present in a recipe."""
-
 
 class PreviewBuildInputError(ValueError):
     """Raised when a preview job cannot be built from current recipe state."""
 
-
 class OutputNotFoundError(ValueError):
     """Raised when an output cannot be found."""
-
 
 class RecipeApprovalError(ValueError):
     """Raised when a recipe approval decision is invalid."""
 
-
 class FinalRenderPrerequisiteError(ValueError):
     """Raised when final render requirements are not satisfied."""
 
-
 class FactoryJobNotFoundError(ValueError):
     """Raised when a factory job cannot be found."""
-
-
 class VideoAssemblyFactoryService:
     PREVIEW_JOB_TYPE = "render_recipe_preview"
     FINAL_JOB_TYPE = "render_recipe_final"
@@ -128,6 +116,7 @@ class VideoAssemblyFactoryService:
                 cta_text=command.cta_text,
             )
             created = uow.recipes.add(recipe)
+            score_and_persist_recipe(uow, recipe=created, items=(), assets={})
             uow.commit()
             if created.id is None:
                 raise RuntimeError("Recipe identifier was not assigned.")
@@ -152,6 +141,8 @@ class VideoAssemblyFactoryService:
                     decision_actor=summary.decision_actor,
                     decision_at=_format_optional_timestamp(summary.decision_at),
                     item_count=summary.item_count,
+                    recipe_score=summary.recipe_score,
+                    duplicate_risk=summary.duplicate_risk,
                 )
                 for summary in uow.recipes.list_summaries(product_id=product_id, status=status)
             ]
@@ -188,6 +179,8 @@ class VideoAssemblyFactoryService:
                 decision_at=_format_optional_timestamp(recipe.decision_at),
                 decision_reason=recipe.decision_reason,
                 items=items,
+                recipe_score=recipe.recipe_score,
+                duplicate_risk=recipe.duplicate_risk,
             )
 
     def assign_asset_to_recipe(self, command: AssignAssetToRecipeCommand) -> int:
@@ -210,6 +203,12 @@ class VideoAssemblyFactoryService:
                 raise RecipeItemAlreadyExistsError(f"{asset.asset_code}:{role}")
 
             item = uow.recipes.add_item(recipe.id, asset.id, role)
+            score_and_persist_recipe(
+                uow,
+                recipe=recipe,
+                items=list(uow.recipes.list_items(recipe.id)),
+                assets={asset.id: asset},
+            )
             uow.commit()
             if item.id is None:
                 raise RuntimeError("Recipe item identifier was not assigned.")
@@ -486,6 +485,13 @@ class VideoAssemblyFactoryService:
                     utc_now=_utc_now,
                     record_decision_event=_record_decision_event,
                 )
+                score_and_persist_recipe(
+                    uow,
+                    recipe=recipe,
+                    items=items,
+                    assets=assets,
+                    review_assessment=review_assessment,
+                )
                 job.status = JobStatus.DONE
                 job.progress = 1.0
                 finished_at = _utc_now()
@@ -618,6 +624,13 @@ class VideoAssemblyFactoryService:
                     reason=self.SYSTEM_APPROVAL_REASON,
                     created_at=approved_at,
                 )
+                score_and_persist_recipe(
+                    uow,
+                    recipe=recipe,
+                    items=items,
+                    assets=assets,
+                    review_assessment=review_assessment,
+                )
                 job.status = JobStatus.DONE
                 job.progress = 1.0
                 finished_at = _utc_now()
@@ -720,18 +733,12 @@ class VideoAssemblyFactoryService:
             if created.id is None:
                 raise RuntimeError("Recipe job identifier was not assigned.")
             return created.id
-
-
 def _slugify_recipe_code(value: str) -> str:
     normalized = "".join(character if character.isalnum() else "_" for character in value.strip().lower())
     return normalized.strip("_")
-
-
 def _extract_output_path(output_json: str | None) -> str | None:
     payload = decode_job_output_payload(output_json)
     return payload.get("final_output_path") or payload.get("preview_output_path") or payload.get("preview_manifest_path")
-
-
 def _to_preview_job_summary(summary, *, output_json: str | None) -> PreviewJobSummaryDTO:
     recovery = recovery_metadata_from_output_json(output_json)
     return PreviewJobSummaryDTO(
@@ -748,36 +755,24 @@ def _to_preview_job_summary(summary, *, output_json: str | None) -> PreviewJobSu
         last_recovery_attempt_at=recovery.last_retry_at,
         last_failure_at=recovery.last_failure_at,
     )
-
-
 def _utc_now() -> datetime:
     return datetime.now(UTC).replace(tzinfo=None)
-
-
 def _format_timestamp(value: datetime) -> str:
     return value.strftime("%Y-%m-%d %H:%M:%S")
-
-
 def _format_optional_timestamp(value: datetime | None) -> str | None:
     if value is None:
         return None
     return _format_timestamp(value)
-
-
 def _normalize_actor(value: str) -> str:
     actor = value.strip()
     if not actor:
         raise ValueError("Decision actor is required.")
     return actor
-
-
 def _normalize_reason(value: str | None) -> str | None:
     if value is None:
         return None
     reason = value.strip()
     return reason or None
-
-
 def _record_decision_event(
     uow: UnitOfWork,
     *,

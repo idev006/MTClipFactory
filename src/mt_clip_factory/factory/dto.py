@@ -45,6 +45,8 @@ class RecipeSummaryDTO:
     decision_actor: str | None
     decision_at: str | None
     item_count: int
+    recipe_score: float = 0.0
+    duplicate_risk: float = 0.0
 
 
 @dataclass(slots=True, frozen=True)
@@ -65,6 +67,8 @@ class RecipeDetailsDTO:
     decision_at: str | None
     decision_reason: str | None
     items: tuple[RecipeItemDTO, ...]
+    recipe_score: float = 0.0
+    duplicate_risk: float = 0.0
 
 
 @dataclass(slots=True, frozen=True)

@@ -79,6 +79,7 @@ Current implemented baseline now includes:
 - settings-driven voice/music gain staging with manifest-visible balance evidence
 - review-gate assessment with configurable duration and visual-repetition thresholds
 - manifest-backed review evidence plus output quality/duplicate-risk summaries
+- recipe-level score/risk persistence derived from metadata completeness, asset diversity, and runtime review evidence
 
 The architecture must keep `voice-over` as a foreground layer:
 

@@ -63,6 +63,8 @@ class FakeVideoAssemblyFactoryService:
             decision_actor=None,
             decision_at=None,
             item_count=0,
+            recipe_score=(0.05 if command.target_platform else 0.0) + (0.05 if command.target_ratio else 0.0),
+            duplicate_risk=1.0,
         )
         self.recipes.append(summary)
         self.items[recipe_id] = []
@@ -92,6 +94,8 @@ class FakeVideoAssemblyFactoryService:
             decision_at=recipe.decision_at,
             decision_reason=None,
             items=tuple(self.items[recipe_id]),
+            recipe_score=recipe.recipe_score,
+            duplicate_risk=recipe.duplicate_risk,
         )
 
     def assign_asset_to_recipe(self, command) -> int:
@@ -117,6 +121,8 @@ class FakeVideoAssemblyFactoryService:
             decision_actor=recipe.decision_actor,
             decision_at=recipe.decision_at,
             item_count=len(self.items[command.recipe_id]),
+            recipe_score=max(recipe.recipe_score, 0.35),
+            duplicate_risk=0.0,
         )
         return item_id
 
@@ -195,6 +201,8 @@ class FakeVideoAssemblyFactoryService:
                     source_output_id=output.source_output_id,
                     source_output_code=output.source_output_code,
                     source_output_path=output.source_output_path,
+                    quality_score=output.quality_score,
+                    duplicate_risk=output.duplicate_risk,
                 )
                 self.decision_events[recipe_id].insert(
                     0,
@@ -225,6 +233,8 @@ class FakeVideoAssemblyFactoryService:
             decision_actor=actor,
             decision_at="2026-06-06 10:06:00",
             item_count=recipe.item_count,
+            recipe_score=recipe.recipe_score,
+            duplicate_risk=recipe.duplicate_risk,
         )
         self.decision_events[recipe_id].insert(
             0,
@@ -251,6 +261,8 @@ class FakeVideoAssemblyFactoryService:
             decision_actor=actor,
             decision_at="2026-06-06 10:07:00",
             item_count=recipe.item_count,
+            recipe_score=recipe.recipe_score,
+            duplicate_risk=recipe.duplicate_risk,
         )
         self.decision_events[recipe_id].insert(
             0,
@@ -288,7 +300,24 @@ class FakeVideoAssemblyFactoryService:
                 source_output_id=None,
                 source_output_code=None,
                 source_output_path=None,
+                quality_score=0.6,
+                duplicate_risk=0.4,
             )
+        )
+        recipe = next(recipe for recipe in self.recipes if recipe.recipe_id == job_id)
+        self.recipes[self.recipes.index(recipe)] = RecipeSummaryDTO(
+            recipe_id=recipe.recipe_id,
+            product_id=recipe.product_id,
+            product_code=recipe.product_code,
+            recipe_code=recipe.recipe_code,
+            target_platform=recipe.target_platform,
+            target_ratio=recipe.target_ratio,
+            status="needs_review",
+            decision_actor="system_review_gate",
+            decision_at="2026-06-06 10:00:00",
+            item_count=recipe.item_count,
+            recipe_score=0.47,
+            duplicate_risk=0.4,
         )
 
     def enqueue_final_render_job(self, recipe_id: int) -> int:
@@ -316,6 +345,8 @@ class FakeVideoAssemblyFactoryService:
                 source_output_id=1,
                 source_output_code=f"preview_output_{recipe_id}",
                 source_output_path=f"outputs/preview/{recipe_id}.mp4",
+                quality_score=0.8,
+                duplicate_risk=0.2,
             )
         )
         self.decision_events[recipe_id].insert(
@@ -371,6 +402,8 @@ def test_recipe_builder_view_model_creates_recipe(unit_of_work_factory) -> None:
     assert recipe_id == 1
     assert view_model.status == "ready"
     assert len(view_model.recipes) == 1
+    assert view_model.recipes[0].recipe_score == 0.05
+    assert view_model.recipes[0].duplicate_risk == 1.0
     assert "Created recipe #1" in view_model.feedback
 
 
@@ -391,6 +424,8 @@ def test_recipe_builder_view_model_assigns_asset(unit_of_work_factory) -> None:
     assert view_model.status == "ready"
     assert len(view_model.recipe_items) == 1
     assert view_model.recipe_items[0].role == "hero"
+    assert view_model.recipes[0].recipe_score == 0.35
+    assert view_model.recipes[0].duplicate_risk == 0.0
     assert view_model.composition_plan is not None
 
 
@@ -411,6 +446,8 @@ def test_recipe_builder_view_model_builds_preview(unit_of_work_factory) -> None:
     assert view_model.status == "ready"
     assert "Built preview output for recipe #1" in view_model.feedback
     assert len(view_model.outputs) == 1
+    assert view_model.recipes[0].recipe_score == 0.47
+    assert view_model.recipes[0].duplicate_risk == 0.4
     assert view_model.outputs[0].manifest_path == "outputs/manifests/1.json"
     assert view_model.composition_plan is not None
     assert view_model.composition_plan.segments[0].audio_policy == "voice_priority_with_music_duck"

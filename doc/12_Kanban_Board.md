@@ -4,7 +4,6 @@ This Markdown board is the SSOT Kanban for the repository.
 
 ## Backlog
 
-- recipe scoring refinement beyond the current heuristic baseline
 - path-root hot-reload implementation if restart semantics are no longer acceptable
 
 ## Ready
@@ -56,6 +55,7 @@ This Markdown board is the SSOT Kanban for the repository.
 - `IR-10` runtime-backed review signals for audio masking and emergency fill
 - `IR-11` voice-priority gain staging and audio-balance visibility
 - `IR-12` payload-backed recovery audit decision
+- `IR-13` recipe scoring refinement and operator-visible score/risk summaries
 - recipe persistence
 - recipe item assignment
 - preview render output job flow

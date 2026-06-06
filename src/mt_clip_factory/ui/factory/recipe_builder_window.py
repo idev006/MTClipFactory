@@ -126,9 +126,9 @@ class RecipeBuilderWindow(QMainWindow):
     def _build_recipe_table_group(self) -> QGroupBox:
         group = QGroupBox("Recipes")
         layout = QVBoxLayout(group)
-        self.recipe_table = QTableWidget(0, 9)
+        self.recipe_table = QTableWidget(0, 11)
         self.recipe_table.setHorizontalHeaderLabels(
-            ["ID", "Product", "Code", "Platform", "Ratio", "Status", "Decision By", "Decision At", "Items"]
+            ["ID", "Product", "Code", "Platform", "Ratio", "Status", "Decision By", "Decision At", "Items", "Score", "Dup Risk"]
         )
         self.recipe_table.setSelectionBehavior(QTableWidget.SelectRows)
         self.recipe_table.setSelectionMode(QTableWidget.SingleSelection)
@@ -214,6 +214,8 @@ class RecipeBuilderWindow(QMainWindow):
                 recipe.decision_actor or "",
                 recipe.decision_at or "",
                 str(recipe.item_count),
+                f"{recipe.recipe_score:.3f}",
+                f"{recipe.duplicate_risk:.3f}",
             ]
             for column_index, value in enumerate(values):
                 self.recipe_table.setItem(row_index, column_index, QTableWidgetItem(value))

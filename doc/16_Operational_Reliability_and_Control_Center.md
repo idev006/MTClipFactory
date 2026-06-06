@@ -135,6 +135,7 @@ The following must flow through config or services whenever user control is appr
 - review-gate routing with persisted `needs_review` recipe state
 - dashboard visibility of flagged recipe count plus configured review thresholds
 - Recipe Builder visibility for manifest-backed review signals, metrics, quality score, and duplicate risk
+- Recipe Builder recipe-list visibility for persisted recipe score and duplicate-risk summaries
 - automated tests for success and failure job paths
 - restart-style retry tests for factory jobs
 - queued-job orchestration tests plus startup policy coverage
@@ -142,7 +143,7 @@ The following must flow through config or services whenever user control is appr
 
 ## Current Gaps
 
-1. Review gates now cover audio masking loss and emergency fill, but broader composition-confidence scoring is still heuristic.
+1. Recipe scoring now uses metadata, asset diversity, and runtime review evidence, but further calibration remains a future decision if operators find the baseline misleading.
 2. Optional path-root hot-reload remains a future backlog item if restart-driven semantics become operationally too costly.
 
 ## Composition Reliability Direction

@@ -42,21 +42,22 @@
 - Failed jobs now retain persisted recovery-attempt history, escalate visibly after repeated failures, and surface operator playbook guidance on the dashboard.
 - Recovery history now remains intentionally payload-backed on the `jobs` record until stronger cross-job audit needs appear.
 - Path roots now follow an explicit restart-driven activation policy, with runtime-active and configured-next-start roots shown separately for operator truthfulness.
+- Recipe records now retain persisted score/risk summaries derived from metadata, asset composition, and runtime review evidence, and Recipe Builder now shows those summaries in the recipe list.
 - The roadmap is now split into strategic and implementation layers, and the current mandatory implementation slice is complete.
 
 ## Delivered In The Latest Loop
 
-- recovery audit shape is now explicitly locked to the current payload-backed `jobs.output_json` seam instead of being left ambiguous
-- docs now record the concrete trigger conditions that would justify promoting recovery history into a dedicated schema later
-- pytest remains aligned with the delivered `IR-12` baseline because no runtime code path changed in this decision milestone
-- architecture, reliability, roadmap, Kanban, issues, and lessons learned were aligned to the delivered `IR-12` baseline
+- recipe scoring is now recalculated from recipe metadata, attached-asset composition, and runtime review evidence instead of remaining a dormant persistence field
+- Recipe Builder recipe summaries now surface `recipe_score` and recipe-level `duplicate_risk` so operators can triage recipes earlier
+- pytest now covers the scoring heuristic directly plus service/view-model propagation of score/risk values
+- architecture, reliability, roadmap, Kanban, issues, lessons learned, and UML were aligned to the delivered `IR-13` baseline
 
 ## Still Open
 
 1. implement optional path-root hot-reload only if restart-driven semantics become too costly in practice
-2. broaden composition-confidence scoring only if current review heuristics stop being operationally useful
+2. recalibrate recipe scoring only if the current metadata, asset-diversity, and runtime-evidence baseline stops being operationally useful
 
 ## Verification Baseline
 
-- `python -m pytest` in `.venv`: `91 passed`
+- `python -m pytest` in `.venv`: `94 passed`
 - `QT_QPA_PLATFORM=offscreen` UI smoke: `6` main windows instantiated

@@ -13,6 +13,7 @@
 
 | ID | Date Closed | Topic | Resolution |
 | --- | --- | --- | --- |
+| ISS-027-CLOSED | 2026-06-06 | Recipe Scoring Depth | Closed by delivering persisted recipe-level `recipe_score` and `duplicate_risk`, a metadata-plus-asset heuristic that also reuses runtime review evidence, Recipe Builder visibility for score/risk summaries, and pytest coverage for both scoring logic and service/view-model flow. |
 | ISS-026-CLOSED | 2026-06-06 | Recovery Audit Shape | Closed by auditing current recovery metadata usage and explicitly keeping recovery history payload-backed inside `jobs.output_json` until cross-job analytics, governance retention, or independent query requirements justify a dedicated schema. |
 | ISS-025-CLOSED | 2026-06-06 | Multi-Layer Audio Depth | Closed by delivering settings-backed voice/music gain staging, runtime FFmpeg gain application, manifest-visible balance evidence, dashboard/settings visibility, and pytest coverage for the richer audio-polish baseline. |
 | ISS-023-CLOSED | 2026-06-06 | Review Gate Depth | Closed by delivering runtime-backed audio masking review signals from render audio evidence, duration-unknown emergency-fill detection across visual and audio layers, manifest metrics, and pytest coverage. |

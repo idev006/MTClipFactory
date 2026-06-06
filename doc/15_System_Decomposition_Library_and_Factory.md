@@ -55,19 +55,21 @@ Compose prepared assets into reviewable preview and later final-output workflows
 - review-threshold evaluation and `needs_review` workflow routing
 - runtime-backed audio masking and emergency-fill review evidence
 - configurable duck-mode orchestration for narration/music runtime mixing
+- recipe-level score and duplicate-risk evaluation
 - preview job status tracking
 - final job status tracking
 - manual retry for persisted factory jobs
 - persisted failed-job recovery history and escalation visibility
 - output lineage reporting
 - output quality/duplicate-risk visibility
+- recipe score/risk visibility
 - dashboard-driven failed-job retry orchestration with deferred escalation handling
 - approval actor/time/reason persistence
 - immutable decision-event history
 
 ### Future Responsibilities
 
-- broader composition-confidence scoring beyond the current review heuristics
+- further recipe-score calibration only if the current metadata, asset-diversity, and runtime-evidence baseline stops being useful
 
 ### Owned SSOT
 
@@ -78,6 +80,7 @@ Compose prepared assets into reviewable preview and later final-output workflows
 - output records
 - decision-event history
 - review-gate evidence carried in manifests and output summaries
+- recipe-level `recipe_score` and `duplicate_risk`
 
 ## Shared Core
 

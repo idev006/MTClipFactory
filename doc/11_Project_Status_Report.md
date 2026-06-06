@@ -37,6 +37,7 @@
 - settings-backed review thresholds in `app_config.toml`, settings UI, and dashboard summary
 - dashboard visibility for `needs_review` recipe count
 - Recipe Builder output-detail visibility for manifest-backed review-gate evidence plus quality/duplicate-risk signals
+- Recipe Builder recipe-summary visibility for persisted `recipe_score` and recipe-level `duplicate_risk`
 - approval guard that requires an explicit human reason before approving a flagged recipe
 - configurable duck engine with `sidechain_compressor` default plus `windowed_volume_duck` fallback
 - settings-backed duck mode, threshold, and ratio controls surfaced through `.toml`, dashboard, and settings UI
@@ -65,20 +66,20 @@
 
 ## Verification Baseline
 
-- `python -m pytest` via `.venv`: `91 passed`
+- `python -m pytest` via `.venv`: `94 passed`
 - UI smoke via `QT_QPA_PLATFORM=offscreen`: `6` windows instantiated successfully
 
 ## Current Focus
 
 - keep richer review signals and approval history truthful through append-only persistence
 - monitor whether restart-driven path-root activation remains operationally acceptable
-- monitor whether heuristic scoring and review confidence need a broader next slice
+- monitor whether the new recipe scoring baseline stays operationally useful for operators
 - keep project documents truthful through per-milestone revision checkpoints
 
 ## Next Steps
 
 1. Consider optional path-root hot-reload only if the restart-driven policy becomes operationally too costly.
-2. Broaden composition-confidence scoring only if current review heuristics stop being operationally useful.
+2. Recalibrate recipe scoring only if operator feedback shows the new metadata, asset-diversity, and runtime-evidence baseline is not useful enough.
 
 ## Direction Locked In This Documentation Revision
 
@@ -100,6 +101,7 @@
 - `IR-10` now adds runtime-backed audio masking review signals plus duration-unknown emergency-fill detection in manifest-backed review evidence
 - `IR-11` now adds settings-backed voice/music gain staging with runtime manifest evidence and operator-visible balance controls
 - `IR-12` now locks recovery audit shape to the current payload-backed seam until stronger cross-job audit requirements justify schema promotion
+- `IR-13` now persists recipe-level score/risk summaries derived from metadata, asset composition, and runtime review evidence, and exposes them in Recipe Builder recipe surfaces
 
 ## Ownership
 

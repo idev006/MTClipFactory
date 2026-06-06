@@ -169,6 +169,8 @@ def test_factory_service_creates_and_lists_recipe(unit_of_work_factory, tmp_path
     assert len(recipes) == 1
     assert recipes[0].recipe_code == "honey_launch"
     assert recipes[0].item_count == 0
+    assert recipes[0].recipe_score == 0.1
+    assert recipes[0].duplicate_risk == 1.0
 
 
 def test_factory_service_rejects_duplicate_recipe_code(unit_of_work_factory, tmp_path) -> None:
@@ -190,10 +192,14 @@ def test_factory_service_assigns_asset_and_returns_recipe_details(unit_of_work_f
     )
 
     recipe = service.get_recipe(recipe_id)
+    summary = service.list_recipes()[0]
     assert item_id == 1
     assert len(recipe.items) == 1
     assert recipe.items[0].asset_code == "hero_asset"
     assert recipe.items[0].role == "hero"
+    assert recipe.recipe_score == 0.25
+    assert recipe.duplicate_risk == 0.0
+    assert summary.recipe_score == recipe.recipe_score
 
 
 def test_factory_service_builds_preview_output_job(unit_of_work_factory, tmp_path) -> None:
@@ -207,6 +213,7 @@ def test_factory_service_builds_preview_output_job(unit_of_work_factory, tmp_pat
 
     jobs = service.list_preview_jobs()
     recipe = service.get_recipe(recipe_id)
+    recipe_summary = service.list_recipes()[0]
     outputs = service.list_outputs(recipe_id=recipe_id)
     products = ProductApplicationService(unit_of_work_factory=unit_of_work_factory).list_products()
     assert jobs[0].job_id == job_id
@@ -224,6 +231,10 @@ def test_factory_service_builds_preview_output_job(unit_of_work_factory, tmp_pat
     assert outputs[0].rendering_job_code is not None
     assert outputs[0].quality_score is not None
     assert outputs[0].duplicate_risk is not None
+    assert recipe.recipe_score == 0.35
+    assert recipe.duplicate_risk == outputs[0].duplicate_risk
+    assert recipe_summary.recipe_score == recipe.recipe_score
+    assert recipe_summary.duplicate_risk == recipe.duplicate_risk
     assert products[0].output_count == 1
 
     manifest_payload = json.loads(Path(outputs[0].manifest_path).read_text(encoding="utf-8"))

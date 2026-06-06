@@ -32,6 +32,7 @@ The project now uses two roadmap layers:
 - `IR-10` Runtime-backed review signals for audio masking and emergency fill: complete on 2026-06-06
 - `IR-11` Voice-priority gain staging and audio-balance visibility: complete on 2026-06-06
 - `IR-12` Payload-backed recovery audit decision: complete on 2026-06-06
+- `IR-13` Recipe scoring refinement and operator-visible score/risk summaries: complete on 2026-06-06
 
 ## Current Execution Stream
 
@@ -40,7 +41,7 @@ There is no active mandatory implementation milestone right now.
 Backlog activation rules:
 
 1. Optional path-root hot-reload support only activates if restart-driven path semantics become operationally too costly.
-2. Broader composition-confidence scoring only activates if current review heuristics stop being operationally useful.
+2. Further recipe-score calibration only activates if the delivered metadata, asset-diversity, and runtime-evidence baseline stops being operationally useful.
 
 ## IR-01 | Composition Data Model
 
@@ -400,6 +401,34 @@ Lock the recovery-audit architecture to a truthful baseline instead of leaving f
 - documented schema-promotion triggers around cross-job analytics, governance retention, and independent query/reporting needs
 - closed the open recovery-audit-shape issue without inventing unused persistence
 - aligned roadmap, status, Kanban, UML, and reliability docs to the locked decision
+
+## IR-13 | Recipe Scoring Refinement And Operator-Visible Score/Risk Summaries
+
+### Goal
+
+Make recipe-level confidence scoring operationally useful instead of leaving persisted score/risk fields dormant.
+
+### Scope
+
+- derive `recipe_score` from recipe metadata completeness plus attached-asset composition
+- derive recipe-level `duplicate_risk` from asset reuse and role/visual diversity
+- let runtime review evidence refine the persisted recipe score/risk after preview/final rendering
+- expose score/risk through service DTOs and Recipe Builder recipe summaries
+- cover the scoring heuristic and propagation seams with pytest
+
+### Acceptance Criteria
+
+- recipe records retain non-dormant score/risk values after create, attach, and render workflows
+- Recipe Builder recipe surfaces show score/risk summaries without requiring manifest inspection first
+- runtime review evidence can influence the persisted recipe score/risk after render jobs complete
+- roadmap, UML, architecture, issues, lessons learned, and PM status docs remain aligned to the delivered baseline
+
+### Delivery Result
+
+- delivered a reusable recipe-scoring helper that combines metadata completeness, asset mix, and runtime review evidence
+- delivered persisted recipe-level `recipe_score` and `duplicate_risk` refresh during recipe create, asset attach, preview render, and final render flows
+- delivered score/risk propagation through repository summaries, service DTOs, and Recipe Builder recipe-list visibility
+- covered the scoring heuristic directly plus service/view-model propagation with pytest
 
 ## Cross-Milestone Rules
 

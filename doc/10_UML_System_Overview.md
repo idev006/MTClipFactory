@@ -79,6 +79,11 @@ classDiagram
         +review_gate_manifest_payload(...)
     }
 
+    class RecipeScoringPolicy {
+        +assess_recipe_score(...)
+        +score_and_persist_recipe(...)
+    }
+
     class CompositionPlan {
         +master_duration
         +duration_source
@@ -184,6 +189,7 @@ classDiagram
         +create_recipe()
         +attach_asset()
         +build_preview()
+        +show recipe score/risk summaries
         +show output lineage details
         +show composition/render summaries
         +show review-gate evidence
@@ -244,6 +250,8 @@ classDiagram
         +id
         +product_id
         +recipe_code
+        +recipe_score
+        +duplicate_risk
         +status
     }
 
@@ -276,6 +284,7 @@ classDiagram
     VideoAssemblyFactoryService --> PreviewComposition
     VideoAssemblyFactoryService --> CompositionPlan
     VideoAssemblyFactoryService --> ReviewGateEvaluator
+    VideoAssemblyFactoryService --> RecipeScoringPolicy
     Job --> RecoveryMetadata
     CompositionPlan --> TimelineSegment
     CompositionPlan --> RenderDecisionLog
@@ -343,6 +352,7 @@ sequenceDiagram
     Factory->>Factory: persist composition plan + segments
     Factory->>Factory: map segments to preview visual clips
     Factory->>Factory: assess review gate + quality/risk
+    Factory->>Factory: refresh recipe score/risk from metadata + assets + runtime review evidence
     Factory->>Preview: write_manifest(...)
     Factory->>Render: render_preview(segment_clips + duck mode policy)
     Factory->>Out: add(output)
@@ -385,6 +395,7 @@ sequenceDiagram
     VM->>Factory: run_final_render_job(job_id)
     Factory->>Factory: persist composition plan + segments
     Factory->>Factory: map segments to final visual clips
+    Factory->>Factory: refresh recipe score/risk from metadata + assets + runtime review evidence
     Factory->>Preview: write_manifest(final)
     Factory->>Render: render_output(segment_clips + duck mode policy)
     Factory->>Out: add(final output + lineage)
@@ -405,11 +416,11 @@ sequenceDiagram
 
     User->>View: select recipe
     View->>VM: select_recipe(recipe_id)
-    VM->>Factory: list_outputs(recipe_id)
+    VM->>Factory: list recipes + outputs(recipe_id)
     Factory->>Out: list_summaries(recipe_id)
     Factory->>JobRepo: read preview/final job output_json
-    Factory-->>VM: OutputSummaryDTO with lineage + quality/risk
-    VM-->>View: outputs + selected output details
+    Factory-->>VM: recipe score/risk summaries + OutputSummaryDTO with lineage + quality/risk
+    VM-->>View: recipe summaries + outputs + selected output details
 ```
 
 ## Approval Audit Sequence
@@ -585,6 +596,7 @@ sequenceDiagram
     Factory->>Render: render with loop/trim/duck/gain policy
     Render-->>Factory: output + audio_mix_summary
     Factory->>Factory: assess review gate from composition + runtime audio evidence
+    Factory->>Factory: refresh recipe score/risk from metadata + asset mix + runtime review evidence
     Factory->>Audit: persist render decisions
-    Factory-->>VM: output summary + review signals + operator-visible decisions
+    Factory-->>VM: recipe score/risk summary + output summary + review signals + operator-visible decisions
 ```
