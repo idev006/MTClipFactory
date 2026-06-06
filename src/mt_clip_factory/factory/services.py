@@ -11,13 +11,17 @@ from mt_clip_factory.domain.jobs import Job
 from mt_clip_factory.domain.outputs import Output
 from mt_clip_factory.domain.recipes import Recipe
 from mt_clip_factory.domain.services import UnitOfWork
+from mt_clip_factory.factory.composition_planning import build_default_composition
 from mt_clip_factory.factory.dto import (
     AssignAssetToRecipeCommand,
+    CompositionLayerDTO,
+    CompositionPlanDTO,
     CreateRecipeCommand,
     DecisionEventDTO,
     OutputSummaryDTO,
     PreviewJobSummaryDTO,
     RecipeDetailsDTO,
+    RenderDecisionDTO,
     RecipeItemDTO,
     RecipeSummaryDTO,
 )
@@ -270,6 +274,30 @@ class VideoAssemblyFactoryService:
                 )
                 for event in uow.decision_events.list_by_recipe(recipe_id)
             ]
+
+    def get_composition_plan(self, recipe_id: int) -> CompositionPlanDTO:
+        with self._unit_of_work_factory() as uow:
+            recipe = uow.recipes.get_by_id(recipe_id)
+            if recipe is None or recipe.id is None:
+                raise RecipeNotFoundError(str(recipe_id))
+            items = list(uow.recipes.list_items(recipe.id))
+            assets = {
+                item.asset_id: asset
+                for item in items
+                for asset in [uow.assets.get_by_id(item.asset_id)]
+                if asset is not None
+            }
+            planned = build_default_composition(recipe, items, assets)
+            plan = uow.composition_plans.upsert(planned.plan)
+            if plan.id is None:
+                raise RuntimeError("Composition plan identifier was not assigned.")
+            decisions = [
+                _bind_render_decision(decision, composition_plan_id=plan.id)
+                for decision in planned.decisions
+            ]
+            uow.render_decisions.replace_for_plan(plan.id, decisions)
+            uow.commit()
+            return _to_composition_plan_dto(plan, uow.render_decisions.list_by_plan(plan.id))
 
     def approve_output(self, output_id: int, *, actor: str, reason: str | None = None) -> None:
         actor_name = _normalize_actor(actor)
@@ -724,4 +752,39 @@ def _record_decision_event(
             reason=reason,
             created_at=created_at,
         )
+    )
+
+
+def _bind_render_decision(decision, *, composition_plan_id: int):
+    decision.composition_plan_id = composition_plan_id
+    return decision
+
+
+def _to_composition_plan_dto(plan, decisions) -> CompositionPlanDTO:
+    return CompositionPlanDTO(
+        plan_id=plan.id or 0,
+        recipe_id=plan.recipe_id,
+        duration_source=plan.duration_source,
+        target_duration_sec=plan.target_duration_sec,
+        resolved_duration_sec=plan.resolved_duration_sec,
+        updated_at=_format_timestamp(plan.updated_at),
+        layers=tuple(
+            CompositionLayerDTO(
+                layer_name=layer.layer_name,
+                asset_ids=layer.asset_ids,
+                asset_codes=layer.asset_codes,
+            )
+            for layer in plan.layer_assignments
+        ),
+        decisions=tuple(
+            RenderDecisionDTO(
+                decision_id=decision.id or 0,
+                decision_type=decision.decision_type,
+                action=decision.action,
+                created_at=_format_timestamp(decision.created_at),
+                asset_role=decision.asset_role,
+                details_json=decision.details_json,
+            )
+            for decision in decisions
+        ),
     )

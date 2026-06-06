@@ -147,3 +147,29 @@ class DecisionEventModel(Base):
     actor: Mapped[str] = mapped_column(String(255), nullable=False)
     reason: Mapped[str | None] = mapped_column(Text, nullable=True)
     created_at: Mapped[datetime] = mapped_column(DateTime, nullable=False, default=func.now())
+
+
+class CompositionPlanModel(Base):
+    __tablename__ = "composition_plans"
+
+    id: Mapped[int] = mapped_column(Integer, primary_key=True, autoincrement=True)
+    recipe_id: Mapped[int] = mapped_column(ForeignKey("recipes.id"), nullable=False, unique=True)
+    duration_source: Mapped[str] = mapped_column(String(64), nullable=False)
+    target_duration_sec: Mapped[float | None] = mapped_column(Float, nullable=True)
+    resolved_duration_sec: Mapped[float | None] = mapped_column(Float, nullable=True)
+    layer_assignments_json: Mapped[str] = mapped_column(Text, nullable=False, default="[]")
+    created_at: Mapped[datetime] = mapped_column(DateTime, nullable=False, default=func.now())
+    updated_at: Mapped[datetime] = mapped_column(DateTime, nullable=False, default=func.now(), onupdate=func.now())
+
+
+class RenderDecisionModel(Base):
+    __tablename__ = "render_decisions"
+
+    id: Mapped[int] = mapped_column(Integer, primary_key=True, autoincrement=True)
+    composition_plan_id: Mapped[int] = mapped_column(ForeignKey("composition_plans.id"), nullable=False)
+    recipe_id: Mapped[int] = mapped_column(ForeignKey("recipes.id"), nullable=False)
+    decision_type: Mapped[str] = mapped_column(String(64), nullable=False)
+    asset_role: Mapped[str | None] = mapped_column(String(64), nullable=True)
+    action: Mapped[str] = mapped_column(String(64), nullable=False)
+    details_json: Mapped[str | None] = mapped_column(Text, nullable=True)
+    created_at: Mapped[datetime] = mapped_column(DateTime, nullable=False, default=func.now())

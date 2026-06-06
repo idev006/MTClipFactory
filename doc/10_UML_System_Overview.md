@@ -56,6 +56,7 @@ classDiagram
         +create_recipe(command)
         +list_recipes(...)
         +get_recipe(recipe_id)
+        +get_composition_plan(recipe_id)
         +list_outputs(...)
         +list_decision_events(recipe_id)
         +list_jobs(...)
@@ -148,6 +149,8 @@ classDiagram
         +jobs
         +recipes
         +decision_events
+        +composition_plans
+        +render_decisions
         +commit()
         +rollback()
     }
@@ -168,6 +171,16 @@ classDiagram
     class SqlAlchemyDecisionEventRepository {
         +add(event)
         +list_by_recipe(recipe_id)
+    }
+
+    class SqlAlchemyCompositionPlanRepository {
+        +get_by_recipe(recipe_id)
+        +upsert(plan)
+    }
+
+    class SqlAlchemyRenderDecisionRepository {
+        +replace_for_plan(composition_plan_id, decisions)
+        +list_by_plan(composition_plan_id)
     }
 
     class PreviewManifestBuilder {
@@ -215,6 +228,8 @@ classDiagram
     SqlAlchemyUnitOfWork --> SqlAlchemyRecipeRepository
     SqlAlchemyUnitOfWork --> SqlAlchemyOutputRepository
     SqlAlchemyUnitOfWork --> SqlAlchemyDecisionEventRepository
+    SqlAlchemyUnitOfWork --> SqlAlchemyCompositionPlanRepository
+    SqlAlchemyUnitOfWork --> SqlAlchemyRenderDecisionRepository
     SqlAlchemyRecipeRepository --> Recipe
     SqlAlchemyUnitOfWork --> Job
 ```

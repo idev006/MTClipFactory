@@ -11,7 +11,6 @@ This Markdown board is the SSOT Kanban for the repository.
 
 ## Ready
 
-- `IR-01` composition data model
 - `IR-02` timeline segment model
 - richer preview composition beyond simple renderable-video flow
 - richer final-render composition beyond preview-promotion foundation
@@ -49,6 +48,7 @@ This Markdown board is the SSOT Kanban for the repository.
 - composition policy and architecture alignment
 - implementation roadmap with milestone acceptance criteria
 - milestone revision checkpoint policy across docs, Kanban, issues, and lessons learned
+- `IR-01` composition data model
 - recipe persistence
 - recipe item assignment
 - preview render output job flow

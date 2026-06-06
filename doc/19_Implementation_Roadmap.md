@@ -17,16 +17,24 @@ The project now uses two roadmap layers:
 - `Strategic roadmap`: phase-level direction and project scope
 - `Implementation roadmap`: milestone-level execution order and acceptance criteria
 
+## Delivery Status
+
+- `IR-01` Composition data model: complete on 2026-06-06
+- `IR-02` Timeline segment model: ready
+- `IR-03` Segment-based preview composition: ready after `IR-02`
+- `IR-04` Final-render composition parity: queued
+- `IR-05` Audio ducking and operator-visible render decisions: queued
+- `IR-06` Review gates and composition reliability controls: queued
+
 ## Current Execution Stream
 
 The next work should follow this order unless a documented issue changes priority:
 
-1. `IR-01` Composition data model
-2. `IR-02` Timeline segment model
-3. `IR-03` Segment-based preview composition
-4. `IR-04` Final-render composition parity
-5. `IR-05` Audio ducking and operator-visible render decisions
-6. `IR-06` Review gates and composition reliability controls
+1. `IR-02` Timeline segment model
+2. `IR-03` Segment-based preview composition
+3. `IR-04` Final-render composition parity
+4. `IR-05` Audio ducking and operator-visible render decisions
+5. `IR-06` Review gates and composition reliability controls
 
 ## IR-01 | Composition Data Model
 
@@ -47,6 +55,13 @@ Create the first persistent planning model for timeline-driven composition.
 - persistence direction is documented clearly enough for Alembic planning
 - preview/final services have a clean seam for using a composition plan later
 - open questions are logged in issues if not implemented yet
+
+### Delivery Result
+
+- delivered `composition_plans` and `render_decisions` persistence with Alembic migration `20260606_0004`
+- added recipe-level composition-plan retrieval through `VideoAssemblyFactoryService`
+- covered duration resolution and layer inference with pytest
+- left timeline segments and deeper preview/final composition for the next milestones
 
 ## IR-02 | Timeline Segment Model
 

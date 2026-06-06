@@ -5,11 +5,13 @@ from contextlib import AbstractContextManager
 from typing import Protocol
 
 from mt_clip_factory.domain.assets import Asset, AssetSummary
+from mt_clip_factory.domain.composition_plans import CompositionPlan
 from mt_clip_factory.domain.decision_events import DecisionEvent
 from mt_clip_factory.domain.entities import Product, ProductSummary
 from mt_clip_factory.domain.jobs import Job, JobSummary
 from mt_clip_factory.domain.outputs import Output, OutputSummary
 from mt_clip_factory.domain.recipes import Recipe, RecipeItem, RecipeSummary
+from mt_clip_factory.domain.render_decisions import RenderDecision
 from mt_clip_factory.domain.tags import Tag, TagSummary
 
 
@@ -152,6 +154,22 @@ class DecisionEventRepository(Protocol):
         ...
 
 
+class CompositionPlanRepository(Protocol):
+    def get_by_recipe(self, recipe_id: int) -> CompositionPlan | None:
+        ...
+
+    def upsert(self, plan: CompositionPlan) -> CompositionPlan:
+        ...
+
+
+class RenderDecisionRepository(Protocol):
+    def replace_for_plan(self, composition_plan_id: int, decisions: Sequence[RenderDecision]) -> None:
+        ...
+
+    def list_by_plan(self, composition_plan_id: int) -> Sequence[RenderDecision]:
+        ...
+
+
 class UnitOfWork(AbstractContextManager["UnitOfWork"], Protocol):
     products: ProductRepository
     assets: AssetRepository
@@ -160,6 +178,8 @@ class UnitOfWork(AbstractContextManager["UnitOfWork"], Protocol):
     recipes: RecipeRepository
     outputs: OutputRepository
     decision_events: DecisionEventRepository
+    composition_plans: CompositionPlanRepository
+    render_decisions: RenderDecisionRepository
 
     def commit(self) -> None:
         ...

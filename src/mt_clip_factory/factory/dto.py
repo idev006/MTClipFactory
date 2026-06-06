@@ -92,6 +92,35 @@ class DecisionEventDTO:
 
 
 @dataclass(slots=True, frozen=True)
+class CompositionLayerDTO:
+    layer_name: str
+    asset_ids: tuple[int, ...]
+    asset_codes: tuple[str, ...]
+
+
+@dataclass(slots=True, frozen=True)
+class RenderDecisionDTO:
+    decision_id: int
+    decision_type: str
+    action: str
+    created_at: str
+    asset_role: str | None = None
+    details_json: str | None = None
+
+
+@dataclass(slots=True, frozen=True)
+class CompositionPlanDTO:
+    plan_id: int
+    recipe_id: int
+    duration_source: str
+    target_duration_sec: float | None
+    resolved_duration_sec: float | None
+    updated_at: str
+    layers: tuple[CompositionLayerDTO, ...]
+    decisions: tuple[RenderDecisionDTO, ...]
+
+
+@dataclass(slots=True, frozen=True)
 class OutputSummaryDTO:
     output_id: int
     recipe_id: int

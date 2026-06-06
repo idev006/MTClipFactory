@@ -70,6 +70,7 @@ def test_ensure_schema_current_upgrades_legacy_database(tmp_path: Path) -> None:
         "20260605_0001_initial_schema.py",
         "20260606_0002_approval_audit_fields.py",
         "20260606_0003_decision_event_history.py",
+        "20260606_0004_composition_plan_models.py",
     ):
         source = repo_root / "alembic" / "versions" / migration_name
         target = versions_dir / migration_name
@@ -119,6 +120,8 @@ def test_ensure_schema_current_upgrades_legacy_database(tmp_path: Path) -> None:
     recipe_columns = {column["name"] for column in inspector.get_columns("recipes")}
     output_columns = {column["name"] for column in inspector.get_columns("outputs")}
     decision_event_columns = {column["name"] for column in inspector.get_columns("decision_events")}
+    composition_plan_columns = {column["name"] for column in inspector.get_columns("composition_plans")}
+    render_decision_columns = {column["name"] for column in inspector.get_columns("render_decisions")}
     assert "decision_actor" in recipe_columns
     assert "decision_at" in recipe_columns
     assert "decision_reason" in recipe_columns
@@ -126,4 +129,6 @@ def test_ensure_schema_current_upgrades_legacy_database(tmp_path: Path) -> None:
     assert "approved_at" in output_columns
     assert "approval_reason" in output_columns
     assert {"recipe_id", "output_id", "event_type", "actor", "reason", "created_at"} <= decision_event_columns
+    assert {"recipe_id", "duration_source", "resolved_duration_sec", "layer_assignments_json"} <= composition_plan_columns
+    assert {"composition_plan_id", "recipe_id", "decision_type", "action", "details_json"} <= render_decision_columns
     assert "alembic_version" in inspector.get_table_names()

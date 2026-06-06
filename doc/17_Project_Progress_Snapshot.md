@@ -27,28 +27,26 @@
 - Output lineage is now visible from persisted output/job records.
 - Approval actor/time/reason is persisted with migration support, and immutable decision-event history is now available in the Recipe Builder workflow.
 - The composition direction is now documented: master timeline, semantic segments, `voice no-loop`, and `music ducking`.
+- The first composition persistence seam now exists through `composition_plans` and `render_decisions`.
 - The roadmap is now split into strategic and implementation layers so the next coding milestone is clearer.
 
 ## Delivered In The Latest Loop
 
-- composition and timeline policy was written as SSOT before deeper render coding
-- architecture, domain, reliability, roadmap, UML, Kanban, issues, and lessons learned were aligned to the new composition direction
-- the project now has an explicit rule that narration must not auto-loop
-- the project now has an explicit rule that music may loop and must duck under narration
-- the roadmap and issue log now show the next implementation slice as timeline/data-model work before deeper render automation
-- the execution roadmap now defines milestone order and acceptance criteria for the next composition work
+- persisted `composition_plans` and `render_decisions` were added with Alembic-backed schema support
+- `VideoAssemblyFactoryService` can now build and return a recipe-level composition plan
+- composition duration resolution and layer inference now have pytest coverage
+- architecture, reliability, roadmap, Kanban, issues, and lessons learned are being aligned to the delivered `IR-01` baseline
 
 ## Still Open
 
 1. richer preview composition
-2. timeline/composition data model
-3. timeline segment model
-4. richer final-render composition
-5. audio priority and music ducking implementation
-6. failed-job escalation policy beyond manual retry
-7. optional hot-reload decision for path-root changes
+2. timeline segment model
+3. richer final-render composition
+4. audio priority and music ducking implementation
+5. failed-job escalation policy beyond manual retry
+6. optional hot-reload decision for path-root changes
 
 ## Verification Baseline
 
-- `python -m pytest` in `.venv`: `72 passed`
+- `python -m pytest` in `.venv`: `74 passed`
 - `QT_QPA_PLATFORM=offscreen` UI smoke: `6` main windows instantiated

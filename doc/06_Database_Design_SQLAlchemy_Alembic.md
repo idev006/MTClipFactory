@@ -17,8 +17,12 @@
 - `jobs`
 - `outputs`
 - `decision_events`
+- `composition_plans`
+- `render_decisions`
 
 ## Implementation Notes
+
+- composition data model is added by `alembic/versions/20260606_0004_composition_plan_models.py`
 
 - immutable decision-event history is added by `alembic/versions/20260606_0003_decision_event_history.py`
 
@@ -53,6 +57,20 @@
 - `decision_events.actor`
 - `decision_events.reason`
 - `decision_events.created_at`
+
+## Current Composition Tables
+
+- `composition_plans.recipe_id`
+- `composition_plans.duration_source`
+- `composition_plans.target_duration_sec`
+- `composition_plans.resolved_duration_sec`
+- `composition_plans.layer_assignments_json`
+- `render_decisions.composition_plan_id`
+- `render_decisions.recipe_id`
+- `render_decisions.decision_type`
+- `render_decisions.asset_role`
+- `render_decisions.action`
+- `render_decisions.details_json`
 
 ## Migration Discipline
 

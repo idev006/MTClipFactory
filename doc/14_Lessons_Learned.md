@@ -104,3 +104,8 @@
 
 - once composition scope became more concrete, the phase-level roadmap was no longer detailed enough to guide implementation safely
 - splitting strategy from execution helps the team preserve direction while still writing code in a disciplined order
+
+## LL-022 | 2026-06-06 | Small Persistent Planning Seams Reduce Render Risk
+
+- locking a minimal `composition_plan` and `render_decision` seam before deeper preview/final work makes later render behavior easier to test honestly
+- when planning state is persisted early, Kanban, issues, UML, tests, and services can all move together instead of drifting around hidden assumptions
