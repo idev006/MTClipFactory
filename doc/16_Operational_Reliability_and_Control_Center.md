@@ -42,15 +42,18 @@ Current editable fields:
 - auto refresh cadence
 - auto recover queued jobs on startup
 - max recovery jobs per run
+- voice loop enabled
+- background music loop enabled
+- music duck enabled
+- music duck gain
+- music duck attack/release timing
 
-Future composition-related settings should include:
+Future composition-related settings should still include:
 
 - master duration source
 - voice fill mode
 - background video fill mode
 - background music fill mode
-- duck enable/disable
-- duck level and attack/release timing
 - loop warning thresholds
 
 ## Reliability Principles
@@ -101,8 +104,10 @@ The following must flow through config or services whenever user control is appr
 - segment-aware preview manifests with chosen segment clip mapping
 - segment-aware final manifests with composition-based rerender lineage
 - configurable path roots through `[paths]` in `app_config.toml`
+- configurable audio policy through `[audio]` in `app_config.toml`
 - dashboard visibility of recent, queued, processing, and failed jobs
 - settings-based FFmpeg path control
+- dashboard visibility of current narration/music loop and duck policy
 - automated tests for success and failure job paths
 - restart-style retry tests for factory jobs
 - queued-job orchestration tests plus startup policy coverage
@@ -112,7 +117,7 @@ The following must flow through config or services whenever user control is appr
 
 1. Recovery scope is still narrower for failed-job escalation and advanced orchestration rules.
 2. Preview and final now share visual composition parity, but audio mixing and richer layer parity are still incomplete.
-3. Render decisions are persisted, but they are not yet surfaced richly enough for operators.
+3. Render decisions are now surfaced more clearly in Recipe Builder inspection, but runtime-applied audio evidence is still missing.
 4. Path-root changes are not fully hot-reloaded across all runtime services.
 
 ## Composition Reliability Direction

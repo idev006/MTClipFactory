@@ -23,14 +23,15 @@ The project now uses two roadmap layers:
 - `IR-02` Timeline segment model: complete on 2026-06-06
 - `IR-03` Segment-based preview composition: complete on 2026-06-06
 - `IR-04` Final-render composition parity: complete on 2026-06-06
-- `IR-05` Audio ducking and operator-visible render decisions: ready
+- `IR-05a` Audio policy settings and operator-visible render decisions: complete on 2026-06-06
+- `IR-05b` Runtime audio ducking application: ready
 - `IR-06` Review gates and composition reliability controls: ready
 
 ## Current Execution Stream
 
 The next work should follow this order unless a documented issue changes priority:
 
-1. `IR-05` Audio ducking and operator-visible render decisions
+1. `IR-05b` Runtime audio ducking application
 2. `IR-06` Review gates and composition reliability controls
 
 ## IR-01 | Composition Data Model
@@ -141,18 +142,18 @@ Make final render follow the same composition semantics as preview.
 - added final manifest visibility and a corruption-proof parity test
 - left audio ducking and richer operator-facing render decision surfaces for the next milestones
 
-## IR-05 | Audio Ducking And Render Decision Visibility
+## IR-05a | Audio Policy Settings And Render Decision Visibility
 
 ### Goal
 
-Implement the agreed audio-priority behavior and expose render decisions to operators.
+Expose the agreed audio policy and composition decisions to operators through settings, dashboard, and factory inspection surfaces.
 
 ### Scope
 
-- implement configurable music ducking
-- keep narration as the foreground message layer
-- persist or expose render decisions such as loop, trim, freeze, duck, and silence fill
-- surface those decisions in factory UI and/or dashboard views
+- add configurable narration/music policy settings in `.toml` and settings UI
+- keep narration as the documented foreground message layer
+- expose persisted composition/render summaries in factory UI and dashboard views
+- cover the new visibility and settings seams with pytest
 
 ### Acceptance Criteria
 
@@ -160,6 +161,33 @@ Implement the agreed audio-priority behavior and expose render decisions to oper
 - music ducking is configurable through settings and `.toml`
 - operator-facing surfaces show render decisions clearly
 - tests cover ducking configuration and decision visibility
+
+### Delivery Result
+
+- delivered `[audio]` policy settings in `app_config.toml`
+- exposed audio policy controls in the settings window and dashboard
+- exposed composition-plan segment summaries and render-decision summaries in Recipe Builder output inspection
+- covered audio policy persistence and operator visibility with pytest
+
+## IR-05b | Runtime Audio Ducking Application
+
+### Goal
+
+Apply the configured narration/music policy inside preview and final rendering, not only in settings and UI visibility.
+
+### Scope
+
+- build a real runtime audio mix path for narration and music layers
+- consume configured duck enable/gain/attack/release settings
+- emit inspectable evidence that ducking was applied in the render output metadata or manifest
+- keep preview/final parity truthful
+
+### Acceptance Criteria
+
+- preview and final both consume the configured duck policy
+- runtime output contains inspectable evidence of applied audio behavior
+- tests cover the supported audio-mix path
+- issues and PM artifacts remain truthful about any remaining limits
 
 ## IR-06 | Review Gates And Composition Reliability
 
@@ -195,6 +223,6 @@ This roadmap slice is complete when:
 
 - preview and final are both timeline-driven
 - narration remains non-looping by rule
-- music ducking is implemented and configurable
+- music ducking is implemented and configurable in runtime render flows
 - render decisions are visible and trustworthy
 - risky cases are routed into review instead of silent low-quality automation

@@ -5,6 +5,7 @@ from PySide6.QtCore import QObject, Property, Signal
 from mt_clip_factory.application.services import ProductApplicationService
 from mt_clip_factory.factory.dto import (
     AssignAssetToRecipeCommand,
+    CompositionPlanDTO,
     CreateRecipeCommand,
     DecisionEventDTO,
     OutputSummaryDTO,
@@ -42,6 +43,7 @@ class RecipeBuilderViewModel(QObject):
         self._recipe_items: list[RecipeItemDTO] = []
         self._outputs: list[OutputSummaryDTO] = []
         self._decision_events: list[DecisionEventDTO] = []
+        self._composition_plan: CompositionPlanDTO | None = None
         self._status = "idle"
         self._feedback = ""
         self._selected_recipe_id: int | None = None
@@ -88,6 +90,10 @@ class RecipeBuilderViewModel(QObject):
         return list(self._outputs)
 
     @property
+    def composition_plan(self) -> CompositionPlanDTO | None:
+        return self._composition_plan
+
+    @property
     def decision_events(self) -> list[DecisionEventDTO]:
         return list(self._decision_events)
 
@@ -108,6 +114,7 @@ class RecipeBuilderViewModel(QObject):
             self._recipe_items = []
             self._outputs = []
             self._decision_events = []
+            self._composition_plan = None
         self.products_changed.emit()
         self.assets_changed.emit()
         self.recipes_changed.emit()
@@ -252,8 +259,10 @@ class RecipeBuilderViewModel(QObject):
             self._recipe_items = []
             self._outputs = []
             self._decision_events = []
+            self._composition_plan = None
             return
         recipe = self._video_assembly_factory_service.get_recipe(recipe_id)
         self._recipe_items = list(recipe.items)
         self._outputs = self._video_assembly_factory_service.list_outputs(recipe_id=recipe_id)
         self._decision_events = self._video_assembly_factory_service.list_decision_events(recipe_id)
+        self._composition_plan = self._video_assembly_factory_service.get_composition_plan(recipe_id)

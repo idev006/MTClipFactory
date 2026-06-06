@@ -307,24 +307,7 @@ class RecipeBuilderWindow(QMainWindow):
             return
         self.output_details_text.setPlainText(
             "\n".join(
-                [
-                    f"Output ID: {output.output_id}",
-                    f"Recipe: {output.recipe_code} (#{output.recipe_id})",
-                    f"Kind: {output.output_kind}",
-                    f"Approved: {output.approved}",
-                    f"Approved By: {output.approved_by or '-'}",
-                    f"Approved At: {output.approved_at or '-'}",
-                    f"Approval Reason: {output.approval_reason or '-'}",
-                    f"Created At: {output.created_at}",
-                    f"Platform: {output.platform or '-'}",
-                    f"Ratio: {output.ratio or '-'}",
-                    f"Render Job Code: {output.rendering_job_code or '-'}",
-                    f"Manifest Path: {output.manifest_path or '-'}",
-                    f"Source Output ID: {output.source_output_id or '-'}",
-                    f"Source Output Code: {output.source_output_code or '-'}",
-                    f"Source Output Path: {output.source_output_path or '-'}",
-                    f"File Path: {output.file_path}",
-                ]
+                _build_output_detail_lines(output, self._view_model.composition_plan)
             )
         )
 
@@ -437,3 +420,49 @@ class RecipeBuilderWindow(QMainWindow):
 
     def _handle_recipe_selection(self) -> None:
         self._view_model.select_recipe(self._selected_recipe_id())
+
+
+def _build_output_detail_lines(output, composition_plan) -> list[str]:
+    lines = [
+        f"Output ID: {output.output_id}",
+        f"Recipe: {output.recipe_code} (#{output.recipe_id})",
+        f"Kind: {output.output_kind}",
+        f"Approved: {output.approved}",
+        f"Approved By: {output.approved_by or '-'}",
+        f"Approved At: {output.approved_at or '-'}",
+        f"Approval Reason: {output.approval_reason or '-'}",
+        f"Created At: {output.created_at}",
+        f"Platform: {output.platform or '-'}",
+        f"Ratio: {output.ratio or '-'}",
+        f"Render Job Code: {output.rendering_job_code or '-'}",
+        f"Manifest Path: {output.manifest_path or '-'}",
+        f"Source Output ID: {output.source_output_id or '-'}",
+        f"Source Output Code: {output.source_output_code or '-'}",
+        f"Source Output Path: {output.source_output_path or '-'}",
+        f"File Path: {output.file_path}",
+    ]
+    if composition_plan is None:
+        return lines
+    lines.extend(
+        [
+            "",
+            f"Composition Plan ID: {composition_plan.plan_id}",
+            f"Duration Source: {composition_plan.duration_source}",
+            f"Resolved Duration: {composition_plan.resolved_duration_sec or '-'}",
+            f"Timeline Segments: {len(composition_plan.segments)}",
+            f"Render Decisions: {len(composition_plan.decisions)}",
+        ]
+    )
+    for segment in composition_plan.segments:
+        lines.append(
+            f"- Segment {segment.sequence_index}: {segment.segment_type} "
+            f"{segment.start_sec:.3f}-{segment.end_sec:.3f}s | audio={segment.audio_policy or '-'}"
+        )
+    for decision in composition_plan.decisions[:6]:
+        lines.append(
+            f"- Decision: {decision.decision_type} -> {decision.action}"
+            f"{f' | role={decision.asset_role}' if decision.asset_role else ''}"
+        )
+    if len(composition_plan.decisions) > 6:
+        lines.append(f"- More Decisions: {len(composition_plan.decisions) - 6}")
+    return lines

@@ -114,6 +114,7 @@ classDiagram
         +load()
         +save(settings)
         +update(...)
+        +audio policy fields
     }
 
     class MigrationGuard {
@@ -134,6 +135,7 @@ classDiagram
         +queue_preview(recipe_id)
         +select_recipe(recipe_id)
         +find_output(output_id)
+        +composition_plan
     }
 
     class DashboardWindow {
@@ -149,6 +151,7 @@ classDiagram
         +attach_asset()
         +build_preview()
         +show output lineage details
+        +show composition/render summaries
     }
 
     class SqlAlchemyUnitOfWork {
@@ -504,6 +507,7 @@ sequenceDiagram
     VM->>Factory: build composition plan
     Factory->>Plan: resolve master timeline + segments + layers
     Plan-->>Factory: composition rules
+    Factory->>View: expose composition-plan segments + render-decision summary
     Factory->>Render: render with loop/trim/duck policy
     Render-->>Factory: output + decisions
     Factory->>Audit: persist render decisions

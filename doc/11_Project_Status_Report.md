@@ -29,6 +29,8 @@
 - persisted timeline-segment foundation with contiguous semantic coverage validation
 - segment-aware preview composition with manifest-visible visual clip planning
 - segment-aware final-render composition parity with composition-based rerendering
+- settings-backed audio policy controls for narration looping, music looping, and duck timing
+- dashboard and Recipe Builder visibility for composition-plan segments and render-decision summaries
 - initial Video Assembly Factory:
   - recipe persistence
   - recipe item assignment
@@ -55,15 +57,15 @@
 - deepen render fidelity beyond the current visual parity baseline
 - keep review and approval history truthful through append-only persistence
 - keep project documents truthful through per-milestone revision checkpoints
-- implement audio-priority behavior on top of the new preview/final visual parity baseline
-- turn persisted render decisions into richer operator-visible preview/final behavior
+- apply the new audio policy settings to a real preview/final audio-mix runtime path
+- deepen operator-visible render decisions from summary visibility into runtime-applied mix evidence
 - runtime migration path now exists, so future schema work can be delivered more safely
 - decide whether runtime path changes should hot-reload or remain restart-driven
 - deepen orchestration policy beyond the current queued-startup and failed-manual retry baselines
 
 ## Next Steps
 
-1. Deliver `IR-05` audio-priority behavior and music ducking visibility.
+1. Deliver `IR-05b` runtime audio mixing and duck application on top of the new settings/visibility baseline.
 2. Deliver `IR-06` review gates for low-confidence or mismatch-heavy composition cases.
 3. Extend recovery orchestration beyond current sequential retry behavior and define escalation rules.
 4. Decide whether path-root changes stay restart-driven or become hot-reload capable.
@@ -79,6 +81,7 @@
 - `IR-02` timeline-segment persistence and validation are now implemented and become the baseline for `IR-03`
 - `IR-03` preview composition now follows planned segments and becomes the baseline for `IR-04`
 - `IR-04` final render now follows the planned composition path and becomes the baseline for `IR-05`
+- `IR-05a` now covers operator-controlled audio policy settings plus visible composition/render summaries, while runtime audio mixing remains a separate follow-up
 
 ## Ownership
 

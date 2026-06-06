@@ -124,3 +124,8 @@
 
 - proving final render parity is easier when a test deliberately corrupts the approved preview file and confirms final render still rebuilds from the composition plan
 - parity claims are much stronger when the test would fail under preview-promotion shortcuts
+
+## LL-026 | 2026-06-06 | Audio Policy Should Land In Settings Before Runtime DSP
+
+- moving loop/duck policy into `.toml`, dashboard, and factory inspection first makes the team’s intent visible and testable before deeper FFmpeg audio work begins
+- separating policy visibility from runtime mix application keeps project status more honest than claiming full ducking support too early

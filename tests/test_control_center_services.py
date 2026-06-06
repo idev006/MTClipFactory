@@ -244,6 +244,12 @@ def test_system_settings_service_reads_and_writes_toml(tmp_path) -> None:
         auto_refresh_seconds=5,
         auto_recover_queued_jobs=True,
         max_recovery_jobs_per_run=12,
+        voice_loop_enabled=False,
+        background_music_loop_enabled=True,
+        music_duck_enabled=True,
+        music_duck_db=-16,
+        music_duck_attack_ms=220,
+        music_duck_release_ms=480,
     )
     service.save(updated)
 
@@ -253,6 +259,10 @@ def test_system_settings_service_reads_and_writes_toml(tmp_path) -> None:
     assert loaded.cpu_limit_percent == 88
     assert loaded.auto_recover_queued_jobs is True
     assert loaded.max_recovery_jobs_per_run == 12
+    assert loaded.voice_loop_enabled is False
+    assert loaded.background_music_loop_enabled is True
+    assert loaded.music_duck_enabled is True
+    assert loaded.music_duck_db == -16
     assert config_path.exists()
 
 
@@ -279,6 +289,12 @@ def test_dashboard_service_aggregates_system_information(unit_of_work_factory, t
             auto_refresh_seconds=10,
             auto_recover_queued_jobs=True,
             max_recovery_jobs_per_run=3,
+            voice_loop_enabled=False,
+            background_music_loop_enabled=True,
+            music_duck_enabled=True,
+            music_duck_db=-15,
+            music_duck_attack_ms=250,
+            music_duck_release_ms=500,
         )
     )
 
@@ -322,6 +338,10 @@ def test_dashboard_service_aggregates_system_information(unit_of_work_factory, t
     assert summary.failed_job_count == 2
     assert summary.auto_recover_queued_jobs is True
     assert summary.max_recovery_jobs_per_run == 3
+    assert summary.voice_loop_enabled is False
+    assert summary.background_music_loop_enabled is True
+    assert summary.music_duck_enabled is True
+    assert summary.music_duck_db == -15
     assert summary.recent_jobs[0] == DashboardJobDTO(
         job_id=11,
         job_code="preview_11",
@@ -361,6 +381,12 @@ def test_dashboard_service_recovers_queued_jobs_and_records_summary(unit_of_work
             auto_refresh_seconds=10,
             auto_recover_queued_jobs=False,
             max_recovery_jobs_per_run=2,
+            voice_loop_enabled=False,
+            background_music_loop_enabled=True,
+            music_duck_enabled=True,
+            music_duck_db=-15,
+            music_duck_attack_ms=250,
+            music_duck_release_ms=500,
         )
     )
     product_service = ProductApplicationService(unit_of_work_factory=unit_of_work_factory)
@@ -413,6 +439,12 @@ def test_dashboard_service_retries_failed_jobs_and_records_summary(unit_of_work_
             auto_refresh_seconds=10,
             auto_recover_queued_jobs=False,
             max_recovery_jobs_per_run=5,
+            voice_loop_enabled=False,
+            background_music_loop_enabled=True,
+            music_duck_enabled=True,
+            music_duck_db=-15,
+            music_duck_attack_ms=250,
+            music_duck_release_ms=500,
         )
     )
     dashboard_service = DashboardService(

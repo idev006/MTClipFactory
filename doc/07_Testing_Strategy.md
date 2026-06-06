@@ -9,6 +9,7 @@ MTClipFactory must stay easy to test with `pytest` from day one. The system is e
 - Python runtime: `F:\programming\python\MTClipFactory\.venv`
 - Test command: `python -m pytest`
 - Current automated baseline on 2026-06-06: `78 passed`
+- audio-policy settings persistence and Recipe Builder composition visibility are now part of that baseline
 - Current UI smoke baseline on 2026-06-06: `6` PySide windows instantiated with `QT_QPA_PLATFORM=offscreen`
 
 ## Test Pyramid
@@ -72,6 +73,8 @@ MTClipFactory must stay easy to test with `pytest` from day one. The system is e
 - segment-aware preview composition manifest and no-visual failure handling
 - final-render composition parity with composition-based rerendering and manifest lineage
 - recipe builder view model flow
+- dashboard/settings audio-policy controls
+- Recipe Builder composition-plan visibility alongside output lineage
 
 ## Conventions
 

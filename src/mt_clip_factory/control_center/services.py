@@ -32,6 +32,7 @@ class SystemSettingsService:
         paths = data.get("paths", {})
         ffmpeg = data.get("ffmpeg", {})
         system = data.get("system", {})
+        audio = data.get("audio", {})
         database_path = _resolve_runtime_path(workspace_root, str(paths.get("database_path", "ad_kitchen.db")))
         media_root = _resolve_runtime_path(workspace_root, str(paths.get("media_root", "media_library")))
         docs_root = _resolve_runtime_path(workspace_root, str(paths.get("docs_root", "doc")))
@@ -63,6 +64,12 @@ class SystemSettingsService:
             auto_refresh_seconds=int(system.get("auto_refresh_seconds", 0)),
             auto_recover_queued_jobs=_coerce_bool(system.get("auto_recover_queued_jobs", False)),
             max_recovery_jobs_per_run=int(system.get("max_recovery_jobs_per_run", 25)),
+            voice_loop_enabled=_coerce_bool(audio.get("voice_loop_enabled", False)),
+            background_music_loop_enabled=_coerce_bool(audio.get("background_music_loop_enabled", True)),
+            music_duck_enabled=_coerce_bool(audio.get("music_duck_enabled", True)),
+            music_duck_db=int(audio.get("music_duck_db", -15)),
+            music_duck_attack_ms=int(audio.get("music_duck_attack_ms", 250)),
+            music_duck_release_ms=int(audio.get("music_duck_release_ms", 500)),
         )
 
     def save(self, settings: SystemSettingsDTO) -> None:
@@ -89,6 +96,14 @@ class SystemSettingsService:
                 f"auto_refresh_seconds = {settings.auto_refresh_seconds}",
                 f"auto_recover_queued_jobs = {_format_toml_bool(settings.auto_recover_queued_jobs)}",
                 f"max_recovery_jobs_per_run = {settings.max_recovery_jobs_per_run}",
+                "",
+                "[audio]",
+                f"voice_loop_enabled = {_format_toml_bool(settings.voice_loop_enabled)}",
+                f"background_music_loop_enabled = {_format_toml_bool(settings.background_music_loop_enabled)}",
+                f"music_duck_enabled = {_format_toml_bool(settings.music_duck_enabled)}",
+                f"music_duck_db = {settings.music_duck_db}",
+                f"music_duck_attack_ms = {settings.music_duck_attack_ms}",
+                f"music_duck_release_ms = {settings.music_duck_release_ms}",
                 "",
             ]
         )
@@ -174,6 +189,12 @@ class DashboardService:
             auto_refresh_seconds=settings.auto_refresh_seconds,
             auto_recover_queued_jobs=settings.auto_recover_queued_jobs,
             max_recovery_jobs_per_run=settings.max_recovery_jobs_per_run,
+            voice_loop_enabled=settings.voice_loop_enabled,
+            background_music_loop_enabled=settings.background_music_loop_enabled,
+            music_duck_enabled=settings.music_duck_enabled,
+            music_duck_db=settings.music_duck_db,
+            music_duck_attack_ms=settings.music_duck_attack_ms,
+            music_duck_release_ms=settings.music_duck_release_ms,
         )
 
     def _build_dashboard_jobs(self) -> list[DashboardJobDTO]:

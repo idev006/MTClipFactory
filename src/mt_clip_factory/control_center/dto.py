@@ -21,6 +21,12 @@ class SystemSettingsDTO:
     auto_refresh_seconds: int
     auto_recover_queued_jobs: bool
     max_recovery_jobs_per_run: int
+    voice_loop_enabled: bool
+    background_music_loop_enabled: bool
+    music_duck_enabled: bool
+    music_duck_db: int
+    music_duck_attack_ms: int
+    music_duck_release_ms: int
 
 
 @dataclass(slots=True, frozen=True)
@@ -86,3 +92,9 @@ class DashboardSummaryDTO:
     auto_refresh_seconds: int
     auto_recover_queued_jobs: bool
     max_recovery_jobs_per_run: int
+    voice_loop_enabled: bool
+    background_music_loop_enabled: bool
+    music_duck_enabled: bool
+    music_duck_db: int
+    music_duck_attack_ms: int
+    music_duck_release_ms: int

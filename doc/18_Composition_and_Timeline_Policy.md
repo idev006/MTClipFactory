@@ -150,7 +150,9 @@ Current preview/final baseline:
 
 - preview and final follow semantic segment order for visual clip assembly
 - preview and final write segment clip choices and fill mode into inspectable manifests
-- audio ducking and richer multi-layer mixing are still future work after visual parity
+- settings and UI now expose narration-loop, music-loop, and duck timing policy
+- Recipe Builder output inspection now exposes segment summaries and persisted render-decision summaries
+- runtime audio ducking and richer multi-layer mixing are still future work after visual parity
 
 ## Review Gate Rule
 
@@ -177,6 +179,15 @@ These policies should become configurable through settings and backed by `.toml`
 - `max_loop_repetitions`
 - `loop_warning_threshold_sec`
 - `max_speed_adjust_ratio`
+
+Current implemented settings baseline on 2026-06-06:
+
+- `voice_loop_enabled`
+- `background_music_loop_enabled`
+- `music_duck_enabled`
+- `music_duck_db`
+- `music_duck_attack_ms`
+- `music_duck_release_ms`
 
 ## Current Data-Model Baseline
 

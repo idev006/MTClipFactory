@@ -184,6 +184,12 @@ class DashboardWindow(QMainWindow):
                     f"Auto Refresh Seconds: {summary.auto_refresh_seconds}",
                     f"Auto Recover Queued Jobs: {summary.auto_recover_queued_jobs}",
                     f"Max Recovery Jobs Per Run: {summary.max_recovery_jobs_per_run}",
+                    f"Voice Loop Enabled: {summary.voice_loop_enabled}",
+                    f"Background Music Loop Enabled: {summary.background_music_loop_enabled}",
+                    f"Music Duck Enabled: {summary.music_duck_enabled}",
+                    f"Music Duck Gain (dB): {summary.music_duck_db}",
+                    f"Music Duck Attack (ms): {summary.music_duck_attack_ms}",
+                    f"Music Duck Release (ms): {summary.music_duck_release_ms}",
                 ]
             )
         )

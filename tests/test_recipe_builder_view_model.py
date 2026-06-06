@@ -3,11 +3,15 @@ from __future__ import annotations
 from mt_clip_factory.application.dto import CreateProductCommand
 from mt_clip_factory.application.services import ProductApplicationService
 from mt_clip_factory.factory.dto import (
+    CompositionLayerDTO,
+    CompositionPlanDTO,
     DecisionEventDTO,
     OutputSummaryDTO,
     RecipeDetailsDTO,
     RecipeItemDTO,
     RecipeSummaryDTO,
+    RenderDecisionDTO,
+    TimelineSegmentDTO,
 )
 from mt_clip_factory.library.dto import AssetSummaryDTO
 from mt_clip_factory.presentation.factory.recipe_builder import RecipeBuilderViewModel
@@ -127,6 +131,45 @@ class FakeVideoAssemblyFactoryService:
 
     def list_decision_events(self, recipe_id: int) -> list[DecisionEventDTO]:
         return list(self.decision_events.get(recipe_id, []))
+
+    def get_composition_plan(self, recipe_id: int) -> CompositionPlanDTO:
+        return CompositionPlanDTO(
+            plan_id=recipe_id,
+            recipe_id=recipe_id,
+            duration_source="voiceover_total_duration",
+            target_duration_sec=30.0,
+            resolved_duration_sec=30.0,
+            updated_at="2026-06-06 10:00:00",
+            layers=(
+                CompositionLayerDTO(
+                    layer_name="background_visual",
+                    asset_ids=(1,),
+                    asset_codes=("hero_asset",),
+                ),
+            ),
+            decisions=(
+                RenderDecisionDTO(
+                    decision_id=1,
+                    decision_type="timeline_segment_planned",
+                    action="schedule_segment",
+                    created_at="2026-06-06 10:00:00",
+                    asset_role="hook",
+                    details_json='{"audio_policy":"voice_priority_with_music_duck"}',
+                ),
+            ),
+            segments=(
+                TimelineSegmentDTO(
+                    segment_id=1,
+                    segment_type="hook",
+                    sequence_index=1,
+                    start_sec=0.0,
+                    end_sec=10.0,
+                    target_duration_sec=10.0,
+                    audio_policy="voice_priority_with_music_duck",
+                    preferred_layers=("background_visual",),
+                ),
+            ),
+        )
 
     def approve_output(self, output_id: int, *, actor: str, reason: str | None = None) -> None:
         for recipe_id, outputs in self.outputs.items():
@@ -310,6 +353,7 @@ def test_recipe_builder_view_model_loads_products_assets_and_recipes(unit_of_wor
     assert view_model.recipes == []
     assert view_model.outputs == []
     assert view_model.decision_events == []
+    assert view_model.composition_plan is None
 
 
 def test_recipe_builder_view_model_creates_recipe(unit_of_work_factory) -> None:
@@ -347,6 +391,7 @@ def test_recipe_builder_view_model_assigns_asset(unit_of_work_factory) -> None:
     assert view_model.status == "ready"
     assert len(view_model.recipe_items) == 1
     assert view_model.recipe_items[0].role == "hero"
+    assert view_model.composition_plan is not None
 
 
 def test_recipe_builder_view_model_builds_preview(unit_of_work_factory) -> None:
@@ -367,6 +412,8 @@ def test_recipe_builder_view_model_builds_preview(unit_of_work_factory) -> None:
     assert "Built preview output for recipe #1" in view_model.feedback
     assert len(view_model.outputs) == 1
     assert view_model.outputs[0].manifest_path == "outputs/manifests/1.json"
+    assert view_model.composition_plan is not None
+    assert view_model.composition_plan.segments[0].audio_policy == "voice_priority_with_music_duck"
 
 
 def test_recipe_builder_view_model_approves_output_and_recipe(unit_of_work_factory) -> None:

@@ -65,6 +65,12 @@ class SettingsWindow(QMainWindow):
         self.auto_refresh_input = QSpinBox()
         self.auto_recover_input = QCheckBox("Enable queued-job auto recovery on startup")
         self.max_recovery_jobs_input = QSpinBox()
+        self.voice_loop_input = QCheckBox("Allow narration looping when timeline is longer than voice assets")
+        self.music_loop_input = QCheckBox("Allow background music looping to fill timeline gaps")
+        self.music_duck_input = QCheckBox("Enable music ducking while narration is active")
+        self.music_duck_db_input = QSpinBox()
+        self.music_duck_attack_input = QSpinBox()
+        self.music_duck_release_input = QSpinBox()
 
         for spinbox in (
             self.cpu_limit_input,
@@ -74,8 +80,11 @@ class SettingsWindow(QMainWindow):
             self.max_final_input,
             self.auto_refresh_input,
             self.max_recovery_jobs_input,
+            self.music_duck_attack_input,
+            self.music_duck_release_input,
         ):
             spinbox.setRange(0, 100000)
+        self.music_duck_db_input.setRange(-60, 0)
 
         form_layout.addRow("Database Path", self.database_path_input)
         form_layout.addRow("Media Root", self.media_root_input)
@@ -93,6 +102,12 @@ class SettingsWindow(QMainWindow):
         form_layout.addRow("Auto Refresh Seconds", self.auto_refresh_input)
         form_layout.addRow("Auto Recover Queued Jobs", self.auto_recover_input)
         form_layout.addRow("Max Recovery Jobs Per Run", self.max_recovery_jobs_input)
+        form_layout.addRow("Voice Loop Enabled", self.voice_loop_input)
+        form_layout.addRow("Background Music Loop Enabled", self.music_loop_input)
+        form_layout.addRow("Music Duck Enabled", self.music_duck_input)
+        form_layout.addRow("Music Duck Gain (dB)", self.music_duck_db_input)
+        form_layout.addRow("Music Duck Attack (ms)", self.music_duck_attack_input)
+        form_layout.addRow("Music Duck Release (ms)", self.music_duck_release_input)
         layout.addLayout(form_layout)
 
         button_row = QHBoxLayout()
@@ -131,6 +146,12 @@ class SettingsWindow(QMainWindow):
         self.auto_refresh_input.setValue(settings.auto_refresh_seconds)
         self.auto_recover_input.setChecked(settings.auto_recover_queued_jobs)
         self.max_recovery_jobs_input.setValue(settings.max_recovery_jobs_per_run)
+        self.voice_loop_input.setChecked(settings.voice_loop_enabled)
+        self.music_loop_input.setChecked(settings.background_music_loop_enabled)
+        self.music_duck_input.setChecked(settings.music_duck_enabled)
+        self.music_duck_db_input.setValue(settings.music_duck_db)
+        self.music_duck_attack_input.setValue(settings.music_duck_attack_ms)
+        self.music_duck_release_input.setValue(settings.music_duck_release_ms)
 
     def _refresh_feedback(self) -> None:
         self.feedback_label.setText(f"Status: {self._view_model.status}\n{self._view_model.feedback}".strip())
@@ -155,6 +176,12 @@ class SettingsWindow(QMainWindow):
                     auto_refresh_seconds=self.auto_refresh_input.value(),
                     auto_recover_queued_jobs=self.auto_recover_input.isChecked(),
                     max_recovery_jobs_per_run=self.max_recovery_jobs_input.value(),
+                    voice_loop_enabled=self.voice_loop_input.isChecked(),
+                    background_music_loop_enabled=self.music_loop_input.isChecked(),
+                    music_duck_enabled=self.music_duck_input.isChecked(),
+                    music_duck_db=self.music_duck_db_input.value(),
+                    music_duck_attack_ms=self.music_duck_attack_input.value(),
+                    music_duck_release_ms=self.music_duck_release_input.value(),
                 )
             )
         except OSError as exc:

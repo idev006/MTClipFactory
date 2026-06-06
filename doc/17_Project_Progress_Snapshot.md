@@ -31,21 +31,23 @@
 - Semantic segment persistence now exists through `timeline_segments` with baseline contiguous-coverage validation.
 - Preview composition is now segment-aware and writes inspectable manifest data for chosen visual clips.
 - Final render now rerenders from the planned composition path instead of depending on the approved preview file alone.
+- Settings now expose `voice_loop_enabled`, `background_music_loop_enabled`, and music duck controls through `.toml` and the desktop settings screen.
+- Dashboard and Recipe Builder now show more of the composition/render story instead of only output lineage.
 - The roadmap is now split into strategic and implementation layers so the next coding milestone is clearer.
 
 ## Delivered In The Latest Loop
 
-- final rendering now follows the planned composition path instead of promoting the approved preview file
-- final output lineage now includes manifest-visible composition information plus approved-preview traceability
-- parity is covered by a test that corrupts the preview file and still expects a correct final rerender
-- architecture, reliability, roadmap, Kanban, issues, and lessons learned were aligned to the delivered `IR-04` baseline
+- audio policy settings now live in `app_config.toml`, the settings UI, and the dashboard
+- Recipe Builder output inspection now includes composition-plan segment and render-decision summaries
+- pytest now covers audio-policy settings persistence plus Recipe Builder composition visibility
+- architecture, reliability, roadmap, Kanban, issues, and lessons learned were aligned to the delivered `IR-05a` baseline
 
 ## Still Open
 
-1. audio priority and music ducking implementation
-2. operator-visible render decision reporting
-3. failed-job escalation policy beyond manual retry
-4. optional hot-reload decision for path-root changes
+1. runtime audio priority and music ducking application inside preview/final rendering
+2. failed-job escalation policy beyond manual retry
+3. optional hot-reload decision for path-root changes
+4. deeper review gates for low-confidence composition outcomes
 
 ## Verification Baseline
 

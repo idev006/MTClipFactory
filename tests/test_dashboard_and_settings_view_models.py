@@ -206,6 +206,14 @@ def test_settings_view_model_loads_and_saves(tmp_path) -> None:
                 "auto_recover_queued_jobs = false",
                 "max_recovery_jobs_per_run = 25",
                 "",
+                "[audio]",
+                "voice_loop_enabled = false",
+                "background_music_loop_enabled = true",
+                "music_duck_enabled = true",
+                "music_duck_db = -15",
+                "music_duck_attack_ms = 250",
+                "music_duck_release_ms = 500",
+                "",
             ]
         ),
         encoding="utf-8",
@@ -235,6 +243,12 @@ def test_settings_view_model_loads_and_saves(tmp_path) -> None:
             auto_refresh_seconds=6,
             auto_recover_queued_jobs=True,
             max_recovery_jobs_per_run=12,
+            voice_loop_enabled=False,
+            background_music_loop_enabled=True,
+            music_duck_enabled=True,
+            music_duck_db=-18,
+            music_duck_attack_ms=180,
+            music_duck_release_ms=420,
         )
     )
 
@@ -244,6 +258,7 @@ def test_settings_view_model_loads_and_saves(tmp_path) -> None:
     assert view_model.settings.cpu_limit_percent == 91
     assert view_model.settings.auto_recover_queued_jobs is True
     assert view_model.settings.max_recovery_jobs_per_run == 12
+    assert view_model.settings.music_duck_db == -18
 
 
 def test_dashboard_view_model_loads_summary(unit_of_work_factory, tmp_path) -> None:
@@ -288,6 +303,7 @@ def test_dashboard_view_model_loads_summary(unit_of_work_factory, tmp_path) -> N
     assert view_model.summary.queued_job_count == 2
     assert view_model.summary.processing_job_count == 1
     assert view_model.summary.failed_job_count == 2
+    assert view_model.summary.music_duck_enabled is True
     assert view_model.summary.recent_jobs[0].job_code == "preview_07"
 
 
