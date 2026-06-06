@@ -15,6 +15,7 @@ class AssetType(StrEnum):
 
 class RecipeStatus(StrEnum):
     CANDIDATE = "candidate"
+    NEEDS_REVIEW = "needs_review"
     APPROVED = "approved"
     REJECTED = "rejected"
 
@@ -27,4 +28,3 @@ class JobStatus(StrEnum):
     DONE = "done"
     FAILED = "failed"
     CANCELLED = "cancelled"
-

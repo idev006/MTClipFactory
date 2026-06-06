@@ -14,6 +14,7 @@ from mt_clip_factory.control_center.dto import (
     RecoveryRunSummaryDTO,
     SystemSettingsDTO,
 )
+from mt_clip_factory.domain.enums import RecipeStatus
 from mt_clip_factory.library.services import AssetIntakeService
 from mt_clip_factory.library.tag_services import TagManagementService
 
@@ -33,6 +34,7 @@ class SystemSettingsService:
         ffmpeg = data.get("ffmpeg", {})
         system = data.get("system", {})
         audio = data.get("audio", {})
+        review = data.get("review", {})
         database_path = _resolve_runtime_path(workspace_root, str(paths.get("database_path", "ad_kitchen.db")))
         media_root = _resolve_runtime_path(workspace_root, str(paths.get("media_root", "media_library")))
         docs_root = _resolve_runtime_path(workspace_root, str(paths.get("docs_root", "doc")))
@@ -70,6 +72,10 @@ class SystemSettingsService:
             music_duck_db=int(audio.get("music_duck_db", -15)),
             music_duck_attack_ms=int(audio.get("music_duck_attack_ms", 250)),
             music_duck_release_ms=int(audio.get("music_duck_release_ms", 500)),
+            review_duration_mismatch_sec=int(review.get("duration_mismatch_sec", 1)),
+            review_max_looped_segments=int(review.get("max_looped_segments", 2)),
+            review_min_distinct_visual_assets=int(review.get("min_distinct_visual_assets", 2)),
+            review_max_consecutive_same_visual_segments=int(review.get("max_consecutive_same_visual_segments", 3)),
         )
 
     def save(self, settings: SystemSettingsDTO) -> None:
@@ -104,6 +110,12 @@ class SystemSettingsService:
                 f"music_duck_db = {settings.music_duck_db}",
                 f"music_duck_attack_ms = {settings.music_duck_attack_ms}",
                 f"music_duck_release_ms = {settings.music_duck_release_ms}",
+                "",
+                "[review]",
+                f"duration_mismatch_sec = {settings.review_duration_mismatch_sec}",
+                f"max_looped_segments = {settings.review_max_looped_segments}",
+                f"min_distinct_visual_assets = {settings.review_min_distinct_visual_assets}",
+                f"max_consecutive_same_visual_segments = {settings.review_max_consecutive_same_visual_segments}",
                 "",
             ]
         )
@@ -150,6 +162,7 @@ class DashboardService:
         recipe_count = sum(product.recipe_count for product in products)
         output_count = sum(product.output_count for product in products)
         dashboard_jobs = self._build_dashboard_jobs()
+        review_recipes = self._video_assembly_factory_service.list_recipes(status=RecipeStatus.NEEDS_REVIEW.value)
         tags = self._tag_management_service.list_tags()
         ready_asset_count = sum(1 for asset in assets if asset.status == "ready")
         needs_review_asset_count = sum(1 for asset in assets if asset.status == "needs_review")
@@ -162,6 +175,7 @@ class DashboardService:
             output_count=output_count,
             ready_asset_count=ready_asset_count,
             needs_review_asset_count=needs_review_asset_count,
+            needs_review_recipe_count=len(review_recipes),
             tag_count=len(tags),
             total_job_count=len(dashboard_jobs),
             active_job_count=sum(1 for job in dashboard_jobs if job.status in {"queued", "processing"}),
@@ -195,6 +209,10 @@ class DashboardService:
             music_duck_db=settings.music_duck_db,
             music_duck_attack_ms=settings.music_duck_attack_ms,
             music_duck_release_ms=settings.music_duck_release_ms,
+            review_duration_mismatch_sec=settings.review_duration_mismatch_sec,
+            review_max_looped_segments=settings.review_max_looped_segments,
+            review_min_distinct_visual_assets=settings.review_min_distinct_visual_assets,
+            review_max_consecutive_same_visual_segments=settings.review_max_consecutive_same_visual_segments,
         )
 
     def _build_dashboard_jobs(self) -> list[DashboardJobDTO]:

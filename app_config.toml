@@ -27,3 +27,9 @@ music_duck_enabled = true
 music_duck_db = -15
 music_duck_attack_ms = 250
 music_duck_release_ms = 500
+
+[review]
+duration_mismatch_sec = 1
+max_looped_segments = 2
+min_distinct_visual_assets = 2
+max_consecutive_same_visual_segments = 3

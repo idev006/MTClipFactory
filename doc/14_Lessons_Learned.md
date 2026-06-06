@@ -134,3 +134,8 @@
 
 - once preview/final renderers started applying voice/music mixing for real, the manifest became the simplest trustworthy place to expose what ducking policy was actually applied
 - operator visibility is much stronger when the UI can read runtime audio evidence instead of only showing planned composition metadata
+
+## LL-028 | 2026-06-06 | Review Gates Must Explain Themselves
+
+- a `needs_review` state is much more trustworthy when the system also shows the exact trigger signals, thresholds, and quality/risk summary instead of only a red flag
+- review automation should route work toward humans, not pretend it replaced human judgment

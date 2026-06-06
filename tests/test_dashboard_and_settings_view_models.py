@@ -86,6 +86,10 @@ class FakeArtifactGenerationService:
 
 class FakeVideoAssemblyFactoryService:
     def __init__(self) -> None:
+        self._recipes = [
+            {"recipe_id": 3, "status": "needs_review"},
+            {"recipe_id": 4, "status": "approved"},
+        ]
         self._jobs = [
             PreviewJobSummaryDTO(
                 job_id=5,
@@ -121,6 +125,11 @@ class FakeVideoAssemblyFactoryService:
         if status is None:
             return list(self._jobs)
         return [job for job in self._jobs if job.status == status]
+
+    def list_recipes(self, *, product_id: int | None = None, status: str | None = None):
+        if status is None:
+            return list(self._recipes)
+        return [recipe for recipe in self._recipes if recipe["status"] == status]
 
     def list_preview_jobs(self, *, status: str | None = None) -> list[PreviewJobSummaryDTO]:
         jobs = [job for job in self._jobs if job.job_type == "render_recipe_preview"]
@@ -259,6 +268,7 @@ def test_settings_view_model_loads_and_saves(tmp_path) -> None:
     assert view_model.settings.auto_recover_queued_jobs is True
     assert view_model.settings.max_recovery_jobs_per_run == 12
     assert view_model.settings.music_duck_db == -18
+    assert view_model.settings.review_duration_mismatch_sec == 1
 
 
 def test_dashboard_view_model_loads_summary(unit_of_work_factory, tmp_path) -> None:
@@ -304,6 +314,7 @@ def test_dashboard_view_model_loads_summary(unit_of_work_factory, tmp_path) -> N
     assert view_model.summary.processing_job_count == 1
     assert view_model.summary.failed_job_count == 2
     assert view_model.summary.music_duck_enabled is True
+    assert view_model.summary.needs_review_recipe_count == 1
     assert view_model.summary.recent_jobs[0].job_code == "preview_07"
 
 

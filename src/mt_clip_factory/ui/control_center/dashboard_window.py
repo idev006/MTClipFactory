@@ -147,6 +147,7 @@ class DashboardWindow(QMainWindow):
                     f"Outputs: {summary.output_count}",
                     f"Ready Assets: {summary.ready_asset_count}",
                     f"Needs Review Assets: {summary.needs_review_asset_count}",
+                    f"Needs Review Recipes: {summary.needs_review_recipe_count}",
                     f"Tags: {summary.tag_count}",
                     f"Total Jobs: {summary.total_job_count}",
                     f"Active Jobs: {summary.active_job_count}",
@@ -190,6 +191,10 @@ class DashboardWindow(QMainWindow):
                     f"Music Duck Gain (dB): {summary.music_duck_db}",
                     f"Music Duck Attack (ms): {summary.music_duck_attack_ms}",
                     f"Music Duck Release (ms): {summary.music_duck_release_ms}",
+                    f"Review Duration Mismatch (sec): {summary.review_duration_mismatch_sec}",
+                    f"Review Max Looped Segments: {summary.review_max_looped_segments}",
+                    f"Review Min Distinct Visual Assets: {summary.review_min_distinct_visual_assets}",
+                    f"Review Max Consecutive Same Visual: {summary.review_max_consecutive_same_visual_segments}",
                 ]
             )
         )
@@ -201,6 +206,8 @@ def _format_operational_attention(summary) -> str:
         lines.append("Attention: failed jobs need operator review or retry.")
     if summary.needs_review_asset_count > 0:
         lines.append("Attention: some assets are still waiting for review.")
+    if summary.needs_review_recipe_count > 0:
+        lines.append("Attention: some recipes now require operator review before final delivery.")
     if not summary.ffprobe_available or not summary.ffmpeg_available:
         lines.append("Attention: one or more FFmpeg dependencies are unavailable.")
     if not lines:

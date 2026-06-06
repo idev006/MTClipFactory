@@ -198,18 +198,23 @@ def test_factory_service_builds_preview_output_job(unit_of_work_factory, tmp_pat
     assert jobs[0].output_path is not None
     assert Path(jobs[0].output_path).exists()
     assert jobs[0].output_path.endswith(".mp4")
-    assert recipe.status == "candidate"
+    assert recipe.status == "needs_review"
+    assert recipe.decision_actor == "system_review_gate"
     assert len(outputs) == 1
     assert outputs[0].approved is False
     assert outputs[0].output_kind == "preview"
     assert outputs[0].manifest_path is not None
     assert outputs[0].rendering_job_code is not None
+    assert outputs[0].quality_score is not None
+    assert outputs[0].duplicate_risk is not None
     assert products[0].output_count == 1
 
     manifest_payload = json.loads(Path(outputs[0].manifest_path).read_text(encoding="utf-8"))
     assert manifest_payload["composition_plan"]["resolved_duration_sec"] == 3.0
     assert [segment["segment_type"] for segment in manifest_payload["segments"]] == ["hook", "benefit", "cta"]
     assert all(segment["layer_name"] == "background_visual" for segment in manifest_payload["segments"])
+    assert manifest_payload["review_gate"]["required"] is True
+    assert manifest_payload["review_gate"]["signals"]
 
 
 def test_factory_service_writes_runtime_audio_mix_summary_to_manifest(unit_of_work_factory, tmp_path) -> None:
@@ -336,8 +341,22 @@ def test_factory_service_approves_output_and_recipe(unit_of_work_factory, tmp_pa
     assert recipe.decision_actor == "qa_lead"
     assert recipe.decision_reason == "creative approved"
     assert outputs[0].approved_by == "qa_lead"
-    assert [event.event_type for event in events] == ["recipe_approved", "output_approved"]
+    assert [event.event_type for event in events] == ["recipe_approved", "output_approved", "recipe_review_required"]
     assert len(outputs) == 1
+
+
+def test_factory_service_requires_review_reason_before_approving_flagged_recipe(unit_of_work_factory, tmp_path) -> None:
+    product_id, asset_id = _register_ready_asset(unit_of_work_factory, tmp_path)
+    service = _build_factory_service(unit_of_work_factory, tmp_path / "previews")
+    recipe_id = service.create_recipe(CreateRecipeCommand(product_id=product_id, recipe_code="Honey Launch"))
+    service.assign_asset_to_recipe(AssignAssetToRecipeCommand(recipe_id=recipe_id, asset_id=asset_id, role="hero"))
+    preview_job_id = service.enqueue_preview_job(recipe_id)
+    service.run_preview_job(preview_job_id)
+    output_id = service.list_outputs(recipe_id=recipe_id)[0].output_id
+    service.approve_output(output_id, actor="qa_lead", reason="ready to publish")
+
+    with pytest.raises(RecipeApprovalError, match="Provide a review reason"):
+        service.approve_recipe(recipe_id, actor="qa_lead")
 
 
 def test_factory_service_rejects_recipe(unit_of_work_factory, tmp_path) -> None:
@@ -420,6 +439,7 @@ def test_factory_service_lists_append_only_decision_history(unit_of_work_factory
         "recipe_approved",
         "recipe_rejected",
         "output_approved",
+        "recipe_review_required",
     ]
     assert events[0].actor == "qa_lead"
     assert events[1].actor == "editor"

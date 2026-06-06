@@ -25,14 +25,16 @@ The project now uses two roadmap layers:
 - `IR-04` Final-render composition parity: complete on 2026-06-06
 - `IR-05a` Audio policy settings and operator-visible render decisions: complete on 2026-06-06
 - `IR-05b` Runtime audio ducking application: complete on 2026-06-06
-- `IR-06` Review gates and composition reliability controls: ready
+- `IR-06` Review gates and composition reliability controls: complete on 2026-06-06
+- `IR-07` Audio-mix quality refinement beyond windowed-duck baseline: ready
 
 ## Current Execution Stream
 
 The next work should follow this order unless a documented issue changes priority:
 
-1. `IR-06` Review gates and composition reliability controls
-2. Audio-mix quality refinement beyond the current windowed-duck baseline
+1. `IR-07` Audio-mix quality refinement beyond the current windowed-duck baseline
+2. Recovery escalation rules and richer orchestration policy
+3. Optional path-root hot-reload support if restart semantics prove too costly
 
 ## IR-01 | Composition Data Model
 
@@ -216,6 +218,15 @@ Prevent low-trust automatic renders from slipping through silently.
 - dashboard or factory UI can show why review is required
 - issues and lessons learned capture important reliability tradeoffs
 - final roadmap/status docs reflect the new baseline honestly
+
+### Delivery Result
+
+- delivered configurable review thresholds through `app_config.toml`, `SystemSettingsService`, settings UI, and dashboard summary
+- delivered automatic `needs_review` routing for risky preview compositions based on duration mismatch and visual repetition heuristics
+- persisted manifest-backed `review_gate` evidence plus output `quality_score` and `duplicate_risk`
+- exposed review evidence in Recipe Builder output details and dashboard recipe-review counts
+- enforced explicit human reasoning when approving a recipe that was flagged for review
+- covered review-gate routing and approval enforcement with pytest
 
 ## Cross-Milestone Rules
 

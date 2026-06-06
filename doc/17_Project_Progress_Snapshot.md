@@ -23,6 +23,7 @@
 - `Resource Library Management` is at a useful MVP baseline.
 - `Video Assembly Factory` now has segment-aware preview/final visual composition plus a first runtime voice/music mix path, but it is still not a full multi-layer audio engine yet.
 - Dashboard and settings are now a stronger operational truth surface.
+- Dashboard now also exposes `needs_review` recipe count and the active review thresholds.
 - Automatic queued-job recovery now exists when enabled. Failed jobs can now be retried from the dashboard, but they are still not auto-startup work.
 - Output lineage is now visible from persisted output/job records.
 - Approval actor/time/reason is persisted with migration support, and immutable decision-event history is now available in the Recipe Builder workflow.
@@ -34,23 +35,25 @@
 - Settings now expose `voice_loop_enabled`, `background_music_loop_enabled`, and music duck controls through `.toml` and the desktop settings screen.
 - Dashboard and Recipe Builder now show more of the composition/render story instead of only output lineage.
 - Preview and final renderers now emit manifest-visible runtime audio-mix evidence.
+- Preview and final renderers now also emit manifest-visible review-gate evidence plus quality/duplicate-risk summaries.
 - The roadmap is now split into strategic and implementation layers so the next coding milestone is clearer.
 
 ## Delivered In The Latest Loop
 
-- preview/final renderers now apply runtime voice/music mixing with settings-driven duck policy
-- manifests now store applied runtime audio-mix evidence and Recipe Builder output details can surface it
-- pytest now covers runtime audio-mix command generation, manifest evidence, and output-detail visibility
-- architecture, reliability, roadmap, Kanban, issues, and lessons learned were aligned to the delivered `IR-05b` baseline
+- configurable review thresholds now flow through `.toml`, settings UI, dashboard summary, and factory services
+- preview/final outputs now store review-gate evidence, quality score, and duplicate-risk summary
+- risky preview compositions now route recipes into `needs_review`, and approving flagged recipes requires an explicit human reason
+- pytest now covers review-gate routing and approval enforcement alongside the previous render/audio baseline
+- architecture, reliability, roadmap, Kanban, issues, and lessons learned were aligned to the delivered `IR-06` baseline
 
 ## Still Open
 
 1. failed-job escalation policy beyond manual retry
 2. optional hot-reload decision for path-root changes
-3. deeper review gates for low-confidence composition outcomes
+3. deeper review gates for audio masking and emergency-fill outcomes
 4. smoother ducking and richer multi-layer audio policy
 
 ## Verification Baseline
 
-- `python -m pytest` in `.venv`: `82 passed`
+- `python -m pytest` in `.venv`: `83 passed`
 - `QT_QPA_PLATFORM=offscreen` UI smoke: `6` main windows instantiated

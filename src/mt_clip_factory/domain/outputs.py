@@ -38,3 +38,5 @@ class OutputSummary:
     approved_at: datetime | None
     approval_reason: str | None
     created_at: datetime
+    quality_score: float | None = None
+    duplicate_risk: float | None = None

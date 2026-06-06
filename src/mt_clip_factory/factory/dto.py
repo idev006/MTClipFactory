@@ -155,3 +155,5 @@ class OutputSummaryDTO:
     source_output_id: int | None = None
     source_output_code: str | None = None
     source_output_path: str | None = None
+    quality_score: float | None = None
+    duplicate_risk: float | None = None

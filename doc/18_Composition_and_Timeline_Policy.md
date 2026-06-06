@@ -167,6 +167,13 @@ The engine should route work to operator review when:
 - voice overlap or audio masking risk is too high
 - composition falls back to emergency fill policy
 
+Current implemented baseline on 2026-06-06:
+
+- review thresholds are configurable for duration mismatch, looped segment count, minimum distinct visual assets, and maximum consecutive same-asset segments
+- preview and final manifests now persist `review_gate` evidence with `required`, `summary`, `signals`, `quality_score`, and `duplicate_risk`
+- recipes can be routed to `needs_review` automatically after preview generation
+- human approval remains possible, but flagged recipes must carry an explicit approval reason
+
 ## Settings Direction
 
 These policies should become configurable through settings and backed by `.toml`:
@@ -191,6 +198,10 @@ Current implemented settings baseline on 2026-06-06:
 - `music_duck_db`
 - `music_duck_attack_ms`
 - `music_duck_release_ms`
+- `review_duration_mismatch_sec`
+- `review_max_looped_segments`
+- `review_min_distinct_visual_assets`
+- `review_max_consecutive_same_visual_segments`
 
 ## Current Data-Model Baseline
 

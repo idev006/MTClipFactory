@@ -442,6 +442,8 @@ def _build_output_detail_lines(output, composition_plan) -> list[str]:
         f"Source Output ID: {output.source_output_id or '-'}",
         f"Source Output Code: {output.source_output_code or '-'}",
         f"Source Output Path: {output.source_output_path or '-'}",
+        f"Quality Score: {output.quality_score if output.quality_score is not None else '-'}",
+        f"Duplicate Risk: {output.duplicate_risk if output.duplicate_risk is not None else '-'}",
         f"File Path: {output.file_path}",
     ]
     if composition_plan is None:
@@ -468,20 +470,37 @@ def _build_output_detail_lines(output, composition_plan) -> list[str]:
         )
     if len(composition_plan.decisions) > 6:
         lines.append(f"- More Decisions: {len(composition_plan.decisions) - 6}")
+    lines.extend(_build_manifest_review_lines(output.manifest_path))
     lines.extend(_build_manifest_audio_lines(output.manifest_path))
     return lines
 
 
+def _build_manifest_review_lines(manifest_path: str | None) -> list[str]:
+    payload = _read_manifest_payload(manifest_path)
+    review_gate = payload.get("review_gate")
+    if not isinstance(review_gate, dict):
+        return []
+    lines = [
+        "",
+        "Review Gate:",
+        f"- Required: {review_gate.get('required', '-')}",
+        f"- Duplicate Risk: {review_gate.get('duplicate_risk', '-')}",
+        f"- Quality Score: {review_gate.get('quality_score', '-')}",
+        f"- Summary: {review_gate.get('summary', '-')}",
+    ]
+    signals = review_gate.get("signals")
+    if isinstance(signals, list):
+        for signal in signals:
+            if not isinstance(signal, dict):
+                continue
+            lines.append(
+                f"- Signal: {signal.get('code', '-')} | value={signal.get('metric_value', '-')} | threshold={signal.get('threshold', '-')}"
+            )
+    return lines
+
+
 def _build_manifest_audio_lines(manifest_path: str | None) -> list[str]:
-    if not manifest_path:
-        return []
-    manifest_file = Path(manifest_path)
-    if not manifest_file.exists():
-        return []
-    try:
-        payload = json.loads(manifest_file.read_text(encoding="utf-8"))
-    except (OSError, ValueError):
-        return []
+    payload = _read_manifest_payload(manifest_path)
     audio_mix = payload.get("audio_mix")
     if not isinstance(audio_mix, dict):
         return []
@@ -505,3 +524,16 @@ def _build_manifest_audio_lines(manifest_path: str | None) -> list[str]:
     if isinstance(music_tracks, list):
         lines.append(f"- Music Track Count: {len(music_tracks)}")
     return lines
+
+
+def _read_manifest_payload(manifest_path: str | None) -> dict:
+    if not manifest_path:
+        return {}
+    manifest_file = Path(manifest_path)
+    if not manifest_file.exists():
+        return {}
+    try:
+        payload = json.loads(manifest_file.read_text(encoding="utf-8"))
+    except (OSError, ValueError):
+        return {}
+    return payload if isinstance(payload, dict) else {}

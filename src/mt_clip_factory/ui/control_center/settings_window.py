@@ -71,6 +71,10 @@ class SettingsWindow(QMainWindow):
         self.music_duck_db_input = QSpinBox()
         self.music_duck_attack_input = QSpinBox()
         self.music_duck_release_input = QSpinBox()
+        self.review_duration_mismatch_input = QSpinBox()
+        self.review_max_looped_segments_input = QSpinBox()
+        self.review_min_distinct_visual_assets_input = QSpinBox()
+        self.review_max_consecutive_visual_input = QSpinBox()
 
         for spinbox in (
             self.cpu_limit_input,
@@ -82,6 +86,10 @@ class SettingsWindow(QMainWindow):
             self.max_recovery_jobs_input,
             self.music_duck_attack_input,
             self.music_duck_release_input,
+            self.review_duration_mismatch_input,
+            self.review_max_looped_segments_input,
+            self.review_min_distinct_visual_assets_input,
+            self.review_max_consecutive_visual_input,
         ):
             spinbox.setRange(0, 100000)
         self.music_duck_db_input.setRange(-60, 0)
@@ -108,6 +116,10 @@ class SettingsWindow(QMainWindow):
         form_layout.addRow("Music Duck Gain (dB)", self.music_duck_db_input)
         form_layout.addRow("Music Duck Attack (ms)", self.music_duck_attack_input)
         form_layout.addRow("Music Duck Release (ms)", self.music_duck_release_input)
+        form_layout.addRow("Review Duration Mismatch (sec)", self.review_duration_mismatch_input)
+        form_layout.addRow("Review Max Looped Segments", self.review_max_looped_segments_input)
+        form_layout.addRow("Review Min Distinct Visual Assets", self.review_min_distinct_visual_assets_input)
+        form_layout.addRow("Review Max Consecutive Same Visual", self.review_max_consecutive_visual_input)
         layout.addLayout(form_layout)
 
         button_row = QHBoxLayout()
@@ -152,6 +164,10 @@ class SettingsWindow(QMainWindow):
         self.music_duck_db_input.setValue(settings.music_duck_db)
         self.music_duck_attack_input.setValue(settings.music_duck_attack_ms)
         self.music_duck_release_input.setValue(settings.music_duck_release_ms)
+        self.review_duration_mismatch_input.setValue(settings.review_duration_mismatch_sec)
+        self.review_max_looped_segments_input.setValue(settings.review_max_looped_segments)
+        self.review_min_distinct_visual_assets_input.setValue(settings.review_min_distinct_visual_assets)
+        self.review_max_consecutive_visual_input.setValue(settings.review_max_consecutive_same_visual_segments)
 
     def _refresh_feedback(self) -> None:
         self.feedback_label.setText(f"Status: {self._view_model.status}\n{self._view_model.feedback}".strip())
@@ -182,6 +198,10 @@ class SettingsWindow(QMainWindow):
                     music_duck_db=self.music_duck_db_input.value(),
                     music_duck_attack_ms=self.music_duck_attack_input.value(),
                     music_duck_release_ms=self.music_duck_release_input.value(),
+                    review_duration_mismatch_sec=self.review_duration_mismatch_input.value(),
+                    review_max_looped_segments=self.review_max_looped_segments_input.value(),
+                    review_min_distinct_visual_assets=self.review_min_distinct_visual_assets_input.value(),
+                    review_max_consecutive_same_visual_segments=self.review_max_consecutive_visual_input.value(),
                 )
             )
         except OSError as exc:

@@ -4,7 +4,7 @@
 
 - Report date: 2026-06-06
 - Overall status: In Progress
-- Current phase: Phase 4, Render Pipeline and Operational Recovery
+- Current phase: Phase 5, Automation and Quality
 - Delivery mode: document-led SSOT with code and tests kept in sync
 
 ## What Is Done
@@ -33,6 +33,11 @@
 - dashboard and Recipe Builder visibility for composition-plan segments and render-decision summaries
 - runtime voice/music mix path for preview and final render flows
 - manifest-visible runtime audio-mix evidence for operator inspection
+- review-gate reliability controls for low-diversity, loop-heavy, or mismatch-heavy preview/final compositions
+- settings-backed review thresholds in `app_config.toml`, settings UI, and dashboard summary
+- dashboard visibility for `needs_review` recipe count
+- Recipe Builder output-detail visibility for manifest-backed review-gate evidence plus quality/duplicate-risk signals
+- approval guard that requires an explicit human reason before approving a flagged recipe
 - initial Video Assembly Factory:
   - recipe persistence
   - recipe item assignment
@@ -51,26 +56,24 @@
 
 ## Verification Baseline
 
-- `python -m pytest` via `.venv`: `82 passed`
+- `python -m pytest` via `.venv`: `83 passed`
 - UI smoke via `QT_QPA_PLATFORM=offscreen`: `6` windows instantiated successfully
 
 ## Current Focus
 
-- deepen render fidelity beyond the current visual parity baseline
+- deepen review signals beyond the current duration and visual-repetition heuristics
+- refine audio quality beyond the current windowed-duck implementation where needed
+- extend recovery and escalation policy beyond the current queued-startup and failed-manual retry baselines
+- decide whether runtime path changes should hot-reload or remain restart-driven
 - keep review and approval history truthful through append-only persistence
 - keep project documents truthful through per-milestone revision checkpoints
-- deepen review and reliability rules on top of the new runtime audio foundation
-- refine audio quality beyond the current windowed-duck implementation where needed
-- runtime migration path now exists, so future schema work can be delivered more safely
-- decide whether runtime path changes should hot-reload or remain restart-driven
-- deepen orchestration policy beyond the current queued-startup and failed-manual retry baselines
 
 ## Next Steps
 
-1. Deliver `IR-06` review gates for low-confidence or mismatch-heavy composition cases.
+1. Start `IR-07` audio-mix quality refinement beyond the current windowed-duck baseline.
 2. Extend recovery orchestration beyond current sequential retry behavior and define escalation rules.
 3. Decide whether path-root changes stay restart-driven or become hot-reload capable.
-4. Refine runtime audio quality beyond the current windowed-duck foundation if operator feedback demands it.
+4. Deepen review-gate signals with audio masking and emergency-fill detection when the supporting data is ready.
 
 ## Direction Locked In This Documentation Revision
 
@@ -85,6 +88,7 @@
 - `IR-04` final render now follows the planned composition path and becomes the baseline for `IR-05`
 - `IR-05a` now covers operator-controlled audio policy settings plus visible composition/render summaries, while runtime audio mixing remains a separate follow-up
 - `IR-05b` now adds runtime voice/music mixing plus manifest-visible applied-audio evidence
+- `IR-06` now adds review gates, configurable thresholds, dashboard visibility, and manifest-backed operator evidence for risky compositions
 
 ## Ownership
 

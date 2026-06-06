@@ -73,6 +73,12 @@ classDiagram
         +retry_job(job_id)
     }
 
+    class ReviewGateEvaluator {
+        +assess_review_gate(...)
+        +apply_review_gate(...)
+        +review_gate_manifest_payload(...)
+    }
+
     class CompositionPlan {
         +master_duration
         +duration_source
@@ -109,6 +115,7 @@ classDiagram
         +recover_queued_jobs(...)
         +retry_failed_jobs(...)
         +should_auto_recover_queued_jobs()
+        +needs_review_recipe_count
     }
 
     class SystemSettingsService {
@@ -116,6 +123,7 @@ classDiagram
         +save(settings)
         +update(...)
         +audio policy fields
+        +review threshold fields
     }
 
     class MigrationGuard {
@@ -153,6 +161,7 @@ classDiagram
         +build_preview()
         +show output lineage details
         +show composition/render summaries
+        +show review-gate evidence
     }
 
     class SqlAlchemyUnitOfWork {
@@ -239,6 +248,7 @@ classDiagram
     VideoAssemblyFactoryService --> FFmpegPreviewRenderer
     VideoAssemblyFactoryService --> PreviewComposition
     VideoAssemblyFactoryService --> CompositionPlan
+    VideoAssemblyFactoryService --> ReviewGateEvaluator
     CompositionPlan --> TimelineSegment
     CompositionPlan --> RenderDecisionLog
     PreviewComposition --> TimelineSegment
@@ -304,9 +314,11 @@ sequenceDiagram
     Factory->>RecipeRepo: list_items(recipe_id)
     Factory->>Factory: persist composition plan + segments
     Factory->>Factory: map segments to preview visual clips
+    Factory->>Factory: assess review gate + quality/risk
     Factory->>Preview: write_manifest(...)
     Factory->>Render: render_preview(segment_clips)
     Factory->>Out: add(output)
+    Factory->>RecipeRepo: update(candidate or needs_review)
     Factory->>JobRepo: update(done/failed)
     Factory->>DB: COMMIT
     VM-->>View: refresh recipes and feedback
@@ -333,6 +345,9 @@ sequenceDiagram
     User->>View: approve recipe
     View->>VM: approve_recipe(recipe_id)
     VM->>Factory: approve_recipe(recipe_id)
+    alt recipe status is needs_review
+        Factory->>Factory: require explicit human reason
+    end
     Factory->>DB: COMMIT
     User->>View: build final
     View->>VM: queue_final_render(recipe_id)
@@ -365,7 +380,7 @@ sequenceDiagram
     VM->>Factory: list_outputs(recipe_id)
     Factory->>Out: list_summaries(recipe_id)
     Factory->>JobRepo: read preview/final job output_json
-    Factory-->>VM: OutputSummaryDTO with lineage
+    Factory-->>VM: OutputSummaryDTO with lineage + quality/risk
     VM-->>View: outputs + selected output details
 ```
 
@@ -483,10 +498,10 @@ stateDiagram-v2
     PREVIEW_JOB_QUEUED --> PREVIEW_JOB_PROCESSING
     PREVIEW_JOB_PROCESSING --> PREVIEW_OUTPUT_READY
     PREVIEW_OUTPUT_READY --> OUTPUT_APPROVED
-    PREVIEW_OUTPUT_READY --> HUMAN_REVIEW
+    PREVIEW_OUTPUT_READY --> RECIPE_NEEDS_REVIEW
     OUTPUT_APPROVED --> RECIPE_APPROVED
-    HUMAN_REVIEW --> APPROVED
-    HUMAN_REVIEW --> REJECTED
+    RECIPE_NEEDS_REVIEW --> RECIPE_APPROVED
+    RECIPE_NEEDS_REVIEW --> REJECTED
     RECIPE_APPROVED --> FINAL_RENDER_PENDING
     FINAL_RENDER_PENDING --> FINAL_RENDER_DONE
 ```

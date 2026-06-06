@@ -51,10 +51,12 @@ Compose prepared assets into reviewable preview and later final-output workflows
 - segment-aware preview composition
 - final-render composition parity
 - runtime voice/music mixing with manifest-visible audio evidence
+- review-threshold evaluation and `needs_review` workflow routing
 - preview job status tracking
 - final job status tracking
 - manual retry for persisted factory jobs
 - output lineage reporting
+- output quality/duplicate-risk visibility
 - dashboard-driven failed-job retry orchestration
 - approval actor/time/reason persistence
 - immutable decision-event history
@@ -62,7 +64,7 @@ Compose prepared assets into reviewable preview and later final-output workflows
 ### Future Responsibilities
 
 - richer multi-layer audio-aware preview/final composition
-- quality and duplicate-risk checks
+- deeper audio-risk and emergency-fill review signals
 
 ### Owned SSOT
 
@@ -72,6 +74,7 @@ Compose prepared assets into reviewable preview and later final-output workflows
 - review decisions
 - output records
 - decision-event history
+- review-gate evidence carried in manifests and output summaries
 
 ## Shared Core
 

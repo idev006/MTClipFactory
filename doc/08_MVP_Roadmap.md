@@ -64,12 +64,12 @@ For execution sequencing and acceptance criteria, use [19_Implementation_Roadmap
 - Phase 1: complete
 - Phase 2: functionally complete for MVP baseline
 - Phase 3: functionally complete for MVP baseline
-- Phase 4: started
-- Phase 5: started
+- Phase 4: functionally complete for current baseline
+- Phase 5: in progress
 
-## Current Phase 4 Remaining
+## Current Phase 5 Remaining
 
-1. Deepen preview/final composition from visual parity toward fuller layer and audio parity.
+1. Deepen review confidence beyond the current duration and visual-repetition heuristics.
 2. Deepen orchestration beyond current queued-startup and failed-manual retry baselines.
 3. Decide whether path-root changes remain restart-driven or move to hot-reload semantics.
 4. Refine runtime audio quality beyond the current windowed-duck foundation.

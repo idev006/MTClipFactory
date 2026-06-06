@@ -27,6 +27,10 @@ class SystemSettingsDTO:
     music_duck_db: int
     music_duck_attack_ms: int
     music_duck_release_ms: int
+    review_duration_mismatch_sec: int = 1
+    review_max_looped_segments: int = 2
+    review_min_distinct_visual_assets: int = 2
+    review_max_consecutive_same_visual_segments: int = 3
 
 
 @dataclass(slots=True, frozen=True)
@@ -65,6 +69,7 @@ class DashboardSummaryDTO:
     output_count: int
     ready_asset_count: int
     needs_review_asset_count: int
+    needs_review_recipe_count: int
     tag_count: int
     total_job_count: int
     active_job_count: int
@@ -98,3 +103,7 @@ class DashboardSummaryDTO:
     music_duck_db: int
     music_duck_attack_ms: int
     music_duck_release_ms: int
+    review_duration_mismatch_sec: int
+    review_max_looped_segments: int
+    review_min_distinct_visual_assets: int
+    review_max_consecutive_same_visual_segments: int

@@ -75,6 +75,8 @@ Current implemented baseline now includes:
 - segment-aware preview/final composition with manifest-guided visual clip selection
 - runtime voice/music mix foundation with manifest-visible audio-mix evidence
 - settings-driven duck gain and attack/release policy consumption in preview/final renderers
+- review-gate assessment with configurable duration and visual-repetition thresholds
+- manifest-backed review evidence plus output quality/duplicate-risk summaries
 
 The architecture must keep `voice-over` as a foreground layer:
 
@@ -95,6 +97,7 @@ The architecture must keep `voice-over` as a foreground layer:
 - `Dashboard` ต้อง aggregate จาก service layer ไม่ query DB ตรงใน UI
 - `Settings` ต้องผ่าน service ที่ควบคุม source of truth อย่างชัดเจน
 - runtime paths และ operational thresholds ต้องถูกอ่านจาก config/service กลางเดียว
+- review thresholds and flagged-recipe counts must flow through the same dashboard/settings authority surfaces
 
 ## Shared Core
 

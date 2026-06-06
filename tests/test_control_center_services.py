@@ -84,6 +84,10 @@ class FakeArtifactGenerationService:
 
 class FakeVideoAssemblyFactoryService:
     def __init__(self) -> None:
+        self._recipes = [
+            {"recipe_id": 5, "status": "needs_review"},
+            {"recipe_id": 3, "status": "approved"},
+        ]
         self._jobs = [
             PreviewJobSummaryDTO(
                 job_id=11,
@@ -128,6 +132,11 @@ class FakeVideoAssemblyFactoryService:
         if status is None:
             return list(self._jobs)
         return [job for job in self._jobs if job.status == status]
+
+    def list_recipes(self, *, product_id: int | None = None, status: str | None = None):
+        if status is None:
+            return list(self._recipes)
+        return [recipe for recipe in self._recipes if recipe["status"] == status]
 
     def list_preview_jobs(self, *, status: str | None = None) -> list[PreviewJobSummaryDTO]:
         jobs = [job for job in self._jobs if job.job_type == "render_recipe_preview"]
@@ -330,6 +339,7 @@ def test_dashboard_service_aggregates_system_information(unit_of_work_factory, t
     assert summary.recipe_count == 0
     assert summary.output_count == 0
     assert summary.ready_asset_count == 1
+    assert summary.needs_review_recipe_count == 1
     assert summary.tag_count == 1
     assert summary.total_job_count == 7
     assert summary.active_job_count == 4
@@ -342,6 +352,8 @@ def test_dashboard_service_aggregates_system_information(unit_of_work_factory, t
     assert summary.background_music_loop_enabled is True
     assert summary.music_duck_enabled is True
     assert summary.music_duck_db == -15
+    assert summary.review_duration_mismatch_sec == 1
+    assert summary.review_max_looped_segments == 2
     assert summary.recent_jobs[0] == DashboardJobDTO(
         job_id=11,
         job_code="preview_11",

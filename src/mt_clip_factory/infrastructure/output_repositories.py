@@ -79,6 +79,8 @@ class SqlAlchemyOutputRepository:
                 OutputModel.approved_at,
                 OutputModel.approval_reason,
                 OutputModel.created_at,
+                OutputModel.quality_score,
+                OutputModel.duplicate_risk,
             )
             .join(RecipeModel, RecipeModel.id == OutputModel.recipe_id)
             .order_by(OutputModel.created_at.desc(), OutputModel.id.desc())
@@ -102,6 +104,8 @@ class SqlAlchemyOutputRepository:
                 approved_at=row.approved_at,
                 approval_reason=row.approval_reason,
                 created_at=row.created_at,
+                quality_score=row.quality_score,
+                duplicate_risk=row.duplicate_risk,
             )
             for row in rows
         ]

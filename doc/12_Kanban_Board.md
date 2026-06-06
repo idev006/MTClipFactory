@@ -4,20 +4,20 @@ This Markdown board is the SSOT Kanban for the repository.
 
 ## Backlog
 
-- duplicate risk evaluation
-- recipe scoring
-- quality gate automation
+- audio masking and emergency-fill review signals
+- recipe scoring refinement beyond the current heuristic baseline
 - failed-job escalation policy beyond manual retry
+- path-root hot-reload implementation if restart semantics are no longer acceptable
 
 ## Ready
 
-- `IR-06` review gates and composition reliability controls
+- `IR-07` audio-mix quality refinement beyond windowed-duck baseline
+- recovery escalation rules and operator playbook
 - path-root hot-reload decision
-- audio-mix quality refinement beyond windowed-duck baseline
 
 ## In Progress
 
-- broader recovery-orchestration scope
+- none
 
 ## Review
 
@@ -53,6 +53,7 @@ This Markdown board is the SSOT Kanban for the repository.
 - `IR-04` final-render composition parity
 - `IR-05a` audio policy settings and operator-visible render summaries
 - `IR-05b` runtime audio ducking application in preview/final renderers
+- `IR-06` review gates and composition reliability controls
 - recipe persistence
 - recipe item assignment
 - preview render output job flow

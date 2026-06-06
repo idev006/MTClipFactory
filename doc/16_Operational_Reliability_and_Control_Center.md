@@ -11,6 +11,7 @@ It must show at least:
 - recipe count
 - output count
 - ready / needs-review asset counts
+- needs-review recipe count
 - tag count
 - total / active / processing / failed job counts
 - queued job count
@@ -18,6 +19,7 @@ It must show at least:
 - workspace, database, and media paths
 - FFmpeg / FFprobe paths
 - operational thresholds
+- review thresholds
 - recent persisted jobs with enough detail for operator triage
 
 ## Settings Requirements
@@ -47,6 +49,10 @@ Current editable fields:
 - music duck enabled
 - music duck gain
 - music duck attack/release timing
+- review duration mismatch threshold
+- review max looped segments
+- review min distinct visual assets
+- review max consecutive same visual segments
 
 Future composition-related settings should still include:
 
@@ -109,6 +115,9 @@ The following must flow through config or services whenever user control is appr
 - settings-based FFmpeg path control
 - dashboard visibility of current narration/music loop and duck policy
 - runtime preview/final audio mixing with manifest-visible applied-audio evidence
+- review-gate routing with persisted `needs_review` recipe state
+- dashboard visibility of flagged recipe count plus configured review thresholds
+- Recipe Builder visibility for manifest-backed review signals, quality score, and duplicate risk
 - automated tests for success and failure job paths
 - restart-style retry tests for factory jobs
 - queued-job orchestration tests plus startup policy coverage
@@ -118,7 +127,7 @@ The following must flow through config or services whenever user control is appr
 
 1. Recovery scope is still narrower for failed-job escalation and advanced orchestration rules.
 2. Preview and final now share a runtime voice/music mix foundation, but richer multi-layer parity and smoother duck behavior are still incomplete.
-3. Render decisions and audio evidence are now surfaced more clearly, but operator review gates for risky composition are still missing.
+3. Review gates now exist, but audio masking and emergency-fill signals are still shallow.
 4. Path-root changes are not fully hot-reloaded across all runtime services.
 
 ## Composition Reliability Direction
@@ -129,3 +138,4 @@ To keep future renders trustworthy:
 - music may loop only under explicit policy
 - music ducking decisions must be explainable and visible to operators
 - duration mismatch handling must be logged instead of silently hidden
+- risky visual repetition must be routed to human review instead of being silently normalized

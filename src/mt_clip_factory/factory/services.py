@@ -24,9 +24,11 @@ from mt_clip_factory.factory.dto import (
     RecipeItemDTO,
     RecipeSummaryDTO,
 )
+from mt_clip_factory.factory.output_lineage import build_output_lineage_context, lineage_value, resolve_output_kind
 from mt_clip_factory.factory.preview_artifacts import PreviewManifestBuilder
 from mt_clip_factory.factory.preview_composition import build_segmented_preview_composition
 from mt_clip_factory.factory.renderers import RenderedPreviewOutput
+from mt_clip_factory.factory.review_gate import apply_review_gate, assess_review_gate, review_gate_manifest_payload, review_settings_from_provider
 from mt_clip_factory.library.artifacts import build_artifact_job_code, decode_job_input, encode_job_input
 
 
@@ -79,6 +81,9 @@ class VideoAssemblyFactoryService:
     OUTPUT_AUTO_APPROVED_EVENT = "output_auto_approved"
     RECIPE_APPROVED_EVENT = "recipe_approved"
     RECIPE_REJECTED_EVENT = "recipe_rejected"
+    RECIPE_REVIEW_REQUIRED_EVENT = "recipe_review_required"
+    RECIPE_REVIEW_CLEARED_EVENT = "recipe_review_cleared"
+    SYSTEM_REVIEW_ACTOR = "system_review_gate"
 
     def __init__(
         self,
@@ -86,11 +91,13 @@ class VideoAssemblyFactoryService:
         preview_manifest_builder: PreviewManifestBuilder,
         preview_renderer,
         final_renderer,
+        system_settings_service=None,
     ) -> None:
         self._unit_of_work_factory = unit_of_work_factory
         self._preview_manifest_builder = preview_manifest_builder
         self._preview_renderer = preview_renderer
         self._final_renderer = final_renderer
+        self._system_settings_service = system_settings_service
 
     def create_recipe(self, command: CreateRecipeCommand) -> int:
         recipe_code = _slugify_recipe_code(command.recipe_code)
@@ -212,7 +219,7 @@ class VideoAssemblyFactoryService:
     ) -> list[OutputSummaryDTO]:
         with self._unit_of_work_factory() as uow:
             requested_outputs = list(uow.outputs.list_summaries(recipe_id=recipe_id, approved=approved))
-            lineage_context = _build_output_lineage_context(
+            lineage_context = build_output_lineage_context(
                 requested_outputs=requested_outputs,
                 all_outputs=list(uow.outputs.list_summaries(recipe_id=recipe_id)),
                 preview_jobs=[
@@ -246,12 +253,14 @@ class VideoAssemblyFactoryService:
                     approved_by=summary.approved_by,
                     approved_at=_format_optional_timestamp(summary.approved_at),
                     approval_reason=summary.approval_reason,
-                    output_kind=_resolve_output_kind(summary.output_code, lineage_context.get(summary.output_id)),
-                    rendering_job_code=_lineage_value(summary.output_id, lineage_context, "job_code"),
-                    manifest_path=_lineage_value(summary.output_id, lineage_context, "preview_manifest_path"),
-                    source_output_id=_lineage_value(summary.output_id, lineage_context, "source_output_id"),
-                    source_output_code=_lineage_value(summary.output_id, lineage_context, "source_output_code"),
-                    source_output_path=_lineage_value(summary.output_id, lineage_context, "source_output_path"),
+                    output_kind=resolve_output_kind(summary.output_code, lineage_context.get(summary.output_id), preview_job_type=self.PREVIEW_JOB_TYPE, final_job_type=self.FINAL_JOB_TYPE),
+                    rendering_job_code=lineage_value(summary.output_id, lineage_context, "job_code"),
+                    manifest_path=lineage_value(summary.output_id, lineage_context, "preview_manifest_path"),
+                    source_output_id=lineage_value(summary.output_id, lineage_context, "source_output_id"),
+                    source_output_code=lineage_value(summary.output_id, lineage_context, "source_output_code"),
+                    source_output_path=lineage_value(summary.output_id, lineage_context, "source_output_path"),
+                    quality_score=summary.quality_score,
+                    duplicate_risk=summary.duplicate_risk,
                 )
                 for summary in requested_outputs
             ]
@@ -327,6 +336,8 @@ class VideoAssemblyFactoryService:
             recipe = uow.recipes.get_by_id(recipe_id)
             if recipe is None or recipe.id is None:
                 raise RecipeNotFoundError(str(recipe_id))
+            if recipe.status == RecipeStatus.NEEDS_REVIEW and decision_reason is None:
+                raise RecipeApprovalError("Provide a review reason before approving a recipe that needs review.")
             approved_outputs = list(uow.outputs.list_summaries(recipe_id=recipe_id, approved=True))
             if not approved_outputs:
                 raise RecipeApprovalError("Approve at least one output before approving the recipe.")
@@ -424,6 +435,11 @@ class VideoAssemblyFactoryService:
                     plan=persisted.plan,
                     segments=persisted.segments,
                 )
+                review_assessment = assess_review_gate(
+                    plan=persisted.plan,
+                    composition=composition,
+                    settings=review_settings_from_provider(self._system_settings_service),
+                )
                 if not composition.source_files:
                     raise PreviewBuildInputError(f"Recipe {recipe.recipe_code} has no renderable video assets.")
                 rendered_output = self._preview_renderer.render_output(
@@ -434,6 +450,7 @@ class VideoAssemblyFactoryService:
                     audio_mix_plan=composition.audio_mix_plan,
                 )
                 manifest_payload = dict(composition.manifest_payload)
+                manifest_payload["review_gate"] = review_gate_manifest_payload(review_assessment)
                 if rendered_output.audio_mix_summary is not None:
                     manifest_payload["audio_mix"] = rendered_output.audio_mix_summary
                 manifest_path = self._preview_manifest_builder.write_manifest(
@@ -449,8 +466,20 @@ class VideoAssemblyFactoryService:
                         platform=recipe.target_platform,
                         ratio=recipe.target_ratio,
                         duration_sec=rendered_output.duration_sec,
+                        quality_score=review_assessment.quality_score,
+                        duplicate_risk=review_assessment.duplicate_risk,
                         approved=False,
                     )
+                )
+                apply_review_gate(
+                    uow,
+                    recipe=recipe,
+                    assessment=review_assessment,
+                    required_event=self.RECIPE_REVIEW_REQUIRED_EVENT,
+                    cleared_event=self.RECIPE_REVIEW_CLEARED_EVENT,
+                    actor=self.SYSTEM_REVIEW_ACTOR,
+                    utc_now=_utc_now,
+                    record_decision_event=_record_decision_event,
                 )
                 job.status = JobStatus.DONE
                 job.progress = 1.0
@@ -524,6 +553,11 @@ class VideoAssemblyFactoryService:
                     plan=persisted.plan,
                     segments=persisted.segments,
                 )
+                review_assessment = assess_review_gate(
+                    plan=persisted.plan,
+                    composition=composition,
+                    settings=review_settings_from_provider(self._system_settings_service),
+                )
                 if not composition.source_files:
                     raise FinalRenderPrerequisiteError(f"Recipe {recipe.recipe_code} has no renderable video assets.")
                 rendered_output = self._final_renderer.render_output(
@@ -534,6 +568,7 @@ class VideoAssemblyFactoryService:
                     audio_mix_plan=composition.audio_mix_plan,
                 )
                 manifest_payload = dict(composition.manifest_payload)
+                manifest_payload["review_gate"] = review_gate_manifest_payload(review_assessment)
                 if rendered_output.audio_mix_summary is not None:
                     manifest_payload["audio_mix"] = rendered_output.audio_mix_summary
                 manifest_path = self._preview_manifest_builder.write_manifest(
@@ -550,6 +585,8 @@ class VideoAssemblyFactoryService:
                         platform=recipe.target_platform,
                         ratio=recipe.target_ratio,
                         duration_sec=rendered_output.duration_sec,
+                        quality_score=review_assessment.quality_score,
+                        duplicate_risk=review_assessment.duplicate_risk,
                         approved=True,
                         approved_by=self.SYSTEM_APPROVAL_ACTOR,
                         approved_at=approved_at,
@@ -683,52 +720,6 @@ def _extract_output_path(output_json: str | None) -> str | None:
 
 def _utc_now() -> datetime:
     return datetime.now(UTC).replace(tzinfo=None)
-
-
-def _build_output_lineage_context(*, requested_outputs, all_outputs, preview_jobs, final_jobs) -> dict[int, dict[str, object | None]]:
-    output_lookup = {summary.output_id: summary for summary in all_outputs}
-    lineage: dict[int, dict[str, object | None]] = {}
-    for job in [*preview_jobs, *final_jobs]:
-        payload = _decode_output_payload(job.output_json)
-        output_id = payload.get("output_id")
-        if not isinstance(output_id, int):
-            continue
-        source_output_id = payload.get("source_output_id")
-        source_summary = output_lookup.get(source_output_id) if isinstance(source_output_id, int) else None
-        lineage[output_id] = {
-            "job_code": job.job_code,
-            "job_type": job.job_type,
-            "preview_manifest_path": payload.get("preview_manifest_path"),
-            "source_output_id": source_output_id if isinstance(source_output_id, int) else None,
-            "source_output_code": source_summary.output_code if source_summary is not None else None,
-            "source_output_path": source_summary.file_path if source_summary is not None else None,
-        }
-    for summary in requested_outputs:
-        lineage.setdefault(summary.output_id, {})
-    return lineage
-
-
-def _decode_output_payload(output_json: str | None) -> dict[str, object]:
-    if not output_json:
-        return {}
-    payload = json.loads(output_json)
-    if isinstance(payload, dict):
-        return payload
-    return {}
-
-
-def _resolve_output_kind(output_code: str, lineage: dict[str, object | None] | None) -> str:
-    if lineage is not None and lineage.get("job_type") == VideoAssemblyFactoryService.FINAL_JOB_TYPE:
-        return "final"
-    if lineage is not None and lineage.get("job_type") == VideoAssemblyFactoryService.PREVIEW_JOB_TYPE:
-        return "preview"
-    if output_code.startswith("final_output"):
-        return "final"
-    return "preview"
-
-
-def _lineage_value(output_id: int, lineage_context: dict[int, dict[str, object | None]], key: str):
-    return lineage_context.get(output_id, {}).get(key)
 
 
 def _format_timestamp(value: datetime) -> str:

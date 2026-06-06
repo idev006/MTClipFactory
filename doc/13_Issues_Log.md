@@ -9,6 +9,7 @@
 | ISS-008 | 2026-06-06 | Medium | Path Reload Semantics | Path roots are now configurable, but a full runtime switch still assumes application restart for complete consistency. | Engineering | Open | Decide whether to keep restart semantics explicit or implement hot-reload for path-dependent services. |
 | ISS-014 | 2026-06-06 | Medium | Recovery Scope | Startup queued-job recovery and manual failed-job retry now exist, but failed-job escalation and richer orchestration policy are still limited. | Engineering | Open | Expand recovery semantics beyond current sequential retry flow and document escalation rules. |
 | ISS-022 | 2026-06-06 | Medium | Audio Mix Sophistication | Runtime voice/music mixing now exists, but ducking currently uses a windowed-volume strategy rather than a smoother envelope or sidechain-style mix. Richer multi-layer audio support is also still limited. | Engineering | Open | Evaluate smoother ducking and broader multi-layer audio policy after `IR-06` lands. |
+| ISS-023 | 2026-06-06 | Medium | Review Gate Depth | Review gating now exists, but the current heuristic covers duration mismatch and visual repetition more strongly than audio masking, emergency fill, or richer composition confidence signals. | Engineering | Open | Extend review assessment once stronger audio and fill metrics are available. |
 | ISS-019 | 2026-06-06 | Medium | Execution Roadmap Discipline | The project now needs implementation milestones with acceptance criteria so composition work lands in a controlled sequence instead of broad feature waves. | Project Management | Open | Maintain the implementation roadmap and keep Kanban/issues aligned to the current milestone. |
 | ISS-020 | 2026-06-06 | Medium | Segment Heuristic Depth | Timeline segments are now persisted and validated, but segment content is still inferred from duration bands and recipe metadata instead of operator-authored structure. | Engineering | Open | Expose stronger segment authoring or refinement controls and reduce heuristic planning over time. |
 
@@ -16,6 +17,7 @@
 
 | ID | Date Closed | Topic | Resolution |
 | --- | --- | --- | --- |
+| ISS-024-CLOSED | 2026-06-06 | Composition Review Visibility | Closed by delivering configurable review thresholds, automatic `needs_review` routing, dashboard visibility for flagged recipes, manifest-backed review evidence, and pytest coverage for the new workflow. |
 | ISS-018-CLOSED | 2026-06-06 | Audio Priority Policy | Closed by delivering runtime voice/music mixing in preview/final renderers, settings-driven duck policy consumption, manifest-visible audio-mix evidence, and pytest coverage for the supported mix path. |
 | ISS-010-CLOSED | 2026-06-06 | Final Render Depth | Closed by delivering composition-based final rerendering, manifest-visible final lineage, and proof that final render no longer depends on the approved preview file alone. |
 | ISS-009-CLOSED | 2026-06-06 | Preview Composition Depth | Closed by delivering segment-aware preview composition, manifest-visible segment clip planning, and explicit no-visual failure handling. Audio layering remains tracked separately. |

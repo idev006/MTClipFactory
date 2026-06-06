@@ -89,6 +89,7 @@ def build_resource_library_module(workspace_root: Path) -> ResourceLibraryModule
         preview_manifest_builder=PreviewManifestBuilder(config.paths.preview_root / "manifests"),
         preview_renderer=FFmpegPreviewRenderer(settings_service, config.paths.preview_root),
         final_renderer=FFmpegPreviewRenderer(settings_service, config.paths.outputs_root / "final"),
+        system_settings_service=settings_service,
     )
     tag_management_service = TagManagementService(unit_of_work_factory=uow_factory)
     dashboard_service = DashboardService(
