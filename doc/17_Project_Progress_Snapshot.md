@@ -21,7 +21,7 @@
 
 - Foundation stack is established and testable on `Python 3.12 + SQLite + SQLAlchemy + PySide6 + pytest`.
 - `Resource Library Management` is at a useful MVP baseline.
-- `Video Assembly Factory` now has segment-aware preview/final visual composition, but not a full audio-aware composition engine yet.
+- `Video Assembly Factory` now has segment-aware preview/final visual composition plus a first runtime voice/music mix path, but it is still not a full multi-layer audio engine yet.
 - Dashboard and settings are now a stronger operational truth surface.
 - Automatic queued-job recovery now exists when enabled. Failed jobs can now be retried from the dashboard, but they are still not auto-startup work.
 - Output lineage is now visible from persisted output/job records.
@@ -33,23 +33,24 @@
 - Final render now rerenders from the planned composition path instead of depending on the approved preview file alone.
 - Settings now expose `voice_loop_enabled`, `background_music_loop_enabled`, and music duck controls through `.toml` and the desktop settings screen.
 - Dashboard and Recipe Builder now show more of the composition/render story instead of only output lineage.
+- Preview and final renderers now emit manifest-visible runtime audio-mix evidence.
 - The roadmap is now split into strategic and implementation layers so the next coding milestone is clearer.
 
 ## Delivered In The Latest Loop
 
-- audio policy settings now live in `app_config.toml`, the settings UI, and the dashboard
-- Recipe Builder output inspection now includes composition-plan segment and render-decision summaries
-- pytest now covers audio-policy settings persistence plus Recipe Builder composition visibility
-- architecture, reliability, roadmap, Kanban, issues, and lessons learned were aligned to the delivered `IR-05a` baseline
+- preview/final renderers now apply runtime voice/music mixing with settings-driven duck policy
+- manifests now store applied runtime audio-mix evidence and Recipe Builder output details can surface it
+- pytest now covers runtime audio-mix command generation, manifest evidence, and output-detail visibility
+- architecture, reliability, roadmap, Kanban, issues, and lessons learned were aligned to the delivered `IR-05b` baseline
 
 ## Still Open
 
-1. runtime audio priority and music ducking application inside preview/final rendering
-2. failed-job escalation policy beyond manual retry
-3. optional hot-reload decision for path-root changes
-4. deeper review gates for low-confidence composition outcomes
+1. failed-job escalation policy beyond manual retry
+2. optional hot-reload decision for path-root changes
+3. deeper review gates for low-confidence composition outcomes
+4. smoother ducking and richer multi-layer audio policy
 
 ## Verification Baseline
 
-- `python -m pytest` in `.venv`: `78 passed`
+- `python -m pytest` in `.venv`: `82 passed`
 - `QT_QPA_PLATFORM=offscreen` UI smoke: `6` main windows instantiated

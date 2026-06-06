@@ -40,7 +40,15 @@ def _build_asset_service(unit_of_work_factory, media_root: Path) -> AssetIntakeS
 
 def _build_factory_service(unit_of_work_factory, preview_root: Path) -> VideoAssemblyFactoryService:
     class FakePreviewRenderer:
-        def render_output(self, *, product_code: str, output_stem: str, source_files: list[Path]) -> RenderedPreviewOutput:
+        def render_output(
+            self,
+            *,
+            product_code: str,
+            output_stem: str,
+            source_files: list[Path],
+            segment_clips=(),
+            audio_mix_plan=None,
+        ) -> RenderedPreviewOutput:
             output_dir = preview_root / product_code / "videos"
             output_dir.mkdir(parents=True, exist_ok=True)
             target_path = output_dir / f"{output_stem}.mp4"

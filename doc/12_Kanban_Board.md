@@ -11,9 +11,9 @@ This Markdown board is the SSOT Kanban for the repository.
 
 ## Ready
 
-- `IR-05b` runtime audio ducking application in preview/final renderers
 - `IR-06` review gates and composition reliability controls
 - path-root hot-reload decision
+- audio-mix quality refinement beyond windowed-duck baseline
 
 ## In Progress
 
@@ -52,6 +52,7 @@ This Markdown board is the SSOT Kanban for the repository.
 - `IR-03` segment-based preview composition
 - `IR-04` final-render composition parity
 - `IR-05a` audio policy settings and operator-visible render summaries
+- `IR-05b` runtime audio ducking application in preview/final renderers
 - recipe persistence
 - recipe item assignment
 - preview render output job flow

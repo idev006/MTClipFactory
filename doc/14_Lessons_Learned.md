@@ -129,3 +129,8 @@
 
 - moving loop/duck policy into `.toml`, dashboard, and factory inspection first makes the team’s intent visible and testable before deeper FFmpeg audio work begins
 - separating policy visibility from runtime mix application keeps project status more honest than claiming full ducking support too early
+
+## LL-027 | 2026-06-06 | Runtime Audio Mix Needs Its Own Evidence Surface
+
+- once preview/final renderers started applying voice/music mixing for real, the manifest became the simplest trustworthy place to expose what ducking policy was actually applied
+- operator visibility is much stronger when the UI can read runtime audio evidence instead of only showing planned composition metadata

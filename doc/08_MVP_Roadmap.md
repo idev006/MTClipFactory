@@ -70,9 +70,9 @@ For execution sequencing and acceptance criteria, use [19_Implementation_Roadmap
 ## Current Phase 4 Remaining
 
 1. Deepen preview/final composition from visual parity toward fuller layer and audio parity.
-2. Add configurable audio ducking and operator-visible render decision reporting.
-3. Deepen orchestration beyond current queued-startup and failed-manual retry baselines.
-4. Decide whether path-root changes remain restart-driven or move to hot-reload semantics.
+2. Deepen orchestration beyond current queued-startup and failed-manual retry baselines.
+3. Decide whether path-root changes remain restart-driven or move to hot-reload semantics.
+4. Refine runtime audio quality beyond the current windowed-duck foundation.
 
 ## Composition Milestone Direction
 
@@ -82,7 +82,7 @@ The next composition-oriented milestones should be approached in this order:
 2. design timeline and render-decision data model
 3. implement segment-based preview composition
 4. implement final-render composition parity
-5. add configurable music ducking and operator-visible render decisions
+5. apply runtime music ducking and operator-visible render decisions
 
 ## Roadmap Structure
 

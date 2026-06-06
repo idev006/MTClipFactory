@@ -7,6 +7,7 @@ import pytest
 
 from mt_clip_factory.application.dto import CreateProductCommand
 from mt_clip_factory.application.services import ProductApplicationService
+from mt_clip_factory.factory.audio_composition import PreviewAudioMixPlan
 from mt_clip_factory.factory.dto import AssignAssetToRecipeCommand, CreateRecipeCommand
 from mt_clip_factory.factory.preview_artifacts import PreviewManifestBuilder
 from mt_clip_factory.factory.preview_composition import PreviewSegmentClip
@@ -61,6 +62,7 @@ def _build_factory_service(unit_of_work_factory, preview_root: Path) -> VideoAss
             output_stem: str,
             source_files: list[Path],
             segment_clips: tuple[PreviewSegmentClip, ...] = (),
+            audio_mix_plan: PreviewAudioMixPlan | None = None,
         ) -> RenderedPreviewOutput:
             output_dir = preview_root / product_code / "videos"
             output_dir.mkdir(parents=True, exist_ok=True)
@@ -71,12 +73,28 @@ def _build_factory_service(unit_of_work_factory, preview_root: Path) -> VideoAss
                     "product_code": product_code,
                     "segment_clips": segment_clips,
                     "source_files": source_files,
+                    "audio_mix_plan": audio_mix_plan,
                 }
             )
             payload = b"".join(segment.source_file.read_bytes() for segment in segment_clips) if segment_clips else source_files[0].read_bytes()
             target_path.write_bytes(payload)
             duration_sec = round(sum(segment.target_duration_sec for segment in segment_clips), 3) if segment_clips else 3.0
-            return RenderedPreviewOutput(file_path=target_path, duration_sec=duration_sec)
+            audio_mix_summary = None
+            if audio_mix_plan is not None:
+                audio_mix_summary = {
+                    "mode": "fake_audio_mix",
+                    "target_duration_sec": audio_mix_plan.target_duration_sec,
+                    "voice_track_count": len(audio_mix_plan.voice_tracks),
+                    "music_track_count": len(audio_mix_plan.music_tracks),
+                    "ducking": {
+                        "applied": bool(audio_mix_plan.voice_tracks and audio_mix_plan.music_tracks),
+                    },
+                }
+            return RenderedPreviewOutput(
+                file_path=target_path,
+                duration_sec=duration_sec,
+                audio_mix_summary=audio_mix_summary,
+            )
 
     renderer = FakePreviewRenderer()
     return VideoAssemblyFactoryService(
@@ -96,7 +114,12 @@ def _register_ready_asset(
     file_name: str = "hero.mp4",
 ) -> tuple[int, int]:
     product_service = ProductApplicationService(unit_of_work_factory=unit_of_work_factory)
-    product_id = product_service.create_product(CreateProductCommand(product_code="honey", product_name="Honey"))
+    products = product_service.list_products()
+    product_id = (
+        products[0].product_id
+        if products
+        else product_service.create_product(CreateProductCommand(product_code="honey", product_name="Honey"))
+    )
     asset_service = _build_asset_service(unit_of_work_factory, tmp_path / "media_library")
     source_file = tmp_path / file_name
     source_file.write_bytes(f"{asset_code}-bytes".encode("utf-8"))
@@ -187,6 +210,40 @@ def test_factory_service_builds_preview_output_job(unit_of_work_factory, tmp_pat
     assert manifest_payload["composition_plan"]["resolved_duration_sec"] == 3.0
     assert [segment["segment_type"] for segment in manifest_payload["segments"]] == ["hook", "benefit", "cta"]
     assert all(segment["layer_name"] == "background_visual" for segment in manifest_payload["segments"])
+
+
+def test_factory_service_writes_runtime_audio_mix_summary_to_manifest(unit_of_work_factory, tmp_path) -> None:
+    product_id, visual_asset_id = _register_ready_asset(unit_of_work_factory, tmp_path)
+    _, voice_asset_id = _register_ready_asset(
+        unit_of_work_factory,
+        tmp_path,
+        asset_type="voiceover",
+        asset_code="voice_asset",
+        file_name="voice.mp3",
+    )
+    _, music_asset_id = _register_ready_asset(
+        unit_of_work_factory,
+        tmp_path,
+        asset_type="background_music",
+        asset_code="music_asset",
+        file_name="music.mp3",
+    )
+    service = _build_factory_service(unit_of_work_factory, tmp_path / "previews")
+    recipe_id = service.create_recipe(CreateRecipeCommand(product_id=product_id, recipe_code="Audio Mix"))
+    service.assign_asset_to_recipe(AssignAssetToRecipeCommand(recipe_id=recipe_id, asset_id=visual_asset_id, role="hero"))
+    service.assign_asset_to_recipe(AssignAssetToRecipeCommand(recipe_id=recipe_id, asset_id=voice_asset_id, role="voice"))
+    service.assign_asset_to_recipe(AssignAssetToRecipeCommand(recipe_id=recipe_id, asset_id=music_asset_id, role="music"))
+
+    job_id = service.enqueue_preview_job(recipe_id)
+    service.run_preview_job(job_id)
+
+    output = service.list_outputs(recipe_id=recipe_id)[0]
+    manifest_payload = json.loads(Path(output.manifest_path).read_text(encoding="utf-8"))
+
+    assert manifest_payload["audio_mix"]["mode"] == "fake_audio_mix"
+    assert manifest_payload["audio_mix"]["voice_track_count"] == 1
+    assert manifest_payload["audio_mix"]["music_track_count"] == 1
+    assert manifest_payload["audio_mix"]["ducking"]["applied"] is True
 
 
 def test_factory_service_marks_preview_job_failed_when_recipe_has_no_items(unit_of_work_factory, tmp_path) -> None:

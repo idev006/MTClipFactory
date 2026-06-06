@@ -24,15 +24,15 @@ The project now uses two roadmap layers:
 - `IR-03` Segment-based preview composition: complete on 2026-06-06
 - `IR-04` Final-render composition parity: complete on 2026-06-06
 - `IR-05a` Audio policy settings and operator-visible render decisions: complete on 2026-06-06
-- `IR-05b` Runtime audio ducking application: ready
+- `IR-05b` Runtime audio ducking application: complete on 2026-06-06
 - `IR-06` Review gates and composition reliability controls: ready
 
 ## Current Execution Stream
 
 The next work should follow this order unless a documented issue changes priority:
 
-1. `IR-05b` Runtime audio ducking application
-2. `IR-06` Review gates and composition reliability controls
+1. `IR-06` Review gates and composition reliability controls
+2. Audio-mix quality refinement beyond the current windowed-duck baseline
 
 ## IR-01 | Composition Data Model
 
@@ -188,6 +188,14 @@ Apply the configured narration/music policy inside preview and final rendering, 
 - runtime output contains inspectable evidence of applied audio behavior
 - tests cover the supported audio-mix path
 - issues and PM artifacts remain truthful about any remaining limits
+
+### Delivery Result
+
+- delivered runtime voice/music mixing in preview and final renderers
+- consumed configured duck gain plus attack/release timing in the supported mix path
+- wrote applied audio-mix evidence into preview/final manifests
+- extended Recipe Builder output details so operators can inspect manifest-backed audio evidence
+- covered runtime mix command generation, manifest evidence, and operator visibility with pytest
 
 ## IR-06 | Review Gates And Composition Reliability
 

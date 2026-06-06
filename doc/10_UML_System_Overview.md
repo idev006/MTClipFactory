@@ -96,6 +96,7 @@ classDiagram
     class FFmpegPreviewRenderer {
         +render_preview(...)
         +render_output(..., segment_clips)
+        +runtime audio mix
     }
 
     class PreviewComposition {
@@ -509,7 +510,7 @@ sequenceDiagram
     Plan-->>Factory: composition rules
     Factory->>View: expose composition-plan segments + render-decision summary
     Factory->>Render: render with loop/trim/duck policy
-    Render-->>Factory: output + decisions
+    Render-->>Factory: output + audio_mix_summary
     Factory->>Audit: persist render decisions
     Factory-->>VM: output summary + operator-visible decisions
 ```

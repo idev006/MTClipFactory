@@ -1,5 +1,8 @@
 from __future__ import annotations
 
+import json
+from pathlib import Path
+
 from PySide6.QtCore import Qt
 from PySide6.QtWidgets import (
     QFormLayout,
@@ -465,4 +468,40 @@ def _build_output_detail_lines(output, composition_plan) -> list[str]:
         )
     if len(composition_plan.decisions) > 6:
         lines.append(f"- More Decisions: {len(composition_plan.decisions) - 6}")
+    lines.extend(_build_manifest_audio_lines(output.manifest_path))
+    return lines
+
+
+def _build_manifest_audio_lines(manifest_path: str | None) -> list[str]:
+    if not manifest_path:
+        return []
+    manifest_file = Path(manifest_path)
+    if not manifest_file.exists():
+        return []
+    try:
+        payload = json.loads(manifest_file.read_text(encoding="utf-8"))
+    except (OSError, ValueError):
+        return []
+    audio_mix = payload.get("audio_mix")
+    if not isinstance(audio_mix, dict):
+        return []
+    lines = [
+        "",
+        "Runtime Audio Mix:",
+        f"- Mode: {audio_mix.get('mode', '-')}",
+        f"- Audio Present: {audio_mix.get('audio_present', '-')}",
+        f"- Voice Loop Applied: {audio_mix.get('voice_loop_applied', '-')}",
+    ]
+    ducking = audio_mix.get("ducking")
+    if isinstance(ducking, dict):
+        lines.append(f"- Duck Applied: {ducking.get('applied', '-')}")
+        lines.append(f"- Duck Mode: {ducking.get('mode', ducking.get('reason', '-'))}")
+        if ducking.get("duck_db") is not None:
+            lines.append(f"- Duck Gain (dB): {ducking.get('duck_db')}")
+    voice_tracks = audio_mix.get("voice_tracks")
+    music_tracks = audio_mix.get("music_tracks")
+    if isinstance(voice_tracks, list):
+        lines.append(f"- Voice Track Count: {len(voice_tracks)}")
+    if isinstance(music_tracks, list):
+        lines.append(f"- Music Track Count: {len(music_tracks)}")
     return lines

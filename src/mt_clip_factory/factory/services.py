@@ -424,11 +424,6 @@ class VideoAssemblyFactoryService:
                     plan=persisted.plan,
                     segments=persisted.segments,
                 )
-                manifest_path = self._preview_manifest_builder.write_manifest(
-                    product_code=product.product_code,
-                    recipe_code=recipe.recipe_code,
-                    payload=composition.manifest_payload,
-                )
                 if not composition.source_files:
                     raise PreviewBuildInputError(f"Recipe {recipe.recipe_code} has no renderable video assets.")
                 rendered_output = self._preview_renderer.render_output(
@@ -436,6 +431,15 @@ class VideoAssemblyFactoryService:
                     output_stem=recipe.recipe_code,
                     source_files=list(composition.source_files),
                     segment_clips=composition.segment_clips,
+                    audio_mix_plan=composition.audio_mix_plan,
+                )
+                manifest_payload = dict(composition.manifest_payload)
+                if rendered_output.audio_mix_summary is not None:
+                    manifest_payload["audio_mix"] = rendered_output.audio_mix_summary
+                manifest_path = self._preview_manifest_builder.write_manifest(
+                    product_code=product.product_code,
+                    recipe_code=recipe.recipe_code,
+                    payload=manifest_payload,
                 )
                 output = uow.outputs.add(
                     Output(
@@ -520,11 +524,6 @@ class VideoAssemblyFactoryService:
                     plan=persisted.plan,
                     segments=persisted.segments,
                 )
-                manifest_path = self._preview_manifest_builder.write_manifest(
-                    product_code=product.product_code,
-                    recipe_code=f"{recipe.recipe_code}_final",
-                    payload=composition.manifest_payload,
-                )
                 if not composition.source_files:
                     raise FinalRenderPrerequisiteError(f"Recipe {recipe.recipe_code} has no renderable video assets.")
                 rendered_output = self._final_renderer.render_output(
@@ -532,6 +531,15 @@ class VideoAssemblyFactoryService:
                     output_stem=f"{recipe.recipe_code}_final",
                     source_files=list(composition.source_files),
                     segment_clips=composition.segment_clips,
+                    audio_mix_plan=composition.audio_mix_plan,
+                )
+                manifest_payload = dict(composition.manifest_payload)
+                if rendered_output.audio_mix_summary is not None:
+                    manifest_payload["audio_mix"] = rendered_output.audio_mix_summary
+                manifest_path = self._preview_manifest_builder.write_manifest(
+                    product_code=product.product_code,
+                    recipe_code=f"{recipe.recipe_code}_final",
+                    payload=manifest_payload,
                 )
                 approved_at = _utc_now()
                 output = uow.outputs.add(

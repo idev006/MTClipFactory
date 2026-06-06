@@ -31,6 +31,8 @@
 - segment-aware final-render composition parity with composition-based rerendering
 - settings-backed audio policy controls for narration looping, music looping, and duck timing
 - dashboard and Recipe Builder visibility for composition-plan segments and render-decision summaries
+- runtime voice/music mix path for preview and final render flows
+- manifest-visible runtime audio-mix evidence for operator inspection
 - initial Video Assembly Factory:
   - recipe persistence
   - recipe item assignment
@@ -49,7 +51,7 @@
 
 ## Verification Baseline
 
-- `python -m pytest` via `.venv`: `78 passed`
+- `python -m pytest` via `.venv`: `82 passed`
 - UI smoke via `QT_QPA_PLATFORM=offscreen`: `6` windows instantiated successfully
 
 ## Current Focus
@@ -57,18 +59,18 @@
 - deepen render fidelity beyond the current visual parity baseline
 - keep review and approval history truthful through append-only persistence
 - keep project documents truthful through per-milestone revision checkpoints
-- apply the new audio policy settings to a real preview/final audio-mix runtime path
-- deepen operator-visible render decisions from summary visibility into runtime-applied mix evidence
+- deepen review and reliability rules on top of the new runtime audio foundation
+- refine audio quality beyond the current windowed-duck implementation where needed
 - runtime migration path now exists, so future schema work can be delivered more safely
 - decide whether runtime path changes should hot-reload or remain restart-driven
 - deepen orchestration policy beyond the current queued-startup and failed-manual retry baselines
 
 ## Next Steps
 
-1. Deliver `IR-05b` runtime audio mixing and duck application on top of the new settings/visibility baseline.
-2. Deliver `IR-06` review gates for low-confidence or mismatch-heavy composition cases.
-3. Extend recovery orchestration beyond current sequential retry behavior and define escalation rules.
-4. Decide whether path-root changes stay restart-driven or become hot-reload capable.
+1. Deliver `IR-06` review gates for low-confidence or mismatch-heavy composition cases.
+2. Extend recovery orchestration beyond current sequential retry behavior and define escalation rules.
+3. Decide whether path-root changes stay restart-driven or become hot-reload capable.
+4. Refine runtime audio quality beyond the current windowed-duck foundation if operator feedback demands it.
 
 ## Direction Locked In This Documentation Revision
 
@@ -82,6 +84,7 @@
 - `IR-03` preview composition now follows planned segments and becomes the baseline for `IR-04`
 - `IR-04` final render now follows the planned composition path and becomes the baseline for `IR-05`
 - `IR-05a` now covers operator-controlled audio policy settings plus visible composition/render summaries, while runtime audio mixing remains a separate follow-up
+- `IR-05b` now adds runtime voice/music mixing plus manifest-visible applied-audio evidence
 
 ## Ownership
 

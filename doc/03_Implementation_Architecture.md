@@ -73,6 +73,8 @@ Current implemented baseline now includes:
 - persisted `render_decisions`
 - service-level composition plan retrieval with validation-backed segment planning
 - segment-aware preview/final composition with manifest-guided visual clip selection
+- runtime voice/music mix foundation with manifest-visible audio-mix evidence
+- settings-driven duck gain and attack/release policy consumption in preview/final renderers
 
 The architecture must keep `voice-over` as a foreground layer:
 

@@ -152,7 +152,10 @@ Current preview/final baseline:
 - preview and final write segment clip choices and fill mode into inspectable manifests
 - settings and UI now expose narration-loop, music-loop, and duck timing policy
 - Recipe Builder output inspection now exposes segment summaries and persisted render-decision summaries
-- runtime audio ducking and richer multi-layer mixing are still future work after visual parity
+- preview and final now apply a runtime voice/music mix path
+- manifests now expose applied runtime audio-mix evidence
+- ducking currently uses a windowed-volume strategy driven by configured gain plus attack/release windows
+- richer multi-layer mixing is still future work after this runtime baseline
 
 ## Review Gate Rule
 

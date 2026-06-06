@@ -108,6 +108,7 @@ The following must flow through config or services whenever user control is appr
 - dashboard visibility of recent, queued, processing, and failed jobs
 - settings-based FFmpeg path control
 - dashboard visibility of current narration/music loop and duck policy
+- runtime preview/final audio mixing with manifest-visible applied-audio evidence
 - automated tests for success and failure job paths
 - restart-style retry tests for factory jobs
 - queued-job orchestration tests plus startup policy coverage
@@ -116,8 +117,8 @@ The following must flow through config or services whenever user control is appr
 ## Current Gaps
 
 1. Recovery scope is still narrower for failed-job escalation and advanced orchestration rules.
-2. Preview and final now share visual composition parity, but audio mixing and richer layer parity are still incomplete.
-3. Render decisions are now surfaced more clearly in Recipe Builder inspection, but runtime-applied audio evidence is still missing.
+2. Preview and final now share a runtime voice/music mix foundation, but richer multi-layer parity and smoother duck behavior are still incomplete.
+3. Render decisions and audio evidence are now surfaced more clearly, but operator review gates for risky composition are still missing.
 4. Path-root changes are not fully hot-reloaded across all runtime services.
 
 ## Composition Reliability Direction
@@ -126,5 +127,5 @@ To keep future renders trustworthy:
 
 - narration must not auto-loop
 - music may loop only under explicit policy
-- music ducking decisions must be explainable and eventually visible to operators
+- music ducking decisions must be explainable and visible to operators
 - duration mismatch handling must be logged instead of silently hidden

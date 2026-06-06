@@ -8,6 +8,7 @@ from mt_clip_factory.domain.assets import Asset
 from mt_clip_factory.domain.composition_plans import CompositionPlan
 from mt_clip_factory.domain.recipes import Recipe, RecipeItem
 from mt_clip_factory.domain.timeline_segments import TimelineSegment
+from mt_clip_factory.factory.audio_composition import PreviewAudioMixPlan, build_audio_mix_plan
 
 
 VISUAL_LAYER_FALLBACK = ("product_focus_visual", "background_visual")
@@ -35,6 +36,7 @@ class PreviewComposition:
     manifest_payload: dict
     source_files: tuple[Path, ...]
     segment_clips: tuple[PreviewSegmentClip, ...]
+    audio_mix_plan: PreviewAudioMixPlan | None = None
 
 
 def build_segmented_preview_composition(
@@ -47,6 +49,7 @@ def build_segmented_preview_composition(
     segments: Sequence[TimelineSegment],
 ) -> PreviewComposition:
     visual_assets_by_layer = _build_visual_assets_by_layer(plan, assets)
+    audio_mix_plan = build_audio_mix_plan(plan, assets)
     if not visual_assets_by_layer:
         return PreviewComposition(
             manifest_payload=_build_manifest_payload(
@@ -58,6 +61,7 @@ def build_segmented_preview_composition(
             ),
             source_files=(),
             segment_clips=(),
+            audio_mix_plan=audio_mix_plan,
         )
 
     segment_clips = tuple(
@@ -76,6 +80,7 @@ def build_segmented_preview_composition(
             ),
             source_files=source_files,
             segment_clips=(),
+            audio_mix_plan=audio_mix_plan,
         )
     return PreviewComposition(
         manifest_payload=_build_manifest_payload(
@@ -87,6 +92,7 @@ def build_segmented_preview_composition(
         ),
         source_files=tuple(clip.source_file for clip in segment_clips),
         segment_clips=segment_clips,
+        audio_mix_plan=audio_mix_plan,
     )
 
 
