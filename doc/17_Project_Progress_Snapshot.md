@@ -21,7 +21,7 @@
 
 - Foundation stack is established and testable on `Python 3.12 + SQLite + SQLAlchemy + PySide6 + pytest`.
 - `Resource Library Management` is at a useful MVP baseline.
-- `Video Assembly Factory` now has segment-aware preview/final visual composition plus a first runtime voice/music mix path, but it is still not a full multi-layer audio engine yet.
+- `Video Assembly Factory` now has segment-aware preview/final visual composition plus a gain-staged runtime voice/music mix path, though it is still not a full audio-effects engine.
 - Dashboard and settings are now a stronger operational truth surface.
 - Dashboard now also exposes `needs_review` recipe count and the active review thresholds.
 - Automatic queued-job recovery now exists when enabled. Failed jobs can now be retried from the dashboard, but they are still not auto-startup work.
@@ -38,22 +38,23 @@
 - Preview and final renderers now also emit manifest-visible review-gate evidence plus quality/duplicate-risk summaries.
 - Review gates now also detect missing ducking protection during narration/music overlap and duration-unknown emergency fill across visual or audio layers.
 - Preview and final renderers now support configurable duck modes with sidechain-compressor tuning evidence.
+- Preview and final renderers now also support configurable voice/music gain staging with manifest-visible balance evidence.
 - Failed jobs now retain persisted recovery-attempt history, escalate visibly after repeated failures, and surface operator playbook guidance on the dashboard.
 - Path roots now follow an explicit restart-driven activation policy, with runtime-active and configured-next-start roots shown separately for operator truthfulness.
 - The roadmap is now split into strategic and implementation layers so the next coding milestone is clearer.
 
 ## Delivered In The Latest Loop
 
-- review assessment now waits for renderer audio evidence before finalizing manifest-backed review state
-- manifests now carry `audio_masking_risk` and `emergency_fill_detected` signals with supporting review metrics when those conditions occur
-- pytest now covers the delivered `IR-10` baseline end to end
-- architecture, reliability, roadmap, Kanban, issues, and lessons learned were aligned to the delivered `IR-10` baseline
+- settings now expose voice and music mix gains alongside the existing duck policy
+- FFmpeg runtime mixing now applies configurable gain staging before the final voice/music mix
+- manifests and Recipe Builder audio details now expose gain-stage balance evidence for operator inspection
+- pytest now covers the delivered `IR-11` baseline end to end
+- architecture, reliability, roadmap, Kanban, issues, and lessons learned were aligned to the delivered `IR-11` baseline
 
 ## Still Open
 
-1. richer multi-layer audio policy and polish beyond the current duck-engine baseline
-2. decide whether recovery history should remain payload-backed or move into a dedicated audit schema
-3. implement optional path-root hot-reload only if restart-driven semantics become too costly in practice
+1. decide whether recovery history should remain payload-backed or move into a dedicated audit schema
+2. implement optional path-root hot-reload only if restart-driven semantics become too costly in practice
 
 ## Verification Baseline
 

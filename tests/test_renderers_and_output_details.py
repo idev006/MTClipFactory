@@ -59,6 +59,8 @@ def _settings(tmp_path: Path) -> SystemSettingsDTO:
         music_duck_release_ms=500,
         music_duck_threshold_db=-24,
         music_duck_ratio=8.0,
+        voice_mix_gain_db=0,
+        music_mix_gain_db=-4,
     )
 
 
@@ -115,15 +117,18 @@ def test_ffmpeg_renderer_builds_runtime_audio_mix_commands(tmp_path) -> None:
     assert rendered.audio_mix_summary is not None
     assert rendered.audio_mix_summary["ducking"]["applied"] is True
     assert rendered.audio_mix_summary["ducking"]["mode"] == "sidechain_compressor"
+    assert rendered.audio_mix_summary["mix_balance"]["music_mix_gain_db"] == -4
+    assert rendered.audio_mix_summary["music_mix"]["gain_stage_applied"] is True
     assert any("-an" in command for command in renderer.commands)
     assert any("sidechaincompress=" in " ".join(command) for command in renderer.commands)
     assert any("amix=inputs=2" in " ".join(command) for command in renderer.commands)
+    assert any("volume=-4dB" in " ".join(command) for command in renderer.commands)
     assert any(command.count("-map") >= 2 for command in renderer.commands)
 
 
 def test_ffmpeg_renderer_supports_windowed_duck_fallback_mode(tmp_path) -> None:
     settings = _settings(tmp_path)
-    settings = replace(settings, music_duck_mode="windowed_volume_duck")
+    settings = replace(settings, music_duck_mode="windowed_volume_duck", voice_mix_gain_db=2, music_mix_gain_db=-6)
     renderer = InspectableFFmpegPreviewRenderer(StaticSettingsService(settings), tmp_path / "preview_root")
     source_file = tmp_path / "visual.mp4"
     source_file.write_bytes(b"visual")
@@ -137,7 +142,11 @@ def test_ffmpeg_renderer_supports_windowed_duck_fallback_mode(tmp_path) -> None:
 
     assert rendered.audio_mix_summary is not None
     assert rendered.audio_mix_summary["ducking"]["mode"] == "windowed_volume_duck"
+    assert rendered.audio_mix_summary["mix_balance"]["voice_mix_gain_db"] == 2
+    assert rendered.audio_mix_summary["voice_mix"]["gain_stage_applied"] is True
     assert any("volume=volume=" in " ".join(command) for command in renderer.commands)
+    assert any("volume=2dB" in " ".join(command) for command in renderer.commands)
+    assert any("volume=-6dB" in " ".join(command) for command in renderer.commands)
 
 
 def test_local_renderer_returns_simulated_audio_mix_summary(tmp_path) -> None:
@@ -166,6 +175,11 @@ def test_output_detail_helper_reads_runtime_audio_mix_from_manifest(tmp_path) ->
                     "mode": "runtime_audio_mix",
                     "audio_present": True,
                     "voice_loop_applied": False,
+                    "mix_balance": {
+                        "strategy": "voice_priority_gain_stage",
+                        "voice_mix_gain_db": 2,
+                        "music_mix_gain_db": -6,
+                    },
                     "voice_tracks": [{"asset_code": "voice_asset"}],
                     "music_tracks": [{"asset_code": "music_asset"}],
                     "ducking": {
@@ -183,6 +197,9 @@ def test_output_detail_helper_reads_runtime_audio_mix_from_manifest(tmp_path) ->
     lines = _build_manifest_audio_lines(str(manifest_path))
 
     assert "Runtime Audio Mix:" in lines
+    assert "- Mix Strategy: voice_priority_gain_stage" in lines
+    assert "- Voice Mix Gain (dB): 2" in lines
+    assert "- Music Mix Gain (dB): -6" in lines
     assert "- Duck Applied: True" in lines
     assert "- Duck Threshold (dB): -24" in lines
     assert "- Duck Ratio: 8.0" in lines

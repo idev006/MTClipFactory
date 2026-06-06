@@ -159,3 +159,8 @@
 
 - audio-risk review rules became much more trustworthy once the review gate waited for renderer audio evidence instead of inferring masking risk only from planning intent
 - duration-unknown fill paths are worth surfacing as first-class review evidence because fallback behavior is operationally important even when a render technically succeeds
+
+## LL-033 | 2026-06-06 | Ducking Alone Is Not Enough Mix Control
+
+- once duck-mode quality improved, the next reliability gap was simple layer balance: a voice-priority system still needs explicit voice/music gain staging instead of assuming a flat 1:1 final mix
+- exposing mix gains through settings, dashboard, and manifest evidence keeps audio polish operator-visible instead of hiding it inside FFmpeg command details

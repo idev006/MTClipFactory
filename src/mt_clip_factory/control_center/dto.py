@@ -31,6 +31,8 @@ class SystemSettingsDTO:
     music_duck_release_ms: int = 500
     music_duck_threshold_db: int = -24
     music_duck_ratio: float = 8.0
+    voice_mix_gain_db: int = 0
+    music_mix_gain_db: int = -4
     review_duration_mismatch_sec: int = 1
     review_max_looped_segments: int = 2
     review_min_distinct_visual_assets: int = 2
@@ -148,6 +150,8 @@ class DashboardSummaryDTO:
     music_duck_release_ms: int
     music_duck_threshold_db: int
     music_duck_ratio: float
+    voice_mix_gain_db: int
+    music_mix_gain_db: int
     review_duration_mismatch_sec: int
     review_max_looped_segments: int
     review_min_distinct_visual_assets: int

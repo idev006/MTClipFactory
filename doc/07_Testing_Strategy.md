@@ -78,6 +78,7 @@ MTClipFactory must stay easy to test with `pytest` from day one. The system is e
 - dashboard/settings audio-policy controls
 - Recipe Builder composition-plan visibility alongside output lineage
 - runtime audio-mix command path and manifest audio evidence
+- voice/music gain-stage settings persistence plus runtime balance-command coverage
 - Recipe Builder output-detail helper for runtime audio-mix inspection
 - review-gate status routing, manifest evidence, and approval-reason enforcement for flagged recipes
 - sidechain duck-mode settings persistence plus fallback windowed-duck command coverage

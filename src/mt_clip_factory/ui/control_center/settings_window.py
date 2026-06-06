@@ -77,6 +77,8 @@ class SettingsWindow(QMainWindow):
         self.music_duck_release_input = QSpinBox()
         self.music_duck_threshold_input = QSpinBox()
         self.music_duck_ratio_input = QDoubleSpinBox()
+        self.voice_mix_gain_input = QSpinBox()
+        self.music_mix_gain_input = QSpinBox()
         self.review_duration_mismatch_input = QSpinBox()
         self.review_max_looped_segments_input = QSpinBox()
         self.review_min_distinct_visual_assets_input = QSpinBox()
@@ -102,6 +104,8 @@ class SettingsWindow(QMainWindow):
             spinbox.setRange(0, 100000)
         self.music_duck_db_input.setRange(-60, 0)
         self.music_duck_threshold_input.setRange(-60, 0)
+        self.voice_mix_gain_input.setRange(-24, 24)
+        self.music_mix_gain_input.setRange(-24, 24)
         self.music_duck_mode_input.addItems(["sidechain_compressor", "windowed_volume_duck"])
         self.music_duck_ratio_input.setRange(1.0, 30.0)
         self.music_duck_ratio_input.setDecimals(2)
@@ -133,6 +137,8 @@ class SettingsWindow(QMainWindow):
         form_layout.addRow("Music Duck Release (ms)", self.music_duck_release_input)
         form_layout.addRow("Music Duck Threshold (dB)", self.music_duck_threshold_input)
         form_layout.addRow("Music Duck Ratio", self.music_duck_ratio_input)
+        form_layout.addRow("Voice Mix Gain (dB)", self.voice_mix_gain_input)
+        form_layout.addRow("Music Mix Gain (dB)", self.music_mix_gain_input)
         form_layout.addRow("Review Duration Mismatch (sec)", self.review_duration_mismatch_input)
         form_layout.addRow("Review Max Looped Segments", self.review_max_looped_segments_input)
         form_layout.addRow("Review Min Distinct Visual Assets", self.review_min_distinct_visual_assets_input)
@@ -185,6 +191,8 @@ class SettingsWindow(QMainWindow):
         self.music_duck_release_input.setValue(settings.music_duck_release_ms)
         self.music_duck_threshold_input.setValue(settings.music_duck_threshold_db)
         self.music_duck_ratio_input.setValue(settings.music_duck_ratio)
+        self.voice_mix_gain_input.setValue(settings.voice_mix_gain_db)
+        self.music_mix_gain_input.setValue(settings.music_mix_gain_db)
         self.review_duration_mismatch_input.setValue(settings.review_duration_mismatch_sec)
         self.review_max_looped_segments_input.setValue(settings.review_max_looped_segments)
         self.review_min_distinct_visual_assets_input.setValue(settings.review_min_distinct_visual_assets)
@@ -223,6 +231,8 @@ class SettingsWindow(QMainWindow):
                     music_duck_release_ms=self.music_duck_release_input.value(),
                     music_duck_threshold_db=self.music_duck_threshold_input.value(),
                     music_duck_ratio=self.music_duck_ratio_input.value(),
+                    voice_mix_gain_db=self.voice_mix_gain_input.value(),
+                    music_mix_gain_db=self.music_mix_gain_input.value(),
                     review_duration_mismatch_sec=self.review_duration_mismatch_input.value(),
                     review_max_looped_segments=self.review_max_looped_segments_input.value(),
                     review_min_distinct_visual_assets=self.review_min_distinct_visual_assets_input.value(),

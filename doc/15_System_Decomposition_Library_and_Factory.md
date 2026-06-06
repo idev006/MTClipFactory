@@ -51,6 +51,7 @@ Compose prepared assets into reviewable preview and later final-output workflows
 - segment-aware preview composition
 - final-render composition parity
 - runtime voice/music mixing with manifest-visible audio evidence
+- settings-backed voice/music balance control with runtime gain staging
 - review-threshold evaluation and `needs_review` workflow routing
 - runtime-backed audio masking and emergency-fill review evidence
 - configurable duck-mode orchestration for narration/music runtime mixing
@@ -66,7 +67,6 @@ Compose prepared assets into reviewable preview and later final-output workflows
 
 ### Future Responsibilities
 
-- richer multi-layer audio-aware preview/final composition
 - broader composition-confidence scoring beyond the current review heuristics
 
 ### Owned SSOT

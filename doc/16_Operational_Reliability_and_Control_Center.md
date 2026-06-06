@@ -54,6 +54,8 @@ Current editable fields:
 - music duck attack/release timing
 - music duck threshold
 - music duck ratio
+- voice mix gain
+- music mix gain
 - review duration mismatch threshold
 - review max looped segments
 - review min distinct visual assets
@@ -126,7 +128,9 @@ The following must flow through config or services whenever user control is appr
 - settings-based FFmpeg path control
 - dashboard visibility of current narration/music loop and duck policy
 - dashboard visibility of duck mode selection and compressor tuning
+- dashboard visibility of current voice/music gain-stage policy
 - runtime preview/final audio mixing with manifest-visible applied-audio evidence
+- runtime preview/final gain staging with manifest-visible balance evidence
 - review-gate routing with persisted `needs_review` recipe state
 - dashboard visibility of flagged recipe count plus configured review thresholds
 - Recipe Builder visibility for manifest-backed review signals, metrics, quality score, and duplicate risk
@@ -137,10 +141,9 @@ The following must flow through config or services whenever user control is appr
 
 ## Current Gaps
 
-1. Preview and final now share a configurable duck-engine foundation, but richer multi-layer parity and deeper polish are still incomplete.
-2. Review gates now cover audio masking loss and emergency fill, but broader composition-confidence scoring is still heuristic.
-3. Recovery history currently rides on persisted job payload metadata rather than a dedicated audit schema.
-4. Optional path-root hot-reload remains a future backlog item if restart-driven semantics become operationally too costly.
+1. Review gates now cover audio masking loss and emergency fill, but broader composition-confidence scoring is still heuristic.
+2. Recovery history currently rides on persisted job payload metadata rather than a dedicated audit schema.
+3. Optional path-root hot-reload remains a future backlog item if restart-driven semantics become operationally too costly.
 
 ## Composition Reliability Direction
 

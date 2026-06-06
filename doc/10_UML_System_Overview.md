@@ -104,6 +104,7 @@ classDiagram
         +render_output(..., segment_clips)
         +runtime audio mix
         +configurable duck mode
+        +configurable gain staging
     }
 
     class PreviewComposition {
@@ -131,6 +132,7 @@ classDiagram
         +audio policy fields
         +review threshold fields
         +duck mode tuning fields
+        +gain-stage tuning fields
     }
 
     class PathRootStatus {
@@ -577,10 +579,10 @@ sequenceDiagram
     View->>VM: queue render(recipe_id)
     VM->>Factory: build composition plan
     Factory->>Plan: resolve master timeline + segments + layers
-    Factory->>Settings: load duck mode policy
+    Factory->>Settings: load duck and gain policy
     Plan-->>Factory: composition rules
     Factory->>View: expose composition-plan segments + render-decision summary
-    Factory->>Render: render with loop/trim/duck policy
+    Factory->>Render: render with loop/trim/duck/gain policy
     Render-->>Factory: output + audio_mix_summary
     Factory->>Factory: assess review gate from composition + runtime audio evidence
     Factory->>Audit: persist render decisions

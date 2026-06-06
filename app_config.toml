@@ -31,6 +31,8 @@ music_duck_attack_ms = 250
 music_duck_release_ms = 500
 music_duck_threshold_db = -24
 music_duck_ratio = 8.0
+voice_mix_gain_db = 0
+music_mix_gain_db = -4
 
 [review]
 duration_mismatch_sec = 1

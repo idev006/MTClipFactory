@@ -236,6 +236,8 @@ def test_settings_view_model_loads_and_saves(tmp_path) -> None:
                 "music_duck_release_ms = 500",
                 "music_duck_threshold_db = -24",
                 "music_duck_ratio = 8.0",
+                "voice_mix_gain_db = 0",
+                "music_mix_gain_db = -4",
                 "",
             ]
         ),
@@ -285,6 +287,8 @@ def test_settings_view_model_loads_and_saves(tmp_path) -> None:
             music_duck_release_ms=420,
             music_duck_threshold_db=-20,
             music_duck_ratio=5.5,
+            voice_mix_gain_db=2,
+            music_mix_gain_db=-6,
         )
     )
 
@@ -299,6 +303,8 @@ def test_settings_view_model_loads_and_saves(tmp_path) -> None:
     assert view_model.settings.music_duck_db == -18
     assert view_model.settings.music_duck_threshold_db == -20
     assert view_model.settings.music_duck_ratio == 5.5
+    assert view_model.settings.voice_mix_gain_db == 2
+    assert view_model.settings.music_mix_gain_db == -6
     assert view_model.settings.review_duration_mismatch_sec == 1
     assert "restart-driven" in view_model.feedback
     assert "Restart required for path roots" in view_model.feedback
@@ -377,6 +383,8 @@ def test_dashboard_view_model_loads_summary(unit_of_work_factory, tmp_path) -> N
     assert view_model.summary.path_restart_required is False
     assert view_model.summary.music_duck_enabled is True
     assert view_model.summary.music_duck_mode == "sidechain_compressor"
+    assert view_model.summary.voice_mix_gain_db == 0
+    assert view_model.summary.music_mix_gain_db == -4
     assert view_model.summary.needs_review_recipe_count == 1
     assert view_model.summary.recent_jobs[0].job_code == "preview_07"
 

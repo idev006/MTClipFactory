@@ -211,6 +211,8 @@ class DashboardWindow(QMainWindow):
                     f"Music Duck Release (ms): {summary.music_duck_release_ms}",
                     f"Music Duck Threshold (dB): {summary.music_duck_threshold_db}",
                     f"Music Duck Ratio: {summary.music_duck_ratio}",
+                    f"Voice Mix Gain (dB): {summary.voice_mix_gain_db}",
+                    f"Music Mix Gain (dB): {summary.music_mix_gain_db}",
                     f"Review Duration Mismatch (sec): {summary.review_duration_mismatch_sec}",
                     f"Review Max Looped Segments: {summary.review_max_looped_segments}",
                     f"Review Min Distinct Visual Assets: {summary.review_min_distinct_visual_assets}",

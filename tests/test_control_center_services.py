@@ -285,6 +285,8 @@ def test_system_settings_service_reads_and_writes_toml(tmp_path) -> None:
         music_duck_release_ms=480,
         music_duck_threshold_db=-22,
         music_duck_ratio=6.5,
+        voice_mix_gain_db=3,
+        music_mix_gain_db=-7,
     )
     service.save(updated)
 
@@ -302,6 +304,8 @@ def test_system_settings_service_reads_and_writes_toml(tmp_path) -> None:
     assert loaded.music_duck_db == -16
     assert loaded.music_duck_threshold_db == -22
     assert loaded.music_duck_ratio == 6.5
+    assert loaded.voice_mix_gain_db == 3
+    assert loaded.music_mix_gain_db == -7
     assert config_path.exists()
 
 
@@ -337,6 +341,8 @@ def test_dashboard_service_aggregates_system_information(unit_of_work_factory, t
             music_duck_release_ms=500,
             music_duck_threshold_db=-24,
             music_duck_ratio=8.0,
+            voice_mix_gain_db=1,
+            music_mix_gain_db=-5,
         )
     )
     config = default_config(workspace_root)
@@ -397,6 +403,8 @@ def test_dashboard_service_aggregates_system_information(unit_of_work_factory, t
     assert summary.music_duck_db == -15
     assert summary.music_duck_threshold_db == -24
     assert summary.music_duck_ratio == 8.0
+    assert summary.voice_mix_gain_db == 1
+    assert summary.music_mix_gain_db == -5
     assert summary.review_duration_mismatch_sec == 1
     assert summary.review_max_looped_segments == 2
     assert summary.recent_jobs[0] == DashboardJobDTO(

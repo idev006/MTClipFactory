@@ -515,6 +515,11 @@ def _build_manifest_audio_lines(manifest_path: str | None) -> list[str]:
         f"- Audio Present: {audio_mix.get('audio_present', '-')}",
         f"- Voice Loop Applied: {audio_mix.get('voice_loop_applied', '-')}",
     ]
+    mix_balance = audio_mix.get("mix_balance")
+    if isinstance(mix_balance, dict):
+        lines.append(f"- Mix Strategy: {mix_balance.get('strategy', '-')}")
+        lines.append(f"- Voice Mix Gain (dB): {mix_balance.get('voice_mix_gain_db', '-')}")
+        lines.append(f"- Music Mix Gain (dB): {mix_balance.get('music_mix_gain_db', '-')}")
     ducking = audio_mix.get("ducking")
     if isinstance(ducking, dict):
         lines.append(f"- Duck Applied: {ducking.get('applied', '-')}")

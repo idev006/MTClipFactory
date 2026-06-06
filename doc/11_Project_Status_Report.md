@@ -41,6 +41,8 @@
 - configurable duck engine with `sidechain_compressor` default plus `windowed_volume_duck` fallback
 - settings-backed duck mode, threshold, and ratio controls surfaced through `.toml`, dashboard, and settings UI
 - manifest-visible runtime evidence for the applied duck mode and compressor tuning
+- settings-backed voice/music gain-stage controls surfaced through `.toml`, dashboard, and settings UI
+- manifest-visible runtime evidence for applied voice/music balance during audio mixing
 - persisted failed-job recovery-attempt metadata with configurable escalation threshold
 - dashboard-visible operator playbook guidance plus deferred bulk-retry handling for escalated failed jobs
 - restart-driven path-root policy with runtime-vs-configured dashboard truthfulness and restart-pending visibility
@@ -67,15 +69,14 @@
 
 ## Current Focus
 
-- deepen runtime audio beyond the new configurable duck-engine baseline where needed
+- decide whether recovery history needs first-class audit persistence beyond the current job-payload seam
 - keep richer review signals and approval history truthful through append-only persistence
 - keep project documents truthful through per-milestone revision checkpoints
 
 ## Next Steps
 
-1. Extend audio work from configurable ducking into richer multi-layer polish if operator feedback demands it.
-2. Revisit whether recovery history needs a dedicated audit schema beyond the current persisted job-payload seam.
-3. Consider optional path-root hot-reload only if the restart-driven policy becomes operationally too costly.
+1. Revisit whether recovery history needs a dedicated audit schema beyond the current persisted job-payload seam.
+2. Consider optional path-root hot-reload only if the restart-driven policy becomes operationally too costly.
 
 ## Direction Locked In This Documentation Revision
 
@@ -95,6 +96,7 @@
 - `IR-08` now adds persisted failed-job recovery history, escalation thresholds, deferred bulk retry, and operator playbook visibility
 - `IR-09` now locks path-root reload semantics to restart-driven behavior and makes runtime-vs-configured path truth explicit to operators
 - `IR-10` now adds runtime-backed audio masking review signals plus duration-unknown emergency-fill detection in manifest-backed review evidence
+- `IR-11` now adds settings-backed voice/music gain staging with runtime manifest evidence and operator-visible balance controls
 
 ## Ownership
 

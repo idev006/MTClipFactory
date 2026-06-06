@@ -76,6 +76,7 @@ Current implemented baseline now includes:
 - runtime voice/music mix foundation with manifest-visible audio-mix evidence
 - settings-driven duck gain and attack/release policy consumption in preview/final renderers
 - configurable duck mode selection with `sidechain_compressor` as the higher-quality default and `windowed_volume_duck` as fallback
+- settings-driven voice/music gain staging with manifest-visible balance evidence
 - review-gate assessment with configurable duration and visual-repetition thresholds
 - manifest-backed review evidence plus output quality/duplicate-risk summaries
 

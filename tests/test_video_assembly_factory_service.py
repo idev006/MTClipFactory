@@ -97,6 +97,11 @@ def _build_factory_service(
                     "target_duration_sec": audio_mix_plan.target_duration_sec,
                     "voice_track_count": len(audio_mix_plan.voice_tracks),
                     "music_track_count": len(audio_mix_plan.music_tracks),
+                    "mix_balance": {
+                        "strategy": "voice_priority_gain_stage",
+                        "voice_mix_gain_db": 0,
+                        "music_mix_gain_db": -4,
+                    },
                     "ducking": {
                         "applied": ducking_applied,
                         "reason": render_ducking_reason,
@@ -260,6 +265,7 @@ def test_factory_service_writes_runtime_audio_mix_summary_to_manifest(unit_of_wo
     assert manifest_payload["audio_mix"]["mode"] == "fake_audio_mix"
     assert manifest_payload["audio_mix"]["voice_track_count"] == 1
     assert manifest_payload["audio_mix"]["music_track_count"] == 1
+    assert manifest_payload["audio_mix"]["mix_balance"]["music_mix_gain_db"] == -4
     assert manifest_payload["audio_mix"]["ducking"]["applied"] is True
 
 

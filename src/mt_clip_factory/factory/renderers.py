@@ -119,6 +119,14 @@ class FFmpegPreviewRenderer:
                 target_duration_sec=audio_mix_plan.target_duration_sec,
                 allow_loop=False,
             )
+            voice_track_path, voice_gain_summary = self._apply_gain_stage(
+                settings=settings,
+                temp_dir=temp_dir,
+                track_path=voice_track_path,
+                prefix="voice",
+                gain_db=settings.voice_mix_gain_db,
+            )
+            voice_summary = {**voice_summary, **voice_gain_summary}
             music_track_path, music_summary = self._render_audio_track_sequence(
                 settings=settings,
                 temp_dir=temp_dir,
@@ -127,6 +135,14 @@ class FFmpegPreviewRenderer:
                 target_duration_sec=audio_mix_plan.target_duration_sec,
                 allow_loop=settings.background_music_loop_enabled,
             )
+            music_track_path, music_gain_summary = self._apply_gain_stage(
+                settings=settings,
+                temp_dir=temp_dir,
+                track_path=music_track_path,
+                prefix="music",
+                gain_db=settings.music_mix_gain_db,
+            )
+            music_summary = {**music_summary, **music_gain_summary}
             music_track_path, ducking_summary = self._apply_ducking(
                 settings=settings,
                 temp_dir=temp_dir,
@@ -173,6 +189,11 @@ class FFmpegPreviewRenderer:
             "background_music_loop_enabled": settings.background_music_loop_enabled,
             "voice_tracks": _track_summary(audio_mix_plan.voice_tracks),
             "music_tracks": _track_summary(audio_mix_plan.music_tracks),
+            "mix_balance": {
+                "strategy": "voice_priority_gain_stage",
+                "voice_mix_gain_db": settings.voice_mix_gain_db,
+                "music_mix_gain_db": settings.music_mix_gain_db,
+            },
             "voice_mix": voice_summary,
             "music_mix": music_summary,
             "ducking": ducking_summary,
@@ -570,6 +591,36 @@ class FFmpegPreviewRenderer:
                 for start_sec, end_sec in intervals
             ],
         }
+
+    def _apply_gain_stage(
+        self,
+        *,
+        settings: SystemSettingsDTO,
+        temp_dir: Path,
+        track_path: Path | None,
+        prefix: str,
+        gain_db: int,
+    ) -> tuple[Path | None, dict]:
+        if track_path is None:
+            return None, {"gain_db": gain_db, "gain_stage_applied": False, "gain_reason": "no_track"}
+        if gain_db == 0:
+            return track_path, {"gain_db": gain_db, "gain_stage_applied": False, "gain_reason": "unity_gain"}
+        gained_path = temp_dir / f"{prefix}_gain_staged.m4a"
+        self._run_ffmpeg(
+            settings=settings,
+            arguments=[
+                "-y",
+                "-i",
+                str(track_path),
+                "-vn",
+                "-af",
+                f"volume={gain_db}dB",
+                "-c:a",
+                "aac",
+                str(gained_path),
+            ],
+        )
+        return gained_path, {"gain_db": gain_db, "gain_stage_applied": True}
 
     def _mix_audio_tracks(
         self,

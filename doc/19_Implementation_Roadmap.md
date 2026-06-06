@@ -30,14 +30,14 @@ The project now uses two roadmap layers:
 - `IR-08` Recovery escalation rules and operator playbook: complete on 2026-06-06
 - `IR-09` Path-root reload decision and runtime truthfulness: complete on 2026-06-06
 - `IR-10` Runtime-backed review signals for audio masking and emergency fill: complete on 2026-06-06
+- `IR-11` Voice-priority gain staging and audio-balance visibility: complete on 2026-06-06
 
 ## Current Execution Stream
 
 The next work should follow this order unless a documented issue changes priority:
 
-1. Richer multi-layer audio polish beyond the current duck-engine baseline
-2. Decide whether recovery history should remain payload-backed or move into a dedicated audit schema
-3. Optional path-root hot-reload support if restart semantics prove too costly
+1. Decide whether recovery history should remain payload-backed or move into a dedicated audit schema
+2. Optional path-root hot-reload support if restart semantics prove too costly
 
 ## IR-01 | Composition Data Model
 
@@ -342,6 +342,34 @@ Deepen review gating with runtime-backed evidence so risky audio overlap and eme
 - delivered manifest-visible `audio_masking_risk` when narration and music overlap without confirmed ducking protection
 - delivered manifest-visible `emergency_fill_detected` across duration-unknown visual clips and audio tracks
 - covered unit-level review evaluation plus service-level manifest routing with pytest
+
+## IR-11 | Voice-Priority Gain Staging And Audio-Balance Visibility
+
+### Goal
+
+Improve runtime audio polish with configurable layer balance so narration stays foregrounded without relying on ducking alone.
+
+### Scope
+
+- add settings-backed voice and music mix gains in `.toml`, dashboard summary, and settings UI
+- apply runtime FFmpeg gain staging to voice and music layers before the final mix
+- expose gain-stage balance evidence through manifest-backed audio summaries and Recipe Builder details
+- keep preview/final parity truthful
+- cover the new settings and runtime seams with pytest
+
+### Acceptance Criteria
+
+- preview and final renderers consume configurable voice/music gain settings during runtime mixing
+- operator-facing surfaces can inspect the active voice/music balance policy and resulting manifest evidence
+- tests cover settings persistence, runtime command generation, and manifest/UI audio-detail visibility
+- roadmap, UML, architecture, issues, lessons learned, and status docs remain aligned to the delivered baseline
+
+### Delivery Result
+
+- delivered settings-backed `voice_mix_gain_db` and `music_mix_gain_db` through `app_config.toml`, `SystemSettingsService`, dashboard summary, and settings UI
+- delivered runtime FFmpeg gain staging for voice and music layers before the final mix path
+- delivered manifest-visible `mix_balance` evidence plus Recipe Builder audio-detail visibility for applied gain settings
+- covered renderer, settings, dashboard, manifest, and service-level seams with pytest
 
 ## Cross-Milestone Rules
 

@@ -9,7 +9,7 @@ This Markdown board is the SSOT Kanban for the repository.
 
 ## Ready
 
-- richer multi-layer audio polish beyond current duck-engine baseline
+- recovery audit-shape decision for persisted job history
 
 ## In Progress
 
@@ -54,6 +54,7 @@ This Markdown board is the SSOT Kanban for the repository.
 - `IR-08` recovery escalation rules and operator playbook
 - `IR-09` path-root reload decision and runtime path truthfulness
 - `IR-10` runtime-backed review signals for audio masking and emergency fill
+- `IR-11` voice-priority gain staging and audio-balance visibility
 - recipe persistence
 - recipe item assignment
 - preview render output job flow

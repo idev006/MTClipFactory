@@ -106,6 +106,8 @@ Recommended configurable policy:
 - `music_duck_release_ms = 300-800`
 - `music_duck_threshold_db = -30` to `-18`
 - `music_duck_ratio = 4.0` to `12.0`
+- `voice_mix_gain_db = 0` to `+4`
+- `music_mix_gain_db = -8` to `-2`
 
 ## Visual Fill Policy
 
@@ -159,7 +161,7 @@ Current preview/final baseline:
 - preview and final now apply a runtime voice/music mix path
 - manifests now expose applied runtime audio-mix evidence
 - ducking now uses a configurable engine with `sidechain_compressor` as the default runtime path and `windowed_volume_duck` as fallback
-- richer multi-layer mixing is still future work after this stronger duck-engine baseline
+- preview and final now apply configurable voice/music gain staging before the final mix
 
 ## Review Gate Rule
 
@@ -208,6 +210,8 @@ Current implemented settings baseline on 2026-06-06:
 - `music_duck_release_ms`
 - `music_duck_threshold_db`
 - `music_duck_ratio`
+- `voice_mix_gain_db`
+- `music_mix_gain_db`
 - `review_duration_mismatch_sec`
 - `review_max_looped_segments`
 - `review_min_distinct_visual_assets`
@@ -218,6 +222,7 @@ Current implemented duck-engine baseline on 2026-06-06:
 - `sidechain_compressor` is now the primary configurable duck mode
 - `windowed_volume_duck` remains available as a supported fallback mode
 - manifests now carry applied duck mode evidence plus threshold or gain details, depending on the selected strategy
+- manifests now also carry applied voice/music gain-stage evidence for the final mix balance
 
 ## Current Data-Model Baseline
 
@@ -230,7 +235,6 @@ Current implementation now formalizes:
 
 Still future or incomplete:
 
-- richer `audio_mix_policy`
 - segment authoring/refinement controls beyond heuristic planning
 
 The exact schema may continue to evolve, but the policy in this document should stay stable unless the team deliberately revises project direction.
