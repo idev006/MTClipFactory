@@ -4,6 +4,8 @@
 
 MTClipFactory must stay easy to test with `pytest` from day one. The system is expected to evolve into a durable desktop workflow tool, so testability is a design requirement, not a cleanup task.
 
+For execution-ready release and UAT planning, use [20_Master_Test_Plan.md](/F:/programming/python/MTClipFactory/doc/20_Master_Test_Plan.md).
+
 ## Current Baseline
 
 - Python runtime: `F:\programming\python\MTClipFactory\.venv`
