@@ -57,6 +57,9 @@ This Markdown board is the SSOT Kanban for the repository.
 - `IR-12` payload-backed recovery audit decision
 - `IR-13` recipe scoring refinement and operator-visible score/risk summaries
 - `IR-14` path-root runtime hot reload
+- settings UI redesign with grouped panels and hybrid slider-plus-exact-entry numeric controls
+- focused settings audit plan, execution report, and widget-level verification coverage
+- full-system release audit plan, scripted audit runner, and release audit report
 - recipe persistence
 - recipe item assignment
 - preview render output job flow

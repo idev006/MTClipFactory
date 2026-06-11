@@ -2,7 +2,7 @@
 
 ## Snapshot Date
 
-- 2026-06-06
+- 2026-06-11
 
 ## Where To See Progress
 
@@ -51,12 +51,18 @@
 - settings save now emits runtime hot-reload feedback, and dashboard/path summaries stay aligned to the newly active roots
 - pytest now covers pending hot-reload status, runtime module rebind, and settings-view-model hot-reload signaling
 - architecture, reliability, roadmap, Kanban, issues, lessons learned, and UML were aligned to the delivered `IR-14` baseline
+- settings UI now uses grouped panels and a two-column layout for clearer operator scanning
+- hybrid slider-plus-exact-entry settings controls are now covered by widget-level pytest checks
+- audit hardening now confirms pre-existing high-value config settings survive settings load/save without silent clamp
+- audit hardening now also confirms exact numeric entry can push values beyond default slider spans without losing persistence truth
+- full-system release audit now re-executes factory happy path, recovery/escalation flow, and runtime hot reload through a dedicated scripted audit runner
 
 ## Still Open
 
-1. recalibrate recipe scoring only if the current metadata, asset-diversity, and runtime-evidence baseline stops being operationally useful
+1. complete controlled operator/UAT rollout before broad release claims
+2. recalibrate recipe scoring only if the current metadata, asset-diversity, and runtime-evidence baseline stops being operationally useful
 
 ## Verification Baseline
 
-- `python -m pytest` in `.venv`: `97 passed`
+- `python -m pytest` in `.venv`: `105 passed`
 - `QT_QPA_PLATFORM=offscreen` UI smoke: `6` main windows instantiated

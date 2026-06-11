@@ -2,9 +2,9 @@
 
 ## Project Manager Snapshot
 
-- Report date: 2026-06-06
+- Report date: 2026-06-11
 - Overall status: In Progress
-- Current phase: Phase 5, Automation and Quality baseline complete; backlog-triggered follow-ups only
+- Current phase: Phase 5, automation baseline plus full-system release audit complete; controlled operator rollout recommended before broader release
 - Delivery mode: document-led SSOT with code and tests kept in sync
 
 ## What Is Done
@@ -48,6 +48,9 @@
 - dashboard-visible operator playbook guidance plus deferred bulk-retry handling for escalated failed jobs
 - payload-backed recovery metadata retained as the current audit seam by explicit architecture decision
 - desktop-app runtime hot reload for path-root dependent services with runtime-vs-configured dashboard truthfulness
+- redesigned grouped settings surface with two-column panel layout and hybrid slider-plus-exact-entry numeric controls
+- widget-level settings UI verification coverage, including hybrid control mapping, high-value config preservation, and exact-entry synchronization
+- scripted full-system release audit coverage for product-to-final workflow, recovery/escalation behavior, and runtime path hot reload
 - initial Video Assembly Factory:
   - recipe persistence
   - recipe item assignment
@@ -66,7 +69,7 @@
 
 ## Verification Baseline
 
-- `python -m pytest` via `.venv`: `97 passed`
+- `python -m pytest` via `.venv`: `105 passed`
 - UI smoke via `QT_QPA_PLATFORM=offscreen`: `6` windows instantiated successfully
 
 ## Current Focus
@@ -74,11 +77,15 @@
 - keep richer review signals and approval history truthful through append-only persistence
 - monitor whether runtime path reload stays truthful and easy for operators to understand
 - monitor whether the new recipe scoring baseline stays operationally useful for operators
+- monitor whether hybrid settings controls remain operator-friendly in real manual use
+- validate real operator workflows in a controlled rollout before claiming broad release readiness
 - keep project documents truthful through per-milestone revision checkpoints
 
 ## Next Steps
 
-1. Recalibrate recipe scoring only if operator feedback shows the new metadata, asset-diversity, and runtime-evidence baseline is not useful enough.
+1. Run controlled operator/UAT rollout on a normal desktop workflow before broadening release scope.
+2. Recalibrate recipe scoring only if operator feedback shows the current metadata, asset-diversity, and runtime-evidence baseline is not useful enough.
+3. Clean the Alembic `path_separator=os` warning in a maintenance pass.
 
 ## Direction Locked In This Documentation Revision
 

@@ -10,9 +10,10 @@ For execution-ready release and UAT planning, use [20_Master_Test_Plan.md](/F:/p
 
 - Python runtime: `F:\programming\python\MTClipFactory\.venv`
 - Test command: `python -m pytest`
-- Current automated baseline on 2026-06-06: `97 passed`
+- Current automated baseline on 2026-06-11: `105 passed`
 - audio-policy settings persistence, failed-job escalation coverage, and runtime hot-reload path visibility coverage are now part of that baseline
-- Current UI smoke baseline on 2026-06-06: `6` PySide windows instantiated with `QT_QPA_PLATFORM=offscreen`
+- settings-window widget coverage is now part of the baseline, including grouped-panel rendering, hybrid slider-plus-exact-entry mapping, preservation of pre-existing out-of-range config values, and precision-entry synchronization
+- Current UI smoke baseline on 2026-06-11: `6` PySide windows instantiated with `QT_QPA_PLATFORM=offscreen`
 
 ## Test Pyramid
 
@@ -42,6 +43,13 @@ For execution-ready release and UAT planning, use [20_Master_Test_Plan.md](/F:/p
 
 - import and instantiate all main windows offscreen
 - verify wiring after navigation or constructor changes
+
+### Widget-Level UI Tests
+
+- settings-window grouped panel rendering
+- settings-window control population from loaded settings
+- settings-window slider and checkbox save mapping
+- settings-window preservation of pre-existing high-value config settings without silent clamp
 
 ## Current Covered Areas
 
@@ -107,4 +115,5 @@ For execution-ready release and UAT planning, use [20_Master_Test_Plan.md](/F:/p
 
 1. Add integration coverage for the real FFmpeg preview and final renderers using controlled sample media.
 2. Add widget-level interaction tests for the expanded Recipe Builder review-gate and audio-evidence surfaces.
-3. Add deeper orchestration tests for score calibration and richer review/audio signals now that runtime path reload is part of the baseline.
+3. Add a manual operator-focused usability pass for hybrid slider-plus-exact-entry ergonomics and keyboard accessibility.
+4. Add deeper orchestration tests for score calibration and richer review/audio signals now that runtime path reload is part of the baseline.

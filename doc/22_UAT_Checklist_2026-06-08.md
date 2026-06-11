@@ -16,6 +16,8 @@ It should be used together with:
 ## Pre-UAT Setup
 
 - confirm the app starts successfully
+- optional quick start helpers are available at repo root:
+  `run_mtclipfactory_ui.bat`, `run_mtclipfactory_pytest.bat`, and `run_mtclipfactory_ui_smoke.bat`
 - confirm `app_config.toml` points to the intended test workspace
 - confirm FFmpeg / FFprobe paths are valid for the UAT machine
 - confirm the tester is using a non-production workspace or test data set
