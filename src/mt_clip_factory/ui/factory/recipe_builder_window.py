@@ -5,6 +5,7 @@ from pathlib import Path
 
 from PySide6.QtCore import Qt
 from PySide6.QtWidgets import (
+    QComboBox,
     QFormLayout,
     QGridLayout,
     QGroupBox,
@@ -29,6 +30,7 @@ from mt_clip_factory.ui.theme import apply_theme
 
 class RecipeBuilderWindow(QMainWindow):
     THEME_NAME = "app_window"
+    DEFAULT_ATTACH_ROLES = ("hero", "hook", "broll", "cta", "voice", "music", "background")
     PRODUCT_PICKER_MIN_HEIGHT = 110
     RECIPE_TABLE_MIN_HEIGHT = 240
     ASSETS_TABLE_MIN_HEIGHT = 220
@@ -105,10 +107,15 @@ class RecipeBuilderWindow(QMainWindow):
         self.recipe_code_input = QLineEdit()
         self.platform_input = QLineEdit()
         self.ratio_input = QLineEdit()
-        self.role_input = QLineEdit()
+        self.role_input = QComboBox()
+        self.role_input.setEditable(True)
+        self.role_input.addItems(self.DEFAULT_ATTACH_ROLES)
+        self.role_input.setInsertPolicy(QComboBox.NoInsert)
+        self.role_input.setCurrentIndex(-1)
+        if self.role_input.lineEdit() is not None:
+            self.role_input.lineEdit().setPlaceholderText("choose or type role")
         self.decision_actor_input = QLineEdit()
         self.decision_reason_input = QLineEdit()
-        self.role_input.setPlaceholderText("hero, hook, broll, cta")
         self.decision_actor_input.setPlaceholderText("operator, editor, qa")
         self.decision_reason_input.setPlaceholderText("optional decision note")
         form_layout.addRow("Recipe Code", self.recipe_code_input)
@@ -400,7 +407,7 @@ class RecipeBuilderWindow(QMainWindow):
             self._view_model.assign_asset_to_recipe(
                 recipe_id=recipe_id,
                 asset_id=asset_id,
-                role=self.role_input.text(),
+                role=self.role_input.currentText(),
             )
         except Exception as exc:  # noqa: BLE001
             QMessageBox.warning(self, "Attach Asset", str(exc))

@@ -47,7 +47,7 @@
 - Dashboard, resource-library, tag-dictionary, and recipe-builder windows now also consume a shared package-backed app-window theme baseline.
 - Primary action buttons now have clearer but more restrained visual affordance through the shared theme, including balanced depth and pressed-state feedback.
 - A controlled operator rollout kickoff guide now exists so the first real-use session can start from one practical SSOT entry point.
-- Recipe Builder now explains its main workflow directly in the screen and makes the `ready`-asset-only attach list more explicit while giving the asset panel a more usable height.
+- Recipe Builder now explains its main workflow directly in the screen, makes the `ready`-asset-only attach list more explicit, gives the asset panel a more usable height, and provides a suggested attach-role pick list for faster operator input.
 - The roadmap is now split into strategic and implementation layers, and the current mandatory implementation slice is complete.
 
 ## Delivered In The Latest Loop

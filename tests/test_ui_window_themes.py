@@ -2,7 +2,7 @@ from __future__ import annotations
 
 import pytest
 from PySide6.QtCore import QObject, Signal
-from PySide6.QtWidgets import QApplication, QScrollArea
+from PySide6.QtWidgets import QApplication, QComboBox, QScrollArea
 
 from mt_clip_factory.control_center.dto import SystemSettingsDTO
 from mt_clip_factory.ui.control_center.dashboard_window import DashboardWindow
@@ -166,6 +166,12 @@ def test_recipe_builder_window_explains_ready_assets_and_keeps_asset_panel_usabl
     assert isinstance(recipe_window.scroll_area, QScrollArea)
     assert recipe_window.scroll_area.widgetResizable() is True
     assert recipe_window.scroll_area.widget() is recipe_window.content_widget
+    assert isinstance(recipe_window.role_input, QComboBox)
+    assert recipe_window.role_input.isEditable() is True
+    assert recipe_window.role_input.currentText() == ""
+    assert [recipe_window.role_input.itemText(index) for index in range(recipe_window.role_input.count())] == list(
+        RecipeBuilderWindow.DEFAULT_ATTACH_ROLES
+    )
     assert recipe_window.assets_hint_label.text().startswith("Only assets that are already in status 'ready'")
     assert recipe_window.assets_table.minimumHeight() == RecipeBuilderWindow.ASSETS_TABLE_MIN_HEIGHT
     assert recipe_window.recipe_items_table.minimumHeight() == RecipeBuilderWindow.RECIPE_ITEMS_TABLE_MIN_HEIGHT
