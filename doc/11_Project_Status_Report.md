@@ -52,6 +52,7 @@
 - settings numeric controls now use uniform slider/editor widths for more consistent operator scanning
 - package-backed QSS theme loading seam now exists for Qt windows, with a shared app-window theme baseline across dashboard, library, and factory windows plus a settings-specific override
 - shared app-window buttons now use balanced gradient, border-depth, focus, and pressed-state affordance so primary actions read clearly as clickable controls without feeling oversized
+- Recipe Builder now explains its recipe-to-final purpose more directly, clarifies that the attach list shows only `ready` assets, and keeps the asset panel tall enough for practical scanning
 - widget-level settings UI verification coverage, including hybrid control mapping, high-value config preservation, and exact-entry synchronization
 - scripted full-system release audit coverage for product-to-final workflow, recovery/escalation behavior, and runtime path hot reload
 - operator-facing user manual now exists as SSOT guidance for controlled rollout and UAT

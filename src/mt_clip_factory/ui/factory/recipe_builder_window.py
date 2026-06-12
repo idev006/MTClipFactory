@@ -27,6 +27,13 @@ from mt_clip_factory.ui.theme import apply_theme
 
 class RecipeBuilderWindow(QMainWindow):
     THEME_NAME = "app_window"
+    PRODUCT_PICKER_MIN_HEIGHT = 110
+    RECIPE_TABLE_MIN_HEIGHT = 240
+    ASSETS_TABLE_MIN_HEIGHT = 220
+    RECIPE_ITEMS_TABLE_MIN_HEIGHT = 220
+    OUTPUTS_TABLE_MIN_HEIGHT = 160
+    OUTPUT_DETAILS_MIN_HEIGHT = 120
+    DECISION_HISTORY_MIN_HEIGHT = 120
 
     def __init__(self, view_model: RecipeBuilderViewModel) -> None:
         super().__init__()
@@ -47,6 +54,9 @@ class RecipeBuilderWindow(QMainWindow):
         layout.addWidget(self._build_outputs_group(), 2, 0, 1, 2)
         layout.setColumnStretch(0, 1)
         layout.setColumnStretch(1, 1)
+        layout.setRowStretch(0, 3)
+        layout.setRowStretch(1, 2)
+        layout.setRowStretch(2, 3)
         self.setCentralWidget(central)
 
         self._view_model.products_changed.connect(self._refresh_product_combo)
@@ -65,8 +75,13 @@ class RecipeBuilderWindow(QMainWindow):
         self._view_model.load()
 
     def _build_recipe_group(self) -> QGroupBox:
-        group = QGroupBox("Create Recipe")
+        group = QGroupBox("Recipe Builder")
         layout = QVBoxLayout(group)
+        summary_label = QLabel(
+            "Use this page to create a recipe, attach ready assets, build preview, review the result, approve it, and build the final output."
+        )
+        summary_label.setWordWrap(True)
+        layout.addWidget(summary_label)
         form_layout = QFormLayout()
         self.product_combo = QLineEdit()
         self.product_combo.setReadOnly(True)
@@ -76,6 +91,7 @@ class RecipeBuilderWindow(QMainWindow):
         self.product_picker.setSelectionMode(QTableWidget.SingleSelection)
         self.product_picker.setEditTriggers(QTableWidget.NoEditTriggers)
         self.product_picker.horizontalHeader().setStretchLastSection(True)
+        self.product_picker.setMinimumHeight(self.PRODUCT_PICKER_MIN_HEIGHT)
         self.recipe_code_input = QLineEdit()
         self.platform_input = QLineEdit()
         self.ratio_input = QLineEdit()
@@ -138,31 +154,42 @@ class RecipeBuilderWindow(QMainWindow):
         self.recipe_table.setSelectionMode(QTableWidget.SingleSelection)
         self.recipe_table.setEditTriggers(QTableWidget.NoEditTriggers)
         self.recipe_table.horizontalHeader().setStretchLastSection(True)
+        self.recipe_table.setMinimumHeight(self.RECIPE_TABLE_MIN_HEIGHT)
         self.recipe_table.itemSelectionChanged.connect(self._handle_recipe_selection)
         layout.addWidget(self.recipe_table)
         return group
 
     def _build_asset_group(self) -> QGroupBox:
-        group = QGroupBox("Ready Assets")
+        group = QGroupBox("Ready Assets (Status = ready)")
         layout = QVBoxLayout(group)
+        self.assets_hint_label = QLabel(
+            "Only assets that are already in status 'ready' appear here. If an asset is missing, check the Assets screen and confirm it finished intake/analysis first."
+        )
+        self.assets_hint_label.setWordWrap(True)
+        layout.addWidget(self.assets_hint_label)
         self.assets_table = QTableWidget(0, 5)
         self.assets_table.setHorizontalHeaderLabels(["ID", "Product", "Code", "Type", "Status"])
         self.assets_table.setSelectionBehavior(QTableWidget.SelectRows)
         self.assets_table.setSelectionMode(QTableWidget.SingleSelection)
         self.assets_table.setEditTriggers(QTableWidget.NoEditTriggers)
         self.assets_table.horizontalHeader().setStretchLastSection(True)
+        self.assets_table.setMinimumHeight(self.ASSETS_TABLE_MIN_HEIGHT)
         layout.addWidget(self.assets_table)
         return group
 
     def _build_recipe_items_group(self) -> QGroupBox:
         group = QGroupBox("Recipe Items")
         layout = QVBoxLayout(group)
+        hint_label = QLabel("Items appear here after you attach ready assets to the selected recipe.")
+        hint_label.setWordWrap(True)
+        layout.addWidget(hint_label)
         self.recipe_items_table = QTableWidget(0, 4)
         self.recipe_items_table.setHorizontalHeaderLabels(["Item ID", "Asset ID", "Asset Code", "Role"])
         self.recipe_items_table.setSelectionBehavior(QTableWidget.SelectRows)
         self.recipe_items_table.setSelectionMode(QTableWidget.SingleSelection)
         self.recipe_items_table.setEditTriggers(QTableWidget.NoEditTriggers)
         self.recipe_items_table.horizontalHeader().setStretchLastSection(True)
+        self.recipe_items_table.setMinimumHeight(self.RECIPE_ITEMS_TABLE_MIN_HEIGHT)
         layout.addWidget(self.recipe_items_table)
         return group
 
@@ -177,15 +204,18 @@ class RecipeBuilderWindow(QMainWindow):
         self.outputs_table.setSelectionMode(QTableWidget.SingleSelection)
         self.outputs_table.setEditTriggers(QTableWidget.NoEditTriggers)
         self.outputs_table.horizontalHeader().setStretchLastSection(True)
+        self.outputs_table.setMinimumHeight(self.OUTPUTS_TABLE_MIN_HEIGHT)
         self.outputs_table.itemSelectionChanged.connect(self._refresh_selected_output_details)
         self.output_details_text = QTextEdit()
         self.output_details_text.setReadOnly(True)
+        self.output_details_text.setMinimumHeight(self.OUTPUT_DETAILS_MIN_HEIGHT)
         self.decision_history_table = QTableWidget(0, 5)
         self.decision_history_table.setHorizontalHeaderLabels(["At", "Event", "Actor", "Target", "Reason"])
         self.decision_history_table.setSelectionBehavior(QTableWidget.SelectRows)
         self.decision_history_table.setSelectionMode(QTableWidget.SingleSelection)
         self.decision_history_table.setEditTriggers(QTableWidget.NoEditTriggers)
         self.decision_history_table.horizontalHeader().setStretchLastSection(True)
+        self.decision_history_table.setMinimumHeight(self.DECISION_HISTORY_MIN_HEIGHT)
         layout.addWidget(self.outputs_table)
         layout.addWidget(self.output_details_text)
         layout.addWidget(QLabel("Decision History"))

@@ -158,3 +158,13 @@ def test_primary_windows_apply_app_theme(qapp: QApplication) -> None:
         assert "QMainWindow" in window.styleSheet()
         assert "QPushButton" in window.styleSheet()
         window.close()
+
+
+def test_recipe_builder_window_explains_ready_assets_and_keeps_asset_panel_usable(qapp: QApplication) -> None:
+    recipe_window = RecipeBuilderWindow(FakeRecipeBuilderViewModel())
+
+    assert recipe_window.assets_hint_label.text().startswith("Only assets that are already in status 'ready'")
+    assert recipe_window.assets_table.minimumHeight() == RecipeBuilderWindow.ASSETS_TABLE_MIN_HEIGHT
+    assert recipe_window.recipe_items_table.minimumHeight() == RecipeBuilderWindow.RECIPE_ITEMS_TABLE_MIN_HEIGHT
+    assert recipe_window.recipe_table.minimumHeight() == RecipeBuilderWindow.RECIPE_TABLE_MIN_HEIGHT
+    recipe_window.close()
