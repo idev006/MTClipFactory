@@ -44,6 +44,7 @@
 - Path roots can now hot-reload inside the desktop app through a whole-module runtime rebind, and the dashboard still shows runtime-active versus configured paths truthfully.
 - Recipe records now retain persisted score/risk summaries derived from metadata, asset composition, and runtime review evidence, and Recipe Builder now shows those summaries in the recipe list.
 - The settings window now loads its styling from a package-backed QSS theme seam instead of embedding stylesheet text inline.
+- Dashboard, resource-library, tag-dictionary, and recipe-builder windows now also consume a shared package-backed app-window theme baseline.
 - The roadmap is now split into strategic and implementation layers, and the current mandatory implementation slice is complete.
 
 ## Delivered In The Latest Loop
@@ -56,6 +57,7 @@
 - hybrid slider-plus-exact-entry settings controls are now covered by widget-level pytest checks
 - slider/editor width uniformity polish now keeps settings numeric controls visually aligned while preserving the hybrid control model
 - a reusable `ui.theme` seam now loads packaged QSS assets, and the settings window theme was extracted out of Python code
+- the broader desktop UI now shares one packaged app-window theme baseline, with focused window-level overrides reserved for justified differences
 - audit hardening now confirms pre-existing high-value config settings survive settings load/save without silent clamp
 - audit hardening now also confirms exact numeric entry can push values beyond default slider spans without losing persistence truth
 - full-system release audit now re-executes factory happy path, recovery/escalation flow, and runtime hot reload through a dedicated scripted audit runner
@@ -68,5 +70,5 @@
 
 ## Verification Baseline
 
-- `python -m pytest` in `.venv`: `109 passed`
+- `python -m pytest` in `.venv`: `111 passed`
 - `QT_QPA_PLATFORM=offscreen` UI smoke: `6` main windows instantiated

@@ -31,6 +31,7 @@
 ### UI
 
 - packaged QSS theme assets should be loaded through a dedicated theme helper instead of embedding inline stylesheet strings inside window code
+- the current Qt baseline should share one packaged app-window theme across dashboard, library, and factory windows, with per-window overrides only when a screen has justified special styling needs
 
 เก็บ widget, window, dialog หรือ QML adapter ถ้ามี
 
@@ -105,6 +106,7 @@ The architecture must keep `voice-over` as a foreground layer:
 - runtime paths และ operational thresholds ต้องถูกอ่านจาก config/service กลางเดียว
 - review thresholds and flagged-recipe counts must flow through the same dashboard/settings authority surfaces
 - settings-window styling should flow through reusable theme assets so the same theme-loading seam can expand to other Qt windows later
+- dashboard, resource-library, and recipe-builder windows should also consume the shared packaged app-window theme seam so styling policy stays centralized
 
 ## Shared Core
 

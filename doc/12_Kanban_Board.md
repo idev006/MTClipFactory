@@ -59,6 +59,7 @@ This Markdown board is the SSOT Kanban for the repository.
 - `IR-14` path-root runtime hot reload
 - settings UI redesign with grouped panels and hybrid slider-plus-exact-entry numeric controls
 - packaged theme seam for Qt styles with settings-window QSS extraction
+- shared app-window theme baseline across dashboard, library, and factory windows
 - focused settings audit plan, execution report, and widget-level verification coverage
 - full-system release audit plan, scripted audit runner, and release audit report
 - recipe persistence

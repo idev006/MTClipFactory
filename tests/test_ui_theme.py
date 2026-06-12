@@ -15,8 +15,16 @@ def qapp() -> QApplication:
 
 
 def test_load_theme_stylesheet_reads_qss_asset() -> None:
+    stylesheet = load_theme_stylesheet("app_window")
+
+    assert "QMainWindow" in stylesheet
+    assert "QPushButton" in stylesheet
+
+
+def test_load_theme_stylesheet_composes_base_and_window_specific_qss() -> None:
     stylesheet = load_theme_stylesheet("settings_window")
 
+    assert "QMainWindow" in stylesheet
     assert "QGroupBox#panelBox" in stylesheet
     assert "QLabel#statusValue" in stylesheet
 

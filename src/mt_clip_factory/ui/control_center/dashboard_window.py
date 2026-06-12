@@ -16,9 +16,12 @@ from PySide6.QtWidgets import (
 )
 
 from mt_clip_factory.presentation.control_center.dashboard import DashboardViewModel
+from mt_clip_factory.ui.theme import apply_theme
 
 
 class DashboardWindow(QMainWindow):
+    THEME_NAME = "app_window"
+
     def __init__(
         self,
         view_model: DashboardViewModel,
@@ -37,6 +40,7 @@ class DashboardWindow(QMainWindow):
         self._open_settings = open_settings
         self.setWindowTitle("MTClipFactory - Dashboard")
         self.resize(1280, 760)
+        apply_theme(self, self.THEME_NAME)
 
         central = QWidget(self)
         layout = QVBoxLayout(central)

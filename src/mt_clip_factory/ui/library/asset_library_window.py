@@ -23,9 +23,12 @@ from PySide6.QtWidgets import (
 
 from mt_clip_factory.domain.enums import AssetType
 from mt_clip_factory.presentation.library.asset_library import AssetLibraryViewModel
+from mt_clip_factory.ui.theme import apply_theme
 
 
 class AssetLibraryWindow(QMainWindow):
+    THEME_NAME = "app_window"
+
     def __init__(
         self,
         view_model: AssetLibraryViewModel,
@@ -36,6 +39,7 @@ class AssetLibraryWindow(QMainWindow):
         self._open_tag_dictionary = open_tag_dictionary
         self.setWindowTitle("MTClipFactory - Asset Intake")
         self.resize(1100, 700)
+        apply_theme(self, self.THEME_NAME)
 
         central = QWidget(self)
         layout = QGridLayout(central)

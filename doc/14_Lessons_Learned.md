@@ -184,3 +184,8 @@
 
 - once inline stylesheet strings were declared off-limits, the practical next step was not a bigger widget rewrite but a small package-backed theme loader that can scale to other windows
 - moving QSS into versioned assets plus pytest coverage keeps UI polish reusable without burying styling policy inside Python window classes
+
+## LL-038 | 2026-06-12 | Shared Base Themes Beat One-Off Window Styling
+
+- once the theme seam existed, the highest-value next step was a shared app-window baseline for dashboard, library, and factory screens instead of inventing disconnected per-window styles immediately
+- centralized base themes reduce UI drift and make future visual tuning cheaper because common controls can move together through one asset seam

@@ -22,14 +22,18 @@ from PySide6.QtWidgets import (
 )
 
 from mt_clip_factory.presentation.factory.recipe_builder import RecipeBuilderViewModel
+from mt_clip_factory.ui.theme import apply_theme
 
 
 class RecipeBuilderWindow(QMainWindow):
+    THEME_NAME = "app_window"
+
     def __init__(self, view_model: RecipeBuilderViewModel) -> None:
         super().__init__()
         self._view_model = view_model
         self.setWindowTitle("MTClipFactory - Video Assembly Factory")
         self.resize(1280, 760)
+        apply_theme(self, self.THEME_NAME)
 
         central = QWidget(self)
         layout = QGridLayout(central)

@@ -22,9 +22,12 @@ from PySide6.QtWidgets import (
 
 from mt_clip_factory.application.dto import CreateProductCommand, UpdateProductCommand
 from mt_clip_factory.presentation.library.product_library import ProductLibraryViewModel
+from mt_clip_factory.ui.theme import apply_theme
 
 
 class ProductLibraryWindow(QMainWindow):
+    THEME_NAME = "app_window"
+
     def __init__(
         self,
         view_model: ProductLibraryViewModel,
@@ -36,6 +39,7 @@ class ProductLibraryWindow(QMainWindow):
         self._selected_product_id: int | None = None
         self.setWindowTitle("MTClipFactory - Resource Library Management")
         self.resize(1100, 700)
+        apply_theme(self, self.THEME_NAME)
 
         central = QWidget(self)
         layout = QGridLayout(central)

@@ -19,14 +19,18 @@ from PySide6.QtWidgets import (
 )
 
 from mt_clip_factory.presentation.library.tag_dictionary import TagDictionaryViewModel
+from mt_clip_factory.ui.theme import apply_theme
 
 
 class TagDictionaryWindow(QMainWindow):
+    THEME_NAME = "app_window"
+
     def __init__(self, view_model: TagDictionaryViewModel) -> None:
         super().__init__()
         self._view_model = view_model
         self.setWindowTitle("MTClipFactory - Tag Dictionary")
         self.resize(1200, 720)
+        apply_theme(self, self.THEME_NAME)
 
         central = QWidget(self)
         layout = QGridLayout(central)

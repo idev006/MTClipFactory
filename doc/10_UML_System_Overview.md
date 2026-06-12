@@ -195,6 +195,23 @@ classDiagram
         +open_settings()
     }
 
+    class ProductLibraryWindow {
+        +create_product()
+        +update_product()
+        +delete_product()
+    }
+
+    class AssetLibraryWindow {
+        +register_asset()
+        +generate_thumbnail()
+        +generate_proxy()
+    }
+
+    class TagDictionaryWindow {
+        +create_tag()
+        +assign_tag()
+    }
+
     class UIThemeLoader {
         +load_theme_stylesheet(theme_name)
         +apply_theme(widget, theme_name)
@@ -303,6 +320,11 @@ classDiagram
     RecipeBuilderViewModel --> VideoAssemblyFactoryService
     DashboardWindow --> RecipeBuilderWindow
     DashboardWindow --> SettingsWindow
+    DashboardWindow --> UIThemeLoader
+    ProductLibraryWindow --> UIThemeLoader
+    AssetLibraryWindow --> UIThemeLoader
+    TagDictionaryWindow --> UIThemeLoader
+    RecipeBuilderWindow --> UIThemeLoader
     SettingsWindow --> UIThemeLoader
     VideoAssemblyFactoryService --> PreviewManifestBuilder
     VideoAssemblyFactoryService --> FFmpegPreviewRenderer
