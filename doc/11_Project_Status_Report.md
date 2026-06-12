@@ -60,6 +60,7 @@
 - operator-facing user manual now exists as SSOT guidance for controlled rollout and UAT
 - controlled operator rollout kickoff guidance now exists as an execution-ready entry point for first real use on the current baseline
 - the first controlled operator/UAT execution run has now completed a real recipe-to-final workflow and produced a verified final output at `720x1280`
+- the second controlled operator/UAT run has now validated the richer-media path with voiceover, background music, two distinct foreground visuals, manifest-backed ducking evidence, and a no-review-gate final result
 - initial Video Assembly Factory:
   - recipe persistence
   - recipe item assignment
@@ -88,12 +89,12 @@
 - monitor whether the new recipe scoring baseline stays operationally useful for operators
 - monitor whether hybrid settings controls remain operator-friendly in real manual use
 - validate whether the new asset-maintenance controls are clear enough for operators without additional UI restructuring
-- validate a richer-media controlled UAT run with voiceover, background music, and more distinct visual coverage before claiming broad release readiness
+- validate broader controlled operator use on real campaign media before claiming broad release readiness
 - keep project documents truthful through per-milestone revision checkpoints
 
 ## Next Steps
 
-1. Run a second controlled operator/UAT pass that exercises voiceover, background music, and more distinct visual assets.
+1. Run broader controlled operator use on real campaign media without service-side assistance and record operator findings.
 2. Recalibrate recipe scoring only if operator feedback shows the current metadata, asset-diversity, and runtime-evidence baseline is not useful enough.
 3. Clean the Alembic `path_separator=os` warning in a maintenance pass.
 

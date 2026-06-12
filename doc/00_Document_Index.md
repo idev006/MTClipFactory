@@ -35,6 +35,7 @@ When code changes, the related Markdown documents in this folder must be updated
 27. [27_User_Manual_2026-06-12.md](/F:/programming/python/MTClipFactory/doc/27_User_Manual_2026-06-12.md)
 28. [28_Controlled_Operator_Rollout_Kickoff_2026-06-12.md](/F:/programming/python/MTClipFactory/doc/28_Controlled_Operator_Rollout_Kickoff_2026-06-12.md)
 29. [29_Controlled_Operator_UAT_Execution_Report_2026-06-13.md](/F:/programming/python/MTClipFactory/doc/29_Controlled_Operator_UAT_Execution_Report_2026-06-13.md)
+30. [30_Controlled_Operator_UAT_Round2_Report_2026-06-13.md](/F:/programming/python/MTClipFactory/doc/30_Controlled_Operator_UAT_Round2_Report_2026-06-13.md)
 
 ## Governance
 

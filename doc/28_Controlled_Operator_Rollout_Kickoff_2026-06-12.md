@@ -21,6 +21,11 @@ First controlled execution result now available:
 - the run confirmed real final-output generation and `9:16` target-ratio normalization on mixed-ratio visual assets
 - the run also confirmed the next UAT should add voiceover, background music, and more distinct visual assets
 
+Second controlled execution result now available:
+
+- a richer-media controlled run on `2026-06-13` added voiceover, background music, and a second foreground visual asset
+- the run confirmed runtime audio-mix evidence, applied ducking, five semantic segments, and a no-review-gate result on the stronger media set
+
 Meaning:
 
 - the system is ready for you to use in a controlled workspace

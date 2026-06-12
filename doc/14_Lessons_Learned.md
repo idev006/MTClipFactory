@@ -200,3 +200,8 @@
 
 - the first controlled operator run created more trust by producing one real final output end to end than by adding more synthetic checks alone
 - once that first real output exists, the next most valuable UAT step is broader media coverage, especially distinct visuals plus voice/music, rather than repeating the same narrow data set
+
+## LL-041 | 2026-06-13 | Stronger Media Sets Improve Review Truth And Confidence Together
+
+- once the richer-media UAT run added a second distinct foreground visual plus voice and music, the same workflow moved from `needs_review` into a clean no-review-gate result without needing hidden rule changes
+- this suggests operator confidence improves most when media coverage improves first, while the review gate stays stable and honest
