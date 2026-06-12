@@ -60,6 +60,7 @@ This Markdown board is the SSOT Kanban for the repository.
 - settings UI redesign with grouped panels and hybrid slider-plus-exact-entry numeric controls
 - packaged theme seam for Qt styles with settings-window QSS extraction
 - shared app-window theme baseline across dashboard, library, and factory windows
+- shared button-affordance polish in the packaged app-window theme
 - focused settings audit plan, execution report, and widget-level verification coverage
 - full-system release audit plan, scripted audit runner, and release audit report
 - recipe persistence

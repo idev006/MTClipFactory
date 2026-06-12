@@ -189,3 +189,8 @@
 
 - once the theme seam existed, the highest-value next step was a shared app-window baseline for dashboard, library, and factory screens instead of inventing disconnected per-window styles immediately
 - centralized base themes reduce UI drift and make future visual tuning cheaper because common controls can move together through one asset seam
+
+## LL-039 | 2026-06-12 | Buttons Need Explicit Affordance, Not Just Color
+
+- once the shared theme existed, button clarity improved most when the theme added visible depth, hover contrast, and a pressed state instead of relying on flat color blocks alone
+- action-heavy operator tools benefit from buttons that look tactile enough to distinguish command surfaces from passive panels at a glance

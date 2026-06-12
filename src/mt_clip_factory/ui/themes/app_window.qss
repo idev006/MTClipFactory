@@ -23,20 +23,61 @@ QGroupBox::title {
 }
 
 QPushButton {
-    background-color: #183153;
-    border: 1px solid #183153;
+    background: qlineargradient(
+        x1: 0,
+        y1: 0,
+        x2: 0,
+        y2: 1,
+        stop: 0 #2a4f7e,
+        stop: 1 #183153
+    );
+    border-top: 1px solid #406792;
+    border-right: 1px solid #183153;
+    border-bottom: 3px solid #0f2239;
+    border-left: 1px solid #183153;
     border-radius: 8px;
     color: #f8fbff;
-    min-height: 30px;
-    padding: 6px 12px;
+    font-weight: 700;
+    min-height: 34px;
+    padding: 7px 14px 8px 14px;
 }
 
 QPushButton:hover {
-    background-color: #23446f;
+    background: qlineargradient(
+        x1: 0,
+        y1: 0,
+        x2: 0,
+        y2: 1,
+        stop: 0 #356195,
+        stop: 1 #22466f
+    );
 }
 
 QPushButton:pressed {
-    background-color: #132844;
+    background: qlineargradient(
+        x1: 0,
+        y1: 0,
+        x2: 0,
+        y2: 1,
+        stop: 0 #17304d,
+        stop: 1 #102236
+    );
+    border-top: 1px solid #102236;
+    border-right: 1px solid #102236;
+    border-bottom: 1px solid #102236;
+    border-left: 1px solid #102236;
+    padding: 9px 14px 6px 14px;
+}
+
+QPushButton:focus {
+    border: 2px solid #5f95d3;
+    border-bottom: 3px solid #3f6d9e;
+}
+
+QPushButton:disabled {
+    background: #a6b5c9;
+    border: 1px solid #92a3b9;
+    color: #eef3f8;
 }
 
 QLineEdit,
