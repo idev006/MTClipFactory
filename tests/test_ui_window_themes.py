@@ -5,6 +5,7 @@ from PySide6.QtCore import QObject, Signal
 from PySide6.QtWidgets import QApplication, QComboBox, QScrollArea
 
 from mt_clip_factory.control_center.dto import SystemSettingsDTO
+from mt_clip_factory.factory.dto import CompositionPlanDTO, RecipeItemDTO, TimelineSegmentDTO
 from mt_clip_factory.ui.control_center.dashboard_window import DashboardWindow
 from mt_clip_factory.ui.factory.recipe_builder_window import RecipeBuilderWindow
 from mt_clip_factory.ui.library.asset_library_window import AssetLibraryWindow
@@ -172,6 +173,7 @@ def test_recipe_builder_window_explains_ready_assets_and_keeps_asset_panel_usabl
     assert [recipe_window.role_input.itemText(index) for index in range(recipe_window.role_input.count())] == list(
         RecipeBuilderWindow.DEFAULT_ATTACH_ROLES
     )
+    assert recipe_window.role_hint_label.text().startswith("Role guidance:")
     assert recipe_window.assets_hint_label.text().startswith("Only assets that are already in status 'ready'")
     assert recipe_window.assets_table.minimumHeight() == RecipeBuilderWindow.ASSETS_TABLE_MIN_HEIGHT
     assert recipe_window.recipe_items_table.minimumHeight() == RecipeBuilderWindow.RECIPE_ITEMS_TABLE_MIN_HEIGHT
@@ -182,25 +184,65 @@ def test_recipe_builder_window_explains_ready_assets_and_keeps_asset_panel_usabl
 def test_recipe_builder_window_filters_role_suggestions_by_selected_asset_type(qapp: QApplication) -> None:
     recipe_window = RecipeBuilderWindow(FakeRecipeBuilderViewModel())
 
-    recipe_window._set_role_suggestions("voiceover")
+    recipe_window._set_role_suggestions("voiceover", auto_select=True)
     assert [recipe_window.role_input.itemText(index) for index in range(recipe_window.role_input.count())] == ["voice"]
+    assert recipe_window.role_input.currentText() == "voice"
+    assert "voiceover assets" in recipe_window.role_hint_label.text().lower()
 
-    recipe_window._set_role_suggestions("background_music")
+    recipe_window._set_role_suggestions("background_music", auto_select=True)
     assert [recipe_window.role_input.itemText(index) for index in range(recipe_window.role_input.count())] == ["music"]
+    assert recipe_window.role_input.currentText() == "music"
 
-    recipe_window._set_role_suggestions("foreground_video")
+    recipe_window._set_role_suggestions("foreground_video", auto_select=True)
     assert [recipe_window.role_input.itemText(index) for index in range(recipe_window.role_input.count())] == [
-        "hero",
         "hook",
         "problem",
         "benefit",
         "proof",
         "cta",
+        "hero",
         "broll",
     ]
+    assert recipe_window.role_input.currentText() == "hook"
 
     recipe_window.role_input.setCurrentText("custom_visual_role")
     recipe_window._set_role_suggestions("background_video")
     assert recipe_window.role_input.currentText() == "custom_visual_role"
     assert recipe_window.role_input.itemText(recipe_window.role_input.count() - 1) == "custom_visual_role"
+    recipe_window.close()
+
+
+def test_recipe_builder_window_prioritizes_next_segment_role_for_visual_assets(qapp: QApplication) -> None:
+    recipe_window = RecipeBuilderWindow(FakeRecipeBuilderViewModel())
+    recipe_window._view_model.recipe_items = [
+        RecipeItemDTO(recipe_item_id=1, asset_id=101, asset_code="hook_clip", asset_type="foreground_video", role="hook")
+    ]
+    recipe_window._view_model.composition_plan = CompositionPlanDTO(
+        plan_id=1,
+        recipe_id=1,
+        duration_source="voiceover_total_duration",
+        target_duration_sec=18.0,
+        resolved_duration_sec=18.0,
+        updated_at="2026-06-12 10:00:00",
+        layers=(),
+        decisions=(),
+        segments=(
+            TimelineSegmentDTO(1, "hook", 1, 0.0, 3.6, 3.6),
+            TimelineSegmentDTO(2, "problem", 2, 3.6, 7.2, 3.6),
+            TimelineSegmentDTO(3, "benefit", 3, 7.2, 13.5, 6.3),
+            TimelineSegmentDTO(4, "cta", 4, 13.5, 18.0, 4.5),
+        ),
+    )
+
+    recipe_window._set_role_suggestions("background_video", auto_select=True)
+
+    assert [recipe_window.role_input.itemText(index) for index in range(4)] == [
+        "problem",
+        "benefit",
+        "cta",
+        "hook",
+    ]
+    assert recipe_window.role_input.currentText() == "problem"
+    assert "`hook -> problem -> benefit -> cta`" in recipe_window.role_hint_label.text()
+    assert "Attached roles so far: hook." in recipe_window.role_hint_label.text()
     recipe_window.close()

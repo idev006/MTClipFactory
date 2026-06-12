@@ -57,6 +57,7 @@ Current implemented baseline on 2026-06-06:
 - contiguous coverage validation is enforced before segment plans are accepted
 - preview now uses segment-aware visual clip mapping and writes inspectable manifest details
 - final render now follows the same visual composition path and writes inspectable manifest lineage
+- Recipe Builder attach-role guidance can now use current asset type plus the selected recipe's segment order to suggest the next likely semantic role before preview is built
 
 ## Layer Model
 
@@ -250,9 +251,11 @@ flowchart LR
     Plan --> Timeline["Master Timeline"]
     Timeline --> Segments["Semantic Segments"]
     Timeline --> Layers["Layer Assignments"]
+    Segments --> RoleHints["Attach Role Guidance"]
     Layers --> Voice["Primary Voice"]
     Layers --> Music["Background Music"]
     Layers --> Visual["Background / Product Visuals"]
+    RoleHints --> UI["Factory UI / Dashboard Visibility"]
     Plan --> Decisions["Render Decision Log"]
     Decisions --> UI["Factory UI / Dashboard Visibility"]
 ```

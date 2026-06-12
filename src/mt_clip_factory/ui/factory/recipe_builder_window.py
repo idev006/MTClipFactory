@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import json
+from collections import Counter
 from pathlib import Path
 
 from PySide6.QtCore import Qt
@@ -31,6 +32,7 @@ from mt_clip_factory.ui.theme import apply_theme
 class RecipeBuilderWindow(QMainWindow):
     THEME_NAME = "app_window"
     DEFAULT_ATTACH_ROLES = ("hero", "hook", "problem", "benefit", "proof", "cta", "broll", "background", "voice", "music")
+    SEMANTIC_VISUAL_ROLES = ("hook", "problem", "benefit", "proof", "cta")
     ROLE_SUGGESTIONS_BY_ASSET_TYPE = {
         "background_video": ("hook", "problem", "benefit", "proof", "cta", "background", "broll"),
         "foreground_video": ("hero", "hook", "problem", "benefit", "proof", "cta", "broll"),
@@ -127,10 +129,13 @@ class RecipeBuilderWindow(QMainWindow):
         self.decision_reason_input = QLineEdit()
         self.decision_actor_input.setPlaceholderText("operator, editor, qa")
         self.decision_reason_input.setPlaceholderText("optional decision note")
+        self.role_hint_label = QLabel("Role guidance: Select a recipe and asset to get a suggested role.")
+        self.role_hint_label.setWordWrap(True)
         form_layout.addRow("Recipe Code", self.recipe_code_input)
         form_layout.addRow("Target Platform", self.platform_input)
         form_layout.addRow("Target Ratio", self.ratio_input)
         form_layout.addRow("Attach Role", self.role_input)
+        form_layout.addRow("Role Guidance", self.role_hint_label)
         form_layout.addRow("Decision Actor", self.decision_actor_input)
         form_layout.addRow("Decision Note", self.decision_reason_input)
         layout.addWidget(self.product_picker)
@@ -293,6 +298,7 @@ class RecipeBuilderWindow(QMainWindow):
             ]
             for column_index, value in enumerate(values):
                 self.assets_table.setItem(row_index, column_index, QTableWidgetItem(value))
+        self._refresh_role_suggestions_for_selected_asset()
 
     def _refresh_recipe_items_table(self) -> None:
         self.recipe_items_table.setRowCount(len(self._view_model.recipe_items))
@@ -305,6 +311,7 @@ class RecipeBuilderWindow(QMainWindow):
             ]
             for column_index, value in enumerate(values):
                 self.recipe_items_table.setItem(row_index, column_index, QTableWidgetItem(value))
+        self._refresh_role_suggestions_for_selected_asset()
 
     def _refresh_outputs_table(self) -> None:
         self.outputs_table.setRowCount(len(self._view_model.outputs))
@@ -372,20 +379,90 @@ class RecipeBuilderWindow(QMainWindow):
         return asset_type_item.text().strip() or None
 
     def _refresh_role_suggestions_for_selected_asset(self) -> None:
-        self._set_role_suggestions(self._selected_asset_type())
+        asset_type = self._selected_asset_type()
+        self._set_role_suggestions(asset_type, auto_select=asset_type is not None)
 
-    def _set_role_suggestions(self, asset_type: str | None) -> None:
-        suggestions = self.ROLE_SUGGESTIONS_BY_ASSET_TYPE.get(asset_type, self.DEFAULT_ATTACH_ROLES)
+    def _current_recipe_roles(self) -> tuple[str, ...]:
+        return tuple(item.role for item in self._view_model.recipe_items)
+
+    def _planned_segment_roles(self) -> tuple[str, ...]:
+        composition_plan = self._view_model.composition_plan
+        if composition_plan is None or not composition_plan.segments:
+            return self.SEMANTIC_VISUAL_ROLES
+        return tuple(segment.segment_type for segment in composition_plan.segments)
+
+    def _remaining_planned_visual_roles(self, base_suggestions: tuple[str, ...]) -> tuple[str, ...]:
+        planned_roles = tuple(
+            role for role in self._planned_segment_roles() if role in self.SEMANTIC_VISUAL_ROLES and role in base_suggestions
+        )
+        used_counts = Counter(role for role in self._current_recipe_roles() if role in planned_roles)
+        remaining_planned = []
+        for role in planned_roles:
+            if used_counts[role] > 0:
+                used_counts[role] -= 1
+                continue
+            remaining_planned.append(role)
+        return tuple(remaining_planned)
+
+    def _ordered_role_suggestions(self, asset_type: str | None) -> tuple[str, ...]:
+        base_suggestions = self.ROLE_SUGGESTIONS_BY_ASSET_TYPE.get(asset_type, self.DEFAULT_ATTACH_ROLES)
+        if asset_type not in {"background_video", "foreground_video"}:
+            return base_suggestions
+        planned_roles = tuple(
+            role for role in self._planned_segment_roles() if role in self.SEMANTIC_VISUAL_ROLES and role in base_suggestions
+        )
+        remaining_planned = list(self._remaining_planned_visual_roles(base_suggestions))
+        if not remaining_planned:
+            extra_roles = [role for role in base_suggestions if role not in planned_roles]
+            completed_roles = [role for role in base_suggestions if role in planned_roles]
+            return tuple(extra_roles + completed_roles)
+        trailing_roles = [role for role in base_suggestions if role not in remaining_planned]
+        return tuple(remaining_planned + trailing_roles)
+
+    def _build_role_guidance_text(self, asset_type: str | None, suggestions: tuple[str, ...]) -> str:
+        if asset_type is None:
+            return "Role guidance: Select a recipe and asset to get a suggested role."
+        if not suggestions:
+            return f"Role guidance: No role suggestions are available for asset type `{asset_type}`."
+        if asset_type == "voiceover":
+            return "Role guidance: Voiceover assets should normally be attached as `voice`."
+        if asset_type == "background_music":
+            return "Role guidance: Background music assets should normally be attached as `music`."
+        if asset_type in {"background_video", "foreground_video"}:
+            planned_roles = self._planned_segment_roles()
+            current_roles = self._current_recipe_roles()
+            remaining_segment_roles = list(
+                self._remaining_planned_visual_roles(self.ROLE_SUGGESTIONS_BY_ASSET_TYPE.get(asset_type, self.DEFAULT_ATTACH_ROLES))
+            )
+            if remaining_segment_roles:
+                sequence_text = " -> ".join(planned_roles)
+                next_role = remaining_segment_roles[0]
+                attached_text = ", ".join(current_roles) if current_roles else "none yet"
+                return (
+                    f"Role guidance: Next suggested visual role is `{next_role}` based on the current segment flow "
+                    f"`{sequence_text}`. Attached roles so far: {attached_text}."
+                )
+            return (
+                "Role guidance: Planned segment roles are already covered, so use extra visual roles such as "
+                f"`{suggestions[0]}` for additional coverage."
+            )
+        return f"Role guidance: Suggested role for `{asset_type}` is `{suggestions[0]}`."
+
+    def _set_role_suggestions(self, asset_type: str | None, *, auto_select: bool = False) -> None:
+        suggestions = self._ordered_role_suggestions(asset_type)
         current_text = self.role_input.currentText().strip()
         self.role_input.blockSignals(True)
         self.role_input.clear()
         self.role_input.addItems(suggestions)
         self.role_input.setCurrentIndex(-1)
-        if current_text:
+        if auto_select and suggestions:
+            self.role_input.setCurrentText(suggestions[0])
+        elif current_text:
             if current_text not in suggestions:
                 self.role_input.addItem(current_text)
             self.role_input.setCurrentText(current_text)
         self.role_input.blockSignals(False)
+        self.role_hint_label.setText(self._build_role_guidance_text(asset_type, suggestions))
 
     def _refresh_selected_output_details(self) -> None:
         output_id = self._selected_output_id()
@@ -511,6 +588,7 @@ class RecipeBuilderWindow(QMainWindow):
 
     def _handle_recipe_selection(self) -> None:
         self._view_model.select_recipe(self._selected_recipe_id())
+        self._refresh_role_suggestions_for_selected_asset()
 
 
 def _build_output_detail_lines(output, composition_plan) -> list[str]:

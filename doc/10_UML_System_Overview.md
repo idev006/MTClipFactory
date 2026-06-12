@@ -374,6 +374,26 @@ sequenceDiagram
     VM-->>View: refresh assets and feedback
 ```
 
+## Recipe Attach Role Guidance Sequence
+
+```mermaid
+sequenceDiagram
+    actor User
+    participant View as RecipeBuilderWindow
+    participant VM as RecipeBuilderViewModel
+    participant Factory as VideoAssemblyFactoryService
+    participant Plan as CompositionPlan
+
+    User->>View: select recipe + ready asset
+    View->>VM: select_recipe(recipe_id)
+    VM->>Factory: get_recipe(recipe_id)
+    VM->>Factory: get_composition_plan(recipe_id)
+    Factory-->>VM: recipe items + current segment order
+    VM-->>View: refresh recipe items + composition plan
+    View->>View: rank role suggestions by asset type + remaining segment roles
+    View-->>User: auto-select next likely role + show Role Guidance
+```
+
 ## Recipe Preview Sequence
 
 ```mermaid
