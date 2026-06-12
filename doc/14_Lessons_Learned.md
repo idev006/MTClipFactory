@@ -195,3 +195,8 @@
 - once the shared theme existed, button clarity improved most when the theme added visible depth, hover contrast, and a pressed state instead of relying on flat color blocks alone
 - action-heavy operator tools benefit from buttons that look tactile enough to distinguish command surfaces from passive panels at a glance
 - that affordance still needs restraint: smaller buttons with theme-matched contrast can communicate clickability better than oversized controls that overpower the surrounding layout
+
+## LL-040 | 2026-06-13 | First Controlled UAT Should Prove One Real Outcome, Then Widen Coverage
+
+- the first controlled operator run created more trust by producing one real final output end to end than by adding more synthetic checks alone
+- once that first real output exists, the next most valuable UAT step is broader media coverage, especially distinct visuals plus voice/music, rather than repeating the same narrow data set

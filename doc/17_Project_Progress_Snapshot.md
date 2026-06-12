@@ -2,7 +2,7 @@
 
 ## Snapshot Date
 
-- 2026-06-12
+- 2026-06-13
 
 ## Where To See Progress
 
@@ -50,6 +50,7 @@
 - Recipe Builder now explains its main workflow directly in the screen, makes the `ready`-asset-only attach list more explicit, gives the asset panel a more usable height, and provides composition-aware attach-role suggestions that auto-select the next likely role from the current semantic flow.
 - The `Assets` screen now supports safe rename/delete maintenance actions for selected assets, while blocking deletion when recipes or artifact jobs still reference the asset.
 - Preview and final render now normalize mixed visual source ratios into the selected recipe frame so one output ratio can contain differently sized source clips safely.
+- The first controlled operator/UAT run has now completed end to end and produced a real final output from the current workspace.
 - The roadmap is now split into strategic and implementation layers, and the current mandatory implementation slice is complete.
 
 ## Delivered In The Latest Loop
@@ -72,10 +73,11 @@
 - audit hardening now also confirms exact numeric entry can push values beyond default slider spans without losing persistence truth
 - full-system release audit now re-executes factory happy path, recovery/escalation flow, and runtime hot reload through a dedicated scripted audit runner
 - operator-facing user manual is now published as SSOT document `27` for controlled rollout and UAT use
+- first controlled operator/UAT execution now confirms a real `9:16` preview/final output can be produced successfully from the current workspace baseline
 
 ## Still Open
 
-1. complete controlled operator/UAT rollout before broad release claims
+1. run a richer-media controlled UAT pass that includes voiceover, background music, and more distinct visual coverage
 2. recalibrate recipe scoring only if the current metadata, asset-diversity, and runtime-evidence baseline stops being operationally useful
 
 ## Verification Baseline

@@ -12,8 +12,14 @@ It should be used together with:
 
 - recommendation: `go for controlled operator rollout / UAT`
 - broad-release status: `not yet approved`
-- current verified regression baseline: `111 passed`
+- current verified regression baseline: `121 passed`
 - current UI smoke baseline: `ui_smoke_ok=6`
+
+First controlled execution result now available:
+
+- the first controlled operator/UAT run on `2026-06-13` completed the recipe-to-final workflow successfully
+- the run confirmed real final-output generation and `9:16` target-ratio normalization on mixed-ratio visual assets
+- the run also confirmed the next UAT should add voiceover, background music, and more distinct visual assets
 
 Meaning:
 
@@ -94,6 +100,11 @@ This rollout step is considered successful when:
 - there is no blocking operator-facing defect
 - the operator can explain what happened from the UI
 - any issues found are recorded clearly enough for follow-up
+
+Current note:
+
+- this exit condition has now been met once in a controlled workspace
+- broader rollout confidence still benefits from an additional richer-media UAT pass
 
 ## Honest Recommendation
 

@@ -2,7 +2,7 @@
 
 ## Project Manager Snapshot
 
-- Report date: 2026-06-12
+- Report date: 2026-06-13
 - Overall status: In Progress
 - Current phase: Phase 5, automation baseline plus full-system release audit complete; controlled operator rollout recommended before broader release
 - Delivery mode: document-led SSOT with code and tests kept in sync
@@ -59,6 +59,7 @@
 - scripted full-system release audit coverage for product-to-final workflow, recovery/escalation behavior, and runtime path hot reload
 - operator-facing user manual now exists as SSOT guidance for controlled rollout and UAT
 - controlled operator rollout kickoff guidance now exists as an execution-ready entry point for first real use on the current baseline
+- the first controlled operator/UAT execution run has now completed a real recipe-to-final workflow and produced a verified final output at `720x1280`
 - initial Video Assembly Factory:
   - recipe persistence
   - recipe item assignment
@@ -87,12 +88,12 @@
 - monitor whether the new recipe scoring baseline stays operationally useful for operators
 - monitor whether hybrid settings controls remain operator-friendly in real manual use
 - validate whether the new asset-maintenance controls are clear enough for operators without additional UI restructuring
-- validate real operator workflows in a controlled rollout before claiming broad release readiness
+- validate a richer-media controlled UAT run with voiceover, background music, and more distinct visual coverage before claiming broad release readiness
 - keep project documents truthful through per-milestone revision checkpoints
 
 ## Next Steps
 
-1. Run controlled operator/UAT rollout on a normal desktop workflow before broadening release scope.
+1. Run a second controlled operator/UAT pass that exercises voiceover, background music, and more distinct visual assets.
 2. Recalibrate recipe scoring only if operator feedback shows the current metadata, asset-diversity, and runtime-evidence baseline is not useful enough.
 3. Clean the Alembic `path_separator=os` warning in a maintenance pass.
 

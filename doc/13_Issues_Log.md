@@ -8,6 +8,7 @@
 | ISS-002 | 2026-06-05 | Medium | Module Boundary | `Video Assembly Factory` must consume prepared assets without mutating core asset metadata ownership owned by `Resource Library Management`. | Engineering | Open | Keep ownership rule explicit in architecture and service contracts. |
 | ISS-019 | 2026-06-06 | Medium | Execution Roadmap Discipline | The project now needs implementation milestones with acceptance criteria so composition work lands in a controlled sequence instead of broad feature waves. | Project Management | Open | Maintain the implementation roadmap and keep Kanban/issues aligned to the current milestone. |
 | ISS-020 | 2026-06-06 | Medium | Segment Heuristic Depth | Timeline segments are now persisted and validated, but segment content is still inferred from duration bands and recipe metadata instead of operator-authored structure. | Engineering | Open | Expose stronger segment authoring or refinement controls and reduce heuristic planning over time. |
+| ISS-030 | 2026-06-13 | Medium | UAT Coverage Depth | The first controlled operator run succeeded end to end, but it only covered two visual assets and did not exercise voiceover/background-music runtime mixing. | Project Management / QA | Open | Run a second controlled UAT pass with richer media coverage and review the resulting audio-mix and review-gate evidence. |
 
 ## Closed Issues
 
