@@ -15,13 +15,24 @@
 
 ## File Format Standards
 
-- เอกสารโครงการใช้ `.md`
-- ไฟล์ config ใหม่ใช้ `.toml`
-- diagram ฝังใน `.md` โดยใช้ Mermaid ได้
-- หลีกเลี่ยง config format หลายแบบโดยไม่จำเป็น
-- runtime path เช่น FFmpeg/FFprobe ต้องอ้างอิงผ่าน `.toml` กลางของโปรเจกต์
+- project documentation must use `.md`
+- new config files must use `.toml`
+- diagrams may live inside `.md` files by using Mermaid
+- avoid introducing multiple config formats unless there is a strong reason
+- runtime tool paths such as FFmpeg and FFprobe must be resolved through the central `.toml` project config
+- document-to-Markdown conversion and file-text extraction should use `markitdown` as the project default unless a specific workflow requires another tool
 
 ## Coding Rules
+
+- use the `src/` layout consistently
+- use type hints in public APIs
+- write classes and functions with explicit dependencies that can be injected
+- avoid global mutable state
+- separate pure logic from IO as much as possible
+- prefer simple dataclasses or clear domain models in the domain layer
+- keep `Library` and `Factory` use cases in clearly separated modules
+- do not duplicate the same business rule across modules without a shared abstraction
+- do not hardcode operational values, runtime paths, thresholds, or policy defaults when those values should be configurable
 
 ## Composition Rules
 
@@ -30,50 +41,39 @@
 - background music may loop only through explicit policy
 - ducking, trim, freeze, and loop decisions must be operator-visible and testable
 
-- ใช้ `src/` layout เสมอ
-- ใช้ type hints ใน public API
-- เขียน class/function ให้มี dependency ชัดเจนและ inject ได้
-- หลีกเลี่ยง global mutable state
-- แยก pure logic ออกจาก IO ให้มากที่สุด
-- ใช้ dataclass หรือ domain model ที่เรียบง่ายในชั้น domain
-- แยก use case ของ `Library` และ `Factory` คนละโมดูลให้ชัด
-- ห้าม copy business rule เดียวกันไปคนละฝั่งโดยไม่มี shared abstraction
-- ห้าม hardcode operational values, runtime paths, thresholds, หรือ policy defaults ในโค้ดเมื่อค่าพวกนั้นควรถูกปรับได้
-
 ## Database Rules
 
 - immutable review or approval history must be stored as append-only records, not only overwritten status fields
-
-- ห้ามแก้ schema โดยตรงใน production DB
-- schema change ทุกครั้งต้องมี Alembic migration
-- SQLite เป็น source of truth สำหรับสถานะ workflow
+- do not edit production schema state manually
+- every schema change must include an Alembic migration
+- SQLite is the workflow source of truth in the current architecture
 
 ## UI Rules
 
-- UI component ห้ามตัดสินใจเชิง domain เอง
-- UI ต้องแสดงสถานะงานจาก view model
-- Long-running work ต้องออกจาก main thread
-- dashboard ต้องเป็น operational summary ที่อ่านแล้วเข้าใจสภาพระบบได้เร็ว
-- settings UI ต้องทำงานผ่าน service และ persist อย่างชัดเจน
+- stylesheet rules must live in reusable theme assets or theme-loading seams, not inline inside window or widget code
+- UI components must not make domain decisions on their own
+- UI must display operational state from the view model
+- long-running work must stay off the main thread
+- the dashboard must remain an operational summary that can be understood quickly
+- the settings UI must work through services and persist changes explicitly
 
-## Logging and Errors
+## Logging And Errors
 
-- ทุก use case ต้องคืน error ที่อธิบายได้
-- ทุก background job ต้องมี status ที่ query ย้อนหลังได้
-- ทุก failure path ต้องออกแบบให้ recover ได้
+- every use case must return understandable errors
+- every background job must expose queryable status
+- every failure path should be designed for recovery when feasible
 
 ## Project Management Standards
 
 - every milestone must include a revision checkpoint that re-validates docs, architecture, process, and project status before merge
-
-- ต้อง maintain Kanban กลางของโครงการ
-- ต้องมี status report ที่ทีมอ่านแล้วเข้าใจภาพรวมได้ทันที
-- ต้องมี issue log สำหรับปัญหา ความเสี่ยง และ blocker
-- ต้องมี lessons learned log สำหรับสรุปบทเรียนหลัง milestone หรือเหตุการณ์สำคัญ
+- maintain the central project Kanban
+- keep a status report that the team can read quickly to understand the whole project state
+- keep an issue log for problems, risks, and blockers
+- keep a lessons-learned log for important milestone or incident takeaways
 
 ## Reliability Standards
 
-- ทุก component ควรแยกความรับผิดชอบชัดเจนและถอดเปลี่ยนได้
-- state สำคัญต้องมี persistence หรือ source of truth ที่ชัดเจน
-- config/runtime dependency ต้องตรวจสอบได้จาก dashboard
-- เมื่อ dependency หลักไม่พร้อม ระบบต้อง degrade gracefully เท่าที่ทำได้
+- every component should have a clear responsibility and be replaceable
+- important state must have persistence or another explicit source of truth
+- config and runtime dependencies must be inspectable from the dashboard
+- when a key dependency is unavailable, the system should degrade gracefully as far as practical
