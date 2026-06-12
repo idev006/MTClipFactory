@@ -10,10 +10,12 @@ from PySide6.QtWidgets import (
     QGroupBox,
     QHBoxLayout,
     QLabel,
+    QLayout,
     QLineEdit,
     QMainWindow,
     QMessageBox,
     QPushButton,
+    QScrollArea,
     QTableWidget,
     QTableWidgetItem,
     QTextEdit,
@@ -43,10 +45,19 @@ class RecipeBuilderWindow(QMainWindow):
         apply_theme(self, self.THEME_NAME)
 
         central = QWidget(self)
-        layout = QGridLayout(central)
+        outer_layout = QVBoxLayout(central)
+        outer_layout.setContentsMargins(0, 0, 0, 0)
+
+        self.scroll_area = QScrollArea(central)
+        self.scroll_area.setWidgetResizable(True)
+        outer_layout.addWidget(self.scroll_area)
+
+        self.content_widget = QWidget(self.scroll_area)
+        layout = QGridLayout(self.content_widget)
         layout.setContentsMargins(16, 16, 16, 16)
         layout.setHorizontalSpacing(16)
         layout.setVerticalSpacing(16)
+        layout.setSizeConstraint(QLayout.SetMinimumSize)
         layout.addWidget(self._build_recipe_group(), 0, 0)
         layout.addWidget(self._build_recipe_table_group(), 0, 1)
         layout.addWidget(self._build_asset_group(), 1, 0)
@@ -54,9 +65,8 @@ class RecipeBuilderWindow(QMainWindow):
         layout.addWidget(self._build_outputs_group(), 2, 0, 1, 2)
         layout.setColumnStretch(0, 1)
         layout.setColumnStretch(1, 1)
-        layout.setRowStretch(0, 3)
-        layout.setRowStretch(1, 2)
-        layout.setRowStretch(2, 3)
+        layout.setRowStretch(2, 1)
+        self.scroll_area.setWidget(self.content_widget)
         self.setCentralWidget(central)
 
         self._view_model.products_changed.connect(self._refresh_product_combo)
