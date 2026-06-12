@@ -7,6 +7,7 @@ This document is the living UML source of truth for the current implementation.
 ```mermaid
 flowchart TB
     UI["UI Layer"] --> VM["Presentation / ViewModel"]
+    UI --> THEME["Theme Assets / QSS"]
     VM --> LIB["Resource Library Management"]
     VM --> FAC["Video Assembly Factory"]
     VM --> CC["Control Center"]
@@ -194,6 +195,17 @@ classDiagram
         +open_settings()
     }
 
+    class UIThemeLoader {
+        +load_theme_stylesheet(theme_name)
+        +apply_theme(widget, theme_name)
+    }
+
+    class SettingsWindow {
+        +load()
+        +save()
+        +apply_theme()
+    }
+
     class RecipeBuilderWindow {
         +create_recipe()
         +attach_asset()
@@ -290,6 +302,8 @@ classDiagram
     RecipeBuilderViewModel --> AssetIntakeService
     RecipeBuilderViewModel --> VideoAssemblyFactoryService
     DashboardWindow --> RecipeBuilderWindow
+    DashboardWindow --> SettingsWindow
+    SettingsWindow --> UIThemeLoader
     VideoAssemblyFactoryService --> PreviewManifestBuilder
     VideoAssemblyFactoryService --> FFmpegPreviewRenderer
     VideoAssemblyFactoryService --> PreviewComposition

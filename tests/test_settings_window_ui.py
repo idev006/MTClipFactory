@@ -162,6 +162,7 @@ def test_settings_window_populates_grouped_controls(qapp: QApplication) -> None:
     assert window.music_duck_ratio_input.value() == 8.0
     assert window.auto_recover_input.isChecked() is False
     assert window.feedback_label.text() == "Settings loaded."
+    assert "QGroupBox#panelBox" in window.styleSheet()
     titles = {group.title() for group in window.findChildren(QGroupBox)}
     assert {
         "Workspace Paths",

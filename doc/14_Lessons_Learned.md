@@ -179,3 +179,8 @@
 
 - once path roots affect the database engine, asset storage, preview manifests, and output renderers together, hot reload is safer when the app rebuilds one coherent runtime module instead of mutating each service in place
 - proxy-swapping the live service set kept runtime hot reload truthful because view models could keep their references while new path-root dependent dependencies took effect together
+
+## LL-037 | 2026-06-12 | Theme Assets Need A Real Loading Seam
+
+- once inline stylesheet strings were declared off-limits, the practical next step was not a bigger widget rewrite but a small package-backed theme loader that can scale to other windows
+- moving QSS into versioned assets plus pytest coverage keeps UI polish reusable without burying styling policy inside Python window classes

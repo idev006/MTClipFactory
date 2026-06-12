@@ -24,6 +24,7 @@ from PySide6.QtWidgets import (
 
 from mt_clip_factory.control_center.dto import SystemSettingsDTO
 from mt_clip_factory.presentation.control_center.settings import SettingsViewModel
+from mt_clip_factory.ui.theme import apply_theme
 
 
 class IntSliderField(QWidget):
@@ -181,12 +182,14 @@ class FloatSliderField(QWidget):
 
 
 class SettingsWindow(QMainWindow):
+    THEME_NAME = "settings_window"
+
     def __init__(self, view_model: SettingsViewModel) -> None:
         super().__init__()
         self._view_model = view_model
         self.setWindowTitle("MTClipFactory - Settings")
         self.resize(1180, 820)
-        self._apply_styles()
+        apply_theme(self, self.THEME_NAME)
 
         central = QWidget(self)
         layout = QVBoxLayout(central)
@@ -206,44 +209,6 @@ class SettingsWindow(QMainWindow):
     def showEvent(self, event) -> None:  # noqa: N802
         super().showEvent(event)
         self._view_model.load()
-
-    def _apply_styles(self) -> None:
-        self.setStyleSheet(
-            """
-            QGroupBox#panelBox {
-                background-color: #f7f9fc;
-                border: 1px solid #ccd5e3;
-                border-radius: 12px;
-                margin-top: 14px;
-                padding-top: 10px;
-            }
-            QGroupBox#panelBox::title {
-                subcontrol-origin: margin;
-                left: 14px;
-                padding: 0 6px;
-                color: #183153;
-                font-weight: 600;
-            }
-            QLabel#sectionHint {
-                color: #5a677a;
-            }
-            QLabel#headerTitle {
-                color: #183153;
-                font-size: 18px;
-                font-weight: 700;
-            }
-            QLabel#headerHint {
-                color: #566273;
-            }
-            QLabel#statusValue {
-                background-color: #e9eef7;
-                border-radius: 8px;
-                color: #183153;
-                font-weight: 600;
-                padding: 6px 10px;
-            }
-            """
-        )
 
     def _build_header(self) -> QWidget:
         header = QWidget()
