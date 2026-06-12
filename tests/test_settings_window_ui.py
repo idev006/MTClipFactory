@@ -137,6 +137,20 @@ def test_float_slider_field_exact_entry_syncs_back_to_slider(qapp: QApplication)
     assert field._slider.value() == 3225
 
 
+def test_slider_fields_use_uniform_widths(qapp: QApplication) -> None:
+    int_field = IntSliderField(0, 100, suffix="%")
+    float_field = FloatSliderField(1.0, 30.0, decimals=2, scale=100)
+
+    assert int_field._slider.minimumWidth() == IntSliderField.SLIDER_TRACK_WIDTH
+    assert int_field._slider.maximumWidth() == IntSliderField.SLIDER_TRACK_WIDTH
+    assert int_field._editor.minimumWidth() == IntSliderField.EDITOR_WIDTH
+    assert int_field._editor.maximumWidth() == IntSliderField.EDITOR_WIDTH
+    assert float_field._slider.minimumWidth() == FloatSliderField.SLIDER_TRACK_WIDTH
+    assert float_field._slider.maximumWidth() == FloatSliderField.SLIDER_TRACK_WIDTH
+    assert float_field._editor.minimumWidth() == FloatSliderField.EDITOR_WIDTH
+    assert float_field._editor.maximumWidth() == FloatSliderField.EDITOR_WIDTH
+
+
 def test_settings_window_populates_grouped_controls(qapp: QApplication) -> None:
     view_model = FakeSettingsViewModel(_settings())
 

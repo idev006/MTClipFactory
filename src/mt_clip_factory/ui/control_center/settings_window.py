@@ -27,6 +27,9 @@ from mt_clip_factory.presentation.control_center.settings import SettingsViewMod
 
 
 class IntSliderField(QWidget):
+    SLIDER_TRACK_WIDTH = 280
+    EDITOR_WIDTH = 124
+
     def __init__(
         self,
         minimum: int,
@@ -45,6 +48,7 @@ class IntSliderField(QWidget):
 
         self._slider = QSlider(Qt.Horizontal)
         self._slider.setRange(minimum, maximum)
+        self._slider.setFixedWidth(self.SLIDER_TRACK_WIDTH)
         self._slider.valueChanged.connect(self._sync_from_slider)
         self._editor = QSpinBox()
         self._editor.setRange(
@@ -52,11 +56,12 @@ class IntSliderField(QWidget):
             maximum if editor_maximum is None else editor_maximum,
         )
         self._editor.setSuffix(suffix)
-        self._editor.setMinimumWidth(110)
+        self._editor.setFixedWidth(self.EDITOR_WIDTH)
         self._editor.valueChanged.connect(self._sync_from_editor)
 
-        layout.addWidget(self._slider, 1)
+        layout.addWidget(self._slider)
         layout.addWidget(self._editor)
+        layout.addStretch(1)
         self._sync_from_slider(self._slider.value())
 
     def value(self) -> int:
@@ -95,6 +100,9 @@ class IntSliderField(QWidget):
 
 
 class FloatSliderField(QWidget):
+    SLIDER_TRACK_WIDTH = 280
+    EDITOR_WIDTH = 124
+
     def __init__(
         self,
         minimum: float,
@@ -117,6 +125,7 @@ class FloatSliderField(QWidget):
 
         self._slider = QSlider(Qt.Horizontal)
         self._slider.setRange(int(round(minimum * scale)), int(round(maximum * scale)))
+        self._slider.setFixedWidth(self.SLIDER_TRACK_WIDTH)
         self._slider.valueChanged.connect(self._sync_from_slider)
         self._editor = QDoubleSpinBox()
         self._editor.setRange(
@@ -126,11 +135,12 @@ class FloatSliderField(QWidget):
         self._editor.setDecimals(decimals)
         self._editor.setSingleStep(1 / scale)
         self._editor.setSuffix(suffix)
-        self._editor.setMinimumWidth(120)
+        self._editor.setFixedWidth(self.EDITOR_WIDTH)
         self._editor.valueChanged.connect(self._sync_from_editor)
 
-        layout.addWidget(self._slider, 1)
+        layout.addWidget(self._slider)
         layout.addWidget(self._editor)
+        layout.addStretch(1)
         self._sync_from_slider(self._slider.value())
 
     def value(self) -> float:

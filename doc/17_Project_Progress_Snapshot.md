@@ -2,7 +2,7 @@
 
 ## Snapshot Date
 
-- 2026-06-11
+- 2026-06-12
 
 ## Where To See Progress
 
@@ -53,9 +53,11 @@
 - architecture, reliability, roadmap, Kanban, issues, lessons learned, and UML were aligned to the delivered `IR-14` baseline
 - settings UI now uses grouped panels and a two-column layout for clearer operator scanning
 - hybrid slider-plus-exact-entry settings controls are now covered by widget-level pytest checks
+- slider/editor width uniformity polish now keeps settings numeric controls visually aligned while preserving the hybrid control model
 - audit hardening now confirms pre-existing high-value config settings survive settings load/save without silent clamp
 - audit hardening now also confirms exact numeric entry can push values beyond default slider spans without losing persistence truth
 - full-system release audit now re-executes factory happy path, recovery/escalation flow, and runtime hot reload through a dedicated scripted audit runner
+- operator-facing user manual is now published as SSOT document `27` for controlled rollout and UAT use
 
 ## Still Open
 
@@ -64,5 +66,5 @@
 
 ## Verification Baseline
 
-- `python -m pytest` in `.venv`: `105 passed`
+- `python -m pytest` in `.venv`: `106 passed`
 - `QT_QPA_PLATFORM=offscreen` UI smoke: `6` main windows instantiated

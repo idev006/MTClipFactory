@@ -2,7 +2,7 @@
 
 ## Project Manager Snapshot
 
-- Report date: 2026-06-11
+- Report date: 2026-06-12
 - Overall status: In Progress
 - Current phase: Phase 5, automation baseline plus full-system release audit complete; controlled operator rollout recommended before broader release
 - Delivery mode: document-led SSOT with code and tests kept in sync
@@ -49,8 +49,10 @@
 - payload-backed recovery metadata retained as the current audit seam by explicit architecture decision
 - desktop-app runtime hot reload for path-root dependent services with runtime-vs-configured dashboard truthfulness
 - redesigned grouped settings surface with two-column panel layout and hybrid slider-plus-exact-entry numeric controls
+- settings numeric controls now use uniform slider/editor widths for more consistent operator scanning
 - widget-level settings UI verification coverage, including hybrid control mapping, high-value config preservation, and exact-entry synchronization
 - scripted full-system release audit coverage for product-to-final workflow, recovery/escalation behavior, and runtime path hot reload
+- operator-facing user manual now exists as SSOT guidance for controlled rollout and UAT
 - initial Video Assembly Factory:
   - recipe persistence
   - recipe item assignment
@@ -69,7 +71,7 @@
 
 ## Verification Baseline
 
-- `python -m pytest` via `.venv`: `105 passed`
+- `python -m pytest` via `.venv`: `106 passed`
 - UI smoke via `QT_QPA_PLATFORM=offscreen`: `6` windows instantiated successfully
 
 ## Current Focus
