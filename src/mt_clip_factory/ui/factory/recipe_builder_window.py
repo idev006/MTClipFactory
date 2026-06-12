@@ -30,7 +30,16 @@ from mt_clip_factory.ui.theme import apply_theme
 
 class RecipeBuilderWindow(QMainWindow):
     THEME_NAME = "app_window"
-    DEFAULT_ATTACH_ROLES = ("hero", "hook", "broll", "cta", "voice", "music", "background")
+    DEFAULT_ATTACH_ROLES = ("hero", "hook", "problem", "benefit", "proof", "cta", "broll", "background", "voice", "music")
+    ROLE_SUGGESTIONS_BY_ASSET_TYPE = {
+        "background_video": ("hook", "problem", "benefit", "proof", "cta", "background", "broll"),
+        "foreground_video": ("hero", "hook", "problem", "benefit", "proof", "cta", "broll"),
+        "voiceover": ("voice",),
+        "background_music": ("music",),
+        "sfx": ("sfx",),
+        "template": ("template", "text_overlay", "subtitle"),
+        "script": ("script",),
+    }
     PRODUCT_PICKER_MIN_HEIGHT = 110
     RECIPE_TABLE_MIN_HEIGHT = 240
     ASSETS_TABLE_MIN_HEIGHT = 220
@@ -191,6 +200,7 @@ class RecipeBuilderWindow(QMainWindow):
         self.assets_table.setEditTriggers(QTableWidget.NoEditTriggers)
         self.assets_table.horizontalHeader().setStretchLastSection(True)
         self.assets_table.setMinimumHeight(self.ASSETS_TABLE_MIN_HEIGHT)
+        self.assets_table.itemSelectionChanged.connect(self._refresh_role_suggestions_for_selected_asset)
         layout.addWidget(self.assets_table)
         return group
 
@@ -351,6 +361,31 @@ class RecipeBuilderWindow(QMainWindow):
         if not selected_items:
             return None
         return int(self.outputs_table.item(selected_items[0].row(), 0).text())
+
+    def _selected_asset_type(self) -> str | None:
+        selected_items = self.assets_table.selectedItems()
+        if not selected_items:
+            return None
+        asset_type_item = self.assets_table.item(selected_items[0].row(), 3)
+        if asset_type_item is None:
+            return None
+        return asset_type_item.text().strip() or None
+
+    def _refresh_role_suggestions_for_selected_asset(self) -> None:
+        self._set_role_suggestions(self._selected_asset_type())
+
+    def _set_role_suggestions(self, asset_type: str | None) -> None:
+        suggestions = self.ROLE_SUGGESTIONS_BY_ASSET_TYPE.get(asset_type, self.DEFAULT_ATTACH_ROLES)
+        current_text = self.role_input.currentText().strip()
+        self.role_input.blockSignals(True)
+        self.role_input.clear()
+        self.role_input.addItems(suggestions)
+        self.role_input.setCurrentIndex(-1)
+        if current_text:
+            if current_text not in suggestions:
+                self.role_input.addItem(current_text)
+            self.role_input.setCurrentText(current_text)
+        self.role_input.blockSignals(False)
 
     def _refresh_selected_output_details(self) -> None:
         output_id = self._selected_output_id()

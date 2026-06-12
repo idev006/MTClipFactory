@@ -177,3 +177,30 @@ def test_recipe_builder_window_explains_ready_assets_and_keeps_asset_panel_usabl
     assert recipe_window.recipe_items_table.minimumHeight() == RecipeBuilderWindow.RECIPE_ITEMS_TABLE_MIN_HEIGHT
     assert recipe_window.recipe_table.minimumHeight() == RecipeBuilderWindow.RECIPE_TABLE_MIN_HEIGHT
     recipe_window.close()
+
+
+def test_recipe_builder_window_filters_role_suggestions_by_selected_asset_type(qapp: QApplication) -> None:
+    recipe_window = RecipeBuilderWindow(FakeRecipeBuilderViewModel())
+
+    recipe_window._set_role_suggestions("voiceover")
+    assert [recipe_window.role_input.itemText(index) for index in range(recipe_window.role_input.count())] == ["voice"]
+
+    recipe_window._set_role_suggestions("background_music")
+    assert [recipe_window.role_input.itemText(index) for index in range(recipe_window.role_input.count())] == ["music"]
+
+    recipe_window._set_role_suggestions("foreground_video")
+    assert [recipe_window.role_input.itemText(index) for index in range(recipe_window.role_input.count())] == [
+        "hero",
+        "hook",
+        "problem",
+        "benefit",
+        "proof",
+        "cta",
+        "broll",
+    ]
+
+    recipe_window.role_input.setCurrentText("custom_visual_role")
+    recipe_window._set_role_suggestions("background_video")
+    assert recipe_window.role_input.currentText() == "custom_visual_role"
+    assert recipe_window.role_input.itemText(recipe_window.role_input.count() - 1) == "custom_visual_role"
+    recipe_window.close()
