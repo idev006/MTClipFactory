@@ -106,18 +106,24 @@ class AssetLibraryWindow(QMainWindow):
 
         button_row = QHBoxLayout()
         self.register_button = QPushButton("Register")
+        self.update_button = QPushButton("Update Selected")
+        self.delete_button = QPushButton("Delete Selected")
         self.thumbnail_button = QPushButton("Generate Thumbnail")
         self.proxy_button = QPushButton("Generate Proxy")
         self.tags_button = QPushButton("Tag Dictionary")
         self.apply_filters_button = QPushButton("Apply Filters")
         self.refresh_button = QPushButton("Refresh")
         self.register_button.clicked.connect(self._register_asset)
+        self.update_button.clicked.connect(self._update_asset)
+        self.delete_button.clicked.connect(self._delete_asset)
         self.thumbnail_button.clicked.connect(self._generate_thumbnail)
         self.proxy_button.clicked.connect(self._generate_proxy)
         self.tags_button.clicked.connect(self._handle_open_tag_dictionary)
         self.apply_filters_button.clicked.connect(self._apply_filters)
         self.refresh_button.clicked.connect(self._view_model.load)
         button_row.addWidget(self.register_button)
+        button_row.addWidget(self.update_button)
+        button_row.addWidget(self.delete_button)
         button_row.addWidget(self.thumbnail_button)
         button_row.addWidget(self.proxy_button)
         button_row.addWidget(self.tags_button)
@@ -143,6 +149,7 @@ class AssetLibraryWindow(QMainWindow):
         self.asset_table.setSelectionMode(QTableWidget.SingleSelection)
         self.asset_table.setEditTriggers(QTableWidget.NoEditTriggers)
         self.asset_table.horizontalHeader().setStretchLastSection(True)
+        self.asset_table.itemSelectionChanged.connect(self._handle_asset_selection)
         layout.addWidget(self.asset_table)
         return group
 
@@ -192,6 +199,15 @@ class AssetLibraryWindow(QMainWindow):
             for column_index, value in enumerate(values):
                 self.asset_table.setItem(row_index, column_index, QTableWidgetItem(value))
 
+    def _selected_asset_summary(self):
+        selected_items = self.asset_table.selectedItems()
+        if not selected_items:
+            return None
+        row_index = selected_items[0].row()
+        if row_index < 0 or row_index >= len(self._view_model.assets):
+            return None
+        return self._view_model.assets[row_index]
+
     def _browse_file(self) -> None:
         file_path, _ = QFileDialog.getOpenFileName(self, "Select Asset File")
         if file_path:
@@ -216,6 +232,38 @@ class AssetLibraryWindow(QMainWindow):
         self.asset_code_input.clear()
         self.source_path_input.clear()
 
+    def _update_asset(self) -> None:
+        asset_id = self._selected_asset_id()
+        if asset_id is None:
+            QMessageBox.warning(self, "Update Asset", "Select an asset first.")
+            return
+        try:
+            self._view_model.update_asset(asset_id=asset_id, asset_code=self.asset_code_input.text())
+        except Exception as exc:  # noqa: BLE001
+            QMessageBox.warning(self, "Update Asset", str(exc))
+            return
+        self.source_path_input.clear()
+
+    def _delete_asset(self) -> None:
+        asset = self._selected_asset_summary()
+        if asset is None:
+            QMessageBox.warning(self, "Delete Asset", "Select an asset first.")
+            return
+        confirmation = QMessageBox.question(
+            self,
+            "Delete Asset",
+            f"Delete asset {asset.asset_code}? This cannot be undone.",
+        )
+        if confirmation != QMessageBox.Yes:
+            return
+        try:
+            self._view_model.delete_asset(asset.asset_id)
+        except Exception as exc:  # noqa: BLE001
+            QMessageBox.warning(self, "Delete Asset", str(exc))
+            return
+        self.asset_code_input.clear()
+        self.source_path_input.clear()
+
     def _handle_open_tag_dictionary(self) -> None:
         if self._open_tag_dictionary is not None:
             self._open_tag_dictionary()
@@ -232,6 +280,19 @@ class AssetLibraryWindow(QMainWindow):
         if not selected_items:
             return None
         return int(self.asset_table.item(selected_items[0].row(), 0).text())
+
+    def _handle_asset_selection(self) -> None:
+        asset = self._selected_asset_summary()
+        if asset is None:
+            return
+        product_index = self.product_combo.findData(asset.product_id)
+        if product_index >= 0:
+            self.product_combo.setCurrentIndex(product_index)
+        asset_type_index = self.asset_type_combo.findData(asset.asset_type)
+        if asset_type_index >= 0:
+            self.asset_type_combo.setCurrentIndex(asset_type_index)
+        self.asset_code_input.setText(asset.asset_code)
+        self.source_path_input.clear()
 
     def _generate_thumbnail(self) -> None:
         asset_id = self._selected_asset_id()

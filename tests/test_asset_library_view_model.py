@@ -16,6 +16,8 @@ class FakeAssetIntakeService:
     def __init__(self) -> None:
         self.assets: list[AssetSummaryDTO] = []
         self.calls: list[tuple[int, str, str, str | None]] = []
+        self.updated_assets: list[tuple[int, str]] = []
+        self.deleted_asset_ids: list[int] = []
 
     def register_asset(self, command) -> int:
         if "missing" in str(command.source_file_path):
@@ -50,6 +52,19 @@ class FakeAssetIntakeService:
         status: str | None = None,
     ) -> list[AssetSummaryDTO]:
         return list(self.assets)
+
+    def update_asset(self, command) -> int:
+        self.updated_assets.append((command.asset_id, command.asset_code))
+        for index, asset in enumerate(self.assets):
+            if asset.asset_id != command.asset_id:
+                continue
+            self.assets[index] = replace(asset, asset_code=command.asset_code)
+            return command.asset_id
+        raise ValueError(str(command.asset_id))
+
+    def delete_asset(self, asset_id: int) -> None:
+        self.deleted_asset_ids.append(asset_id)
+        self.assets = [asset for asset in self.assets if asset.asset_id != asset_id]
 
 
 class FakeArtifactGenerationService:
@@ -224,3 +239,52 @@ def test_asset_view_model_generates_proxy_and_refreshes(unit_of_work_factory, tm
     assert "Generated proxy for asset #1" in view_model.feedback
     assert asset_service.assets[0].proxy_path is not None
     assert artifact_service.calls == [("proxy", 1)]
+
+
+def test_asset_view_model_updates_selected_asset(unit_of_work_factory, tmp_path) -> None:
+    product_service = ProductApplicationService(unit_of_work_factory=unit_of_work_factory)
+    product_id = product_service.create_product(CreateProductCommand(product_code="honey", product_name="Honey"))
+    asset_service = FakeAssetIntakeService()
+    artifact_service = FakeArtifactGenerationService(asset_service)
+    view_model = AssetLibraryViewModel(
+        product_service=product_service,
+        asset_intake_service=asset_service,
+        artifact_generation_service=artifact_service,
+    )
+    view_model.register_asset(
+        product_id=product_id,
+        asset_type="background_video",
+        source_file_path=str(tmp_path / "hero.mp4"),
+        asset_code="hero_asset",
+    )
+
+    updated_asset_id = view_model.update_asset(asset_id=1, asset_code="hero_asset_v2")
+
+    assert updated_asset_id == 1
+    assert asset_service.updated_assets == [(1, "hero_asset_v2")]
+    assert view_model.assets[0].asset_code == "hero_asset_v2"
+    assert view_model.feedback == "Updated asset #1"
+
+
+def test_asset_view_model_deletes_selected_asset(unit_of_work_factory, tmp_path) -> None:
+    product_service = ProductApplicationService(unit_of_work_factory=unit_of_work_factory)
+    product_id = product_service.create_product(CreateProductCommand(product_code="honey", product_name="Honey"))
+    asset_service = FakeAssetIntakeService()
+    artifact_service = FakeArtifactGenerationService(asset_service)
+    view_model = AssetLibraryViewModel(
+        product_service=product_service,
+        asset_intake_service=asset_service,
+        artifact_generation_service=artifact_service,
+    )
+    view_model.register_asset(
+        product_id=product_id,
+        asset_type="background_video",
+        source_file_path=str(tmp_path / "hero.mp4"),
+        asset_code="hero_asset",
+    )
+
+    view_model.delete_asset(1)
+
+    assert asset_service.deleted_asset_ids == [1]
+    assert view_model.assets == []
+    assert view_model.feedback == "Deleted asset #1"

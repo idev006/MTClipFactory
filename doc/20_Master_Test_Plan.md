@@ -24,6 +24,7 @@ It complements [07_Testing_Strategy.md](/F:/programming/python/MTClipFactory/doc
 - product creation, update, and deletion rules
 - asset intake and metadata analysis
 - asset readiness classification
+- asset rename/delete maintenance rules
 - tag creation, assignment, and filtering
 - thumbnail and proxy generation jobs
 
@@ -32,6 +33,7 @@ It complements [07_Testing_Strategy.md](/F:/programming/python/MTClipFactory/doc
 - recipe creation and item assignment
 - preview job flow
 - final render flow
+- target-ratio visual normalization across mixed source sizes
 - output lineage reporting
 - review gate and approval workflow
 - decision history and audit fields
@@ -141,6 +143,8 @@ It complements [07_Testing_Strategy.md](/F:/programming/python/MTClipFactory/doc
 5. Create and assign tags.
 6. Generate thumbnail and proxy jobs.
 7. Retry failed artifact jobs and confirm dashboard reflects the outcome.
+8. Rename an existing asset code and confirm the primary/artifact file paths remain aligned.
+9. Attempt to delete an asset that is already referenced by a recipe item or artifact job and confirm the UI blocks it truthfully.
 
 ### B. Recipe And Preview Flow
 
@@ -149,7 +153,8 @@ It complements [07_Testing_Strategy.md](/F:/programming/python/MTClipFactory/doc
 3. Confirm recipe score and duplicate risk update.
 4. Build preview.
 5. Confirm output record, manifest, and dashboard counts update.
-6. Validate preview manifest contains composition and review evidence.
+6. Validate preview output dimensions follow the selected recipe `Target Ratio` even when attached visual assets use different source ratios.
+7. Validate preview manifest contains composition and review evidence.
 
 ### C. Review And Approval Flow
 
@@ -210,12 +215,14 @@ It complements [07_Testing_Strategy.md](/F:/programming/python/MTClipFactory/doc
 - repeated retry behavior remains deterministic
 - persisted state survives service recreation
 - runtime reload does not silently leave old path roots active
+- asset maintenance does not orphan media files or silently delete referenced assets
 
 ### Usability
 
 - operator-facing feedback is understandable
 - dashboard attention text highlights real operational risk
 - key review and scoring data are visible without database inspection
+- recipe ratio handling stays understandable when source clips do not match each other
 
 ### Performance Observation
 

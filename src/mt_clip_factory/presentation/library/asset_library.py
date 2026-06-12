@@ -6,8 +6,14 @@ from PySide6.QtCore import QObject, Property, Signal, Slot
 
 from mt_clip_factory.application.services import ProductApplicationService
 from mt_clip_factory.library.artifact_services import ArtifactGenerationService
-from mt_clip_factory.library.dto import AssetSummaryDTO, RegisterAssetCommand
-from mt_clip_factory.library.services import AssetCodeAlreadyExistsError, AssetIntakeService, AssetSourceFileMissingError
+from mt_clip_factory.library.dto import AssetSummaryDTO, RegisterAssetCommand, UpdateAssetCommand
+from mt_clip_factory.library.services import (
+    AssetCodeAlreadyExistsError,
+    AssetInUseError,
+    AssetIntakeService,
+    AssetNotFoundError,
+    AssetSourceFileMissingError,
+)
 
 
 class AssetLibraryViewModel(QObject):
@@ -114,6 +120,33 @@ class AssetLibraryViewModel(QObject):
         self._set_feedback(f"Registered asset #{asset_id}")
         self.load()
         return asset_id
+
+    def update_asset(self, *, asset_id: int, asset_code: str) -> int:
+        self._set_status("submitting")
+        try:
+            updated_asset_id = self._asset_intake_service.update_asset(
+                UpdateAssetCommand(asset_id=asset_id, asset_code=asset_code)
+            )
+        except (AssetCodeAlreadyExistsError, AssetNotFoundError, AssetSourceFileMissingError, FileExistsError, ValueError) as exc:
+            self._set_feedback(str(exc))
+            self._set_status("error")
+            raise
+
+        self._set_feedback(f"Updated asset #{updated_asset_id}")
+        self.load()
+        return updated_asset_id
+
+    def delete_asset(self, asset_id: int) -> None:
+        self._set_status("submitting")
+        try:
+            self._asset_intake_service.delete_asset(asset_id)
+        except (AssetInUseError, AssetNotFoundError, ValueError) as exc:
+            self._set_feedback(str(exc))
+            self._set_status("error")
+            raise
+
+        self._set_feedback(f"Deleted asset #{asset_id}")
+        self.load()
 
     def generate_thumbnail(self, asset_id: int) -> int:
         self._set_status("processing")

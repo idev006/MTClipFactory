@@ -2,14 +2,23 @@ from __future__ import annotations
 
 from collections.abc import Sequence
 
-from sqlalchemy import Select, func, select
+from sqlalchemy import Select, delete, func, select
 from sqlalchemy.orm import Session
 
 from mt_clip_factory.domain.assets import Asset, AssetSummary
 from mt_clip_factory.domain.entities import Product, ProductSummary
 from mt_clip_factory.domain.enums import AssetType
 from mt_clip_factory.domain.tags import Tag, TagSummary
-from mt_clip_factory.infrastructure.models import AssetModel, AssetTagModel, OutputModel, ProductModel, RecipeModel, TagModel
+from mt_clip_factory.infrastructure.models import (
+    AssetModel,
+    AssetTagModel,
+    JobModel,
+    OutputModel,
+    ProductModel,
+    RecipeItemModel,
+    RecipeModel,
+    TagModel,
+)
 
 
 class SqlAlchemyProductRepository:
@@ -187,6 +196,9 @@ class SqlAlchemyAssetRepository:
         if model is None:
             raise ValueError(f"Unknown asset id: {asset.id}")
 
+        model.product_id = asset.product_id
+        model.asset_code = asset.asset_code
+        model.asset_type = asset.asset_type.value
         model.file_path = asset.file_path
         model.file_name = asset.file_name
         model.duration_sec = asset.duration_sec
@@ -205,6 +217,22 @@ class SqlAlchemyAssetRepository:
         model.status = asset.status
         self._session.flush()
         return asset
+
+    def delete(self, asset_id: int) -> None:
+        model = self._session.get(AssetModel, asset_id)
+        if model is None:
+            return
+        self._session.execute(delete(AssetTagModel).where(AssetTagModel.asset_id == asset_id))
+        self._session.delete(model)
+        self._session.flush()
+
+    def has_recipe_item_references(self, asset_id: int) -> bool:
+        statement = select(func.count(RecipeItemModel.id)).where(RecipeItemModel.asset_id == asset_id)
+        return self._session.execute(statement).scalar_one() > 0
+
+    def has_job_references(self, asset_id: int) -> bool:
+        statement = select(func.count(JobModel.id)).where(JobModel.asset_id == asset_id)
+        return self._session.execute(statement).scalar_one() > 0
 
     def list_summaries(
         self,

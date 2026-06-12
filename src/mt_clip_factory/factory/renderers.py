@@ -18,6 +18,7 @@ from mt_clip_factory.factory.audio_ducking import (
     sidechain_threshold_gain,
 )
 from mt_clip_factory.factory.preview_composition import PreviewSegmentClip
+from mt_clip_factory.factory.video_frame_normalization import build_visual_filter
 
 
 @dataclass(slots=True, frozen=True)
@@ -40,6 +41,7 @@ class FFmpegPreviewRenderer:
         source_files: list[Path],
         segment_clips: tuple[PreviewSegmentClip, ...] = (),
         audio_mix_plan: PreviewAudioMixPlan | None = None,
+        target_ratio: str | None = None,
     ) -> RenderedPreviewOutput:
         if not source_files:
             raise ValueError("At least one source file is required for preview rendering.")
@@ -55,6 +57,7 @@ class FFmpegPreviewRenderer:
                 source_files=source_files,
                 segment_clips=segment_clips,
                 audio_mix_plan=audio_mix_plan,
+                target_ratio=target_ratio,
             )
             return RenderedPreviewOutput(
                 file_path=target_path,
@@ -67,6 +70,7 @@ class FFmpegPreviewRenderer:
             source_files=source_files,
             segment_clips=segment_clips,
             include_audio=True,
+            target_ratio=target_ratio,
         )
         if segment_clips:
             return RenderedPreviewOutput(
@@ -83,6 +87,7 @@ class FFmpegPreviewRenderer:
         source_files: list[Path],
         segment_clips: tuple[PreviewSegmentClip, ...] = (),
         audio_mix_plan: PreviewAudioMixPlan | None = None,
+        target_ratio: str | None = None,
     ) -> RenderedPreviewOutput:
         return self.render_output(
             product_code=product_code,
@@ -90,6 +95,7 @@ class FFmpegPreviewRenderer:
             source_files=source_files,
             segment_clips=segment_clips,
             audio_mix_plan=audio_mix_plan,
+            target_ratio=target_ratio,
         )
 
     def _render_output_with_audio_mix(
@@ -100,6 +106,7 @@ class FFmpegPreviewRenderer:
         source_files: list[Path],
         segment_clips: tuple[PreviewSegmentClip, ...],
         audio_mix_plan: PreviewAudioMixPlan,
+        target_ratio: str | None,
     ) -> dict:
         with TemporaryDirectory(prefix="mtclipfactory_preview_audio_mix_") as temp_dir_name:
             temp_dir = Path(temp_dir_name)
@@ -110,6 +117,7 @@ class FFmpegPreviewRenderer:
                 source_files=source_files,
                 segment_clips=segment_clips,
                 include_audio=False,
+                target_ratio=target_ratio,
             )
             voice_track_path, voice_summary = self._render_audio_track_sequence(
                 settings=settings,
@@ -208,6 +216,7 @@ class FFmpegPreviewRenderer:
         source_files: list[Path],
         segment_clips: tuple[PreviewSegmentClip, ...],
         include_audio: bool,
+        target_ratio: str | None,
     ) -> None:
         if segment_clips:
             self._render_segmented_output(
@@ -215,6 +224,7 @@ class FFmpegPreviewRenderer:
                 segment_clips=segment_clips,
                 target_path=target_path,
                 include_audio=include_audio,
+                target_ratio=target_ratio,
             )
             return
         if len(source_files) == 1:
@@ -223,6 +233,7 @@ class FFmpegPreviewRenderer:
                 source_file=source_files[0],
                 target_path=target_path,
                 include_audio=include_audio,
+                target_ratio=target_ratio,
             )
             return
         self._render_concat_sources(
@@ -230,6 +241,7 @@ class FFmpegPreviewRenderer:
             source_files=source_files,
             target_path=target_path,
             include_audio=include_audio,
+            target_ratio=target_ratio,
         )
 
     def _render_single_source(
@@ -239,13 +251,14 @@ class FFmpegPreviewRenderer:
         source_file: Path,
         target_path: Path,
         include_audio: bool,
+        target_ratio: str | None,
     ) -> None:
         arguments = [
             "-y",
             "-i",
             str(source_file),
             "-vf",
-            "scale='min(1280,iw)':-2",
+            build_visual_filter(target_ratio=target_ratio),
             "-c:v",
             "libx264",
             "-preset",
@@ -267,6 +280,7 @@ class FFmpegPreviewRenderer:
         source_files: list[Path],
         target_path: Path,
         include_audio: bool,
+        target_ratio: str | None,
     ) -> None:
         with TemporaryDirectory(prefix="mtclipfactory_preview_") as temp_dir_name:
             concat_file = Path(temp_dir_name) / "concat_list.txt"
@@ -283,7 +297,7 @@ class FFmpegPreviewRenderer:
                 "-i",
                 str(concat_file),
                 "-vf",
-                "scale='min(1280,iw)':-2",
+                build_visual_filter(target_ratio=target_ratio),
                 "-c:v",
                 "libx264",
                 "-preset",
@@ -305,6 +319,7 @@ class FFmpegPreviewRenderer:
         segment_clips: tuple[PreviewSegmentClip, ...],
         target_path: Path,
         include_audio: bool,
+        target_ratio: str | None,
     ) -> None:
         with TemporaryDirectory(prefix="mtclipfactory_preview_segments_") as temp_dir_name:
             temp_dir = Path(temp_dir_name)
@@ -320,7 +335,7 @@ class FFmpegPreviewRenderer:
                     "-t",
                     str(segment.target_duration_sec),
                     "-vf",
-                    "scale='min(1280,iw)':-2",
+                    build_visual_filter(target_ratio=target_ratio),
                     "-c:v",
                     "libx264",
                     "-preset",
@@ -675,6 +690,7 @@ class LocalPreviewRenderer:
         source_files: list[Path],
         segment_clips: tuple[PreviewSegmentClip, ...] = (),
         audio_mix_plan: PreviewAudioMixPlan | None = None,
+        target_ratio: str | None = None,
     ) -> RenderedPreviewOutput:
         if not source_files:
             raise ValueError("At least one source file is required for preview rendering.")
@@ -703,6 +719,7 @@ class LocalPreviewRenderer:
         source_files: list[Path],
         segment_clips: tuple[PreviewSegmentClip, ...] = (),
         audio_mix_plan: PreviewAudioMixPlan | None = None,
+        target_ratio: str | None = None,
     ) -> RenderedPreviewOutput:
         return self.render_output(
             product_code=product_code,
@@ -710,6 +727,7 @@ class LocalPreviewRenderer:
             source_files=source_files,
             segment_clips=segment_clips,
             audio_mix_plan=audio_mix_plan,
+            target_ratio=target_ratio,
         )
 
 

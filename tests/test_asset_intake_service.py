@@ -6,11 +6,15 @@ import pytest
 
 from mt_clip_factory.application.dto import CreateProductCommand
 from mt_clip_factory.application.services import ProductApplicationService
+from mt_clip_factory.domain.jobs import Job
+from mt_clip_factory.domain.recipes import Recipe
 from mt_clip_factory.library.contracts import AnalyzedMediaMetadata
-from mt_clip_factory.library.dto import RegisterAssetCommand
+from mt_clip_factory.library.dto import RegisterAssetCommand, UpdateAssetCommand
 from mt_clip_factory.library.readiness import AssetReadinessEvaluator
 from mt_clip_factory.library.services import (
     AssetCodeAlreadyExistsError,
+    AssetInUseError,
+    AssetNotFoundError,
     AssetIntakeService,
     AssetSourceFileMissingError,
     ProductForAssetNotFoundError,
@@ -124,3 +128,119 @@ def test_register_asset_rejects_unknown_product(unit_of_work_factory, tmp_path) 
                 source_file_path=source_file,
             )
         )
+
+
+def test_update_asset_renames_primary_and_artifact_files(unit_of_work_factory, tmp_path) -> None:
+    product_service = ProductApplicationService(unit_of_work_factory=unit_of_work_factory)
+    product_id = product_service.create_product(CreateProductCommand(product_code="honey", product_name="Honey"))
+    asset_service = _build_asset_service(unit_of_work_factory, tmp_path / "media_library")
+    source_file = tmp_path / "hero.mp4"
+    source_file.write_bytes(b"video-bytes")
+
+    asset_id = asset_service.register_asset(
+        RegisterAssetCommand(
+            product_id=product_id,
+            asset_type="background_video",
+            source_file_path=source_file,
+            asset_code="hero_asset",
+        )
+    )
+
+    with unit_of_work_factory() as uow:
+        asset = uow.assets.get_by_id(asset_id)
+        assert asset is not None
+        thumbnail_path = Path(asset.file_path).with_suffix(".jpg")
+        proxy_path = Path(asset.file_path).with_name("hero_asset_proxy.mp4")
+        thumbnail_path.write_bytes(b"thumb")
+        proxy_path.write_bytes(b"proxy")
+        asset.thumbnail_path = str(thumbnail_path)
+        asset.proxy_path = str(proxy_path)
+        uow.assets.update(asset)
+        uow.commit()
+
+    updated_asset_id = asset_service.update_asset(UpdateAssetCommand(asset_id=asset_id, asset_code="hero_asset_v2"))
+
+    assert updated_asset_id == asset_id
+    assets = asset_service.list_assets()
+    assert assets[0].asset_code == "hero_asset_v2"
+    stored_file = tmp_path / "media_library" / "products" / "honey" / "background_videos" / "hero_asset_v2.mp4"
+    assert stored_file.exists()
+    assert not (tmp_path / "media_library" / "products" / "honey" / "background_videos" / "hero_asset.mp4").exists()
+
+
+def test_delete_asset_removes_record_and_primary_file(unit_of_work_factory, tmp_path) -> None:
+    product_service = ProductApplicationService(unit_of_work_factory=unit_of_work_factory)
+    product_id = product_service.create_product(CreateProductCommand(product_code="honey", product_name="Honey"))
+    asset_service = _build_asset_service(unit_of_work_factory, tmp_path / "media_library")
+    source_file = tmp_path / "hero.mp4"
+    source_file.write_bytes(b"video-bytes")
+
+    asset_id = asset_service.register_asset(
+        RegisterAssetCommand(
+            product_id=product_id,
+            asset_type="background_video",
+            source_file_path=source_file,
+            asset_code="hero_asset",
+        )
+    )
+
+    asset_service.delete_asset(asset_id)
+
+    assert asset_service.list_assets() == []
+    stored_file = tmp_path / "media_library" / "products" / "honey" / "background_videos" / "hero_asset.mp4"
+    assert not stored_file.exists()
+
+
+def test_delete_asset_rejects_assets_attached_to_recipe_items(unit_of_work_factory, tmp_path) -> None:
+    product_service = ProductApplicationService(unit_of_work_factory=unit_of_work_factory)
+    product_id = product_service.create_product(CreateProductCommand(product_code="honey", product_name="Honey"))
+    asset_service = _build_asset_service(unit_of_work_factory, tmp_path / "media_library")
+    source_file = tmp_path / "hero.mp4"
+    source_file.write_bytes(b"video-bytes")
+    asset_id = asset_service.register_asset(
+        RegisterAssetCommand(
+            product_id=product_id,
+            asset_type="background_video",
+            source_file_path=source_file,
+            asset_code="hero_asset",
+        )
+    )
+
+    with unit_of_work_factory() as uow:
+        recipe = uow.recipes.add(Recipe(product_id=product_id, recipe_code="recipe_01"))
+        assert recipe.id is not None
+        uow.recipes.add_item(recipe.id, asset_id, "hook")
+        uow.commit()
+
+    with pytest.raises(AssetInUseError):
+        asset_service.delete_asset(asset_id)
+
+
+def test_delete_asset_rejects_assets_with_artifact_jobs(unit_of_work_factory, tmp_path) -> None:
+    product_service = ProductApplicationService(unit_of_work_factory=unit_of_work_factory)
+    product_id = product_service.create_product(CreateProductCommand(product_code="honey", product_name="Honey"))
+    asset_service = _build_asset_service(unit_of_work_factory, tmp_path / "media_library")
+    source_file = tmp_path / "hero.mp4"
+    source_file.write_bytes(b"video-bytes")
+    asset_id = asset_service.register_asset(
+        RegisterAssetCommand(
+            product_id=product_id,
+            asset_type="background_video",
+            source_file_path=source_file,
+            asset_code="hero_asset",
+        )
+    )
+
+    with unit_of_work_factory() as uow:
+        uow.jobs.add(Job(job_code="artifact_01", job_type="generate_thumbnail", asset_id=asset_id))
+        uow.commit()
+
+    with pytest.raises(AssetInUseError):
+        asset_service.delete_asset(asset_id)
+
+
+def test_update_asset_rejects_unknown_asset(unit_of_work_factory, tmp_path) -> None:
+    asset_service = _build_asset_service(unit_of_work_factory, tmp_path / "media_library")
+
+    with pytest.raises(AssetNotFoundError):
+        asset_service.update_asset(UpdateAssetCommand(asset_id=999, asset_code="missing_asset"))

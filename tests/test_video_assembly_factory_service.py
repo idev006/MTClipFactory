@@ -69,6 +69,7 @@ def _build_factory_service(
             source_files: list[Path],
             segment_clips: tuple[PreviewSegmentClip, ...] = (),
             audio_mix_plan: PreviewAudioMixPlan | None = None,
+            target_ratio: str | None = None,
         ) -> RenderedPreviewOutput:
             output_dir = preview_root / product_code / "videos"
             output_dir.mkdir(parents=True, exist_ok=True)
@@ -80,6 +81,7 @@ def _build_factory_service(
                     "segment_clips": segment_clips,
                     "source_files": source_files,
                     "audio_mix_plan": audio_mix_plan,
+                    "target_ratio": target_ratio,
                 }
             )
             payload = b"".join(segment.source_file.read_bytes() for segment in segment_clips) if segment_clips else source_files[0].read_bytes()
@@ -205,7 +207,9 @@ def test_factory_service_assigns_asset_and_returns_recipe_details(unit_of_work_f
 def test_factory_service_builds_preview_output_job(unit_of_work_factory, tmp_path) -> None:
     product_id, asset_id = _register_ready_asset(unit_of_work_factory, tmp_path)
     service = _build_factory_service(unit_of_work_factory, tmp_path / "previews")
-    recipe_id = service.create_recipe(CreateRecipeCommand(product_id=product_id, recipe_code="Honey Launch"))
+    recipe_id = service.create_recipe(
+        CreateRecipeCommand(product_id=product_id, recipe_code="Honey Launch", target_ratio="9:16")
+    )
     service.assign_asset_to_recipe(AssignAssetToRecipeCommand(recipe_id=recipe_id, asset_id=asset_id, role="hero"))
 
     job_id = service.enqueue_preview_job(recipe_id)
@@ -231,11 +235,12 @@ def test_factory_service_builds_preview_output_job(unit_of_work_factory, tmp_pat
     assert outputs[0].rendering_job_code is not None
     assert outputs[0].quality_score is not None
     assert outputs[0].duplicate_risk is not None
-    assert recipe.recipe_score == 0.35
+    assert recipe.recipe_score == 0.4
     assert recipe.duplicate_risk == outputs[0].duplicate_risk
     assert recipe_summary.recipe_score == recipe.recipe_score
     assert recipe_summary.duplicate_risk == recipe.duplicate_risk
     assert products[0].output_count == 1
+    assert service._preview_renderer.calls[0]["target_ratio"] == "9:16"
 
     manifest_payload = json.loads(Path(outputs[0].manifest_path).read_text(encoding="utf-8"))
     assert manifest_payload["composition_plan"]["resolved_duration_sec"] == 3.0

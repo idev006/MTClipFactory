@@ -13,6 +13,12 @@ class RegisterAssetCommand:
 
 
 @dataclass(slots=True, frozen=True)
+class UpdateAssetCommand:
+    asset_id: int
+    asset_code: str
+
+
+@dataclass(slots=True, frozen=True)
 class AssetSummaryDTO:
     asset_id: int
     product_id: int

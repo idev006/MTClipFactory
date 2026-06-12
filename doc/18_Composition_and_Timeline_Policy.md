@@ -112,6 +112,14 @@ Recommended configurable policy:
 
 ## Visual Fill Policy
 
+### Target Frame Normalization Rule
+
+- preview and final render must respect the recipe `target_ratio` when one is provided
+- mixed visual source sizes should be normalized into one requested output frame instead of leaking source dimensions directly into the final output
+- the normalization path should preserve aspect ratio first, then pad to the target frame when needed
+- normalization behavior must stay aligned between preview and final render
+- any fallback when ratio parsing fails should be explicit and testable
+
 ### Background Visual Rule
 
 - background video may loop when it is assigned a background role
@@ -163,6 +171,7 @@ Current preview/final baseline:
 - manifests now expose applied runtime audio-mix evidence
 - ducking now uses a configurable engine with `sidechain_compressor` as the default runtime path and `windowed_volume_duck` as fallback
 - preview and final now apply configurable voice/music gain staging before the final mix
+- preview and final now normalize visual clips into the recipe `target_ratio` frame so mixed source ratios render into one bounded output canvas
 
 ## Review Gate Rule
 

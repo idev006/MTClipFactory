@@ -42,6 +42,8 @@ classDiagram
 
     class AssetIntakeService {
         +register_asset(command)
+        +update_asset(command)
+        +delete_asset(asset_id)
         +list_assets(...)
     }
 
@@ -106,11 +108,16 @@ classDiagram
     }
 
     class FFmpegPreviewRenderer {
-        +render_preview(...)
-        +render_output(..., segment_clips)
+        +render_preview(..., target_ratio)
+        +render_output(..., segment_clips, target_ratio)
         +runtime audio mix
+        +target-frame normalization
         +configurable duck mode
         +configurable gain staging
+    }
+
+    class VideoFrameNormalization {
+        +build_visual_filter(target_ratio)
     }
 
     class PreviewComposition {
@@ -173,6 +180,8 @@ classDiagram
     class AssetLibraryViewModel {
         +load()
         +register_asset(...)
+        +update_asset(asset_id, asset_code)
+        +delete_asset(asset_id)
         +generate_thumbnail(asset_id)
         +generate_proxy(asset_id)
     }
@@ -203,6 +212,8 @@ classDiagram
 
     class AssetLibraryWindow {
         +register_asset()
+        +update_asset()
+        +delete_asset()
         +generate_thumbnail()
         +generate_proxy()
     }
@@ -328,6 +339,7 @@ classDiagram
     SettingsWindow --> UIThemeLoader
     VideoAssemblyFactoryService --> PreviewManifestBuilder
     VideoAssemblyFactoryService --> FFmpegPreviewRenderer
+    FFmpegPreviewRenderer --> VideoFrameNormalization
     VideoAssemblyFactoryService --> PreviewComposition
     VideoAssemblyFactoryService --> CompositionPlan
     VideoAssemblyFactoryService --> ReviewGateEvaluator
@@ -372,6 +384,39 @@ sequenceDiagram
     Artifact->>JobRepo: update(done/failed)
     Artifact->>DB: COMMIT
     VM-->>View: refresh assets and feedback
+```
+
+## Asset Maintenance Sequence
+
+```mermaid
+sequenceDiagram
+    actor User
+    participant View as AssetLibraryWindow
+    participant VM as AssetLibraryViewModel
+    participant Intake as AssetIntakeService
+    participant AssetRepo as AssetRepository
+    participant DB as SQLite
+    participant FS as Filesystem
+
+    alt rename selected asset
+        User->>View: select asset + edit asset code
+        View->>VM: update_asset(asset_id, asset_code)
+        VM->>Intake: update_asset(command)
+        Intake->>AssetRepo: load + validate uniqueness
+        Intake->>FS: rename primary/artifact files
+        Intake->>AssetRepo: persist renamed paths
+        Intake->>DB: COMMIT
+        VM-->>View: refresh list + feedback
+    else delete selected asset
+        User->>View: select asset + confirm delete
+        View->>VM: delete_asset(asset_id)
+        VM->>Intake: delete_asset(asset_id)
+        Intake->>AssetRepo: verify no recipe/job references
+        Intake->>AssetRepo: delete(asset_id)
+        Intake->>DB: COMMIT
+        Intake->>FS: remove primary/artifact files
+        VM-->>View: refresh list + feedback
+    end
 ```
 
 ## Recipe Attach Role Guidance Sequence
@@ -421,7 +466,7 @@ sequenceDiagram
     Factory->>Factory: assess review gate + quality/risk
     Factory->>Factory: refresh recipe score/risk from metadata + assets + runtime review evidence
     Factory->>Preview: write_manifest(...)
-    Factory->>Render: render_preview(segment_clips + duck mode policy)
+    Factory->>Render: render_preview(segment_clips + target_ratio + duck mode policy)
     Factory->>Out: add(output)
     Factory->>RecipeRepo: update(candidate or needs_review)
     Factory->>JobRepo: update(done/failed)
@@ -464,7 +509,7 @@ sequenceDiagram
     Factory->>Factory: map segments to final visual clips
     Factory->>Factory: refresh recipe score/risk from metadata + assets + runtime review evidence
     Factory->>Preview: write_manifest(final)
-    Factory->>Render: render_output(segment_clips + duck mode policy)
+    Factory->>Render: render_output(segment_clips + target_ratio + duck mode policy)
     Factory->>Out: add(final output + lineage)
     Factory->>JobRepo: update(done/failed)
     Factory->>DB: COMMIT

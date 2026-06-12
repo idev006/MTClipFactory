@@ -446,6 +446,7 @@ class VideoAssemblyFactoryService:
                     source_files=list(composition.source_files),
                     segment_clips=composition.segment_clips,
                     audio_mix_plan=composition.audio_mix_plan,
+                    target_ratio=recipe.target_ratio,
                 )
                 review_assessment = assess_review_gate(
                     plan=persisted.plan,
@@ -580,6 +581,7 @@ class VideoAssemblyFactoryService:
                     source_files=list(composition.source_files),
                     segment_clips=composition.segment_clips,
                     audio_mix_plan=composition.audio_mix_plan,
+                    target_ratio=recipe.target_ratio,
                 )
                 review_assessment = assess_review_gate(
                     plan=persisted.plan,

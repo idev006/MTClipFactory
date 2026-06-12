@@ -8,7 +8,7 @@ from mt_clip_factory.domain.assets import Asset
 from mt_clip_factory.domain.enums import AssetType
 from mt_clip_factory.domain.services import UnitOfWork
 from mt_clip_factory.library.contracts import AssetMetadataAnalyzer, AssetStorage
-from mt_clip_factory.library.dto import AssetSummaryDTO, RegisterAssetCommand
+from mt_clip_factory.library.dto import AssetSummaryDTO, RegisterAssetCommand, UpdateAssetCommand
 from mt_clip_factory.library.readiness import AssetReadinessEvaluator
 
 
@@ -22,6 +22,14 @@ class AssetSourceFileMissingError(FileNotFoundError):
 
 class ProductForAssetNotFoundError(ValueError):
     """Raised when the selected product does not exist."""
+
+
+class AssetNotFoundError(ValueError):
+    """Raised when the selected asset does not exist."""
+
+
+class AssetInUseError(ValueError):
+    """Raised when an asset is still referenced by workflow records."""
 
 
 def _slugify_asset_code(value: str) -> str:
@@ -135,3 +143,110 @@ class AssetIntakeService:
                     status=status,
                 )
             ]
+
+    def update_asset(self, command: UpdateAssetCommand) -> int:
+        asset_code = _slugify_asset_code(command.asset_code)
+        if not asset_code:
+            raise ValueError("Asset code is required.")
+
+        with self._unit_of_work_factory() as uow:
+            asset = uow.assets.get_by_id(command.asset_id)
+            if asset is None or asset.id is None:
+                raise AssetNotFoundError(str(command.asset_id))
+
+            existing = uow.assets.get_by_code(asset_code)
+            if existing is not None and existing.id != asset.id:
+                raise AssetCodeAlreadyExistsError(asset_code)
+
+            if asset.asset_code == asset_code:
+                return asset.id
+
+            old_asset_code = asset.asset_code
+            primary_path = Path(asset.file_path)
+            if not primary_path.exists():
+                raise AssetSourceFileMissingError(str(primary_path))
+            renamed_primary = _rename_path_for_asset_code(
+                primary_path,
+                old_asset_code=old_asset_code,
+                new_asset_code=asset_code,
+                required=True,
+            )
+            asset.asset_code = asset_code
+            asset.file_path = str(renamed_primary)
+            asset.file_name = renamed_primary.name
+            asset.thumbnail_path = _rename_optional_path_for_asset_code(asset.thumbnail_path, old_asset_code, asset_code)
+            asset.proxy_path = _rename_optional_path_for_asset_code(asset.proxy_path, old_asset_code, asset_code)
+            asset.alpha_path = _rename_optional_path_for_asset_code(asset.alpha_path, old_asset_code, asset_code)
+            asset.rgba_cache_path = _rename_optional_path_for_asset_code(asset.rgba_cache_path, old_asset_code, asset_code)
+            uow.assets.update(asset)
+            uow.commit()
+            return asset.id
+
+    def delete_asset(self, asset_id: int) -> None:
+        with self._unit_of_work_factory() as uow:
+            asset = uow.assets.get_by_id(asset_id)
+            if asset is None or asset.id is None:
+                raise AssetNotFoundError(str(asset_id))
+            if uow.assets.has_recipe_item_references(asset_id):
+                raise AssetInUseError("Asset is attached to one or more recipe items.")
+            if uow.assets.has_job_references(asset_id):
+                raise AssetInUseError("Asset has artifact jobs and cannot be deleted.")
+            file_paths = [
+                Path(asset.file_path),
+                Path(asset.thumbnail_path) if asset.thumbnail_path else None,
+                Path(asset.proxy_path) if asset.proxy_path else None,
+                Path(asset.alpha_path) if asset.alpha_path else None,
+                Path(asset.rgba_cache_path) if asset.rgba_cache_path else None,
+            ]
+            uow.assets.delete(asset_id)
+            uow.commit()
+
+        for file_path in file_paths:
+            if file_path is None:
+                continue
+            try:
+                file_path.unlink(missing_ok=True)
+            except OSError:
+                continue
+
+
+def _rename_path_for_asset_code(
+    file_path: Path,
+    *,
+    old_asset_code: str,
+    new_asset_code: str,
+    required: bool,
+) -> Path:
+    if not file_path.exists():
+        if required:
+            raise AssetSourceFileMissingError(str(file_path))
+        return file_path
+    stem = file_path.stem
+    if stem == old_asset_code:
+        new_stem = new_asset_code
+    elif stem.startswith(f"{old_asset_code}_"):
+        new_stem = f"{new_asset_code}{stem[len(old_asset_code):]}"
+    else:
+        new_stem = new_asset_code
+    target_path = file_path.with_name(f"{new_stem}{file_path.suffix.lower()}")
+    if target_path == file_path:
+        return file_path
+    if target_path.exists():
+        raise FileExistsError(str(target_path))
+    file_path.rename(target_path)
+    return target_path
+
+
+def _rename_optional_path_for_asset_code(raw_path: str | None, old_asset_code: str, new_asset_code: str) -> str | None:
+    if not raw_path:
+        return None
+    file_path = Path(raw_path)
+    if not file_path.exists():
+        return None
+    renamed = _rename_path_for_asset_code(
+        file_path,
+        old_asset_code=old_asset_code,
+        new_asset_code=new_asset_code,
+        required=False,
+    )
+    return str(renamed)

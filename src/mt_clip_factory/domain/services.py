@@ -52,6 +52,15 @@ class AssetRepository(Protocol):
     def update(self, asset: Asset) -> Asset:
         ...
 
+    def delete(self, asset_id: int) -> None:
+        ...
+
+    def has_recipe_item_references(self, asset_id: int) -> bool:
+        ...
+
+    def has_job_references(self, asset_id: int) -> bool:
+        ...
+
     def list_summaries(
         self,
         product_id: int | None = None,

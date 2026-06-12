@@ -111,6 +111,7 @@ def test_ffmpeg_renderer_builds_runtime_audio_mix_commands(tmp_path) -> None:
         output_stem="runtime_mix",
         source_files=[source_file],
         audio_mix_plan=_audio_mix_plan(tmp_path),
+        target_ratio="9:16",
     )
 
     assert rendered.file_path.exists()
@@ -124,6 +125,7 @@ def test_ffmpeg_renderer_builds_runtime_audio_mix_commands(tmp_path) -> None:
     assert any("amix=inputs=2" in " ".join(command) for command in renderer.commands)
     assert any("volume=-4dB" in " ".join(command) for command in renderer.commands)
     assert any(command.count("-map") >= 2 for command in renderer.commands)
+    assert any("pad=720:1280" in " ".join(command) for command in renderer.commands)
 
 
 def test_ffmpeg_renderer_supports_windowed_duck_fallback_mode(tmp_path) -> None:
@@ -138,6 +140,7 @@ def test_ffmpeg_renderer_supports_windowed_duck_fallback_mode(tmp_path) -> None:
         output_stem="windowed_mix",
         source_files=[source_file],
         audio_mix_plan=_audio_mix_plan(tmp_path),
+        target_ratio="16:9",
     )
 
     assert rendered.audio_mix_summary is not None
@@ -147,6 +150,7 @@ def test_ffmpeg_renderer_supports_windowed_duck_fallback_mode(tmp_path) -> None:
     assert any("volume=volume=" in " ".join(command) for command in renderer.commands)
     assert any("volume=2dB" in " ".join(command) for command in renderer.commands)
     assert any("volume=-6dB" in " ".join(command) for command in renderer.commands)
+    assert any("pad=1280:720" in " ".join(command) for command in renderer.commands)
 
 
 def test_local_renderer_returns_simulated_audio_mix_summary(tmp_path) -> None:
