@@ -55,6 +55,7 @@
 - widget-level settings UI verification coverage, including hybrid control mapping, high-value config preservation, and exact-entry synchronization
 - scripted full-system release audit coverage for product-to-final workflow, recovery/escalation behavior, and runtime path hot reload
 - operator-facing user manual now exists as SSOT guidance for controlled rollout and UAT
+- controlled operator rollout kickoff guidance now exists as an execution-ready entry point for first real use on the current baseline
 - initial Video Assembly Factory:
   - recipe persistence
   - recipe item assignment

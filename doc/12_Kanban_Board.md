@@ -61,6 +61,7 @@ This Markdown board is the SSOT Kanban for the repository.
 - packaged theme seam for Qt styles with settings-window QSS extraction
 - shared app-window theme baseline across dashboard, library, and factory windows
 - shared button-affordance polish in the packaged app-window theme
+- controlled operator rollout kickoff guide
 - focused settings audit plan, execution report, and widget-level verification coverage
 - full-system release audit plan, scripted audit runner, and release audit report
 - recipe persistence

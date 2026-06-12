@@ -46,6 +46,7 @@
 - The settings window now loads its styling from a package-backed QSS theme seam instead of embedding stylesheet text inline.
 - Dashboard, resource-library, tag-dictionary, and recipe-builder windows now also consume a shared package-backed app-window theme baseline.
 - Primary action buttons now have clearer but more restrained visual affordance through the shared theme, including balanced depth and pressed-state feedback.
+- A controlled operator rollout kickoff guide now exists so the first real-use session can start from one practical SSOT entry point.
 - The roadmap is now split into strategic and implementation layers, and the current mandatory implementation slice is complete.
 
 ## Delivered In The Latest Loop
@@ -60,6 +61,7 @@
 - a reusable `ui.theme` seam now loads packaged QSS assets, and the settings window theme was extracted out of Python code
 - the broader desktop UI now shares one packaged app-window theme baseline, with focused window-level overrides reserved for justified differences
 - packaged app-window buttons now read more clearly as clickable controls instead of flat color blocks, while staying proportionate to the rest of the UI
+- a controlled operator rollout kickoff document now packages the go/no-go answer, first-run checklist, and first workflow for immediate use
 - audit hardening now confirms pre-existing high-value config settings survive settings load/save without silent clamp
 - audit hardening now also confirms exact numeric entry can push values beyond default slider spans without losing persistence truth
 - full-system release audit now re-executes factory happy path, recovery/escalation flow, and runtime hot reload through a dedicated scripted audit runner
