@@ -10,6 +10,7 @@
 - `doc/00_Document_Index.md` is the SSOT index for project documents
 - important architecture or workflow changes must be reflected in UML and may use Mermaid
 - update documents in `doc` whenever behavior, workflow, or structure changes
+- before implementing a non-trivial change, write the intended sequence diagram first, analyze it against SSOT and real workflow impact, then implement only after that design is understood and trusted
 - do not merge code without appropriate test coverage
 - do not place business logic directly in the UI
 - do not add new inline `setStyleSheet(...)` UI styling in window or widget code; move styling into reusable theme files or a dedicated theme-loading layer
@@ -20,7 +21,7 @@
 
 1. documentation is updated
 2. related UML and diagrams are updated
-3. code still matches the architecture
+3. the sequence-diagram design was reviewed before implementation when the change affected workflow or cross-module behavior
 4. related tests exist
 5. tests pass in `.venv`
 6. Kanban and project status reflect the latest state
@@ -43,3 +44,4 @@ If code and documents disagree, treat the implementation as incomplete until cod
 - every work slice should leave a clear owner and next step in the progress documents
 - if a blocker appears, reflect it in the issue log and Kanban in the same work loop
 - when a milestone ends, record meaningful lessons learned
+- for workflow-heavy implementation, sequence design and analysis should be visible early enough that PM and engineering can sanity-check direction before code expands

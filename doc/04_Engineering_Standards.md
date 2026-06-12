@@ -57,6 +57,13 @@
 - the dashboard must remain an operational summary that can be understood quickly
 - the settings UI must work through services and persist changes explicitly
 
+## Change Design Rules
+
+- every non-trivial implementation should begin with a sequence-diagram draft that describes the intended runtime flow before code is changed
+- the sequence diagram should be analyzed against SSOT, existing architecture seams, failure paths, and testability before implementation starts
+- implementation should begin only after the sequence-level workflow is coherent enough that the team is confident the change fits the system correctly
+- when the workflow changes materially, the verified sequence diagram must be reflected in the UML SSOT
+
 ## Logging And Errors
 
 - every use case must return understandable errors

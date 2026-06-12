@@ -39,7 +39,7 @@ When code changes, the related Markdown documents in this folder must be updated
 
 - Document-first: update documents before or together with implementation changes.
 - SSOT-first: only files linked from this index are official project documents.
-- UML-first: architecture and workflow changes must be reflected in the UML document.
+- UML-first: architecture and workflow changes must be reflected in the UML document, and non-trivial implementation work should start from an analyzed sequence diagram before code is changed.
 - Testability-first: service seams, adapters, and view models must stay easy to verify with `pytest`.
 - Traceability-first: roadmap, status, issues, Kanban, and lessons learned must describe the real project state.
 - PM-visibility-first: progress must be visible from both the dashboard and the central project documents.
