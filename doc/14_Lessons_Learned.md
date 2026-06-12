@@ -194,3 +194,4 @@
 
 - once the shared theme existed, button clarity improved most when the theme added visible depth, hover contrast, and a pressed state instead of relying on flat color blocks alone
 - action-heavy operator tools benefit from buttons that look tactile enough to distinguish command surfaces from passive panels at a glance
+- that affordance still needs restraint: smaller buttons with theme-matched contrast can communicate clickability better than oversized controls that overpower the surrounding layout

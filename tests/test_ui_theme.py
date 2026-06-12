@@ -20,7 +20,8 @@ def test_load_theme_stylesheet_reads_qss_asset() -> None:
     assert "QMainWindow" in stylesheet
     assert "QPushButton" in stylesheet
     assert "qlineargradient" in stylesheet
-    assert "border-bottom: 3px solid" in stylesheet
+    assert "min-height: 28px" in stylesheet
+    assert "border-bottom: 2px solid" in stylesheet
     assert "QPushButton:pressed" in stylesheet
 
 

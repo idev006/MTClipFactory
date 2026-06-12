@@ -45,7 +45,7 @@
 - Recipe records now retain persisted score/risk summaries derived from metadata, asset composition, and runtime review evidence, and Recipe Builder now shows those summaries in the recipe list.
 - The settings window now loads its styling from a package-backed QSS theme seam instead of embedding stylesheet text inline.
 - Dashboard, resource-library, tag-dictionary, and recipe-builder windows now also consume a shared package-backed app-window theme baseline.
-- Primary action buttons now have stronger visual affordance through the shared theme, including clearer depth and pressed-state feedback.
+- Primary action buttons now have clearer but more restrained visual affordance through the shared theme, including balanced depth and pressed-state feedback.
 - The roadmap is now split into strategic and implementation layers, and the current mandatory implementation slice is complete.
 
 ## Delivered In The Latest Loop
@@ -59,7 +59,7 @@
 - slider/editor width uniformity polish now keeps settings numeric controls visually aligned while preserving the hybrid control model
 - a reusable `ui.theme` seam now loads packaged QSS assets, and the settings window theme was extracted out of Python code
 - the broader desktop UI now shares one packaged app-window theme baseline, with focused window-level overrides reserved for justified differences
-- packaged app-window buttons now read more clearly as clickable controls instead of flat color blocks
+- packaged app-window buttons now read more clearly as clickable controls instead of flat color blocks, while staying proportionate to the rest of the UI
 - audit hardening now confirms pre-existing high-value config settings survive settings load/save without silent clamp
 - audit hardening now also confirms exact numeric entry can push values beyond default slider spans without losing persistence truth
 - full-system release audit now re-executes factory happy path, recovery/escalation flow, and runtime hot reload through a dedicated scripted audit runner
