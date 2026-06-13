@@ -1,8 +1,6 @@
 from __future__ import annotations
 
-import json
 from collections import Counter
-from pathlib import Path
 
 from PySide6.QtCore import Qt
 from PySide6.QtWidgets import (
@@ -26,6 +24,14 @@ from PySide6.QtWidgets import (
 )
 
 from mt_clip_factory.presentation.factory.recipe_builder import RecipeBuilderViewModel
+from mt_clip_factory.ui.factory.recipe_builder_aftercare import (
+    _build_manifest_audio_lines,
+    _build_manifest_review_lines,
+    assess_recipe_aftercare,
+    build_aftercare_guidance,
+    build_output_detail_lines,
+    format_output_aftercare_state,
+)
 from mt_clip_factory.ui.theme import apply_theme
 
 
@@ -105,6 +111,9 @@ class RecipeBuilderWindow(QMainWindow):
         )
         summary_label.setWordWrap(True)
         layout.addWidget(summary_label)
+        self.aftercare_label = QLabel("Workflow guidance: Select a recipe to see rebuild and approval guidance.")
+        self.aftercare_label.setWordWrap(True)
+        layout.addWidget(self.aftercare_label)
         form_layout = QFormLayout()
         self.product_combo = QLineEdit()
         self.product_combo.setReadOnly(True)
@@ -228,9 +237,9 @@ class RecipeBuilderWindow(QMainWindow):
     def _build_outputs_group(self) -> QGroupBox:
         group = QGroupBox("Recipe Outputs")
         layout = QVBoxLayout(group)
-        self.outputs_table = QTableWidget(0, 10)
+        self.outputs_table = QTableWidget(0, 11)
         self.outputs_table.setHorizontalHeaderLabels(
-            ["Output ID", "Kind", "Code", "Approved", "Approved By", "Approved At", "Created", "Job Code", "Source", "Path"]
+            ["Output ID", "Kind", "Code", "Aftercare", "Approved", "Approved By", "Approved At", "Created", "Job Code", "Source", "Path"]
         )
         self.outputs_table.setSelectionBehavior(QTableWidget.SelectRows)
         self.outputs_table.setSelectionMode(QTableWidget.SingleSelection)
@@ -314,12 +323,14 @@ class RecipeBuilderWindow(QMainWindow):
         self._refresh_role_suggestions_for_selected_asset()
 
     def _refresh_outputs_table(self) -> None:
+        aftercare = assess_recipe_aftercare(self._view_model.decision_events, self._view_model.outputs)
         self.outputs_table.setRowCount(len(self._view_model.outputs))
         for row_index, output in enumerate(self._view_model.outputs):
             values = [
                 str(output.output_id),
                 output.output_kind,
                 output.output_code,
+                format_output_aftercare_state(output, aftercare),
                 "Yes" if output.approved else "No",
                 output.approved_by or "",
                 output.approved_at or "",
@@ -330,6 +341,7 @@ class RecipeBuilderWindow(QMainWindow):
             ]
             for column_index, value in enumerate(values):
                 self.outputs_table.setItem(row_index, column_index, QTableWidgetItem(value))
+        self._refresh_aftercare_guidance()
         self._refresh_selected_output_details()
 
     def _refresh_decision_history_table(self) -> None:
@@ -344,6 +356,7 @@ class RecipeBuilderWindow(QMainWindow):
             ]
             for column_index, value in enumerate(values):
                 self.decision_history_table.setItem(row_index, column_index, QTableWidgetItem(value))
+        self._refresh_aftercare_guidance()
 
     def _selected_product_id(self) -> int | None:
         selected_items = self.product_picker.selectedItems()
@@ -475,8 +488,13 @@ class RecipeBuilderWindow(QMainWindow):
             return
         self.output_details_text.setPlainText(
             "\n".join(
-                _build_output_detail_lines(output, self._view_model.composition_plan)
+                build_output_detail_lines(output, self._view_model.composition_plan, self._view_model.decision_events)
             )
+        )
+
+    def _refresh_aftercare_guidance(self) -> None:
+        self.aftercare_label.setText(
+            build_aftercare_guidance(assess_recipe_aftercare(self._view_model.decision_events, self._view_model.outputs))
         )
 
     def _format_event_label(self, event_type: str) -> str:
@@ -589,130 +607,3 @@ class RecipeBuilderWindow(QMainWindow):
     def _handle_recipe_selection(self) -> None:
         self._view_model.select_recipe(self._selected_recipe_id())
         self._refresh_role_suggestions_for_selected_asset()
-
-
-def _build_output_detail_lines(output, composition_plan) -> list[str]:
-    lines = [
-        f"Output ID: {output.output_id}",
-        f"Recipe: {output.recipe_code} (#{output.recipe_id})",
-        f"Kind: {output.output_kind}",
-        f"Approved: {output.approved}",
-        f"Approved By: {output.approved_by or '-'}",
-        f"Approved At: {output.approved_at or '-'}",
-        f"Approval Reason: {output.approval_reason or '-'}",
-        f"Created At: {output.created_at}",
-        f"Platform: {output.platform or '-'}",
-        f"Ratio: {output.ratio or '-'}",
-        f"Render Job Code: {output.rendering_job_code or '-'}",
-        f"Manifest Path: {output.manifest_path or '-'}",
-        f"Source Output ID: {output.source_output_id or '-'}",
-        f"Source Output Code: {output.source_output_code or '-'}",
-        f"Source Output Path: {output.source_output_path or '-'}",
-        f"Quality Score: {output.quality_score if output.quality_score is not None else '-'}",
-        f"Duplicate Risk: {output.duplicate_risk if output.duplicate_risk is not None else '-'}",
-        f"File Path: {output.file_path}",
-    ]
-    if composition_plan is None:
-        return lines
-    lines.extend(
-        [
-            "",
-            f"Composition Plan ID: {composition_plan.plan_id}",
-            f"Duration Source: {composition_plan.duration_source}",
-            f"Resolved Duration: {composition_plan.resolved_duration_sec or '-'}",
-            f"Timeline Segments: {len(composition_plan.segments)}",
-            f"Render Decisions: {len(composition_plan.decisions)}",
-        ]
-    )
-    for segment in composition_plan.segments:
-        lines.append(
-            f"- Segment {segment.sequence_index}: {segment.segment_type} "
-            f"{segment.start_sec:.3f}-{segment.end_sec:.3f}s | audio={segment.audio_policy or '-'}"
-        )
-    for decision in composition_plan.decisions[:6]:
-        lines.append(
-            f"- Decision: {decision.decision_type} -> {decision.action}"
-            f"{f' | role={decision.asset_role}' if decision.asset_role else ''}"
-        )
-    if len(composition_plan.decisions) > 6:
-        lines.append(f"- More Decisions: {len(composition_plan.decisions) - 6}")
-    lines.extend(_build_manifest_review_lines(output.manifest_path))
-    lines.extend(_build_manifest_audio_lines(output.manifest_path))
-    return lines
-
-
-def _build_manifest_review_lines(manifest_path: str | None) -> list[str]:
-    payload = _read_manifest_payload(manifest_path)
-    review_gate = payload.get("review_gate")
-    if not isinstance(review_gate, dict):
-        return []
-    lines = [
-        "",
-        "Review Gate:",
-        f"- Required: {review_gate.get('required', '-')}",
-        f"- Duplicate Risk: {review_gate.get('duplicate_risk', '-')}",
-        f"- Quality Score: {review_gate.get('quality_score', '-')}",
-        f"- Summary: {review_gate.get('summary', '-')}",
-    ]
-    signals = review_gate.get("signals")
-    if isinstance(signals, list):
-        for signal in signals:
-            if not isinstance(signal, dict):
-                continue
-            lines.append(
-                f"- Signal: {signal.get('code', '-')} | value={signal.get('metric_value', '-')} | threshold={signal.get('threshold', '-')}"
-            )
-    metrics = review_gate.get("metrics")
-    if isinstance(metrics, dict):
-        for metric_name, metric_value in sorted(metrics.items()):
-            lines.append(f"- Metric: {metric_name}={metric_value}")
-    return lines
-
-
-def _build_manifest_audio_lines(manifest_path: str | None) -> list[str]:
-    payload = _read_manifest_payload(manifest_path)
-    audio_mix = payload.get("audio_mix")
-    if not isinstance(audio_mix, dict):
-        return []
-    lines = [
-        "",
-        "Runtime Audio Mix:",
-        f"- Mode: {audio_mix.get('mode', '-')}",
-        f"- Audio Present: {audio_mix.get('audio_present', '-')}",
-        f"- Voice Loop Applied: {audio_mix.get('voice_loop_applied', '-')}",
-    ]
-    mix_balance = audio_mix.get("mix_balance")
-    if isinstance(mix_balance, dict):
-        lines.append(f"- Mix Strategy: {mix_balance.get('strategy', '-')}")
-        lines.append(f"- Voice Mix Gain (dB): {mix_balance.get('voice_mix_gain_db', '-')}")
-        lines.append(f"- Music Mix Gain (dB): {mix_balance.get('music_mix_gain_db', '-')}")
-    ducking = audio_mix.get("ducking")
-    if isinstance(ducking, dict):
-        lines.append(f"- Duck Applied: {ducking.get('applied', '-')}")
-        lines.append(f"- Duck Mode: {ducking.get('mode', ducking.get('reason', '-'))}")
-        if ducking.get("duck_db") is not None:
-            lines.append(f"- Duck Gain (dB): {ducking.get('duck_db')}")
-        if ducking.get("threshold_db") is not None:
-            lines.append(f"- Duck Threshold (dB): {ducking.get('threshold_db')}")
-        if ducking.get("ratio") is not None:
-            lines.append(f"- Duck Ratio: {ducking.get('ratio')}")
-    voice_tracks = audio_mix.get("voice_tracks")
-    music_tracks = audio_mix.get("music_tracks")
-    if isinstance(voice_tracks, list):
-        lines.append(f"- Voice Track Count: {len(voice_tracks)}")
-    if isinstance(music_tracks, list):
-        lines.append(f"- Music Track Count: {len(music_tracks)}")
-    return lines
-
-
-def _read_manifest_payload(manifest_path: str | None) -> dict:
-    if not manifest_path:
-        return {}
-    manifest_file = Path(manifest_path)
-    if not manifest_file.exists():
-        return {}
-    try:
-        payload = json.loads(manifest_file.read_text(encoding="utf-8"))
-    except (OSError, ValueError):
-        return {}
-    return payload if isinstance(payload, dict) else {}

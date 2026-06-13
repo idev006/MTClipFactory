@@ -77,6 +77,16 @@ The system separates `record lifecycle` from `binary-file lifecycle`.
 7. Confirm the replacement summary
 8. Rebuild and re-approve outputs for the affected recipes through the normal factory workflow
 
+### D. Replacement Aftercare In Recipe Builder
+
+1. Open `Recipes`
+2. Select an affected recipe
+3. Read the on-screen replacement guidance banner
+4. Build a new preview
+5. Approve the newly rebuilt output
+6. Approve the recipe again
+7. Build the final output only after the new approval path is complete
+
 ## 4. Safety Rules
 
 - `Delete Selected` remains blocked when the asset is referenced by recipe items or artifact jobs.
@@ -89,6 +99,7 @@ The system separates `record lifecycle` from `binary-file lifecycle`.
 - If replacement would create a duplicate `asset + role` pair inside an affected recipe, the workflow must stop and ask the operator to resolve the conflict manually.
 - After replacement, affected recipes return to a non-approved state and must produce a newly approved preview before they can be approved again.
 - Historical outputs remain visible for lineage, but outputs created before the replacement event must not be re-approved as if they matched the new recipe content.
+- The `Recipes` screen should make replacement aftercare visible enough that an operator can tell which outputs are historical-only and which next action is required without reading the database or logs directly.
 
 ## 5. Sequence Design
 
@@ -176,15 +187,37 @@ sequenceDiagram
     Note over Factory: Historical outputs remain visible,\nbut they are no longer valid approval evidence for the changed recipe.
 ```
 
+### Replacement Aftercare Visibility Sequence
+
+```mermaid
+sequenceDiagram
+    actor Operator
+    participant RecipesUI as RecipeBuilderWindow
+    participant VM as RecipeBuilderViewModel
+    participant Factory as VideoAssemblyFactoryService
+
+    Operator->>RecipesUI: select replaced recipe
+    RecipesUI->>VM: select_recipe(recipe_id)
+    VM->>Factory: get_recipe(recipe_id)
+    VM->>Factory: list_outputs(recipe_id)
+    VM->>Factory: list_decision_events(recipe_id)
+    Factory-->>VM: current items + outputs + replacement event history
+    VM-->>RecipesUI: selected recipe state
+    RecipesUI->>RecipesUI: mark pre-replacement outputs as historical-only
+    RecipesUI->>RecipesUI: show next-step guidance banner
+    Operator->>RecipesUI: build and approve new preview
+    RecipesUI->>RecipesUI: clear rebuild-required guidance once a post-replacement approved output exists
+```
+
 ## 6. Plan Review
 
-The reviewed implementation plan for the replacement delivery slice is:
+The reviewed implementation plan for the replacement-aftercare delivery slice is:
 
 1. extend the lifecycle policy and UML first
-2. add replacement candidate discovery and recipe-item replacement without a schema migration
-3. keep hard delete restricted to unreferenced assets only
-4. keep historical outputs visible but prevent stale approvals after recipe replacement
-5. expose the new replacement action in the `Assets` UI
+2. keep replacement logic unchanged and layer operator-facing aftercare visibility onto the `Recipes` UI
+3. surface a recipe-level guidance banner after replacement
+4. mark pre-replacement outputs as historical-only in operator-visible surfaces
+5. keep historical outputs visible without making them look current
 6. verify with pytest and UI smoke
 
 ### Why No Schema Migration In This Slice
@@ -203,3 +236,13 @@ The replacement workflow deliberately avoids rewriting or deleting historical ou
 4. blocks approval of outputs that predate the replacement event
 
 This keeps lineage truthful without needing a schema migration for output supersession in the current delivery slice.
+
+### Aftercare Design Review
+
+The aftercare slice should prefer UI explanation over new persistence. The current decision-event and output timestamps already contain enough truth to determine:
+
+1. whether a replacement event happened
+2. which outputs predate that replacement
+3. whether a newly approved output exists after replacement
+
+This means the operator can receive clearer guidance without introducing a new output-state schema in this slice.

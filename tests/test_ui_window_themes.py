@@ -5,7 +5,7 @@ from PySide6.QtCore import QObject, Signal
 from PySide6.QtWidgets import QApplication, QComboBox, QScrollArea
 
 from mt_clip_factory.control_center.dto import SystemSettingsDTO
-from mt_clip_factory.factory.dto import CompositionPlanDTO, RecipeItemDTO, TimelineSegmentDTO
+from mt_clip_factory.factory.dto import CompositionPlanDTO, DecisionEventDTO, OutputSummaryDTO, RecipeItemDTO, TimelineSegmentDTO
 from mt_clip_factory.ui.control_center.dashboard_window import DashboardWindow
 from mt_clip_factory.ui.factory.recipe_builder_window import RecipeBuilderWindow
 from mt_clip_factory.ui.library.asset_library_window import AssetLibraryWindow
@@ -137,7 +137,10 @@ class FakeRecipeBuilderViewModel(QObject):
     def select_recipe(self, recipe_id: int | None) -> None:
         return
 
-    def find_output(self, output_id: int) -> None:
+    def find_output(self, output_id: int) -> OutputSummaryDTO | None:
+        for output in self.outputs:
+            if output.output_id == output_id:
+                return output
         return None
 
 
@@ -263,4 +266,62 @@ def test_recipe_builder_window_prioritizes_next_segment_role_for_visual_assets(q
     assert recipe_window.role_input.currentText() == "problem"
     assert "`hook -> problem -> benefit -> cta`" in recipe_window.role_hint_label.text()
     assert "Attached roles so far: hook." in recipe_window.role_hint_label.text()
+    recipe_window.close()
+
+
+def test_recipe_builder_window_surfaces_replacement_aftercare_guidance(qapp: QApplication) -> None:
+    recipe_window = RecipeBuilderWindow(FakeRecipeBuilderViewModel())
+    recipe_window._view_model.outputs = [
+        OutputSummaryDTO(
+            output_id=1,
+            recipe_id=1,
+            recipe_code="honey_launch",
+            output_code="preview_old",
+            file_path="outputs/preview_old.mp4",
+            platform="tiktok",
+            ratio="9:16",
+            approved=True,
+            created_at="2026-06-13 10:00:00",
+            approved_by="qa_lead",
+            approved_at="2026-06-13 10:05:00",
+            approval_reason="old approval",
+            output_kind="preview",
+            rendering_job_code="preview_job_old",
+        ),
+        OutputSummaryDTO(
+            output_id=2,
+            recipe_id=1,
+            recipe_code="honey_launch",
+            output_code="preview_new",
+            file_path="outputs/preview_new.mp4",
+            platform="tiktok",
+            ratio="9:16",
+            approved=False,
+            created_at="2026-06-13 12:00:00",
+            approved_by=None,
+            approved_at=None,
+            approval_reason=None,
+            output_kind="preview",
+            rendering_job_code="preview_job_new",
+        ),
+    ]
+    recipe_window._view_model.decision_events = [
+        DecisionEventDTO(
+            event_id=1,
+            recipe_id=1,
+            event_type="recipe_assets_replaced",
+            actor="asset_replacement_workflow",
+            created_at="2026-06-13 11:00:00",
+            reason="Replaced hero asset with corrected asset.",
+        )
+    ]
+
+    recipe_window._refresh_outputs_table()
+
+    assert "Approve that rebuilt output" in recipe_window.aftercare_label.text()
+    assert recipe_window.outputs_table.item(0, 3).text() == "Historical only"
+    assert recipe_window.outputs_table.item(1, 3).text() == "Post-replacement"
+    recipe_window.outputs_table.selectRow(0)
+    recipe_window._refresh_selected_output_details()
+    assert "Aftercare State: Historical only" in recipe_window.output_details_text.toPlainText()
     recipe_window.close()

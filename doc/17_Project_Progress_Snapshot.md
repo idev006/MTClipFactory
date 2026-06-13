@@ -52,6 +52,7 @@
 - The `Assets` screen now supports safe rename/delete maintenance actions for selected assets, while blocking deletion when recipes or artifact jobs still reference the asset.
 - The `Assets` screen now also supports `Show References`, `Retire Selected`, and `Purge Media` so bad assets can leave active use and disk without corrupting history.
 - The `Assets` screen now also supports recipe-safe asset replacement so affected recipes can move to corrected media without hand-editing the database or pretending old outputs match new content.
+- Recipe Builder now makes post-replacement aftercare visible in-screen so operators can tell when older outputs are historical-only and what rebuild/approval step comes next.
 - Preview and final render now normalize mixed visual source ratios into the selected recipe frame so one output ratio can contain differently sized source clips safely.
 - The first controlled operator/UAT run has now completed end to end and produced a real final output from the current workspace.
 - A second controlled operator/UAT run has now validated runtime voice/music mixing, richer visual coverage, and a no-review-gate path on a stronger recipe.
@@ -82,6 +83,7 @@
 - render configuration now also supports UI-managed exact preview/final frame sizing with `.toml` persistence instead of a fixed code-only normalization ceiling
 - the asset-lifecycle SSOT now separates hard delete from retire/purge behavior so referenced assets can be cleaned up safely
 - corrective asset replacement now rewires affected recipe items onto a chosen ready replacement asset, resets those recipes for rebuild, and blocks stale pre-replacement outputs from being re-approved
+- Recipe Builder output surfaces now expose replacement aftercare guidance plus per-output historical/current state so the rebuild flow can be followed without database inspection
 
 ## Still Open
 
@@ -90,5 +92,5 @@
 
 ## Verification Baseline
 
-- `python -m pytest` in `.venv`: `141 passed`
+- `python -m pytest` in `.venv`: `144 passed`
 - `QT_QPA_PLATFORM=offscreen` UI smoke: `6` main windows instantiated

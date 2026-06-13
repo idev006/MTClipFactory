@@ -256,6 +256,8 @@ classDiagram
         +attach_asset()
         +build_preview()
         +show recipe score/risk summaries
+        +show replacement aftercare guidance
+        +mark historical-only outputs after replacement
         +show output lineage details
         +show composition/render summaries
         +show review-gate evidence
@@ -491,6 +493,26 @@ sequenceDiagram
     VM-->>View: refresh recipe items + composition plan
     View->>View: rank role suggestions by asset type + remaining segment roles
     View-->>User: auto-select next likely role + show Role Guidance
+```
+
+## Recipe Replacement Aftercare Sequence
+
+```mermaid
+sequenceDiagram
+    actor Operator
+    participant View as RecipeBuilderWindow
+    participant VM as RecipeBuilderViewModel
+    participant Factory as VideoAssemblyFactoryService
+
+    Operator->>View: select recipe after asset replacement
+    View->>VM: select_recipe(recipe_id)
+    VM->>Factory: get_recipe(recipe_id)
+    VM->>Factory: list_outputs(recipe_id)
+    VM->>Factory: list_decision_events(recipe_id)
+    Factory-->>VM: recipe state + outputs + replacement history
+    VM-->>View: refresh output table + decision history
+    View->>View: mark pre-replacement outputs as historical-only
+    View->>View: show next required action banner
 ```
 
 ## Recipe Preview Sequence

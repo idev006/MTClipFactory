@@ -153,6 +153,7 @@ It complements [07_Testing_Strategy.md](/F:/programming/python/MTClipFactory/doc
 12. Inspect an asset's reference report and confirm recipe/job usage is visible before destructive maintenance decisions.
 13. Replace a referenced asset in affected recipes and confirm the item references move to the selected ready replacement asset.
 14. Confirm affected recipes require a newly approved output after asset replacement before recipe approval can happen again.
+15. Confirm Recipe Builder marks older pre-replacement outputs as historical-only and shows the next rebuild/approval action in-screen.
 
 ### B. Recipe And Preview Flow
 
