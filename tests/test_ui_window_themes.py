@@ -1,8 +1,8 @@
 from __future__ import annotations
 
 import pytest
-from PySide6.QtCore import QObject, Signal
-from PySide6.QtWidgets import QApplication, QComboBox, QScrollArea
+from PySide6.QtCore import QObject, Qt, Signal
+from PySide6.QtWidgets import QApplication, QComboBox, QScrollArea, QSplitter
 
 from mt_clip_factory.control_center.dto import SystemSettingsDTO
 from mt_clip_factory.factory.dto import CompositionPlanDTO, DecisionEventDTO, OutputSummaryDTO, RecipeItemDTO, TimelineSegmentDTO
@@ -188,6 +188,11 @@ def test_recipe_builder_window_explains_ready_assets_and_keeps_asset_panel_usabl
     assert isinstance(recipe_window.scroll_area, QScrollArea)
     assert recipe_window.scroll_area.widgetResizable() is True
     assert recipe_window.scroll_area.widget() is recipe_window.content_widget
+    assert isinstance(recipe_window.workspace_splitter, QSplitter)
+    assert recipe_window.workspace_splitter.count() == 3
+    assert isinstance(recipe_window.inventory_splitter, QSplitter)
+    assert isinstance(recipe_window.review_splitter, QSplitter)
+    assert recipe_window.workflow_label.text().startswith("Workflow:")
     assert isinstance(recipe_window.role_input, QComboBox)
     assert recipe_window.role_input.isEditable() is True
     assert recipe_window.role_input.currentText() == ""
@@ -199,6 +204,18 @@ def test_recipe_builder_window_explains_ready_assets_and_keeps_asset_panel_usabl
     assert recipe_window.assets_table.minimumHeight() == RecipeBuilderWindow.ASSETS_TABLE_MIN_HEIGHT
     assert recipe_window.recipe_items_table.minimumHeight() == RecipeBuilderWindow.RECIPE_ITEMS_TABLE_MIN_HEIGHT
     assert recipe_window.recipe_table.minimumHeight() == RecipeBuilderWindow.RECIPE_TABLE_MIN_HEIGHT
+    recipe_window.close()
+
+
+def test_recipe_builder_window_uses_resizable_workspace_columns(qapp: QApplication) -> None:
+    recipe_window = RecipeBuilderWindow(FakeRecipeBuilderViewModel())
+
+    assert recipe_window.workspace_splitter.orientation() == Qt.Horizontal
+    assert recipe_window.inventory_splitter.orientation() == Qt.Vertical
+    assert recipe_window.review_splitter.orientation() == Qt.Vertical
+    assert recipe_window.workspace_splitter.widget(0) is recipe_window.scroll_area
+    assert recipe_window.inventory_splitter.count() == 2
+    assert recipe_window.review_splitter.count() == 2
     recipe_window.close()
 
 

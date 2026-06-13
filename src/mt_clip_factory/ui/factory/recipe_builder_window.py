@@ -6,16 +6,16 @@ from PySide6.QtCore import Qt
 from PySide6.QtWidgets import (
     QComboBox,
     QFormLayout,
-    QGridLayout,
     QGroupBox,
     QHBoxLayout,
-    QLabel,
     QLayout,
+    QLabel,
     QLineEdit,
     QMainWindow,
     QMessageBox,
     QPushButton,
     QScrollArea,
+    QSplitter,
     QTableWidget,
     QTableWidgetItem,
     QTextEdit,
@@ -65,27 +65,45 @@ class RecipeBuilderWindow(QMainWindow):
 
         central = QWidget(self)
         outer_layout = QVBoxLayout(central)
-        outer_layout.setContentsMargins(0, 0, 0, 0)
+        outer_layout.setContentsMargins(16, 16, 16, 16)
 
-        self.scroll_area = QScrollArea(central)
+        self.workspace_splitter = QSplitter(Qt.Horizontal, central)
+        self.workspace_splitter.setChildrenCollapsible(False)
+        self.inventory_splitter = QSplitter(Qt.Vertical, self.workspace_splitter)
+        self.inventory_splitter.setChildrenCollapsible(False)
+        self.review_splitter = QSplitter(Qt.Vertical, self.workspace_splitter)
+        self.review_splitter.setChildrenCollapsible(False)
+
+        self.scroll_area = QScrollArea(self.workspace_splitter)
         self.scroll_area.setWidgetResizable(True)
-        outer_layout.addWidget(self.scroll_area)
-
         self.content_widget = QWidget(self.scroll_area)
-        layout = QGridLayout(self.content_widget)
-        layout.setContentsMargins(16, 16, 16, 16)
-        layout.setHorizontalSpacing(16)
-        layout.setVerticalSpacing(16)
-        layout.setSizeConstraint(QLayout.SetMinimumSize)
-        layout.addWidget(self._build_recipe_group(), 0, 0)
-        layout.addWidget(self._build_recipe_table_group(), 0, 1)
-        layout.addWidget(self._build_asset_group(), 1, 0)
-        layout.addWidget(self._build_recipe_items_group(), 1, 1)
-        layout.addWidget(self._build_outputs_group(), 2, 0, 1, 2)
-        layout.setColumnStretch(0, 1)
-        layout.setColumnStretch(1, 1)
-        layout.setRowStretch(2, 1)
+        content_layout = QVBoxLayout(self.content_widget)
+        content_layout.setContentsMargins(0, 0, 0, 0)
+        content_layout.setSizeConstraint(QLayout.SetMinimumSize)
+        content_layout.addWidget(self._build_recipe_group())
+        content_layout.addStretch(1)
         self.scroll_area.setWidget(self.content_widget)
+
+        self.inventory_splitter.addWidget(self._build_asset_group())
+        self.inventory_splitter.addWidget(self._build_recipe_items_group())
+        self.review_splitter.addWidget(self._build_recipe_table_group())
+        self.review_splitter.addWidget(self._build_outputs_group())
+
+        self.workspace_splitter.addWidget(self.scroll_area)
+        self.workspace_splitter.addWidget(self.inventory_splitter)
+        self.workspace_splitter.addWidget(self.review_splitter)
+        self.workspace_splitter.setStretchFactor(0, 2)
+        self.workspace_splitter.setStretchFactor(1, 2)
+        self.workspace_splitter.setStretchFactor(2, 3)
+        self.inventory_splitter.setStretchFactor(0, 3)
+        self.inventory_splitter.setStretchFactor(1, 2)
+        self.review_splitter.setStretchFactor(0, 2)
+        self.review_splitter.setStretchFactor(1, 3)
+        self.workspace_splitter.setSizes([420, 420, 620])
+        self.inventory_splitter.setSizes([360, 260])
+        self.review_splitter.setSizes([280, 420])
+
+        outer_layout.addWidget(self.workspace_splitter)
         self.setCentralWidget(central)
 
         self._view_model.products_changed.connect(self._refresh_product_combo)
@@ -111,6 +129,12 @@ class RecipeBuilderWindow(QMainWindow):
         )
         summary_label.setWordWrap(True)
         layout.addWidget(summary_label)
+        self.workflow_label = QLabel(
+            "Workflow: 1) select product  2) create recipe  3) attach ready assets  4) build preview  "
+            "5) approve output  6) approve recipe  7) build final"
+        )
+        self.workflow_label.setWordWrap(True)
+        layout.addWidget(self.workflow_label)
         self.aftercare_label = QLabel("Workflow guidance: Select a recipe to see rebuild and approval guidance.")
         self.aftercare_label.setWordWrap(True)
         layout.addWidget(self.aftercare_label)
@@ -186,6 +210,9 @@ class RecipeBuilderWindow(QMainWindow):
     def _build_recipe_table_group(self) -> QGroupBox:
         group = QGroupBox("Recipes")
         layout = QVBoxLayout(group)
+        hint_label = QLabel("Select one recipe here to load its items, outputs, and decision history into the review workspace.")
+        hint_label.setWordWrap(True)
+        layout.addWidget(hint_label)
         self.recipe_table = QTableWidget(0, 11)
         self.recipe_table.setHorizontalHeaderLabels(
             ["ID", "Product", "Code", "Platform", "Ratio", "Status", "Decision By", "Decision At", "Items", "Score", "Dup Risk"]
@@ -221,7 +248,7 @@ class RecipeBuilderWindow(QMainWindow):
     def _build_recipe_items_group(self) -> QGroupBox:
         group = QGroupBox("Recipe Items")
         layout = QVBoxLayout(group)
-        hint_label = QLabel("Items appear here after you attach ready assets to the selected recipe.")
+        hint_label = QLabel("This is the current ingredient list for the selected recipe, including the role assigned to each attached asset.")
         hint_label.setWordWrap(True)
         layout.addWidget(hint_label)
         self.recipe_items_table = QTableWidget(0, 4)
@@ -237,6 +264,11 @@ class RecipeBuilderWindow(QMainWindow):
     def _build_outputs_group(self) -> QGroupBox:
         group = QGroupBox("Recipe Outputs")
         layout = QVBoxLayout(group)
+        outputs_hint = QLabel(
+            "Review preview/final outputs here, inspect render evidence below, and confirm the decision trail before approval."
+        )
+        outputs_hint.setWordWrap(True)
+        layout.addWidget(outputs_hint)
         self.outputs_table = QTableWidget(0, 11)
         self.outputs_table.setHorizontalHeaderLabels(
             ["Output ID", "Kind", "Code", "Aftercare", "Approved", "Approved By", "Approved At", "Created", "Job Code", "Source", "Path"]

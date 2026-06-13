@@ -53,6 +53,7 @@
 - package-backed QSS theme loading seam now exists for Qt windows, with a shared app-window theme baseline across dashboard, library, and factory windows plus a settings-specific override
 - shared app-window buttons now use balanced gradient, border-depth, focus, and pressed-state affordance so primary actions read clearly as clickable controls without feeling oversized
 - Recipe Builder now explains its recipe-to-final purpose more directly, clarifies that the attach list shows only `ready` assets, keeps the asset panel tall enough for practical scanning, and offers composition-aware attach-role suggestions that combine asset type, current recipe segment order, auto-selection, and on-screen guidance instead of relying on free-typed role names alone
+- Recipe Builder now uses a resizable three-column workspace so setup/actions, asset attachment, and output review can each claim more space without forcing the operator to fight one fixed grid
 - assets can now be safely renamed or deleted from the `Assets` screen, with repository checks that block deletion when recipe-item or artifact-job references still exist
 - the `Assets` screen now supports `Show References`, `Retire Selected`, and `Purge Media` so referenced assets can leave active use and disk without destroying audit truth
 - the `Assets` screen now also supports `Replace In Recipes...` with recipe-safe validation, recipe reset-to-candidate behavior, and approval guards that prevent stale pre-replacement outputs from being reused as evidence for changed recipes
@@ -85,7 +86,7 @@
 
 ## Verification Baseline
 
-- `python -m pytest` via `.venv`: `151 passed`
+- `python -m pytest` via `.venv`: `152 passed`
 - UI smoke via `QT_QPA_PLATFORM=offscreen`: `6` windows instantiated successfully
 
 ## Current Focus
@@ -100,6 +101,7 @@
 - monitor whether operators understand the distinction between recipe `Target Ratio` and settings-level exact output resolution
 - validate whether the new green-screen compositing baseline is robust enough across real foreground media and not only the current controlled sample
 - validate whether the new non-green key policy is clear enough for operators and whether per-asset overrides are needed after broader use
+- validate whether the new resizable Recipe Builder workspace reduces operator confusion during attach-versus-review work
 - keep project documents truthful through per-milestone revision checkpoints
 
 ## Next Steps

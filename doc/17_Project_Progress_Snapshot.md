@@ -56,6 +56,7 @@
 - The render path now has a layered visual compositing baseline so a keyed `foreground_video` can sit over a `background_video` instead of forcing the operator to accept raw green-screen output.
 - The settings surface now also exposes a `Visual Composite` policy so non-green keyed foregrounds can be handled without code edits.
 - Preview and final render now normalize mixed visual source ratios into the selected recipe frame so one output ratio can contain differently sized source clips safely.
+- Recipe Builder now uses a resizable multi-column workspace so operators can expand setup, asset-attachment, or output-review surfaces based on the current step.
 - The first controlled operator/UAT run has now completed end to end and produced a real final output from the current workspace.
 - A second controlled operator/UAT run has now validated runtime voice/music mixing, richer visual coverage, and a no-review-gate path on a stronger recipe.
 - The roadmap is now split into strategic and implementation layers, and the current mandatory implementation slice is complete.
@@ -89,6 +90,7 @@
 - preview/final rendering now also writes manifest-visible visual composite evidence for stacked background-plus-foreground segments, including keyed green-screen overlays
 - the real `r0003` sample now rebuilds to a presenter-over-background result instead of exposing raw green-screen output, and its review-gate evidence clears at `distinct_visual_assets = 2`
 - operators can now steer compositing toward `auto`, `green`, `blue`, `magenta`, `custom`, or `disabled` key-color behavior from Settings instead of living with a green-only baseline
+- Recipe Builder now groups workflow into resizable setup, inventory, and review panes instead of keeping every surface trapped in one fixed grid
 
 ## Still Open
 
@@ -97,5 +99,5 @@
 
 ## Verification Baseline
 
-- `python -m pytest` in `.venv`: `151 passed`
+- `python -m pytest` in `.venv`: `152 passed`
 - `QT_QPA_PLATFORM=offscreen` UI smoke: `6` main windows instantiated

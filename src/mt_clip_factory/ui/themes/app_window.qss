@@ -104,3 +104,22 @@ QHeaderView::section {
 QLabel {
     color: #1f2937;
 }
+
+QSplitter::handle {
+    background-color: #e8eef7;
+    border-radius: 3px;
+}
+
+QSplitter::handle:horizontal {
+    width: 8px;
+    margin: 8px 1px;
+}
+
+QSplitter::handle:vertical {
+    height: 8px;
+    margin: 1px 8px;
+}
+
+QSplitter::handle:hover {
+    background-color: #cddbf0;
+}
