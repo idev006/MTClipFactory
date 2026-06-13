@@ -8,6 +8,7 @@ from mt_clip_factory.application.services import ProductApplicationService
 from mt_clip_factory.config import AppConfig, default_config
 from mt_clip_factory.control_center.dto import PathRootsDTO
 from mt_clip_factory.control_center.services import DashboardService, SystemSettingsService
+from mt_clip_factory.factory.auto_factory import AutoFactoryBatchService
 from mt_clip_factory.factory.preview_artifacts import PreviewManifestBuilder
 from mt_clip_factory.factory.renderers import FFmpegPreviewRenderer
 from mt_clip_factory.factory.services import VideoAssemblyFactoryService
@@ -109,6 +110,11 @@ def build_resource_library_module(
         ),
         system_settings_service=settings_service,
     )
+    auto_factory_service = AutoFactoryBatchService(
+        product_service=product_service,
+        asset_intake_service=asset_intake_service,
+        video_assembly_factory_service=video_assembly_factory_service,
+    )
     tag_management_service = TagManagementService(unit_of_work_factory=uow_factory)
     dashboard_service = DashboardService(
         config=config,
@@ -129,6 +135,7 @@ def build_resource_library_module(
         tag_management_service=tag_management_service,
         system_settings_service=settings_service,
         dashboard_service=dashboard_service,
+        auto_factory_service=auto_factory_service,
     )
 
 

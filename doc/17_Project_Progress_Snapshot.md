@@ -58,6 +58,7 @@
 - Preview and final render now normalize mixed visual source ratios into the selected recipe frame so one output ratio can contain differently sized source clips safely.
 - Recipe Builder now uses a resizable multi-column workspace so operators can expand setup, asset-attachment, or output-review surfaces based on the current step.
 - Recipe Builder tables now keep explicit vertical-scroll behavior for overflow rows instead of depending on one long page or pagination.
+- An Auto Factory batch-planning baseline now exists so operators can request counts by product, enforce batch-only uniqueness, and materialize internal recipes automatically without hand-building each one.
 - The first controlled operator/UAT run has now completed end to end and produced a real final output from the current workspace.
 - A second controlled operator/UAT run has now validated runtime voice/music mixing, richer visual coverage, and a no-review-gate path on a stronger recipe.
 - The roadmap is now split into strategic and implementation layers, and the current mandatory implementation slice is complete.
@@ -93,13 +94,15 @@
 - operators can now steer compositing toward `auto`, `green`, `blue`, `magenta`, `custom`, or `disabled` key-color behavior from Settings instead of living with a green-only baseline
 - Recipe Builder now groups workflow into resizable setup, inventory, and review panes instead of keeping every surface trapped in one fixed grid
 - Recipe Builder overflow hardening now keeps each major table vertically scrollable when row counts exceed panel height
+- the first auto-factory delivery slice now plans batch-unique output variants per product and can create the internal recipes needed for later automated preview/final runs
 
 ## Still Open
 
 1. run broader controlled operator use on real campaign media and capture operator notes without service-side intervention
-2. recalibrate recipe scoring only if the current metadata, asset-diversity, and runtime-evidence baseline stops being operationally useful
+2. extend the new auto-factory planner baseline into controlled preview/final automation only after planner truth is accepted
+3. recalibrate recipe scoring only if the current metadata, asset-diversity, and runtime-evidence baseline stops being operationally useful
 
 ## Verification Baseline
 
-- `python -m pytest` in `.venv`: `152 passed`
+- `python -m pytest` in `.venv`: `156 passed`
 - `QT_QPA_PLATFORM=offscreen` UI smoke: `6` main windows instantiated

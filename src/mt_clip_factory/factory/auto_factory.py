@@ -1,0 +1,325 @@
+from __future__ import annotations
+
+import math
+import re
+
+from mt_clip_factory.application.services import ProductApplicationService
+from mt_clip_factory.factory.auto_factory_dto import (
+    AutoFactoryBatchMaterializationDTO,
+    AutoFactoryBatchOrderDTO,
+    AutoFactoryBatchPlanDTO,
+    AutoFactoryProductRequestDTO,
+    MaterializedBatchRecipeDTO,
+    PlannedBatchAssetAssignmentDTO,
+    PlannedBatchRecipeDTO,
+    ProductBatchPlanSummaryDTO,
+)
+from mt_clip_factory.factory.dto import AssignAssetToRecipeCommand, CreateRecipeCommand
+from mt_clip_factory.factory.services import VideoAssemblyFactoryService
+from mt_clip_factory.library.dto import AssetSummaryDTO
+from mt_clip_factory.library.services import AssetIntakeService
+
+_DEFAULT_FIXED_DURATION_SEC = 15.0
+_SEMANTIC_VISUAL_ROLES = ("hook", "problem", "benefit", "proof", "cta")
+
+
+class AutoFactoryPlanningError(ValueError):
+    """Raised when a production order cannot be planned truthfully."""
+
+
+class AutoFactoryUnknownProductError(AutoFactoryPlanningError):
+    """Raised when a product code in the order does not exist."""
+
+
+class AutoFactoryCapacityError(AutoFactoryPlanningError):
+    """Raised when the planner cannot fulfill an order exactly."""
+
+
+class AutoFactoryBatchService:
+    def __init__(
+        self,
+        *,
+        product_service: ProductApplicationService,
+        asset_intake_service: AssetIntakeService,
+        video_assembly_factory_service: VideoAssemblyFactoryService,
+    ) -> None:
+        self._product_service = product_service
+        self._asset_intake_service = asset_intake_service
+        self._video_assembly_factory_service = video_assembly_factory_service
+
+    def plan_batch(self, order: AutoFactoryBatchOrderDTO) -> AutoFactoryBatchPlanDTO:
+        batch_code = _slugify(order.batch_code)
+        if not batch_code:
+            raise AutoFactoryPlanningError("Batch code is required.")
+        if not order.product_requests:
+            raise AutoFactoryPlanningError("At least one product request is required.")
+
+        products_by_code = {product.product_code: product for product in self._product_service.list_products()}
+        summaries: list[ProductBatchPlanSummaryDTO] = []
+        planned_recipes: list[PlannedBatchRecipeDTO] = []
+
+        for product_request in order.product_requests:
+            product = products_by_code.get(product_request.product_code)
+            if product is None:
+                raise AutoFactoryUnknownProductError(product_request.product_code)
+            planning = self._plan_product(batch_code=batch_code, product_request=product_request, product=product)
+            summaries.append(planning["summary"])
+            planned_recipes.extend(planning["recipes"])
+
+        return AutoFactoryBatchPlanDTO(
+            batch_code=batch_code,
+            summaries=tuple(summaries),
+            planned_recipes=tuple(planned_recipes),
+        )
+
+    def materialize_batch(self, order: AutoFactoryBatchOrderDTO) -> AutoFactoryBatchMaterializationDTO:
+        plan = self.plan_batch(order)
+        if order.strict_fulfillment:
+            shortfalls = [summary for summary in plan.summaries if not summary.can_fulfill_exactly]
+            if shortfalls:
+                details = ", ".join(
+                    f"{summary.product_code}: requested={summary.requested_output_count}, feasible={summary.planner_feasible_unique_count}"
+                    for summary in shortfalls
+                )
+                raise AutoFactoryCapacityError(f"Batch cannot be fulfilled exactly under current planner policy: {details}")
+
+        created_recipes: list[MaterializedBatchRecipeDTO] = []
+        for planned_recipe in plan.planned_recipes:
+            recipe_id = self._video_assembly_factory_service.create_recipe(
+                CreateRecipeCommand(
+                    product_id=planned_recipe.product_id,
+                    recipe_code=planned_recipe.recipe_code,
+                    target_platform=planned_recipe.target_platform,
+                    target_ratio=planned_recipe.target_ratio,
+                    duration_sec=planned_recipe.duration_sec,
+                )
+            )
+            for assignment in planned_recipe.assignments:
+                self._video_assembly_factory_service.assign_asset_to_recipe(
+                    AssignAssetToRecipeCommand(
+                        recipe_id=recipe_id,
+                        asset_id=assignment.asset_id,
+                        role=assignment.role,
+                    )
+                )
+            created_recipes.append(
+                MaterializedBatchRecipeDTO(
+                    recipe_id=recipe_id,
+                    product_id=planned_recipe.product_id,
+                    product_code=planned_recipe.product_code,
+                    recipe_code=planned_recipe.recipe_code,
+                    assignment_count=len(planned_recipe.assignments),
+                )
+            )
+
+        return AutoFactoryBatchMaterializationDTO(
+            batch_code=plan.batch_code,
+            created_recipes=tuple(created_recipes),
+        )
+
+    def _plan_product(self, *, batch_code: str, product_request: AutoFactoryProductRequestDTO, product) -> dict[str, object]:
+        if product_request.requested_output_count <= 0:
+            raise AutoFactoryPlanningError("Requested output count must be greater than zero.")
+        if product_request.uniqueness_scope != "batch":
+            raise AutoFactoryPlanningError(
+                f"Unsupported uniqueness scope: {product_request.uniqueness_scope}. Only 'batch' is currently supported."
+            )
+
+        ready_assets = self._asset_intake_service.list_assets(product_id=product.product_id, status="ready")
+        foreground_assets = tuple(asset for asset in ready_assets if asset.asset_type == "foreground_video")
+        background_assets = tuple(asset for asset in ready_assets if asset.asset_type == "background_video")
+        voice_assets = tuple(asset for asset in ready_assets if asset.asset_type == "voiceover")
+        music_assets = tuple(asset for asset in ready_assets if asset.asset_type == "background_music")
+
+        if not foreground_assets and not background_assets:
+            summary = ProductBatchPlanSummaryDTO(
+                product_id=product.product_id,
+                product_code=product.product_code,
+                requested_output_count=product_request.requested_output_count,
+                planner_feasible_unique_count=0,
+                planned_output_count=0,
+                can_fulfill_exactly=False,
+                shortfall_count=product_request.requested_output_count,
+                limiting_reason="no ready renderable visual assets",
+            )
+            return {"summary": summary, "recipes": ()}
+
+        foreground_sequences = _build_foreground_sequences(
+            tuple(asset.asset_id for asset in foreground_assets),
+            role_count=len(_SEMANTIC_VISUAL_ROLES),
+        )
+        foreground_sequence_count = len(foreground_sequences) if foreground_sequences else 1
+        background_count = len(background_assets) if background_assets else 1
+        music_count = len(music_assets) if music_assets else 1
+        voice_count = len(voice_assets) if voice_assets else 1
+        feasible_count = foreground_sequence_count * background_count * music_count * voice_count
+        planned_count = min(product_request.requested_output_count, feasible_count)
+
+        recipes = tuple(
+            self._build_planned_recipe(
+                batch_code=batch_code,
+                product_request=product_request,
+                product=product,
+                request_index=index + 1,
+                foreground_assets=foreground_assets,
+                foreground_sequences=foreground_sequences,
+                background_assets=background_assets,
+                music_assets=music_assets,
+                voice_assets=voice_assets,
+            )
+            for index in range(planned_count)
+        )
+        summary = ProductBatchPlanSummaryDTO(
+            product_id=product.product_id,
+            product_code=product.product_code,
+            requested_output_count=product_request.requested_output_count,
+            planner_feasible_unique_count=feasible_count,
+            planned_output_count=planned_count,
+            can_fulfill_exactly=planned_count == product_request.requested_output_count,
+            shortfall_count=max(0, product_request.requested_output_count - planned_count),
+            limiting_reason=None if planned_count == product_request.requested_output_count else "planner capacity exhausted",
+        )
+        return {"summary": summary, "recipes": recipes}
+
+    def _build_planned_recipe(
+        self,
+        *,
+        batch_code: str,
+        product_request: AutoFactoryProductRequestDTO,
+        product,
+        request_index: int,
+        foreground_assets: tuple[AssetSummaryDTO, ...],
+        foreground_sequences: tuple[tuple[int, ...], ...],
+        background_assets: tuple[AssetSummaryDTO, ...],
+        music_assets: tuple[AssetSummaryDTO, ...],
+        voice_assets: tuple[AssetSummaryDTO, ...],
+    ) -> PlannedBatchRecipeDTO:
+        sequence_options = foreground_sequences if foreground_sequences else ((),)
+        background_options = background_assets if background_assets else (None,)
+        music_options = music_assets if music_assets else (None,)
+        voice_options = voice_assets if voice_assets else (None,)
+
+        variant_index = request_index - 1
+        sequence = sequence_options[variant_index % len(sequence_options)]
+        variant_index //= len(sequence_options)
+        background_asset = background_options[variant_index % len(background_options)]
+        variant_index //= len(background_options)
+        music_asset = music_options[variant_index % len(music_options)]
+        variant_index //= len(music_options)
+        voice_asset = voice_options[variant_index % len(voice_options)]
+
+        assignments: list[PlannedBatchAssetAssignmentDTO] = []
+        if background_asset is not None:
+            assignments.append(_to_assignment(background_asset, role="background"))
+        for role, asset_id in zip(_SEMANTIC_VISUAL_ROLES, sequence, strict=False):
+            foreground_asset = _require_asset(foreground_assets, asset_id)
+            assignments.append(_to_assignment(foreground_asset, role=role))
+        if voice_asset is not None:
+            assignments.append(_to_assignment(voice_asset, role="voice"))
+        if music_asset is not None:
+            assignments.append(_to_assignment(music_asset, role="music"))
+
+        duration_source, duration_sec = _resolve_duration(product_request, voice_asset)
+        target_platform = product_request.target_platform or product.default_platform
+        fingerprint = _build_fingerprint(
+            product_code=product.product_code,
+            target_platform=target_platform,
+            target_ratio=product_request.target_ratio,
+            duration_source=duration_source,
+            duration_sec=duration_sec,
+            assignments=assignments,
+        )
+        recipe_code = f"{product.product_code}_{batch_code}_{request_index:03d}"
+        return PlannedBatchRecipeDTO(
+            product_id=product.product_id,
+            product_code=product.product_code,
+            recipe_code=recipe_code,
+            request_index=request_index,
+            target_platform=target_platform,
+            target_ratio=product_request.target_ratio,
+            duration_sec=duration_sec,
+            duration_source=duration_source,
+            fingerprint=fingerprint,
+            assignments=tuple(assignments),
+        )
+
+
+def _slugify(value: str) -> str:
+    normalized = re.sub(r"[^a-z0-9]+", "_", value.strip().lower())
+    return normalized.strip("_")
+
+
+def _build_foreground_sequences(asset_ids: tuple[int, ...], *, role_count: int) -> tuple[tuple[int, ...], ...]:
+    if not asset_ids:
+        return ()
+    sequences: dict[tuple[int, ...], None] = {}
+    total_assets = len(asset_ids)
+    for step in range(1, total_assets + 1):
+        if math.gcd(step, total_assets) != 1:
+            continue
+        for start in range(total_assets):
+            sequence = tuple(asset_ids[(start + (step * offset)) % total_assets] for offset in range(role_count))
+            sequences.setdefault(sequence, None)
+    return tuple(sequences)
+
+
+def _require_asset(assets: tuple[AssetSummaryDTO, ...], asset_id: int) -> AssetSummaryDTO:
+    for asset in assets:
+        if asset.asset_id == asset_id:
+            return asset
+    raise AutoFactoryPlanningError(f"Asset id {asset_id} was not found in the current planner pool.")
+
+
+def _to_assignment(asset: AssetSummaryDTO, *, role: str) -> PlannedBatchAssetAssignmentDTO:
+    return PlannedBatchAssetAssignmentDTO(
+        asset_id=asset.asset_id,
+        asset_code=asset.asset_code,
+        asset_type=asset.asset_type,
+        role=role,
+    )
+
+
+def _resolve_duration(
+    product_request: AutoFactoryProductRequestDTO,
+    voice_asset: AssetSummaryDTO | None,
+) -> tuple[str, float | None]:
+    if product_request.duration_mode == "fixed_duration":
+        if product_request.fixed_duration_sec is None or product_request.fixed_duration_sec <= 0:
+            raise AutoFactoryPlanningError("Fixed duration mode requires a positive fixed_duration_sec value.")
+        return "fixed_duration", float(product_request.fixed_duration_sec)
+
+    if product_request.duration_mode != "voice_with_bounds":
+        raise AutoFactoryPlanningError(
+            f"Unsupported duration mode: {product_request.duration_mode}. Only 'voice_with_bounds' and 'fixed_duration' are supported."
+        )
+
+    if voice_asset is None or voice_asset.duration_sec is None:
+        fallback_duration = product_request.fixed_duration_sec or _DEFAULT_FIXED_DURATION_SEC
+        return "fixed_fallback", float(fallback_duration)
+
+    resolved = max(product_request.min_duration_sec, min(product_request.max_duration_sec, voice_asset.duration_sec))
+    return "voice_with_bounds", round(float(resolved), 3)
+
+
+def _build_fingerprint(
+    *,
+    product_code: str,
+    target_platform: str | None,
+    target_ratio: str | None,
+    duration_source: str,
+    duration_sec: float | None,
+    assignments: list[PlannedBatchAssetAssignmentDTO],
+) -> str:
+    grouped_assignments = [
+        f"{assignment.role}:{assignment.asset_id}"
+        for assignment in sorted(assignments, key=lambda item: (item.role, item.asset_id, item.asset_code))
+    ]
+    fingerprint_parts = (
+        product_code,
+        target_platform or "",
+        target_ratio or "",
+        duration_source,
+        "" if duration_sec is None else f"{duration_sec:.3f}",
+        *grouped_assignments,
+    )
+    return "|".join(fingerprint_parts)

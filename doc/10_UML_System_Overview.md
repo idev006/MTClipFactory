@@ -28,6 +28,7 @@ classDiagram
         +asset_intake_service
         +artifact_generation_service
         +video_assembly_factory_service
+        +auto_factory_service
         +tag_management_service
         +system_settings_service
         +dashboard_service
@@ -80,6 +81,14 @@ classDiagram
         +run_final_render_job(job_id)
         +list_final_render_jobs(...)
         +retry_job(job_id)
+    }
+
+    class AutoFactoryBatchService {
+        +plan_batch(order)
+        +materialize_batch(order)
+        +batch-only uniqueness planning
+        +voice-with-bounds duration planning
+        +internal recipe generation
     }
 
     class ReviewGateEvaluator {
@@ -342,6 +351,7 @@ classDiagram
     ResourceLibraryModule --> AssetIntakeService
     ResourceLibraryModule --> ArtifactGenerationService
     ResourceLibraryModule --> VideoAssemblyFactoryService
+    ResourceLibraryModule --> AutoFactoryBatchService
     ResourceLibraryModule --> DashboardService
     ResourceLibraryModule --> SystemSettingsService
     ResourceLibraryModule --> MigrationGuard
@@ -360,6 +370,9 @@ classDiagram
     RecipeBuilderWindow --> UIThemeLoader
     SettingsWindow --> UIThemeLoader
     VideoAssemblyFactoryService --> PreviewManifestBuilder
+    AutoFactoryBatchService --> ProductApplicationService
+    AutoFactoryBatchService --> AssetIntakeService
+    AutoFactoryBatchService --> VideoAssemblyFactoryService
     VideoAssemblyFactoryService --> FFmpegPreviewRenderer
     FFmpegPreviewRenderer --> VideoFrameNormalization
     VideoAssemblyFactoryService --> PreviewComposition

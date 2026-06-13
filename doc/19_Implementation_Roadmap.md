@@ -458,6 +458,36 @@ Apply configured path-root changes inside the live desktop app without forcing a
 - delivered dashboard-path truth surfaces that now distinguish restart-required behavior from hot-reload-capable runtime behavior
 - covered pending hot-reload status, database-root rebind behavior, and settings-view-model signaling with pytest
 
+## IR-15 | Auto Factory Batch Planning Baseline
+
+### Goal
+
+Add a truthful first automation seam so operators can request output counts by product without hand-building every recipe.
+
+### Scope
+
+- define `Production Order` as the operator-facing batch request model
+- lock first-slice policies to `uniqueness_scope = "batch"` and `duration_mode = "voice_with_bounds"`
+- introduce an auto-factory batch service that uses existing product, asset, and factory services
+- estimate planner-feasible unique capacity before creating internal recipes
+- materialize internal recipes automatically when the order can be fulfilled
+- cover planning and materialization seams with pytest
+
+### Acceptance Criteria
+
+- batch planning reports requested count versus planner-feasible unique count per product
+- duplicate output fingerprints are prevented within the same batch under current planner policy
+- duration planning follows `voice_with_bounds` with fixed fallback when no voiceover exists
+- the service can create internal recipes and assign assets automatically through current factory APIs
+- SSOT workflow, UML, status, and test-plan docs remain aligned to the delivered slice
+
+### Delivery Result
+
+- delivered `AutoFactoryBatchService` plus DTOs for production-order planning and batch materialization
+- delivered deterministic constrained-variant planning with batch-only uniqueness fingerprints and truthful shortfall reporting
+- delivered internal recipe generation through the existing `VideoAssemblyFactoryService` instead of bypassing business rules
+- covered unique-capacity planning, shortfall blocking, duration fallback, and recipe materialization with pytest
+
 ## Cross-Milestone Rules
 
 - every milestone must update related SSOT docs in the same loop

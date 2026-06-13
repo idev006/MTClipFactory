@@ -58,6 +58,8 @@
 - recipe lifecycle
 - orchestration ของ preview/final workflow
 - quality gate, approval, output tracking
+- production-order planning for batch automation
+- internal recipe generation for factory-style runs
 
 ## Timeline-Driven Composition Rule
 

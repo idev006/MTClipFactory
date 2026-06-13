@@ -33,6 +33,7 @@ It complements [07_Testing_Strategy.md](/F:/programming/python/MTClipFactory/doc
 ### Video Assembly Factory
 
 - recipe creation and item assignment
+- auto-factory batch planning and internal recipe generation
 - preview job flow
 - final render flow
 - target-ratio visual normalization across mixed source sizes
@@ -167,6 +168,9 @@ It complements [07_Testing_Strategy.md](/F:/programming/python/MTClipFactory/doc
 8. Validate a recipe with both `background_video` and `foreground_video` writes layered segment evidence instead of flattening to one visual choice only.
 9. Validate a likely green-screen foreground is keyed over the background layer and that manifest evidence records the applied composite mode.
 10. Validate a non-green keyed foreground can be driven by Settings `Key Color Policy` and that the manifest records the chosen composite mode truthfully.
+11. Submit a batch production order and confirm the planner reports requested count versus planner-feasible unique count truthfully.
+12. Confirm batch materialization blocks strict orders when current planner policy cannot fulfill the requested unique count exactly.
+13. Confirm a satisfiable batch creates internal recipes automatically with the expected asset-role assignments.
 
 ### C. Review And Approval Flow
 
