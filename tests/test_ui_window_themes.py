@@ -201,6 +201,12 @@ def test_recipe_builder_window_explains_ready_assets_and_keeps_asset_panel_usabl
     )
     assert recipe_window.role_hint_label.text().startswith("Role guidance:")
     assert recipe_window.assets_hint_label.text().startswith("Only assets that are already in status 'ready'")
+    assert recipe_window.product_picker.verticalScrollBarPolicy() == Qt.ScrollBarAsNeeded
+    assert recipe_window.recipe_table.verticalScrollBarPolicy() == Qt.ScrollBarAsNeeded
+    assert recipe_window.assets_table.verticalScrollBarPolicy() == Qt.ScrollBarAsNeeded
+    assert recipe_window.recipe_items_table.verticalScrollBarPolicy() == Qt.ScrollBarAsNeeded
+    assert recipe_window.outputs_table.verticalScrollBarPolicy() == Qt.ScrollBarAsNeeded
+    assert recipe_window.decision_history_table.verticalScrollBarPolicy() == Qt.ScrollBarAsNeeded
     assert recipe_window.assets_table.minimumHeight() == RecipeBuilderWindow.ASSETS_TABLE_MIN_HEIGHT
     assert recipe_window.recipe_items_table.minimumHeight() == RecipeBuilderWindow.RECIPE_ITEMS_TABLE_MIN_HEIGHT
     assert recipe_window.recipe_table.minimumHeight() == RecipeBuilderWindow.RECIPE_TABLE_MIN_HEIGHT

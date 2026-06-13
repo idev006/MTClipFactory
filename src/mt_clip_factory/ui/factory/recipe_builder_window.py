@@ -143,11 +143,7 @@ class RecipeBuilderWindow(QMainWindow):
         self.product_combo.setReadOnly(True)
         self.product_picker = QTableWidget(0, 2)
         self.product_picker.setHorizontalHeaderLabels(["ID", "Product"])
-        self.product_picker.setSelectionBehavior(QTableWidget.SelectRows)
-        self.product_picker.setSelectionMode(QTableWidget.SingleSelection)
-        self.product_picker.setEditTriggers(QTableWidget.NoEditTriggers)
-        self.product_picker.horizontalHeader().setStretchLastSection(True)
-        self.product_picker.setMinimumHeight(self.PRODUCT_PICKER_MIN_HEIGHT)
+        self._configure_table(self.product_picker, minimum_height=self.PRODUCT_PICKER_MIN_HEIGHT)
         self.recipe_code_input = QLineEdit()
         self.platform_input = QLineEdit()
         self.ratio_input = QLineEdit()
@@ -217,11 +213,7 @@ class RecipeBuilderWindow(QMainWindow):
         self.recipe_table.setHorizontalHeaderLabels(
             ["ID", "Product", "Code", "Platform", "Ratio", "Status", "Decision By", "Decision At", "Items", "Score", "Dup Risk"]
         )
-        self.recipe_table.setSelectionBehavior(QTableWidget.SelectRows)
-        self.recipe_table.setSelectionMode(QTableWidget.SingleSelection)
-        self.recipe_table.setEditTriggers(QTableWidget.NoEditTriggers)
-        self.recipe_table.horizontalHeader().setStretchLastSection(True)
-        self.recipe_table.setMinimumHeight(self.RECIPE_TABLE_MIN_HEIGHT)
+        self._configure_table(self.recipe_table, minimum_height=self.RECIPE_TABLE_MIN_HEIGHT)
         self.recipe_table.itemSelectionChanged.connect(self._handle_recipe_selection)
         layout.addWidget(self.recipe_table)
         return group
@@ -236,11 +228,7 @@ class RecipeBuilderWindow(QMainWindow):
         layout.addWidget(self.assets_hint_label)
         self.assets_table = QTableWidget(0, 5)
         self.assets_table.setHorizontalHeaderLabels(["ID", "Product", "Code", "Type", "Status"])
-        self.assets_table.setSelectionBehavior(QTableWidget.SelectRows)
-        self.assets_table.setSelectionMode(QTableWidget.SingleSelection)
-        self.assets_table.setEditTriggers(QTableWidget.NoEditTriggers)
-        self.assets_table.horizontalHeader().setStretchLastSection(True)
-        self.assets_table.setMinimumHeight(self.ASSETS_TABLE_MIN_HEIGHT)
+        self._configure_table(self.assets_table, minimum_height=self.ASSETS_TABLE_MIN_HEIGHT)
         self.assets_table.itemSelectionChanged.connect(self._refresh_role_suggestions_for_selected_asset)
         layout.addWidget(self.assets_table)
         return group
@@ -253,11 +241,7 @@ class RecipeBuilderWindow(QMainWindow):
         layout.addWidget(hint_label)
         self.recipe_items_table = QTableWidget(0, 4)
         self.recipe_items_table.setHorizontalHeaderLabels(["Item ID", "Asset ID", "Asset Code", "Role"])
-        self.recipe_items_table.setSelectionBehavior(QTableWidget.SelectRows)
-        self.recipe_items_table.setSelectionMode(QTableWidget.SingleSelection)
-        self.recipe_items_table.setEditTriggers(QTableWidget.NoEditTriggers)
-        self.recipe_items_table.horizontalHeader().setStretchLastSection(True)
-        self.recipe_items_table.setMinimumHeight(self.RECIPE_ITEMS_TABLE_MIN_HEIGHT)
+        self._configure_table(self.recipe_items_table, minimum_height=self.RECIPE_ITEMS_TABLE_MIN_HEIGHT)
         layout.addWidget(self.recipe_items_table)
         return group
 
@@ -273,27 +257,27 @@ class RecipeBuilderWindow(QMainWindow):
         self.outputs_table.setHorizontalHeaderLabels(
             ["Output ID", "Kind", "Code", "Aftercare", "Approved", "Approved By", "Approved At", "Created", "Job Code", "Source", "Path"]
         )
-        self.outputs_table.setSelectionBehavior(QTableWidget.SelectRows)
-        self.outputs_table.setSelectionMode(QTableWidget.SingleSelection)
-        self.outputs_table.setEditTriggers(QTableWidget.NoEditTriggers)
-        self.outputs_table.horizontalHeader().setStretchLastSection(True)
-        self.outputs_table.setMinimumHeight(self.OUTPUTS_TABLE_MIN_HEIGHT)
+        self._configure_table(self.outputs_table, minimum_height=self.OUTPUTS_TABLE_MIN_HEIGHT)
         self.outputs_table.itemSelectionChanged.connect(self._refresh_selected_output_details)
         self.output_details_text = QTextEdit()
         self.output_details_text.setReadOnly(True)
         self.output_details_text.setMinimumHeight(self.OUTPUT_DETAILS_MIN_HEIGHT)
         self.decision_history_table = QTableWidget(0, 5)
         self.decision_history_table.setHorizontalHeaderLabels(["At", "Event", "Actor", "Target", "Reason"])
-        self.decision_history_table.setSelectionBehavior(QTableWidget.SelectRows)
-        self.decision_history_table.setSelectionMode(QTableWidget.SingleSelection)
-        self.decision_history_table.setEditTriggers(QTableWidget.NoEditTriggers)
-        self.decision_history_table.horizontalHeader().setStretchLastSection(True)
-        self.decision_history_table.setMinimumHeight(self.DECISION_HISTORY_MIN_HEIGHT)
+        self._configure_table(self.decision_history_table, minimum_height=self.DECISION_HISTORY_MIN_HEIGHT)
         layout.addWidget(self.outputs_table)
         layout.addWidget(self.output_details_text)
         layout.addWidget(QLabel("Decision History"))
         layout.addWidget(self.decision_history_table)
         return group
+
+    def _configure_table(self, table: QTableWidget, *, minimum_height: int) -> None:
+        table.setSelectionBehavior(QTableWidget.SelectRows)
+        table.setSelectionMode(QTableWidget.SingleSelection)
+        table.setEditTriggers(QTableWidget.NoEditTriggers)
+        table.horizontalHeader().setStretchLastSection(True)
+        table.setMinimumHeight(minimum_height)
+        table.setVerticalScrollBarPolicy(Qt.ScrollBarAsNeeded)
 
     def _refresh_feedback(self) -> None:
         self.feedback_label.setText(f"Status: {self._view_model.status}\n{self._view_model.feedback}".strip())

@@ -57,6 +57,7 @@
 - The settings surface now also exposes a `Visual Composite` policy so non-green keyed foregrounds can be handled without code edits.
 - Preview and final render now normalize mixed visual source ratios into the selected recipe frame so one output ratio can contain differently sized source clips safely.
 - Recipe Builder now uses a resizable multi-column workspace so operators can expand setup, asset-attachment, or output-review surfaces based on the current step.
+- Recipe Builder tables now keep explicit vertical-scroll behavior for overflow rows instead of depending on one long page or pagination.
 - The first controlled operator/UAT run has now completed end to end and produced a real final output from the current workspace.
 - A second controlled operator/UAT run has now validated runtime voice/music mixing, richer visual coverage, and a no-review-gate path on a stronger recipe.
 - The roadmap is now split into strategic and implementation layers, and the current mandatory implementation slice is complete.
@@ -91,6 +92,7 @@
 - the real `r0003` sample now rebuilds to a presenter-over-background result instead of exposing raw green-screen output, and its review-gate evidence clears at `distinct_visual_assets = 2`
 - operators can now steer compositing toward `auto`, `green`, `blue`, `magenta`, `custom`, or `disabled` key-color behavior from Settings instead of living with a green-only baseline
 - Recipe Builder now groups workflow into resizable setup, inventory, and review panes instead of keeping every surface trapped in one fixed grid
+- Recipe Builder overflow hardening now keeps each major table vertically scrollable when row counts exceed panel height
 
 ## Still Open
 
