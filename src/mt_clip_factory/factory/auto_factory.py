@@ -5,16 +5,24 @@ import re
 
 from mt_clip_factory.application.services import ProductApplicationService
 from mt_clip_factory.factory.auto_factory_dto import (
+    AutoFactoryBatchExecutionDTO,
     AutoFactoryBatchMaterializationDTO,
     AutoFactoryBatchOrderDTO,
     AutoFactoryBatchPlanDTO,
+    AutoFactoryBatchPreviewProductionDTO,
     AutoFactoryProductRequestDTO,
+    AutoFactoryPreviewRecipeResultDTO,
     MaterializedBatchRecipeDTO,
     PlannedBatchAssetAssignmentDTO,
     PlannedBatchRecipeDTO,
     ProductBatchPlanSummaryDTO,
 )
-from mt_clip_factory.factory.dto import AssignAssetToRecipeCommand, CreateRecipeCommand
+from mt_clip_factory.factory.dto import (
+    AssignAssetToRecipeCommand,
+    CreateRecipeCommand,
+    OutputSummaryDTO,
+    PreviewJobSummaryDTO,
+)
 from mt_clip_factory.factory.services import VideoAssemblyFactoryService
 from mt_clip_factory.library.dto import AssetSummaryDTO
 from mt_clip_factory.library.services import AssetIntakeService
@@ -115,6 +123,56 @@ class AutoFactoryBatchService:
         return AutoFactoryBatchMaterializationDTO(
             batch_code=plan.batch_code,
             created_recipes=tuple(created_recipes),
+        )
+
+    def build_previews_for_materialized_batch(
+        self,
+        materialization: AutoFactoryBatchMaterializationDTO,
+    ) -> AutoFactoryBatchPreviewProductionDTO:
+        recipe_results: list[AutoFactoryPreviewRecipeResultDTO] = []
+        for created_recipe in materialization.created_recipes:
+            preview_job_id = self._video_assembly_factory_service.enqueue_preview_job(created_recipe.recipe_id)
+            error_message: str | None = None
+            try:
+                self._video_assembly_factory_service.run_preview_job(preview_job_id)
+            except Exception as exc:
+                error_message = str(exc)
+
+            job_summary = self._get_preview_job_summary(preview_job_id)
+            recipe = self._video_assembly_factory_service.get_recipe(created_recipe.recipe_id)
+            output = self._latest_output_for_recipe(created_recipe.recipe_id) if job_summary.status == "done" else None
+            recipe_results.append(
+                AutoFactoryPreviewRecipeResultDTO(
+                    recipe_id=created_recipe.recipe_id,
+                    product_id=created_recipe.product_id,
+                    product_code=created_recipe.product_code,
+                    recipe_code=created_recipe.recipe_code,
+                    preview_job_id=preview_job_id,
+                    job_status=job_summary.status,
+                    recipe_status=recipe.status,
+                    review_required=recipe.status == "needs_review",
+                    output_id=None if output is None else output.output_id,
+                    output_code=None if output is None else output.output_code,
+                    output_path=job_summary.output_path,
+                    error_message=job_summary.error_message or error_message,
+                )
+            )
+
+        succeeded_recipe_count = sum(1 for result in recipe_results if result.job_status == "done")
+        return AutoFactoryBatchPreviewProductionDTO(
+            batch_code=materialization.batch_code,
+            recipe_results=tuple(recipe_results),
+            succeeded_recipe_count=succeeded_recipe_count,
+            failed_recipe_count=len(recipe_results) - succeeded_recipe_count,
+        )
+
+    def materialize_batch_and_build_previews(self, order: AutoFactoryBatchOrderDTO) -> AutoFactoryBatchExecutionDTO:
+        materialization = self.materialize_batch(order)
+        preview_production = self.build_previews_for_materialized_batch(materialization)
+        return AutoFactoryBatchExecutionDTO(
+            batch_code=materialization.batch_code,
+            materialization=materialization,
+            preview_production=preview_production,
         )
 
     def _plan_product(self, *, batch_code: str, product_request: AutoFactoryProductRequestDTO, product) -> dict[str, object]:
@@ -242,6 +300,16 @@ class AutoFactoryBatchService:
             fingerprint=fingerprint,
             assignments=tuple(assignments),
         )
+
+    def _get_preview_job_summary(self, job_id: int) -> PreviewJobSummaryDTO:
+        for summary in self._video_assembly_factory_service.list_preview_jobs():
+            if summary.job_id == job_id:
+                return summary
+        raise AutoFactoryPlanningError(f"Preview job {job_id} was not found after batch execution.")
+
+    def _latest_output_for_recipe(self, recipe_id: int) -> OutputSummaryDTO | None:
+        outputs = self._video_assembly_factory_service.list_outputs(recipe_id=recipe_id)
+        return max(outputs, key=lambda item: item.output_id, default=None)
 
 
 def _slugify(value: str) -> str:

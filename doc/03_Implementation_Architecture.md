@@ -61,6 +61,7 @@
 - production-order planning for batch automation
 - internal recipe generation for factory-style runs
 - folder-driven batch intake that translates product folders into production-order materialization
+- batch preview orchestration that stops at the normal review gate instead of auto-approving recipes or finals
 
 ## Timeline-Driven Composition Rule
 

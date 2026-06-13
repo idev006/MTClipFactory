@@ -6,9 +6,12 @@ import pytest
 
 from mt_clip_factory.application.dto import CreateProductCommand
 from mt_clip_factory.application.services import ProductApplicationService
+from mt_clip_factory.factory.audio_composition import PreviewAudioMixPlan
 from mt_clip_factory.factory.auto_factory import AutoFactoryBatchService, AutoFactoryCapacityError
 from mt_clip_factory.factory.auto_factory_folder import AutoFactoryFolderContractError, AutoFactoryFolderService
+from mt_clip_factory.factory.preview_composition import PreviewSegmentClip
 from mt_clip_factory.factory.preview_artifacts import PreviewManifestBuilder
+from mt_clip_factory.factory.renderers import RenderedPreviewOutput
 from mt_clip_factory.factory.services import VideoAssemblyFactoryService
 from mt_clip_factory.library.contracts import AnalyzedMediaMetadata
 from mt_clip_factory.library.readiness import AssetReadinessEvaluator
@@ -43,11 +46,41 @@ def _build_services(unit_of_work_factory, tmp_path: Path, durations_by_name: dic
         metadata_analyzer=FolderMetadataAnalyzer(durations_by_name),
         readiness_evaluator=AssetReadinessEvaluator(),
     )
+    class FakePreviewRenderer:
+        def render_output(
+            self,
+            *,
+            product_code: str,
+            output_stem: str,
+            source_files: list[Path],
+            segment_clips: tuple[PreviewSegmentClip, ...] = (),
+            audio_mix_plan: PreviewAudioMixPlan | None = None,
+            target_ratio: str | None = None,
+        ) -> RenderedPreviewOutput:
+            del audio_mix_plan, target_ratio
+            output_dir = tmp_path / "previews" / product_code / "videos"
+            output_dir.mkdir(parents=True, exist_ok=True)
+            target_path = output_dir / f"{output_stem}.mp4"
+            payload = (
+                b"".join(segment.source_file.read_bytes() for segment in segment_clips)
+                if segment_clips
+                else source_files[0].read_bytes()
+            )
+            target_path.write_bytes(payload)
+            duration_sec = round(sum(segment.target_duration_sec for segment in segment_clips), 3) if segment_clips else 3.0
+            return RenderedPreviewOutput(
+                file_path=target_path,
+                duration_sec=duration_sec,
+                audio_mix_summary=None,
+                visual_composite_summary=None,
+            )
+
+    renderer = FakePreviewRenderer()
     factory_service = VideoAssemblyFactoryService(
         unit_of_work_factory=unit_of_work_factory,
         preview_manifest_builder=PreviewManifestBuilder(tmp_path / "previews"),
-        preview_renderer=object(),
-        final_renderer=object(),
+        preview_renderer=renderer,
+        final_renderer=renderer,
     )
     auto_factory_service = AutoFactoryBatchService(
         product_service=product_service,
@@ -227,6 +260,46 @@ def test_folder_service_builds_one_batch_order_from_multiple_product_dirs(unit_o
     assert {request.product_code for request in report.order.product_requests} == {"product_a", "product_b"}
     assert len(product_service.list_products()) == 2
     assert len(factory_service.list_recipes()) == 4
+
+
+def test_folder_service_can_materialize_and_build_previews(unit_of_work_factory, tmp_path) -> None:
+    _, _, _, folder_service = _build_services(
+        unit_of_work_factory,
+        tmp_path,
+        {"voice_a.mp3": 17.2},
+    )
+    batch_root = tmp_path / "batch_root"
+    _write_product_folder(
+        batch_root,
+        folder_name="ProductA",
+        product_code="product_a",
+        product_name="Product A",
+        requested_output_count=2,
+    )
+
+    report = folder_service.run_batch_root(batch_root, build_previews=True)
+
+    assert report.materialization is not None
+    assert report.preview_production is not None
+    assert report.preview_production.succeeded_recipe_count == 2
+    assert report.preview_production.failed_recipe_count == 0
+    assert all(result.output_path is not None for result in report.preview_production.recipe_results)
+    assert all(Path(result.output_path or "").exists() for result in report.preview_production.recipe_results)
+
+
+def test_folder_service_rejects_preview_request_without_materialization(unit_of_work_factory, tmp_path) -> None:
+    _, _, _, folder_service = _build_services(unit_of_work_factory, tmp_path, {})
+    batch_root = tmp_path / "batch_root"
+    _write_product_folder(
+        batch_root,
+        folder_name="ProductA",
+        product_code="product_a",
+        product_name="Product A",
+        requested_output_count=1,
+    )
+
+    with pytest.raises(AutoFactoryFolderContractError, match="build_previews requires materialize=True"):
+        folder_service.run_batch_root(batch_root, materialize=False, build_previews=True)
 
 
 def test_folder_service_rejects_missing_request_section(unit_of_work_factory, tmp_path) -> None:

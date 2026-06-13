@@ -47,6 +47,7 @@ Compose prepared assets into reviewable preview and later final-output workflows
 - production-order batch planning
 - internal recipe generation for automated factory runs
 - folder-contract driven intake orchestration for automated factory runs
+- automatic preview-job orchestration for materialized factory batches
 - preview job enqueue
 - preview output generation
 - output approval decisions
@@ -74,7 +75,8 @@ Compose prepared assets into reviewable preview and later final-output workflows
 ### Future Responsibilities
 
 - further recipe-score calibration only if the current metadata, asset-diversity, and runtime-evidence baseline stops being useful
-- folder-watcher driven batch intake and render automation after planner truth is stable
+- folder-watcher driven batch intake and deeper render automation after planner truth is stable
+- controlled final-render automation after the current preview-to-review baseline proves operationally trustworthy
 
 ### Owned SSOT
 

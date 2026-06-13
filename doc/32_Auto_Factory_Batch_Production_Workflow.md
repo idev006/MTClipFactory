@@ -269,6 +269,54 @@ Explicitly deferred again:
 - preview/final auto-run
 - desktop UI for automation control
 
+## Reviewed Third Implementation Slice
+
+The reviewed third delivery slice should be:
+
+1. take one materialized batch of internal recipes
+2. enqueue one preview job per created recipe
+3. run preview rendering deterministically in batch order
+4. collect per-recipe preview result truth, including job status, output path, and resulting recipe status
+5. keep recipe approval and final render outside this automation slice
+
+Explicitly deferred again:
+
+- automatic preview approval
+- automatic recipe approval
+- automatic final render
+- review-by-exception operator queue UI
+- scheduler or watcher driven batch execution
+
+## Auto Preview Production Sequence
+
+```mermaid
+sequenceDiagram
+    actor Operator
+    participant Planner as AutoFactoryBatchService
+    participant Factory as VideoAssemblyFactoryService
+
+    Operator->>Planner: materialize_and_build_previews(order)
+    Planner->>Planner: materialize_batch(order)
+    loop each created recipe
+        Planner->>Factory: enqueue_preview_job(recipe_id)
+        Factory-->>Planner: preview_job_id
+        Planner->>Factory: run_preview_job(preview_job_id)
+        alt preview succeeds
+            Factory-->>Planner: output path + recipe status
+        else preview fails
+            Factory-->>Planner: failed job status + error
+        end
+    end
+    Planner-->>Operator: batch preview production report
+```
+
+## Delivered Third Slice
+
+- materialized batches can now enqueue and run preview jobs automatically in deterministic recipe order
+- batch reporting now includes per-recipe job status, output path, output identity, failure text, and resulting recipe review status
+- folder-driven runs can now optionally continue from intake and materialization into preview production
+- approval and final render remain explicitly outside this automation slice
+
 ## Folder Intake Sequence
 
 ```mermaid
@@ -312,3 +360,5 @@ Before coding, the plan was reviewed against the current architecture and the fo
 4. `internal recipe generation` is a safe first implementation seam
 5. render and approval automation should only follow after planner truth is stable
 6. folder-driven automation should stay idempotent for repeated intake runs before watcher behavior is introduced
+7. preview automation may run automatically only up to the normal review gate; it must not silently cross the human approval boundary
+8. batch preview reporting must expose both success and failure per recipe so PM and operators can audit partial outcomes truthfully

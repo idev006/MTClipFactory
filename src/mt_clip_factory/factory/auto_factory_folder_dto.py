@@ -2,7 +2,11 @@ from __future__ import annotations
 
 from dataclasses import dataclass
 
-from mt_clip_factory.factory.auto_factory_dto import AutoFactoryBatchMaterializationDTO, AutoFactoryBatchOrderDTO
+from mt_clip_factory.factory.auto_factory_dto import (
+    AutoFactoryBatchMaterializationDTO,
+    AutoFactoryBatchOrderDTO,
+    AutoFactoryBatchPreviewProductionDTO,
+)
 
 
 @dataclass(slots=True, frozen=True)
@@ -52,3 +56,4 @@ class AutoFactoryFolderRunReportDTO:
     product_reports: tuple[AutoFactoryFolderProductReportDTO, ...]
     asset_actions: tuple[AutoFactoryFolderAssetActionDTO, ...]
     materialization: AutoFactoryBatchMaterializationDTO | None = None
+    preview_production: AutoFactoryBatchPreviewProductionDTO | None = None

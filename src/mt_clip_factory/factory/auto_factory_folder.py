@@ -55,7 +55,11 @@ class AutoFactoryFolderService:
         *,
         batch_code: str | None = None,
         materialize: bool = True,
+        build_previews: bool = False,
     ) -> AutoFactoryFolderRunReportDTO:
+        if build_previews and not materialize:
+            raise AutoFactoryFolderContractError("build_previews requires materialize=True so preview jobs have recipes to run.")
+
         root_path = Path(batch_root)
         product_dirs = _discover_product_dirs(root_path)
         product_configs = {product_dir: _load_product_config(product_dir) for product_dir in product_dirs}
@@ -109,13 +113,21 @@ class AutoFactoryFolderService:
                 for product_dir in product_dirs
             ),
         )
-        materialization = self._auto_factory_service.materialize_batch(order) if materialize else None
+        materialization = None
+        preview_production = None
+        if materialize and build_previews:
+            execution = self._auto_factory_service.materialize_batch_and_build_previews(order)
+            materialization = execution.materialization
+            preview_production = execution.preview_production
+        elif materialize:
+            materialization = self._auto_factory_service.materialize_batch(order)
         return AutoFactoryFolderRunReportDTO(
             batch_code=effective_batch_code,
             order=order,
             product_reports=tuple(product_reports),
             asset_actions=tuple(asset_actions),
             materialization=materialization,
+            preview_production=preview_production,
         )
 
     def _intake_product_assets(

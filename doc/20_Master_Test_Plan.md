@@ -35,6 +35,7 @@ It complements [07_Testing_Strategy.md](/F:/programming/python/MTClipFactory/doc
 - recipe creation and item assignment
 - auto-factory batch planning and internal recipe generation
 - folder-driven batch intake using `product.toml` and `pipeline.toml`
+- automatic preview production from materialized auto-factory batches
 - preview job flow
 - final render flow
 - target-ratio visual normalization across mixed source sizes
@@ -175,6 +176,8 @@ It complements [07_Testing_Strategy.md](/F:/programming/python/MTClipFactory/doc
 14. Confirm a valid batch root with `product.toml` and `pipeline.toml` creates the product, ingests assets, and materializes internal recipes.
 15. Confirm rerunning the same batch root skips already-ingested deterministic asset codes instead of duplicating them.
 16. Confirm invalid folder contracts fail truthfully before silent partial production.
+17. Confirm a materialized batch can enqueue and run preview jobs automatically and return per-recipe output status/path truth without auto-approving recipes.
+18. Confirm a folder-driven batch can optionally continue into preview production and reject `build_previews=True` when `materialize=False`.
 
 ### C. Review And Approval Flow
 

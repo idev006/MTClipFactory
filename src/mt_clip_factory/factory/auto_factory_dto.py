@@ -77,3 +77,34 @@ class MaterializedBatchRecipeDTO:
 class AutoFactoryBatchMaterializationDTO:
     batch_code: str
     created_recipes: tuple[MaterializedBatchRecipeDTO, ...]
+
+
+@dataclass(slots=True, frozen=True)
+class AutoFactoryPreviewRecipeResultDTO:
+    recipe_id: int
+    product_id: int
+    product_code: str
+    recipe_code: str
+    preview_job_id: int
+    job_status: str
+    recipe_status: str
+    review_required: bool
+    output_id: int | None = None
+    output_code: str | None = None
+    output_path: str | None = None
+    error_message: str | None = None
+
+
+@dataclass(slots=True, frozen=True)
+class AutoFactoryBatchPreviewProductionDTO:
+    batch_code: str
+    recipe_results: tuple[AutoFactoryPreviewRecipeResultDTO, ...]
+    succeeded_recipe_count: int
+    failed_recipe_count: int
+
+
+@dataclass(slots=True, frozen=True)
+class AutoFactoryBatchExecutionDTO:
+    batch_code: str
+    materialization: AutoFactoryBatchMaterializationDTO
+    preview_production: AutoFactoryBatchPreviewProductionDTO

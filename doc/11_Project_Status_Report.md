@@ -57,6 +57,7 @@
 - Recipe Builder tables now declare vertical-scroll behavior explicitly so overflow rows stay usable without adding pagination
 - Auto Factory batch planning now exists as a first automation slice, including production-order DTOs, batch-only uniqueness planning, voice-with-bounds duration resolution, planner-capacity truth, and internal recipe generation through the existing factory service seam
 - Auto Factory can now also read folder contracts through `product.toml` and `pipeline.toml`, create missing products, ingest deterministic asset codes from typed media folders, and materialize internal recipes from one batch root
+- Auto Factory can now also enqueue and run preview jobs automatically for a materialized batch, returning per-recipe result truth for job status, output path, output identity, and resulting review-gate state without auto-approving recipes or finals
 - assets can now be safely renamed or deleted from the `Assets` screen, with repository checks that block deletion when recipe-item or artifact-job references still exist
 - the `Assets` screen now supports `Show References`, `Retire Selected`, and `Purge Media` so referenced assets can leave active use and disk without destroying audit truth
 - the `Assets` screen now also supports `Replace In Recipes...` with recipe-safe validation, recipe reset-to-candidate behavior, and approval guards that prevent stale pre-replacement outputs from being reused as evidence for changed recipes
@@ -89,7 +90,7 @@
 
 ## Verification Baseline
 
-- `python -m pytest` via `.venv`: `161 passed`
+- `python -m pytest` via `.venv`: `165 passed`
 - UI smoke via `QT_QPA_PLATFORM=offscreen`: `6` windows instantiated successfully
 
 ## Current Focus
@@ -105,13 +106,13 @@
 - validate whether the new green-screen compositing baseline is robust enough across real foreground media and not only the current controlled sample
 - validate whether the new non-green key policy is clear enough for operators and whether per-asset overrides are needed after broader use
 - validate whether the new resizable Recipe Builder workspace reduces operator confusion during attach-versus-review work
-- validate preview/final automation only after the new folder-driven auto-factory intake baseline proves stable
+- validate whether the new auto-preview batch orchestration stays truthful and useful before extending automation across the final-render approval boundary
 - keep project documents truthful through per-milestone revision checkpoints
 
 ## Next Steps
 
 1. Run broader controlled operator use on real campaign media without service-side assistance and record operator findings on both the asset-replacement and layered-compositing workflows.
-2. Extend the auto-factory baseline from folder-driven intake plus internal recipe generation into controlled preview/final automation only after intake and planner truth are accepted.
+2. Extend the auto-factory baseline from automated preview production into controlled final-render automation only after operators accept the current planner and review-gate truth.
 3. Decide whether per-asset compositing overrides are justified beyond the new settings-level key policy.
 4. Recalibrate recipe scoring only if operator feedback shows the current metadata, asset-diversity, and runtime-evidence baseline is not useful enough.
 5. Clean the Alembic `path_separator=os` warning in a maintenance pass.
@@ -138,6 +139,9 @@
 - `IR-12` now locks recovery audit shape to the current payload-backed seam until stronger cross-job audit requirements justify schema promotion
 - `IR-13` now persists recipe-level score/risk summaries derived from metadata, asset composition, and runtime review evidence, and exposes them in Recipe Builder recipe surfaces
 - `IR-14` now hot-reloads path-root dependent desktop services by rebuilding the runtime module and swapping live service proxies instead of requiring an app restart
+- `IR-15` now adds batch-only production-order planning plus internal recipe generation for auto-factory runs
+- `IR-16` now adds folder-driven product/asset intake through `product.toml` and `pipeline.toml`
+- `IR-17` now adds automatic preview-job production from materialized auto-factory batches while keeping approval and final render human-gated
 
 ## Ownership
 

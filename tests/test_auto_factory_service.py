@@ -6,6 +6,7 @@ import pytest
 
 from mt_clip_factory.application.dto import CreateProductCommand
 from mt_clip_factory.application.services import ProductApplicationService
+from mt_clip_factory.factory.audio_composition import PreviewAudioMixPlan
 from mt_clip_factory.factory.auto_factory import (
     AutoFactoryBatchService,
     AutoFactoryCapacityError,
@@ -14,7 +15,9 @@ from mt_clip_factory.factory.auto_factory_dto import (
     AutoFactoryBatchOrderDTO,
     AutoFactoryProductRequestDTO,
 )
+from mt_clip_factory.factory.preview_composition import PreviewSegmentClip
 from mt_clip_factory.factory.preview_artifacts import PreviewManifestBuilder
+from mt_clip_factory.factory.renderers import RenderedPreviewOutput
 from mt_clip_factory.factory.services import VideoAssemblyFactoryService
 from mt_clip_factory.library.contracts import AnalyzedMediaMetadata
 from mt_clip_factory.library.dto import RegisterAssetCommand
@@ -51,12 +54,62 @@ def _build_asset_service(unit_of_work_factory, media_root: Path, durations_by_na
     )
 
 
-def _build_factory_service(unit_of_work_factory, preview_root: Path) -> VideoAssemblyFactoryService:
+def _build_factory_service(
+    unit_of_work_factory,
+    preview_root: Path,
+    *,
+    fail_preview_stems: set[str] | None = None,
+) -> VideoAssemblyFactoryService:
+    class FakePreviewRenderer:
+        def __init__(self) -> None:
+            self.calls: list[dict] = []
+
+        def render_output(
+            self,
+            *,
+            product_code: str,
+            output_stem: str,
+            source_files: list[Path],
+            segment_clips: tuple[PreviewSegmentClip, ...] = (),
+            audio_mix_plan: PreviewAudioMixPlan | None = None,
+            target_ratio: str | None = None,
+        ) -> RenderedPreviewOutput:
+            self.calls.append(
+                {
+                    "product_code": product_code,
+                    "output_stem": output_stem,
+                    "source_files": source_files,
+                    "segment_clips": segment_clips,
+                    "audio_mix_plan": audio_mix_plan,
+                    "target_ratio": target_ratio,
+                }
+            )
+            if fail_preview_stems and output_stem in fail_preview_stems:
+                raise RuntimeError(f"synthetic preview failure for {output_stem}")
+
+            output_dir = preview_root / product_code / "videos"
+            output_dir.mkdir(parents=True, exist_ok=True)
+            target_path = output_dir / f"{output_stem}.mp4"
+            payload = (
+                b"".join(segment.source_file.read_bytes() for segment in segment_clips)
+                if segment_clips
+                else source_files[0].read_bytes()
+            )
+            target_path.write_bytes(payload)
+            duration_sec = round(sum(segment.target_duration_sec for segment in segment_clips), 3) if segment_clips else 3.0
+            return RenderedPreviewOutput(
+                file_path=target_path,
+                duration_sec=duration_sec,
+                audio_mix_summary=None,
+                visual_composite_summary=None,
+            )
+
+    renderer = FakePreviewRenderer()
     return VideoAssemblyFactoryService(
         unit_of_work_factory=unit_of_work_factory,
         preview_manifest_builder=PreviewManifestBuilder(preview_root),
-        preview_renderer=object(),
-        final_renderer=object(),
+        preview_renderer=renderer,
+        final_renderer=renderer,
     )
 
 
@@ -223,3 +276,133 @@ def test_auto_factory_uses_fixed_fallback_duration_when_no_voiceover_exists(unit
 
     assert plan.planned_recipes[0].duration_source == "fixed_fallback"
     assert plan.planned_recipes[0].duration_sec == 20.0
+
+
+def test_auto_factory_materializes_and_builds_previews(unit_of_work_factory, tmp_path) -> None:
+    product_service = ProductApplicationService(unit_of_work_factory=unit_of_work_factory)
+    product_id = product_service.create_product(CreateProductCommand(product_code="serum", product_name="Serum"))
+    asset_service = _build_asset_service(unit_of_work_factory, tmp_path / "media_library", {})
+    _register_asset(
+        asset_service,
+        product_id=product_id,
+        tmp_path=tmp_path,
+        asset_type="foreground_video",
+        asset_code="fg_01",
+        file_name="fg01.mp4",
+    )
+    _register_asset(
+        asset_service,
+        product_id=product_id,
+        tmp_path=tmp_path,
+        asset_type="foreground_video",
+        asset_code="fg_02",
+        file_name="fg02.mp4",
+    )
+    _register_asset(
+        asset_service,
+        product_id=product_id,
+        tmp_path=tmp_path,
+        asset_type="background_video",
+        asset_code="bg_01",
+        file_name="bg01.mp4",
+    )
+    factory_service = _build_factory_service(unit_of_work_factory, tmp_path / "previews")
+    service = AutoFactoryBatchService(
+        product_service=product_service,
+        asset_intake_service=asset_service,
+        video_assembly_factory_service=factory_service,
+    )
+
+    execution = service.materialize_batch_and_build_previews(
+        AutoFactoryBatchOrderDTO(
+            batch_code="serum_batch",
+            product_requests=(
+                AutoFactoryProductRequestDTO(
+                    product_code="serum",
+                    requested_output_count=2,
+                    target_platform="shopee",
+                    target_ratio="9:16",
+                    fixed_duration_sec=15.0,
+                ),
+            ),
+        )
+    )
+
+    assert len(execution.materialization.created_recipes) == 2
+    assert execution.preview_production.succeeded_recipe_count == 2
+    assert execution.preview_production.failed_recipe_count == 0
+    assert len(execution.preview_production.recipe_results) == 2
+    assert all(result.job_status == "done" for result in execution.preview_production.recipe_results)
+    assert all(result.output_id is not None for result in execution.preview_production.recipe_results)
+    assert all(result.output_code is not None for result in execution.preview_production.recipe_results)
+    assert all(result.output_path is not None for result in execution.preview_production.recipe_results)
+    assert all(Path(result.output_path or "").exists() for result in execution.preview_production.recipe_results)
+    assert all(result.recipe_status == "candidate" for result in execution.preview_production.recipe_results)
+    assert all(result.review_required is False for result in execution.preview_production.recipe_results)
+
+
+def test_auto_factory_preview_batch_reports_failures_and_continues(unit_of_work_factory, tmp_path) -> None:
+    product_service = ProductApplicationService(unit_of_work_factory=unit_of_work_factory)
+    product_id = product_service.create_product(CreateProductCommand(product_code="mask", product_name="Mask"))
+    asset_service = _build_asset_service(unit_of_work_factory, tmp_path / "media_library", {})
+    _register_asset(
+        asset_service,
+        product_id=product_id,
+        tmp_path=tmp_path,
+        asset_type="foreground_video",
+        asset_code="fg_01",
+        file_name="fg01.mp4",
+    )
+    _register_asset(
+        asset_service,
+        product_id=product_id,
+        tmp_path=tmp_path,
+        asset_type="foreground_video",
+        asset_code="fg_02",
+        file_name="fg02.mp4",
+    )
+    _register_asset(
+        asset_service,
+        product_id=product_id,
+        tmp_path=tmp_path,
+        asset_type="background_video",
+        asset_code="bg_01",
+        file_name="bg01.mp4",
+    )
+    factory_service = _build_factory_service(
+        unit_of_work_factory,
+        tmp_path / "previews",
+        fail_preview_stems={"mask_mask_batch_002"},
+    )
+    service = AutoFactoryBatchService(
+        product_service=product_service,
+        asset_intake_service=asset_service,
+        video_assembly_factory_service=factory_service,
+    )
+
+    execution = service.materialize_batch_and_build_previews(
+        AutoFactoryBatchOrderDTO(
+            batch_code="mask_batch",
+            product_requests=(
+                AutoFactoryProductRequestDTO(
+                    product_code="mask",
+                    requested_output_count=2,
+                    target_platform="shopee",
+                    target_ratio="9:16",
+                    fixed_duration_sec=15.0,
+                ),
+            ),
+        )
+    )
+
+    assert execution.preview_production.succeeded_recipe_count == 1
+    assert execution.preview_production.failed_recipe_count == 1
+    success_result = next(result for result in execution.preview_production.recipe_results if result.job_status == "done")
+    failed_result = next(result for result in execution.preview_production.recipe_results if result.job_status == "failed")
+    assert success_result.output_path is not None
+    assert Path(success_result.output_path).exists()
+    assert failed_result.output_id is None
+    assert failed_result.output_code is None
+    assert failed_result.output_path is None
+    assert failed_result.error_message is not None
+    assert "synthetic preview failure" in failed_result.error_message

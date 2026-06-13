@@ -34,6 +34,9 @@ The project now uses two roadmap layers:
 - `IR-12` Payload-backed recovery audit decision: complete on 2026-06-06
 - `IR-13` Recipe scoring refinement and operator-visible score/risk summaries: complete on 2026-06-06
 - `IR-14` Path-root runtime hot reload: complete on 2026-06-06
+- `IR-15` Auto Factory batch planning baseline: complete on 2026-06-13
+- `IR-16` Folder-driven batch intake baseline: complete on 2026-06-13
+- `IR-17` Auto Factory preview production baseline: complete on 2026-06-13
 
 ## Current Execution Stream
 
@@ -516,6 +519,36 @@ Turn the new auto-factory planner into a practical ingestion seam by reading pro
 - delivered rerun-safe skip behavior for already-ingested deterministic asset codes instead of duplicating asset records
 - delivered folder-contract pytest coverage for success, rerun idempotence, shortfall propagation, and invalid TOML structure
 - kept preview/final auto-run, watcher loops, and automation UI explicitly deferred behind the new folder-intake baseline
+
+## IR-17 | Auto Factory Preview Production Baseline
+
+### Goal
+
+Turn materialized auto-factory recipes into real preview outputs automatically, while preserving the normal human review and approval boundary.
+
+### Scope
+
+- enqueue one preview job per created recipe in materialized batch order
+- run preview rendering automatically for those recipes
+- return per-recipe batch result truth including job status, output path, output identity, and resulting recipe review state
+- keep output approval, recipe approval, and final render explicitly outside this automation slice
+- extend folder-driven runs so they can optionally build previews after materialization
+
+### Acceptance Criteria
+
+- a satisfiable materialized batch can automatically produce preview outputs without manual per-recipe clicking
+- preview failures are reported per recipe without hiding partial success
+- folder-driven batch intake can optionally continue into preview production in the same service-level flow
+- approval and final-render boundaries remain explicit and human-controlled
+- roadmap, UML, status, progress, and test-plan docs remain aligned to the delivered slice
+
+### Delivery Result
+
+- delivered batch-level preview orchestration through `AutoFactoryBatchService.build_previews_for_materialized_batch(...)` and `materialize_batch_and_build_previews(...)`
+- delivered per-recipe preview production reporting with job status, output path, output identity, failure text, and resulting recipe status
+- delivered optional folder-run preview automation through `AutoFactoryFolderService.run_batch_root(..., build_previews=True)`
+- delivered pytest coverage for happy-path preview automation, partial preview failure continuity, folder-run preview production, and invalid preview-without-materialization requests
+- kept approval automation, final-render automation, watcher loops, and automation UI explicitly deferred
 
 ## Cross-Milestone Rules
 

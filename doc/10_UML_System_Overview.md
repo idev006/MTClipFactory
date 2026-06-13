@@ -87,9 +87,12 @@ classDiagram
     class AutoFactoryBatchService {
         +plan_batch(order)
         +materialize_batch(order)
+        +build_previews_for_materialized_batch(materialization)
+        +materialize_batch_and_build_previews(order)
         +batch-only uniqueness planning
         +voice-with-bounds duration planning
         +internal recipe generation
+        +batch preview orchestration up to review gate
     }
 
     class AutoFactoryFolderService {
@@ -98,6 +101,7 @@ classDiagram
         +create missing products
         +intake deterministic asset codes
         +skip existing assets on rerun
+        +optional preview automation after materialization
     }
 
     class ReviewGateEvaluator {
