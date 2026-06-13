@@ -28,3 +28,13 @@ class JobStatus(StrEnum):
     DONE = "done"
     FAILED = "failed"
     CANCELLED = "cancelled"
+
+
+class OrchestrationStatus(StrEnum):
+    QUEUED = "queued"
+    PROCESSING = "processing"
+    SUCCEEDED = "succeeded"
+    FAILED_RETRYABLE = "failed_retryable"
+    FAILED_TERMINAL = "failed_terminal"
+    REVIEW_REQUIRED = "review_required"
+    CANCELLED = "cancelled"

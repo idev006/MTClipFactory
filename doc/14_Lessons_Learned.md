@@ -210,3 +210,8 @@
 
 - once the project gained batch planning, folder intake, and batch preview automation, the main architectural gap stopped being one missing feature and became the lack of one factory-grade operating model
 - documenting control plane, execution plane, state plane, and operator plane before distributed worker work begins is cheaper and safer than scaling local automation seams blindly
+
+## LL-043 | 2026-06-13 | Control-Plane Truth Should Be Additive, Not A Rewrite
+
+- introducing `Production Order` and orchestration stage records as additive persistence was safer than trying to replace every existing `JobStatus` path in one milestone
+- the dedicated control-plane state made review-needed and terminal-versus-retryable outcomes easier to explain than if the system kept depending only on low-level job rows

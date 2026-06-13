@@ -4,6 +4,8 @@ This document is the SSOT for evolving MTClipFactory from an operator-driven rec
 
 This workflow now sits inside the broader enterprise-factory pipeline defined in [33_Enterprise_Video_Production_Factory_Pipeline_Review_2026-06-13.md](/F:/programming/python/MTClipFactory/doc/33_Enterprise_Video_Production_Factory_Pipeline_Review_2026-06-13.md) and [34_Enterprise_Factory_Architecture_Blueprint_2026-06-13.md](/F:/programming/python/MTClipFactory/doc/34_Enterprise_Factory_Architecture_Blueprint_2026-06-13.md).
 
+The current implementation now also has a persisted control-plane seam through [35_Production_Order_And_Orchestration_Workflow_2026-06-13.md](/F:/programming/python/MTClipFactory/doc/35_Production_Order_And_Orchestration_Workflow_2026-06-13.md).
+
 ## Purpose
 
 - let operators request output counts by product instead of building recipes one by one

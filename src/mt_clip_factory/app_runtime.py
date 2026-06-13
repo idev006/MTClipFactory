@@ -38,6 +38,11 @@ class ApplicationRuntime:
             if self._module.auto_factory_folder_service is None
             else ReloadableServiceProxy(self._module.auto_factory_folder_service)
         )
+        self.production_order_service = (
+            None
+            if self._module.production_order_service is None
+            else ReloadableServiceProxy(self._module.production_order_service)
+        )
         self.tag_management_service = ReloadableServiceProxy(self._module.tag_management_service)
         self.system_settings_service = ReloadableServiceProxy(self._module.system_settings_service)
         self.dashboard_service = ReloadableServiceProxy(self._module.dashboard_service)
@@ -54,6 +59,7 @@ class ApplicationRuntime:
             dashboard_service=self.dashboard_service,
             auto_factory_service=self.auto_factory_service,
             auto_factory_folder_service=self.auto_factory_folder_service,
+            production_order_service=self.production_order_service,
         )
 
     def reload_path_roots(self) -> PathRootStatusDTO:
@@ -70,6 +76,8 @@ class ApplicationRuntime:
             self.auto_factory_service.set_target(self._module.auto_factory_service)
         if self.auto_factory_folder_service is not None and self._module.auto_factory_folder_service is not None:
             self.auto_factory_folder_service.set_target(self._module.auto_factory_folder_service)
+        if self.production_order_service is not None and self._module.production_order_service is not None:
+            self.production_order_service.set_target(self._module.production_order_service)
         self.tag_management_service.set_target(self._module.tag_management_service)
         self.system_settings_service.set_target(self._module.system_settings_service)
         self.dashboard_service.set_target(self._module.dashboard_service)

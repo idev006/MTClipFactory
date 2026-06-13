@@ -4,7 +4,7 @@
 
 - Report date: 2026-06-13
 - Overall status: In Progress
-- Current phase: Phase 6, enterprise factory architecture re-baseline documented; distributed orchestration implementation not started yet
+- Current phase: Phase 6, production-order and shared orchestration baseline delivered; worker-lease and distributed execution still pending
 - Delivery mode: document-led SSOT with code and tests kept in sync
 
 ## What Is Done
@@ -59,6 +59,7 @@
 - Auto Factory can now also read folder contracts through `product.toml` and `pipeline.toml`, create missing products, ingest deterministic asset codes from typed media folders, and materialize internal recipes from one batch root
 - Auto Factory can now also enqueue and run preview jobs automatically for a materialized batch, returning per-recipe result truth for job status, output path, output identity, and resulting review-gate state without auto-approving recipes or finals
 - enterprise pipeline review and enterprise architecture blueprint now exist as SSOT so the system can evolve from local automation slices into a true Video Production Factory operating model
+- production orders are now persisted independently from recipes, and control-plane orchestration stages now track `materialize`, `preview`, and `review` state across automated factory runs
 - assets can now be safely renamed or deleted from the `Assets` screen, with repository checks that block deletion when recipe-item or artifact-job references still exist
 - the `Assets` screen now supports `Show References`, `Retire Selected`, and `Purge Media` so referenced assets can leave active use and disk without destroying audit truth
 - the `Assets` screen now also supports `Replace In Recipes...` with recipe-safe validation, recipe reset-to-candidate behavior, and approval guards that prevent stale pre-replacement outputs from being reused as evidence for changed recipes
@@ -91,7 +92,7 @@
 
 ## Verification Baseline
 
-- `python -m pytest` via `.venv`: `165 passed`
+- `python -m pytest` via `.venv`: `170 passed`
 - UI smoke via `QT_QPA_PLATFORM=offscreen`: `6` windows instantiated successfully
 
 ## Current Focus
@@ -108,15 +109,15 @@
 - validate whether the new non-green key policy is clear enough for operators and whether per-asset overrides are needed after broader use
 - validate whether the new resizable Recipe Builder workspace reduces operator confusion during attach-versus-review work
 - validate whether the new auto-preview batch orchestration stays truthful and useful before extending automation across the final-render approval boundary
-- lock the shared control-plane, execution-plane, state-plane, and operator-plane vocabulary before scalable worker implementation begins
+- validate whether the new production-order orchestration model remains stable enough to carry future lease and multi-worker execution semantics
 - keep project documents truthful through per-milestone revision checkpoints
 
 ## Next Steps
 
-1. Define `Production Order`, shared job-state, lease, and retry semantics as first-class state-plane concepts.
-2. Implement a control-plane orchestration baseline before any multi-node worker rollout.
-3. Run broader controlled operator use on real campaign media without service-side assistance and record operator findings on both the asset-replacement and layered-compositing workflows.
-4. Extend the auto-factory baseline from automated preview production into controlled final-render automation only after operators accept the current planner and review-gate truth.
+1. Implement worker lease, heartbeat, and retry-policy semantics on top of the new production-order orchestration baseline.
+2. Run broader controlled operator use on real campaign media without service-side assistance and record operator findings on both the asset-replacement and layered-compositing workflows.
+3. Extend the auto-factory baseline from automated preview production into controlled final-render automation only after operators accept the current planner and review-gate truth.
+4. Decide whether production-order orchestration should surface on the dashboard before multi-node execution begins.
 5. Clean the Alembic `path_separator=os` warning in a maintenance pass.
 
 ## Direction Locked In This Documentation Revision
@@ -145,6 +146,7 @@
 - `IR-16` now adds folder-driven product/asset intake through `product.toml` and `pipeline.toml`
 - `IR-17` now adds automatic preview-job production from materialized auto-factory batches while keeping approval and final render human-gated
 - `IR-18` now locks the enterprise factory pipeline review plus architecture blueprint before scalable orchestration implementation begins
+- `IR-19` now persists production orders plus orchestration stages for `materialize`, `preview`, and `review` control-plane truth
 
 ## Ownership
 

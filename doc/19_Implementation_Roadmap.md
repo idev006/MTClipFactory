@@ -38,15 +38,16 @@ The project now uses two roadmap layers:
 - `IR-16` Folder-driven batch intake baseline: complete on 2026-06-13
 - `IR-17` Auto Factory preview production baseline: complete on 2026-06-13
 - `IR-18` Enterprise factory pipeline review and architecture blueprint: complete on 2026-06-13
+- `IR-19` Production-order and shared job-state orchestration baseline: complete on 2026-06-13
 
 ## Current Execution Stream
 
-The next mandatory implementation stream should begin with control-plane and shared-job orchestration, not directly with more render automation.
+The next mandatory implementation stream should build worker lease, heartbeat, and retry semantics on top of the new production-order control-plane baseline.
 
 Backlog activation rules:
 
 1. Further recipe-score calibration only activates if the delivered metadata, asset-diversity, and runtime-evidence baseline stops being operationally useful.
-2. Distributed worker execution does not activate before production-order persistence plus shared job-state semantics are documented and implemented.
+2. Distributed worker execution does not activate before lease, heartbeat, and retry semantics are implemented on the new control-plane baseline.
 
 ## IR-01 | Composition Data Model
 
@@ -586,7 +587,7 @@ Lock the enterprise operating model before scalable worker orchestration or deep
 
 Turn the documented factory architecture into a real control-plane baseline by making production orders and stage-aware job orchestration first-class persisted concepts.
 
-### Planned Scope
+### Scope
 
 - persist `Production Order` as a first-class state-plane object
 - define one shared job-state vocabulary across factory automation stages
@@ -594,12 +595,41 @@ Turn the documented factory architecture into a real control-plane baseline by m
 - classify retryable versus terminal failures explicitly
 - keep the baseline compatible with the current local runtime before multi-node worker rollout
 
-### Planned Acceptance Criteria
+### Acceptance Criteria
 
 - production orders can be persisted, queried, and tracked independently of recipe rows
 - automated factory stages report through one shared orchestration state model
 - retry, failure, and review-needed states are explicit and inspectable
 - docs, UML, issues, Kanban, and tests stay aligned to the new orchestration seam
+
+### Delivery Result
+
+- delivered persisted `production_orders`, `production_order_items`, and `production_order_stages` through Alembic migration `20260613_0006`
+- delivered `ProductionOrderService` as the first control-plane seam for creating, running, listing, and inspecting automated factory orders
+- delivered stage-level orchestration truth for `materialize`, `preview`, and `review` flows, including explicit `failed_retryable`, `failed_terminal`, and `review_required` outcomes
+- kept the baseline compatible with the current local runtime by layering orchestration state above existing execution-plane jobs instead of rewriting every job-status path
+- covered persistence, success, review-required, retryable preview failure, and terminal planning failure paths with pytest
+
+## IR-20 | Worker Lease, Heartbeat, And Retry-Policy Baseline
+
+### Goal
+
+Make the new control-plane baseline safe for future multi-worker execution by introducing explicit worker-ownership and retry semantics.
+
+### Planned Scope
+
+- define lease ownership fields and expiration policy
+- define worker heartbeat persistence and visibility
+- distinguish claimed work from merely queued work
+- formalize requeue rules after lease expiration
+- keep the baseline compatible with the current local runtime before remote workers arrive
+
+### Planned Acceptance Criteria
+
+- queueable work can be claimed through explicit ownership semantics
+- stale work can be identified without guessing from timestamps alone
+- retry policy becomes more precise than one generic failed state
+- docs, UML, issues, Kanban, and tests stay aligned to the new worker-control seam
 
 ## Cross-Milestone Rules
 

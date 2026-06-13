@@ -114,6 +114,7 @@ The following must flow through config or services whenever user control is appr
 - failed-job escalation threshold with deferred bulk-retry ordering
 - dashboard operator playbook lines for current failed and escalated jobs
 - payload-backed recovery metadata retained intentionally until stronger audit-query requirements exist
+- persisted production-order and orchestration-stage state for control-plane truth above recipe and job rows
 - output approval and recipe approval decisions captured in SSOT workflow
 - output lineage reporting derived from persisted jobs and outputs
 - migration-backed approval actor/time/reason fields
@@ -145,8 +146,8 @@ The following must flow through config or services whenever user control is appr
 
 1. Recipe scoring now uses metadata, asset diversity, and runtime review evidence, but further calibration remains a future decision if operators find the baseline misleading.
 2. Recipe-score calibration remains a future decision if the new scoring baseline proves misleading in real operator use.
-3. The project does not yet have one documented shared job-state, lease, and heartbeat model for scalable worker-node execution.
-4. `Production Order` and orchestration stage state are not yet first-class durability concepts in the current implementation SSOT.
+3. The project does not yet have one implemented lease and heartbeat model for scalable worker-node execution.
+4. Production-order orchestration is now persisted, but dashboard and operator-plane visibility for that control-plane state is still limited.
 
 ## Composition Reliability Direction
 

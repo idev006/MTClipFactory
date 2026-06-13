@@ -40,6 +40,7 @@ When code changes, the related Markdown documents in this folder must be updated
 32. [32_Auto_Factory_Batch_Production_Workflow.md](/F:/programming/python/MTClipFactory/doc/32_Auto_Factory_Batch_Production_Workflow.md)
 33. [33_Enterprise_Video_Production_Factory_Pipeline_Review_2026-06-13.md](/F:/programming/python/MTClipFactory/doc/33_Enterprise_Video_Production_Factory_Pipeline_Review_2026-06-13.md)
 34. [34_Enterprise_Factory_Architecture_Blueprint_2026-06-13.md](/F:/programming/python/MTClipFactory/doc/34_Enterprise_Factory_Architecture_Blueprint_2026-06-13.md)
+35. [35_Production_Order_And_Orchestration_Workflow_2026-06-13.md](/F:/programming/python/MTClipFactory/doc/35_Production_Order_And_Orchestration_Workflow_2026-06-13.md)
 
 ## Governance
 

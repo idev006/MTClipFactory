@@ -14,6 +14,10 @@ from mt_clip_factory.infrastructure.decision_event_repositories import SqlAlchem
 from mt_clip_factory.infrastructure.factory_repositories import SqlAlchemyRecipeRepository
 from mt_clip_factory.infrastructure.job_repositories import SqlAlchemyJobRepository
 from mt_clip_factory.infrastructure.output_repositories import SqlAlchemyOutputRepository
+from mt_clip_factory.infrastructure.production_order_repositories import (
+    SqlAlchemyProductionOrderRepository,
+    SqlAlchemyProductionOrderStageRepository,
+)
 from mt_clip_factory.infrastructure.repositories import (
     SqlAlchemyAssetRepository,
     SqlAlchemyProductRepository,
@@ -35,6 +39,8 @@ class SqlAlchemyUnitOfWork:
         composition_plan_repository_type: type[SqlAlchemyCompositionPlanRepository] = SqlAlchemyCompositionPlanRepository,
         render_decision_repository_type: type[SqlAlchemyRenderDecisionRepository] = SqlAlchemyRenderDecisionRepository,
         timeline_segment_repository_type: type[SqlAlchemyTimelineSegmentRepository] = SqlAlchemyTimelineSegmentRepository,
+        production_order_repository_type: type[SqlAlchemyProductionOrderRepository] = SqlAlchemyProductionOrderRepository,
+        production_order_stage_repository_type: type[SqlAlchemyProductionOrderStageRepository] = SqlAlchemyProductionOrderStageRepository,
     ) -> None:
         self._session_factory = session_factory
         self._product_repository_type = product_repository_type
@@ -47,6 +53,8 @@ class SqlAlchemyUnitOfWork:
         self._composition_plan_repository_type = composition_plan_repository_type
         self._render_decision_repository_type = render_decision_repository_type
         self._timeline_segment_repository_type = timeline_segment_repository_type
+        self._production_order_repository_type = production_order_repository_type
+        self._production_order_stage_repository_type = production_order_stage_repository_type
         self.session: Session | None = None
         self.products: SqlAlchemyProductRepository
         self.assets: SqlAlchemyAssetRepository
@@ -58,6 +66,8 @@ class SqlAlchemyUnitOfWork:
         self.composition_plans: SqlAlchemyCompositionPlanRepository
         self.render_decisions: SqlAlchemyRenderDecisionRepository
         self.timeline_segments: SqlAlchemyTimelineSegmentRepository
+        self.production_orders: SqlAlchemyProductionOrderRepository
+        self.production_order_stages: SqlAlchemyProductionOrderStageRepository
 
     def __enter__(self) -> "SqlAlchemyUnitOfWork":
         self.session = self._session_factory()
@@ -71,6 +81,8 @@ class SqlAlchemyUnitOfWork:
         self.composition_plans = self._composition_plan_repository_type(self.session)
         self.render_decisions = self._render_decision_repository_type(self.session)
         self.timeline_segments = self._timeline_segment_repository_type(self.session)
+        self.production_orders = self._production_order_repository_type(self.session)
+        self.production_order_stages = self._production_order_stage_repository_type(self.session)
         return self
 
     def __exit__(

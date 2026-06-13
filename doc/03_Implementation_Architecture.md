@@ -61,6 +61,7 @@ Responsibilities:
 Responsibilities:
 
 - recipe lifecycle
+- production-order persistence and orchestration
 - preview and final workflow orchestration
 - quality gate, approval, and output tracking
 - production-order planning for automation
@@ -78,6 +79,7 @@ Both `Library` and `Factory` share:
 - audit and traceability rules
 - decision-event ledger
 - dashboard and settings authority services
+- control-plane orchestration state through production-order and stage records
 
 ## Timeline-Driven Composition Rule
 

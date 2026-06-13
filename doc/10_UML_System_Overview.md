@@ -30,6 +30,7 @@ classDiagram
         +video_assembly_factory_service
         +auto_factory_service
         +auto_factory_folder_service
+        +production_order_service
         +tag_management_service
         +system_settings_service
         +dashboard_service
@@ -102,6 +103,15 @@ classDiagram
         +intake deterministic asset codes
         +skip existing assets on rerun
         +optional preview automation after materialization
+    }
+
+    class ProductionOrderService {
+        +create_order(order,...)
+        +run_order(order_id,...)
+        +create_and_run_order(order,...)
+        +get_order(order_id)
+        +list_orders(...)
+        +persist control-plane orchestration truth
     }
 
     class ReviewGateEvaluator {
@@ -204,6 +214,22 @@ classDiagram
         +last_retry_at
         +last_failure_at
         +last_success_at
+    }
+
+    class ProductionOrder {
+        +order_code
+        +batch_code
+        +source_mode
+        +status
+    }
+
+    class ProductionOrderStage {
+        +stage_name
+        +stage_scope
+        +status
+        +job_id
+        +recipe_id
+        +output_id
     }
 
     class MigrationGuard {

@@ -9,7 +9,6 @@ This Markdown board is the SSOT Kanban for the repository.
 
 ## Ready
 
-- `IR-19` persisted production-order and shared job-state orchestration baseline
 - `IR-20` queue lease, worker heartbeat, and retry-policy baseline
 
 ## In Progress
@@ -74,6 +73,7 @@ This Markdown board is the SSOT Kanban for the repository.
 - final render composition parity
 - recipe builder window and view model
 - `IR-18` enterprise factory pipeline review and architecture blueprint
+- `IR-19` persisted production-order and shared job-state orchestration baseline
 
 ## Board Policy
 

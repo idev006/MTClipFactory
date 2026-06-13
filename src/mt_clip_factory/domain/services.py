@@ -10,6 +10,12 @@ from mt_clip_factory.domain.decision_events import DecisionEvent
 from mt_clip_factory.domain.entities import Product, ProductSummary
 from mt_clip_factory.domain.jobs import Job, JobSummary
 from mt_clip_factory.domain.outputs import Output, OutputSummary
+from mt_clip_factory.domain.production_orders import (
+    ProductionOrder,
+    ProductionOrderItem,
+    ProductionOrderStage,
+    ProductionOrderSummary,
+)
 from mt_clip_factory.domain.recipes import Recipe, RecipeItem, RecipeSummary
 from mt_clip_factory.domain.render_decisions import RenderDecision
 from mt_clip_factory.domain.tags import Tag, TagSummary
@@ -197,6 +203,45 @@ class TimelineSegmentRepository(Protocol):
         ...
 
 
+class ProductionOrderRepository(Protocol):
+    def add(self, order: ProductionOrder) -> ProductionOrder:
+        ...
+
+    def get_by_id(self, production_order_id: int) -> ProductionOrder | None:
+        ...
+
+    def get_by_code(self, order_code: str) -> ProductionOrder | None:
+        ...
+
+    def update(self, order: ProductionOrder) -> ProductionOrder:
+        ...
+
+    def list_summaries(self, *, status: str | None = None) -> Sequence[ProductionOrderSummary]:
+        ...
+
+    def add_item(self, item: ProductionOrderItem) -> ProductionOrderItem:
+        ...
+
+    def list_items(self, production_order_id: int) -> Sequence[ProductionOrderItem]:
+        ...
+
+
+class ProductionOrderStageRepository(Protocol):
+    def add(self, stage: ProductionOrderStage) -> ProductionOrderStage:
+        ...
+
+    def update(self, stage: ProductionOrderStage) -> ProductionOrderStage:
+        ...
+
+    def list_by_order(
+        self,
+        production_order_id: int,
+        *,
+        stage_name: str | None = None,
+    ) -> Sequence[ProductionOrderStage]:
+        ...
+
+
 class UnitOfWork(AbstractContextManager["UnitOfWork"], Protocol):
     products: ProductRepository
     assets: AssetRepository
@@ -208,6 +253,8 @@ class UnitOfWork(AbstractContextManager["UnitOfWork"], Protocol):
     composition_plans: CompositionPlanRepository
     render_decisions: RenderDecisionRepository
     timeline_segments: TimelineSegmentRepository
+    production_orders: ProductionOrderRepository
+    production_order_stages: ProductionOrderStageRepository
 
     def commit(self) -> None:
         ...

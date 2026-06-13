@@ -62,6 +62,7 @@
 - The auto-factory baseline can now also read product folders with `product.toml` and `pipeline.toml`, create missing products, ingest deterministic asset codes, and materialize internal recipes from one batch root.
 - The auto-factory baseline can now also run preview jobs automatically for those materialized internal recipes and report per-recipe success, failure, output path, and resulting review state.
 - An enterprise pipeline review and architecture blueprint now exist so the project can grow into a true Video Production Factory instead of accumulating disconnected automation slices.
+- Production orders and orchestration stages are now persisted independently from recipe rows, giving the system a first real control-plane baseline for automated factory runs.
 - The first controlled operator/UAT run has now completed end to end and produced a real final output from the current workspace.
 - A second controlled operator/UAT run has now validated runtime voice/music mixing, richer visual coverage, and a no-review-gate path on a stronger recipe.
 - The roadmap is now split into strategic and implementation layers, and the current mandatory implementation slice is complete.
@@ -101,14 +102,15 @@
 - the second auto-factory delivery slice now turns folder contracts into product creation, asset intake, and batch recipe materialization without duplicating already-ingested deterministic asset codes
 - the third auto-factory delivery slice now turns materialized batches into real preview outputs with per-recipe batch reporting, while still stopping before output approval, recipe approval, or final render
 - the latest architecture loop now locks the four-plane factory vocabulary: `Control Plane`, `Execution Plane`, `State Plane`, and `Operator Plane`
+- the latest implementation loop now persists control-plane `materialize`, `preview`, and `review` stage truth through dedicated production-order tables and service orchestration
 
 ## Still Open
 
 1. run broader controlled operator use on real campaign media and capture operator notes without service-side intervention
-2. implement first-class `Production Order` and shared job-state orchestration before distributed worker execution begins
+2. implement worker lease, heartbeat, and retry-policy semantics on top of the new control-plane baseline
 3. extend the new auto-preview factory baseline into controlled final-render automation only after operators accept the current planner and review-gate truth
 
 ## Verification Baseline
 
-- `python -m pytest` in `.venv`: `165 passed`
+- `python -m pytest` in `.venv`: `170 passed`
 - `QT_QPA_PLATFORM=offscreen` UI smoke: `6` main windows instantiated

@@ -44,6 +44,7 @@ Compose prepared assets into reviewable preview and later final-output workflows
 
 - recipe creation
 - recipe item assignment
+- production-order persistence and control-plane orchestration
 - production-order batch planning
 - internal recipe generation for automated factory runs
 - folder-contract driven intake orchestration for automated factory runs
@@ -88,6 +89,7 @@ Compose prepared assets into reviewable preview and later final-output workflows
 - decision-event history
 - review-gate evidence carried in manifests and output summaries
 - recipe-level `recipe_score` and `duplicate_risk`
+- production-order and orchestration-stage records for automated factory runs
 
 ## Shared Core
 

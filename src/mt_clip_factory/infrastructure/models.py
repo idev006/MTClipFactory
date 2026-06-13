@@ -192,3 +192,54 @@ class TimelineSegmentModel(Base):
     text_rule: Mapped[str | None] = mapped_column(String(128), nullable=True)
     audio_policy: Mapped[str | None] = mapped_column(String(128), nullable=True)
     created_at: Mapped[datetime] = mapped_column(DateTime, nullable=False, default=func.now())
+
+
+class ProductionOrderModel(Base):
+    __tablename__ = "production_orders"
+
+    id: Mapped[int] = mapped_column(Integer, primary_key=True, autoincrement=True)
+    order_code: Mapped[str] = mapped_column(String(128), unique=True, nullable=False)
+    batch_code: Mapped[str] = mapped_column(String(128), nullable=False)
+    source_mode: Mapped[str] = mapped_column(String(64), nullable=False)
+    requested_by: Mapped[str | None] = mapped_column(String(255), nullable=True)
+    strict_fulfillment: Mapped[bool] = mapped_column(Boolean, nullable=False, default=True)
+    status: Mapped[str] = mapped_column(String(32), nullable=False, default="queued")
+    created_at: Mapped[datetime] = mapped_column(DateTime, nullable=False, default=func.now())
+    started_at: Mapped[datetime | None] = mapped_column(DateTime, nullable=True)
+    finished_at: Mapped[datetime | None] = mapped_column(DateTime, nullable=True)
+
+
+class ProductionOrderItemModel(Base):
+    __tablename__ = "production_order_items"
+
+    id: Mapped[int] = mapped_column(Integer, primary_key=True, autoincrement=True)
+    production_order_id: Mapped[int] = mapped_column(ForeignKey("production_orders.id"), nullable=False)
+    product_id: Mapped[int] = mapped_column(ForeignKey("products.id"), nullable=False)
+    product_code_snapshot: Mapped[str] = mapped_column(String(128), nullable=False)
+    requested_output_count: Mapped[int] = mapped_column(Integer, nullable=False)
+    target_platform: Mapped[str | None] = mapped_column(String(64), nullable=True)
+    target_ratio: Mapped[str | None] = mapped_column(String(16), nullable=True)
+    uniqueness_scope: Mapped[str] = mapped_column(String(32), nullable=False, default="batch")
+    duration_mode: Mapped[str] = mapped_column(String(64), nullable=False, default="voice_with_bounds")
+    fixed_duration_sec: Mapped[float | None] = mapped_column(Float, nullable=True)
+    min_duration_sec: Mapped[float] = mapped_column(Float, nullable=False, default=12.0)
+    max_duration_sec: Mapped[float] = mapped_column(Float, nullable=False, default=30.0)
+
+
+class ProductionOrderStageModel(Base):
+    __tablename__ = "production_order_stages"
+
+    id: Mapped[int] = mapped_column(Integer, primary_key=True, autoincrement=True)
+    production_order_id: Mapped[int] = mapped_column(ForeignKey("production_orders.id"), nullable=False)
+    production_order_item_id: Mapped[int | None] = mapped_column(ForeignKey("production_order_items.id"), nullable=True)
+    stage_name: Mapped[str] = mapped_column(String(64), nullable=False)
+    stage_scope: Mapped[str] = mapped_column(String(32), nullable=False)
+    status: Mapped[str] = mapped_column(String(32), nullable=False)
+    sequence_index: Mapped[int] = mapped_column(Integer, nullable=False)
+    job_id: Mapped[int | None] = mapped_column(ForeignKey("jobs.id"), nullable=True)
+    recipe_id: Mapped[int | None] = mapped_column(ForeignKey("recipes.id"), nullable=True)
+    output_id: Mapped[int | None] = mapped_column(ForeignKey("outputs.id"), nullable=True)
+    failure_class: Mapped[str | None] = mapped_column(String(64), nullable=True)
+    detail_json: Mapped[str | None] = mapped_column(Text, nullable=True)
+    created_at: Mapped[datetime] = mapped_column(DateTime, nullable=False, default=func.now())
+    updated_at: Mapped[datetime] = mapped_column(DateTime, nullable=False, default=func.now(), onupdate=func.now())

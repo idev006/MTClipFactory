@@ -11,6 +11,7 @@ from mt_clip_factory.control_center.services import DashboardService, SystemSett
 from mt_clip_factory.factory.auto_factory import AutoFactoryBatchService
 from mt_clip_factory.factory.auto_factory_folder import AutoFactoryFolderService
 from mt_clip_factory.factory.preview_artifacts import PreviewManifestBuilder
+from mt_clip_factory.factory.production_order_service import ProductionOrderService
 from mt_clip_factory.factory.renderers import FFmpegPreviewRenderer
 from mt_clip_factory.factory.services import VideoAssemblyFactoryService
 from mt_clip_factory.infrastructure.decision_event_repositories import SqlAlchemyDecisionEventRepository
@@ -121,6 +122,10 @@ def build_resource_library_module(
         asset_intake_service=asset_intake_service,
         auto_factory_service=auto_factory_service,
     )
+    production_order_service = ProductionOrderService(
+        unit_of_work_factory=uow_factory,
+        auto_factory_service=auto_factory_service,
+    )
     tag_management_service = TagManagementService(unit_of_work_factory=uow_factory)
     dashboard_service = DashboardService(
         config=config,
@@ -143,6 +148,7 @@ def build_resource_library_module(
         dashboard_service=dashboard_service,
         auto_factory_service=auto_factory_service,
         auto_factory_folder_service=auto_factory_folder_service,
+        production_order_service=production_order_service,
     )
 
 
