@@ -51,6 +51,7 @@ class FakeAssetIntakeService:
 class FakeTagManagementService:
     def __init__(self) -> None:
         self.tags: list[TagSummaryDTO] = []
+        self.assigned_pairs: list[tuple[int, int]] = []
 
     def create_tag(self, command) -> int:
         if not command.tag_name.strip():
@@ -72,6 +73,7 @@ class FakeTagManagementService:
     def assign_tag_to_asset(self, command) -> None:
         if command.asset_id <= 0:
             raise ValueError("invalid asset")
+        self.assigned_pairs.append((command.asset_id, command.tag_id))
 
 
 def test_tag_dictionary_view_model_loads_tags_and_assets() -> None:
@@ -83,6 +85,7 @@ def test_tag_dictionary_view_model_loads_tags_and_assets() -> None:
     assert len(view_model.assets) == 2
     assert view_model.selected_asset is not None
     assert view_model.selected_asset.asset_code == "hero_asset"
+    assert view_model.selected_asset_count == 1
     assert view_model.asset_filter_product_options == ["honey", "tea"]
     assert view_model.asset_filter_type_options == ["background_video", "foreground_video"]
     assert view_model.tags == []
@@ -133,3 +136,44 @@ def test_tag_dictionary_view_model_can_filter_tags_and_select_asset() -> None:
     assert [tag.tag_name for tag in view_model.tags] == ["proof"]
     assert view_model.selected_asset is not None
     assert view_model.selected_asset.asset_code == "proof_asset"
+
+
+def test_tag_dictionary_view_model_can_bulk_assign_existing_tag_to_selected_assets() -> None:
+    tag_service = FakeTagManagementService()
+    view_model = TagDictionaryViewModel(tag_service, FakeAssetIntakeService())
+    view_model.create_tag(tag_name="Proof", tag_group="Message")
+    view_model.load()
+
+    view_model.select_assets([1, 2])
+    view_model.assign_tag_to_selected_assets(tag_id=1)
+
+    assert tag_service.assigned_pairs == [(1, 1), (2, 1)]
+    assert view_model.status == "ready"
+    assert view_model.selected_asset is not None
+    assert view_model.selected_asset_count == 2
+    assert "Assigned tag #1 to 2 asset(s)" in view_model.feedback
+
+
+def test_tag_dictionary_view_model_can_create_and_bulk_assign_tag() -> None:
+    tag_service = FakeTagManagementService()
+    view_model = TagDictionaryViewModel(tag_service, FakeAssetIntakeService())
+    view_model.load()
+
+    tag_id = view_model.create_tag_and_assign_to_selected_assets(tag_name="Warm", tag_group="Mood")
+
+    assert tag_id == 1
+    assert tag_service.assigned_pairs == [(1, 1)]
+    assert view_model.selected_asset is not None
+    assert view_model.selected_asset.asset_code == "hero_asset"
+
+
+def test_tag_dictionary_view_model_preserves_selected_assets_through_filters() -> None:
+    view_model = TagDictionaryViewModel(FakeTagManagementService(), FakeAssetIntakeService())
+    view_model.load()
+    view_model.select_assets([1, 2])
+
+    view_model.apply_asset_filters(product_code="tea")
+
+    assert [asset.asset_id for asset in view_model.selected_assets] == [2]
+    assert view_model.selected_asset is not None
+    assert view_model.selected_asset.asset_id == 2

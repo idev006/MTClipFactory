@@ -2,9 +2,9 @@
 
 ## Project Manager Snapshot
 
-- Report date: 2026-06-13
+- Report date: 2026-06-14
 - Overall status: In Progress
-- Current phase: Phase 6, production-order plus auto-factory desktop control baseline delivered; worker-lease and distributed execution still pending
+- Current phase: Phase 6, production-order plus operator-friendly auto-factory and bulk-tagging baselines delivered; worker-lease and distributed execution still pending
 - Delivery mode: document-led SSOT with code and tests kept in sync
 
 ## What Is Done
@@ -65,6 +65,7 @@
 - auto-factory planning can now also consume explicit asset tag requirements from `pipeline.toml`, so tagged assets can influence which ready media enters automated recipe generation
 - the `Tags` screen now shows current asset tag labels and supports `Asset Type` filtering so operators can prepare automation-relevant tags more safely
 - the `Tags` screen now also follows an asset-first workflow so operators can select one asset, inspect its current tags, search existing tags, and create-and-attach new tags from one focused loop
+- the `Tags` screen now also supports bulk asset tagging so one existing or newly created tag can be applied across a selected asset set while one primary selected asset remains visible for review
 - assets can now be safely renamed or deleted from the `Assets` screen, with repository checks that block deletion when recipe-item or artifact-job references still exist
 - the `Assets` screen now supports `Show References`, `Retire Selected`, and `Purge Media` so referenced assets can leave active use and disk without destroying audit truth
 - the `Assets` screen now also supports `Replace In Recipes...` with recipe-safe validation, recipe reset-to-candidate behavior, and approval guards that prevent stale pre-replacement outputs from being reused as evidence for changed recipes
@@ -97,7 +98,7 @@
 
 ## Verification Baseline
 
-- `python -m pytest` via `.venv`: `179 passed, 4 warnings`
+- `python -m pytest` via `.venv`: `186 passed, 4 warnings`
 - targeted `QT_QPA_PLATFORM=offscreen` UI coverage for the new `Auto Factory` window and existing themed windows: passed
 
 ## Current Focus
@@ -116,13 +117,14 @@
 - validate whether the new auto-preview batch orchestration stays truthful and useful before extending automation across the final-render approval boundary
 - validate whether the new `Auto Factory` desktop control surface is clear enough for operators without engineering assistance
 - validate whether the new tag-aware planner rules are expressive enough before adding richer weighted or role-specific selection logic
+- validate whether the new bulk asset tagging flow reduces repetitive operator work without causing accidental over-tagging
 - validate whether the new production-order orchestration model remains stable enough to carry future lease and multi-worker execution semantics
 - keep project documents truthful through per-milestone revision checkpoints
 
 ## Next Steps
 
 1. Implement worker lease, heartbeat, and retry-policy semantics on top of the new production-order orchestration baseline.
-2. Run broader controlled operator use on real campaign media, including the new `Auto Factory` screen, without service-side assistance.
+2. Run broader controlled operator use on real campaign media, including the new `Auto Factory` screen and bulk tagging flow, without service-side assistance.
 3. Extend the auto-factory baseline from automated preview production into controlled final-render automation only after operators accept the current planner, tag-aware selection flow, control-surface flow, and review-gate truth.
 4. Decide whether production-order orchestration should surface on the dashboard before multi-node execution begins.
 5. Clean the Alembic `path_separator=os` warning in a maintenance pass.
@@ -154,6 +156,7 @@
 - `IR-17` now adds automatic preview-job production from materialized auto-factory batches while keeping approval and final render human-gated
 - `IR-18` now locks the enterprise factory pipeline review plus architecture blueprint before scalable orchestration implementation begins
 - `IR-19` now persists production orders plus orchestration stages for `materialize`, `preview`, and `review` control-plane truth
+- `IR-25` now adds multi-select bulk asset tagging while preserving an asset-first operator review loop
 
 ## Ownership
 

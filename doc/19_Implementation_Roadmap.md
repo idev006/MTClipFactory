@@ -43,6 +43,7 @@ The project now uses two roadmap layers:
 - `IR-22` Auto Factory desktop control surface baseline: complete on 2026-06-13
 - `IR-23` Tag-aware auto-factory selection baseline: complete on 2026-06-13
 - `IR-24` Asset-first tagging workflow baseline: complete on 2026-06-13
+- `IR-25` Bulk asset tagging workflow baseline: complete on 2026-06-14
 
 ## Current Execution Stream
 
@@ -748,6 +749,33 @@ Make tag assignment feel natural for operators by centering the workflow on the 
 
 - delivered selected-asset state, available-tag filtering, and create-and-attach behavior in `TagDictionaryViewModel`
 - delivered an asset-first `Tag Dictionary` layout with asset list, selected asset details, available tags, and focused attach actions
+- covered the new workflow with pytest for both the view model and offscreen window contract
+
+## IR-25 | Bulk Asset Tagging Workflow Baseline
+
+### Goal
+
+Reduce repetitive operator work by letting one tag assignment action target multiple selected assets while preserving an asset-first mental model.
+
+### Scope
+
+- persist selected-asset-set state inside `TagDictionaryViewModel`
+- keep one primary selected asset available for detail review
+- allow existing-tag attach across the selected asset set
+- allow `Create And Attach` across the selected asset set
+- keep the slice compatible with the current single-asset tag service seam
+
+### Acceptance Criteria
+
+- operators can multi-select assets and attach one existing or new tag across the whole selected set
+- the selected-asset panel still explains what the current primary asset is
+- selection survives reload and filter changes as much as possible without inventing hidden state
+- UI, docs, and pytest stay aligned to the bulk asset tagging interaction model
+
+### Delivery Result
+
+- delivered selected-asset-set state and bulk tag assignment helpers in `TagDictionaryViewModel`
+- delivered multi-select tagging controls in the `Tag Dictionary` desktop screen while preserving one primary selected-asset detail panel
 - covered the new workflow with pytest for both the view model and offscreen window contract
 
 ## Cross-Milestone Rules

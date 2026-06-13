@@ -301,14 +301,15 @@ classDiagram
 
     class TagDictionaryWindow {
         +create_tag()
-        +create and attach to selected asset
-        +assign_tag()
+        +create and attach to selected assets
+        +assign_tag_to_selected_assets()
         +apply_asset_filters()
         +apply_tag_filters()
-        +select_asset(asset_id)
+        +select_assets(asset_ids)
         +filter by asset type
         +show current asset tag labels
-        +show selected asset details
+        +show primary selected asset details
+        +show selected asset count
         +reuse existing tag-group suggestions
     }
 
@@ -663,6 +664,36 @@ sequenceDiagram
         VM->>TagSvc: assign_tag_to_asset(...)
     end
     VM-->>View: refreshed state + feedback
+```
+
+## Bulk Asset Tagging Sequence
+
+```mermaid
+sequenceDiagram
+    actor Operator
+    participant View as TagDictionaryWindow
+    participant VM as TagDictionaryViewModel
+    participant TagSvc as TagManagementService
+    participant AssetSvc as AssetIntakeService
+
+    Operator->>View: filter assets and multi-select related assets
+    View->>VM: select_assets(asset_ids)
+    VM-->>View: selected count + primary selected asset details
+    Operator->>View: choose existing tag or create new tag
+    alt existing tag
+        View->>VM: assign_tag_to_selected_assets(tag_id)
+        loop each selected asset
+            VM->>TagSvc: assign_tag_to_asset(...)
+        end
+    else create and attach
+        View->>VM: create_tag_and_assign_to_selected_assets(...)
+        VM->>TagSvc: create_tag(...)
+        loop each selected asset
+            VM->>TagSvc: assign_tag_to_asset(...)
+        end
+    end
+    VM->>AssetSvc: list_assets()
+    VM-->>View: refreshed assets + preserved selection + feedback
 ```
 
 ## Tag-Aware Auto Factory Planner Sequence

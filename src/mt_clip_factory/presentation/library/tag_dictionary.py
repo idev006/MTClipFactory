@@ -24,6 +24,7 @@ class TagDictionaryViewModel(QObject):
         self._all_assets: list[AssetSummaryDTO] = []
         self._assets: list[AssetSummaryDTO] = []
         self._selected_asset_id: int | None = None
+        self._selected_asset_ids: list[int] = []
         self._status = "idle"
         self._feedback = ""
         self._asset_filter_product_code: str | None = None
@@ -74,6 +75,15 @@ class TagDictionaryViewModel(QObject):
         return None
 
     @property
+    def selected_assets(self) -> list[AssetSummaryDTO]:
+        asset_ids = set(self._selected_asset_ids)
+        return [asset for asset in self._all_assets if asset.asset_id in asset_ids]
+
+    @property
+    def selected_asset_count(self) -> int:
+        return len(self._selected_asset_ids)
+
+    @property
     def tag_group_suggestions(self) -> list[str]:
         return sorted({tag.tag_group for tag in self._tags})
 
@@ -96,7 +106,12 @@ class TagDictionaryViewModel(QObject):
         self._filtered_tags = self._filter_tags(self._tags)
         self._all_assets = self._asset_intake_service.list_assets()
         self._assets = self._filter_assets(self._all_assets)
-        self._selected_asset_id = _resolve_selected_asset_id(self._selected_asset_id, self._all_assets)
+        self._selected_asset_ids = _resolve_selected_asset_ids(self._selected_asset_ids, self._assets, allow_default=True)
+        self._selected_asset_id = _resolve_primary_selected_asset_id(
+            self._selected_asset_id,
+            self._selected_asset_ids,
+            self._assets,
+        )
         self.tags_changed.emit()
         self.assets_changed.emit()
         self.selected_asset_changed.emit()
@@ -124,11 +139,24 @@ class TagDictionaryViewModel(QObject):
         tag_group: str,
         description: str | None = None,
     ) -> int:
+        return self.create_tag_and_assign_to_selected_assets(
+            tag_name=tag_name,
+            tag_group=tag_group,
+            description=description,
+        )
+
+    def create_tag_and_assign_to_selected_assets(
+        self,
+        *,
+        tag_name: str,
+        tag_group: str,
+        description: str | None = None,
+    ) -> int:
         selected_asset = self.selected_asset
         if selected_asset is None:
-            raise ValueError("Select one asset before creating and attaching a tag.")
+            raise ValueError("Select at least one asset before creating and attaching a tag.")
         tag_id = self.create_tag(tag_name=tag_name, tag_group=tag_group, description=description)
-        self.assign_tag_to_asset(asset_id=selected_asset.asset_id, tag_id=tag_id)
+        self.assign_tag_to_selected_assets(tag_id=tag_id)
         return tag_id
 
     def apply_asset_filters(
@@ -144,12 +172,17 @@ class TagDictionaryViewModel(QObject):
         self._asset_filter_asset_type = _normalize_optional_filter(asset_type)
         self._asset_filter_search_text = (search_text or "").strip().casefold()
         self._assets = self._filter_assets(self._all_assets)
+        self._selected_asset_ids = _resolve_selected_asset_ids(self._selected_asset_ids, self._assets, allow_default=True)
+        self._selected_asset_id = _resolve_primary_selected_asset_id(
+            self._selected_asset_id,
+            self._selected_asset_ids,
+            self._assets,
+        )
         self.assets_changed.emit()
+        self.selected_asset_changed.emit()
         self._set_feedback(
             f"Showing {len(self._assets)} asset(s) after tag-assignment filters."
         )
-        self._selected_asset_id = _resolve_selected_asset_id(self._selected_asset_id, self._assets)
-        self.selected_asset_changed.emit()
         self._set_status("ready")
 
     def apply_tag_filters(
@@ -168,14 +201,22 @@ class TagDictionaryViewModel(QObject):
         self._set_status("ready")
 
     def select_asset(self, asset_id: int | None) -> None:
-        self._selected_asset_id = _resolve_selected_asset_id(asset_id, self._all_assets)
+        self.select_assets([] if asset_id is None else [asset_id])
+
+    def select_assets(self, asset_ids: list[int]) -> None:
+        self._selected_asset_ids = _resolve_selected_asset_ids(asset_ids, self._assets, allow_default=False)
+        self._selected_asset_id = _resolve_primary_selected_asset_id(
+            self._selected_asset_id,
+            self._selected_asset_ids,
+            self._assets,
+        )
         self.selected_asset_changed.emit()
         selected_asset = self.selected_asset
         if selected_asset is None:
-            self._set_feedback("No asset selected for tagging.")
+            self._set_feedback("No assets selected for tagging.")
         else:
             self._set_feedback(
-                f"Selected asset #{selected_asset.asset_id} {selected_asset.asset_code} with {len(selected_asset.tag_labels)} tag(s)."
+                f"Selected {len(self._selected_asset_ids)} asset(s); primary asset #{selected_asset.asset_id} {selected_asset.asset_code} has {len(selected_asset.tag_labels)} tag(s)."
             )
         self._set_status("ready")
 
@@ -194,10 +235,25 @@ class TagDictionaryViewModel(QObject):
         self.load()
 
     def assign_tag_to_selected_asset(self, *, tag_id: int) -> None:
-        selected_asset = self.selected_asset
-        if selected_asset is None:
-            raise ValueError("Select one asset before assigning a tag.")
-        self.assign_tag_to_asset(asset_id=selected_asset.asset_id, tag_id=tag_id)
+        self.assign_tag_to_selected_assets(tag_id=tag_id)
+
+    def assign_tag_to_selected_assets(self, *, tag_id: int) -> None:
+        selected_assets = self.selected_assets
+        if not selected_assets:
+            raise ValueError("Select at least one asset before assigning a tag.")
+        self._set_status("assigning")
+        try:
+            for asset in selected_assets:
+                self._tag_management_service.assign_tag_to_asset(
+                    AssignTagToAssetCommand(asset_id=asset.asset_id, tag_id=tag_id)
+                )
+        except ValueError as exc:
+            self._set_feedback(str(exc))
+            self._set_status("error")
+            raise
+
+        self._set_feedback(f"Assigned tag #{tag_id} to {len(selected_assets)} asset(s)")
+        self.load()
 
     def _filter_assets(self, assets: list[AssetSummaryDTO]) -> list[AssetSummaryDTO]:
         filtered: list[AssetSummaryDTO] = []
@@ -257,10 +313,30 @@ def _tag_matches_search(tag: TagSummaryDTO, search_text: str) -> bool:
     return search_text in haystack
 
 
-def _resolve_selected_asset_id(selected_asset_id: int | None, assets: list[AssetSummaryDTO]) -> int | None:
-    if not assets:
-        return None
+def _resolve_selected_asset_ids(
+    selected_asset_ids: list[int],
+    assets: list[AssetSummaryDTO],
+    *,
+    allow_default: bool,
+) -> list[int]:
     asset_ids = {asset.asset_id for asset in assets}
-    if selected_asset_id in asset_ids:
+    resolved = [asset_id for asset_id in selected_asset_ids if asset_id in asset_ids]
+    if resolved:
+        return resolved
+    if not allow_default:
+        return []
+    if not assets:
+        return []
+    return [assets[0].asset_id]
+
+
+def _resolve_primary_selected_asset_id(
+    selected_asset_id: int | None,
+    selected_asset_ids: list[int],
+    assets: list[AssetSummaryDTO],
+) -> int | None:
+    if not selected_asset_ids:
+        return None
+    if selected_asset_id in selected_asset_ids:
         return selected_asset_id
-    return assets[0].asset_id
+    return selected_asset_ids[0]

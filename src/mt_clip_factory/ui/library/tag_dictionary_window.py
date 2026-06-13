@@ -13,6 +13,7 @@ from PySide6.QtWidgets import (
     QMainWindow,
     QMessageBox,
     QPushButton,
+    QAbstractItemView,
     QTableWidget,
     QTableWidgetItem,
     QTextEdit,
@@ -88,7 +89,7 @@ class TagDictionaryWindow(QMainWindow):
 
         button_row = QHBoxLayout()
         self.create_tag_button = QPushButton("Create Tag")
-        self.create_and_attach_button = QPushButton("Create And Attach")
+        self.create_and_attach_button = QPushButton("Create And Attach To Selected Assets")
         self.apply_tag_filters_button = QPushButton("Apply Tag Filters")
         self.clear_tag_filters_button = QPushButton("Clear Tag Filters")
         self.refresh_button = QPushButton("Refresh")
@@ -164,7 +165,7 @@ class TagDictionaryWindow(QMainWindow):
         self.asset_table = QTableWidget(0, 6)
         self.asset_table.setHorizontalHeaderLabels(["ID", "Product", "Code", "Type", "Status", "Tags"])
         self.asset_table.setSelectionBehavior(QTableWidget.SelectRows)
-        self.asset_table.setSelectionMode(QTableWidget.SingleSelection)
+        self.asset_table.setSelectionMode(QAbstractItemView.ExtendedSelection)
         self.asset_table.setEditTriggers(QTableWidget.NoEditTriggers)
         self.asset_table.horizontalHeader().setStretchLastSection(True)
         self.asset_table.itemSelectionChanged.connect(self._select_asset_from_table)
@@ -173,18 +174,22 @@ class TagDictionaryWindow(QMainWindow):
         return group
 
     def _build_right_group(self) -> QGroupBox:
-        group = QGroupBox("Selected Asset")
+        group = QGroupBox("Selected Assets")
         layout = QVBoxLayout(group)
-        self.selected_asset_summary_label = QLabel("Select one asset to begin asset-first tagging.")
+        self.selected_asset_summary_label = QLabel("Select one or more assets to begin asset-first tagging.")
         self.selected_asset_summary_label.setWordWrap(True)
         self.selected_asset_summary_label.setAlignment(Qt.AlignTop | Qt.AlignLeft)
         layout.addWidget(self.selected_asset_summary_label)
+
+        self.selected_assets_count_label = QLabel("Selected Assets: 0")
+        self.selected_assets_count_label.setWordWrap(True)
+        layout.addWidget(self.selected_assets_count_label)
 
         self.selected_asset_tags_text = QTextEdit()
         self.selected_asset_tags_text.setReadOnly(True)
         layout.addWidget(self.selected_asset_tags_text)
 
-        self.assign_tag_button = QPushButton("Attach Selected Tag To Selected Asset")
+        self.assign_tag_button = QPushButton("Attach Selected Tag To Selected Assets")
         self.assign_tag_button.clicked.connect(self._assign_tag_to_selected_asset)
         layout.addWidget(self.assign_tag_button)
         layout.addStretch(1)
@@ -268,7 +273,7 @@ class TagDictionaryWindow(QMainWindow):
             ]
             for column_index, value in enumerate(values):
                 self.asset_table.setItem(row_index, column_index, QTableWidgetItem(value))
-            if selected_asset is not None and asset.asset_id == selected_asset.asset_id:
+            if asset.asset_id in {selected.asset_id for selected in self._view_model.selected_assets}:
                 self.asset_table.selectRow(row_index)
         self.asset_table.blockSignals(False)
 
@@ -342,26 +347,30 @@ class TagDictionaryWindow(QMainWindow):
         self._view_model.apply_tag_filters()
 
     def _select_asset_from_table(self) -> None:
-        selected_items = self.asset_table.selectedItems()
-        if not selected_items:
-            self._view_model.select_asset(None)
+        selected_ranges = self.asset_table.selectionModel().selectedRows()
+        if not selected_ranges:
+            self._view_model.select_assets([])
             return
-        asset_id_item = self.asset_table.item(selected_items[0].row(), 0)
-        if asset_id_item is None:
-            return
-        self._view_model.select_asset(int(asset_id_item.text()))
+        asset_ids: list[int] = []
+        for model_index in selected_ranges:
+            asset_id_item = self.asset_table.item(model_index.row(), 0)
+            if asset_id_item is not None:
+                asset_ids.append(int(asset_id_item.text()))
+        self._view_model.select_assets(asset_ids)
 
     def _refresh_selected_asset(self) -> None:
         selected_asset = self._view_model.selected_asset
         if selected_asset is None:
-            self.selected_asset_summary_label.setText("Select one asset to begin asset-first tagging.")
+            self.selected_asset_summary_label.setText("Select one or more assets to begin asset-first tagging.")
+            self.selected_assets_count_label.setText("Selected Assets: 0")
             self.selected_asset_tags_text.setPlainText("")
             return
 
+        self.selected_assets_count_label.setText(f"Selected Assets: {self._view_model.selected_asset_count}")
         self.selected_asset_summary_label.setText(
             "\n".join(
                 [
-                    f"Asset: {selected_asset.asset_code}",
+                    f"Primary Asset: {selected_asset.asset_code}",
                     f"Product: {selected_asset.product_code}",
                     f"Type: {selected_asset.asset_type}",
                     f"Status: {selected_asset.status}",

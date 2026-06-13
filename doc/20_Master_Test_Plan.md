@@ -40,6 +40,7 @@ It complements [07_Testing_Strategy.md](/F:/programming/python/MTClipFactory/doc
 - desktop `Auto Factory` control-surface workflow for root selection, scan depth, run mode, intake reporting, and recent-order inspection
 - tag-aware auto-factory asset-pool filtering from normalized asset labels
 - asset-first tagging workflow for selected-asset details, tag search, and create-and-attach behavior
+- bulk asset tagging workflow for multi-select assignment and primary selected-asset review
 - preview job flow
 - final render flow
 - target-ratio visual normalization across mixed source sizes
@@ -191,6 +192,8 @@ It complements [07_Testing_Strategy.md](/F:/programming/python/MTClipFactory/doc
 25. Confirm planner shortfalls caused by tag filters remain truthful and do not silently fall back to untagged visual assets.
 26. Confirm the `Tags` screen shows current asset tag labels and supports `Asset Type` filtering during assignment work.
 27. Confirm the `Tags` screen keeps a selected asset in focus and allows `Create And Attach` plus existing-tag attach from the same workflow.
+28. Confirm the `Tags` screen can multi-select assets and attach one existing tag across the selected asset set.
+29. Confirm `Create And Attach` can create one tag and apply it across the selected asset set while preserving one primary selected-asset detail panel.
 
 ### C. Review And Approval Flow
 

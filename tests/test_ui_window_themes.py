@@ -2,7 +2,7 @@ from __future__ import annotations
 
 import pytest
 from PySide6.QtCore import QObject, Qt, Signal
-from PySide6.QtWidgets import QApplication, QComboBox, QScrollArea, QSplitter
+from PySide6.QtWidgets import QApplication, QAbstractItemView, QComboBox, QScrollArea, QSplitter
 
 from mt_clip_factory.control_center.dto import SystemSettingsDTO
 from mt_clip_factory.factory.dto import CompositionPlanDTO, DecisionEventDTO, OutputSummaryDTO, RecipeItemDTO, TimelineSegmentDTO
@@ -95,6 +95,8 @@ class FakeTagDictionaryViewModel(QObject):
         self.tags = []
         self.assets = []
         self.selected_asset = None
+        self.selected_assets = []
+        self.selected_asset_count = 0
         self.feedback = ""
         self.status = "ready"
         self.tag_group_suggestions = []
@@ -121,11 +123,23 @@ class FakeTagDictionaryViewModel(QObject):
     def select_asset(self, asset_id: int | None) -> None:
         self.selected_asset_changed.emit()
 
+    def select_assets(self, asset_ids: list[int]) -> None:
+        self.selected_asset_changed.emit()
+
     def assign_tag_to_selected_asset(self, *, tag_id: int) -> None:
         self.feedback = f"assigned {tag_id}"
         self.feedback_changed.emit()
 
+    def assign_tag_to_selected_assets(self, *, tag_id: int) -> None:
+        self.feedback = f"assigned {tag_id}"
+        self.feedback_changed.emit()
+
     def create_tag_and_assign_to_selected_asset(self, *, tag_name: str, tag_group: str, description: str | None = None) -> int:
+        self.feedback = f"created and attached {tag_group}:{tag_name}"
+        self.feedback_changed.emit()
+        return 1
+
+    def create_tag_and_assign_to_selected_assets(self, *, tag_name: str, tag_group: str, description: str | None = None) -> int:
         self.feedback = f"created and attached {tag_group}:{tag_name}"
         self.feedback_changed.emit()
         return 1
@@ -243,8 +257,9 @@ def test_tag_dictionary_window_uses_guided_filter_controls(qapp: QApplication) -
     assert "Automation can consume normalized tag labels" in tag_window.automation_hint_label.text()
     assert tag_window.apply_filters_button.text() == "Apply Filters"
     assert tag_window.clear_filters_button.text() == "Clear Filters"
-    assert tag_window.create_and_attach_button.text() == "Create And Attach"
-    assert tag_window.assign_tag_button.text().startswith("Attach Selected Tag")
+    assert tag_window.create_and_attach_button.text() == "Create And Attach To Selected Assets"
+    assert tag_window.assign_tag_button.text() == "Attach Selected Tag To Selected Assets"
+    assert tag_window.asset_table.selectionMode() == QAbstractItemView.ExtendedSelection
     tag_window.close()
 
 

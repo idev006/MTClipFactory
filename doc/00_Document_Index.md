@@ -45,6 +45,7 @@ When code changes, the related Markdown documents in this folder must be updated
 37. [37_Auto_Factory_Control_Surface_Workflow_2026-06-13.md](/F:/programming/python/MTClipFactory/doc/37_Auto_Factory_Control_Surface_Workflow_2026-06-13.md)
 38. [38_Tag_Aware_Auto_Factory_Selection_Workflow_2026-06-13.md](/F:/programming/python/MTClipFactory/doc/38_Tag_Aware_Auto_Factory_Selection_Workflow_2026-06-13.md)
 39. [39_Asset_First_Tagging_Workflow_2026-06-13.md](/F:/programming/python/MTClipFactory/doc/39_Asset_First_Tagging_Workflow_2026-06-13.md)
+40. [40_Bulk_Asset_Tagging_Workflow_2026-06-14.md](/F:/programming/python/MTClipFactory/doc/40_Bulk_Asset_Tagging_Workflow_2026-06-14.md)
 
 ## Governance
 
