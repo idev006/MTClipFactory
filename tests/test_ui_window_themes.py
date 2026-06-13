@@ -7,6 +7,7 @@ from PySide6.QtWidgets import QApplication, QComboBox, QScrollArea, QSplitter
 from mt_clip_factory.control_center.dto import SystemSettingsDTO
 from mt_clip_factory.factory.dto import CompositionPlanDTO, DecisionEventDTO, OutputSummaryDTO, RecipeItemDTO, TimelineSegmentDTO
 from mt_clip_factory.ui.control_center.dashboard_window import DashboardWindow
+from mt_clip_factory.ui.factory.auto_factory_control_window import AutoFactoryControlWindow
 from mt_clip_factory.ui.factory.recipe_builder_window import RecipeBuilderWindow
 from mt_clip_factory.ui.library.asset_library_window import AssetLibraryWindow
 from mt_clip_factory.ui.library.product_library_window import ProductLibraryWindow
@@ -150,21 +151,57 @@ class FakeRecipeBuilderViewModel(QObject):
         return None
 
 
+class FakeAutoFactoryControlViewModel(QObject):
+    recent_orders_changed = Signal()
+    run_report_changed = Signal()
+    selected_order_changed = Signal()
+    feedback_changed = Signal()
+    status_changed = Signal()
+
+    RUN_MODE_INTAKE_ONLY = "intake_only"
+    RUN_MODE_MATERIALIZE = "materialize"
+    RUN_MODE_MATERIALIZE_AND_PREVIEWS = "materialize_and_build_previews"
+
+    def __init__(self) -> None:
+        super().__init__()
+        self.recent_orders = []
+        self.run_report = None
+        self.selected_order = None
+        self.feedback = ""
+        self.status = "ready"
+
+    def load(self) -> None:
+        self.recent_orders_changed.emit()
+        self.run_report_changed.emit()
+        self.selected_order_changed.emit()
+        self.feedback_changed.emit()
+        self.status_changed.emit()
+
+    def run_batch_root(self, **kwargs) -> None:  # noqa: ANN003
+        self.feedback = "ran"
+        self.feedback_changed.emit()
+
+    def select_order(self, production_order_id: int | None) -> None:
+        self.selected_order_changed.emit()
+
+
 def test_primary_windows_apply_app_theme(qapp: QApplication) -> None:
     dashboard_window = DashboardWindow(
         FakeDashboardViewModel(),
         open_products=lambda: None,
         open_assets=lambda: None,
         open_recipes=lambda: None,
+        open_auto_factory=lambda: None,
         open_tags=lambda: None,
         open_settings=lambda: None,
     )
     product_window = ProductLibraryWindow(FakeProductLibraryViewModel())
     asset_window = AssetLibraryWindow(FakeAssetLibraryViewModel())
     tag_window = TagDictionaryWindow(FakeTagDictionaryViewModel())
+    auto_factory_window = AutoFactoryControlWindow(FakeAutoFactoryControlViewModel())
     recipe_window = RecipeBuilderWindow(FakeRecipeBuilderViewModel())
 
-    for window in (dashboard_window, product_window, asset_window, tag_window, recipe_window):
+    for window in (dashboard_window, product_window, asset_window, tag_window, auto_factory_window, recipe_window):
         assert "QMainWindow" in window.styleSheet()
         assert "QPushButton" in window.styleSheet()
         window.close()
@@ -181,6 +218,19 @@ def test_tag_dictionary_window_uses_guided_filter_controls(qapp: QApplication) -
     assert tag_window.apply_filters_button.text() == "Apply Filters"
     assert tag_window.clear_filters_button.text() == "Clear Filters"
     tag_window.close()
+
+
+def test_auto_factory_window_exposes_guided_run_controls(qapp: QApplication) -> None:
+    auto_factory_window = AutoFactoryControlWindow(FakeAutoFactoryControlViewModel())
+
+    assert isinstance(auto_factory_window.run_mode_combo, QComboBox)
+    assert auto_factory_window.run_mode_combo.itemText(0) == "Intake Only"
+    assert auto_factory_window.run_mode_combo.itemText(2) == "Intake + Materialize + Build Previews"
+    assert auto_factory_window.scan_depth_input.minimum() == 0
+    assert auto_factory_window.browse_button.text() == "Browse..."
+    assert auto_factory_window.run_button.text() == "Run Auto Factory"
+    assert auto_factory_window.refresh_orders_button.text() == "Refresh Orders"
+    auto_factory_window.close()
 
 
 def test_asset_library_window_exposes_lifecycle_maintenance_controls(qapp: QApplication) -> None:

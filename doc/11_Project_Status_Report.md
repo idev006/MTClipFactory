@@ -4,7 +4,7 @@
 
 - Report date: 2026-06-13
 - Overall status: In Progress
-- Current phase: Phase 6, production-order and shared orchestration baseline delivered; worker-lease and distributed execution still pending
+- Current phase: Phase 6, production-order plus auto-factory desktop control baseline delivered; worker-lease and distributed execution still pending
 - Delivery mode: document-led SSOT with code and tests kept in sync
 
 ## What Is Done
@@ -60,6 +60,8 @@
 - Auto Factory can now also enqueue and run preview jobs automatically for a materialized batch, returning per-recipe result truth for job status, output path, output identity, and resulting review-gate state without auto-approving recipes or finals
 - enterprise pipeline review and enterprise architecture blueprint now exist as SSOT so the system can evolve from local automation slices into a true Video Production Factory operating model
 - production orders are now persisted independently from recipes, and control-plane orchestration stages now track `materialize`, `preview`, and `review` state across automated factory runs
+- a first desktop `Auto Factory` control surface now exists so operators can choose a root folder, set `scan_depth`, pick an explicit run mode, and review recent production-order truth without leaving the app
+- the `Auto Factory` screen now composes folder-intake truth with persisted `Production Order` execution, so materialize/preview runs stop bypassing the control-plane seam
 - assets can now be safely renamed or deleted from the `Assets` screen, with repository checks that block deletion when recipe-item or artifact-job references still exist
 - the `Assets` screen now supports `Show References`, `Retire Selected`, and `Purge Media` so referenced assets can leave active use and disk without destroying audit truth
 - the `Assets` screen now also supports `Replace In Recipes...` with recipe-safe validation, recipe reset-to-candidate behavior, and approval guards that prevent stale pre-replacement outputs from being reused as evidence for changed recipes
@@ -92,8 +94,8 @@
 
 ## Verification Baseline
 
-- `python -m pytest` via `.venv`: `170 passed`
-- UI smoke via `QT_QPA_PLATFORM=offscreen`: `6` windows instantiated successfully
+- `python -m pytest` via `.venv`: `179 passed, 4 warnings`
+- targeted `QT_QPA_PLATFORM=offscreen` UI coverage for the new `Auto Factory` window and existing themed windows: passed
 
 ## Current Focus
 
@@ -109,14 +111,15 @@
 - validate whether the new non-green key policy is clear enough for operators and whether per-asset overrides are needed after broader use
 - validate whether the new resizable Recipe Builder workspace reduces operator confusion during attach-versus-review work
 - validate whether the new auto-preview batch orchestration stays truthful and useful before extending automation across the final-render approval boundary
+- validate whether the new `Auto Factory` desktop control surface is clear enough for operators without engineering assistance
 - validate whether the new production-order orchestration model remains stable enough to carry future lease and multi-worker execution semantics
 - keep project documents truthful through per-milestone revision checkpoints
 
 ## Next Steps
 
 1. Implement worker lease, heartbeat, and retry-policy semantics on top of the new production-order orchestration baseline.
-2. Run broader controlled operator use on real campaign media without service-side assistance and record operator findings on both the asset-replacement and layered-compositing workflows.
-3. Extend the auto-factory baseline from automated preview production into controlled final-render automation only after operators accept the current planner and review-gate truth.
+2. Run broader controlled operator use on real campaign media, including the new `Auto Factory` screen, without service-side assistance.
+3. Extend the auto-factory baseline from automated preview production into controlled final-render automation only after operators accept the current planner, control-surface flow, and review-gate truth.
 4. Decide whether production-order orchestration should surface on the dashboard before multi-node execution begins.
 5. Clean the Alembic `path_separator=os` warning in a maintenance pass.
 

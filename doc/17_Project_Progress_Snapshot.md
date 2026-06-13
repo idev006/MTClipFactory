@@ -62,51 +62,20 @@
 - The auto-factory baseline can now also read product folders with `product.toml` and `pipeline.toml`, create missing products, ingest deterministic asset codes, and materialize internal recipes from one batch root.
 - The auto-factory folder baseline now also supports explicit root-folder scan depth so valid product folders can be discovered at root, child, or deeper nested levels deterministically.
 - The auto-factory baseline can now also run preview jobs automatically for those materialized internal recipes and report per-recipe success, failure, output path, and resulting review state.
+- A first desktop `Auto Factory` screen now exists so operators can browse to one root folder, set `scan_depth`, choose `Intake Only` versus materializing run modes, and inspect recent production-order status from inside the app.
+- The new desktop `Auto Factory` screen now composes `AutoFactoryFolderService` with `ProductionOrderService`, so any materialize/preview run records control-plane stage truth instead of hiding it behind direct service-only automation.
 - An enterprise pipeline review and architecture blueprint now exist so the project can grow into a true Video Production Factory instead of accumulating disconnected automation slices.
 - Production orders and orchestration stages are now persisted independently from recipe rows, giving the system a first real control-plane baseline for automated factory runs.
 - The `Tags` screen now provides guided group reuse plus product/status/search filtering so operators can narrow the asset list before assigning labels.
 - The first controlled operator/UAT run has now completed end to end and produced a real final output from the current workspace.
 - A second controlled operator/UAT run has now validated runtime voice/music mixing, richer visual coverage, and a no-review-gate path on a stronger recipe.
-- The roadmap is now split into strategic and implementation layers, and the current mandatory implementation slice is complete.
+- The roadmap is now split into strategic and implementation layers, and the next mandatory implementation slice remains `IR-20` worker lease, heartbeat, and retry semantics.
 
 ## Delivered In The Latest Loop
 
-- desktop app path-root changes now hot-reload by rebuilding the runtime service module and swapping live service proxies instead of waiting for a full restart
-- settings save now emits runtime hot-reload feedback, and dashboard/path summaries stay aligned to the newly active roots
-- pytest now covers pending hot-reload status, runtime module rebind, and settings-view-model hot-reload signaling
-- architecture, reliability, roadmap, Kanban, issues, lessons learned, and UML were aligned to the delivered `IR-14` baseline
-- settings UI now uses grouped panels and a two-column layout for clearer operator scanning
-- hybrid slider-plus-exact-entry settings controls are now covered by widget-level pytest checks
-- slider/editor width uniformity polish now keeps settings numeric controls visually aligned while preserving the hybrid control model
-- a reusable `ui.theme` seam now loads packaged QSS assets, and the settings window theme was extracted out of Python code
-- the broader desktop UI now shares one packaged app-window theme baseline, with focused window-level overrides reserved for justified differences
-- packaged app-window buttons now read more clearly as clickable controls instead of flat color blocks, while staying proportionate to the rest of the UI
-- a controlled operator rollout kickoff document now packages the go/no-go answer, first-run checklist, and first workflow for immediate use
-- Recipe Builder layout hardening now improves asset-panel scanability and reduces confusion about why only `ready` assets appear in the attach list
-- asset maintenance now covers selected-asset rename/delete behavior plus repository-safe blocking for in-use media
-- preview/final render hardening now applies recipe-target frame normalization to mixed-ratio visual clips
-- audit hardening now confirms pre-existing high-value config settings survive settings load/save without silent clamp
-- audit hardening now also confirms exact numeric entry can push values beyond default slider spans without losing persistence truth
-- full-system release audit now re-executes factory happy path, recovery/escalation flow, and runtime hot reload through a dedicated scripted audit runner
-- operator-facing user manual is now published as SSOT document `27` for controlled rollout and UAT use
-- first controlled operator/UAT execution now confirms a real `9:16` preview/final output can be produced successfully from the current workspace baseline
-- second controlled operator/UAT execution now confirms manifest-backed audio mixing, ducking, and five-segment richer-media composition on the same baseline
-- render configuration now also supports UI-managed exact preview/final frame sizing with `.toml` persistence instead of a fixed code-only normalization ceiling
-- the asset-lifecycle SSOT now separates hard delete from retire/purge behavior so referenced assets can be cleaned up safely
-- corrective asset replacement now rewires affected recipe items onto a chosen ready replacement asset, resets those recipes for rebuild, and blocks stale pre-replacement outputs from being re-approved
-- Recipe Builder output surfaces now expose replacement aftercare guidance plus per-output historical/current state so the rebuild flow can be followed without database inspection
-- preview/final rendering now also writes manifest-visible visual composite evidence for stacked background-plus-foreground segments, including keyed green-screen overlays
-- the real `r0003` sample now rebuilds to a presenter-over-background result instead of exposing raw green-screen output, and its review-gate evidence clears at `distinct_visual_assets = 2`
-- operators can now steer compositing toward `auto`, `green`, `blue`, `magenta`, `custom`, or `disabled` key-color behavior from Settings instead of living with a green-only baseline
-- Recipe Builder now groups workflow into resizable setup, inventory, and review panes instead of keeping every surface trapped in one fixed grid
-- Recipe Builder overflow hardening now keeps each major table vertically scrollable when row counts exceed panel height
-- the first auto-factory delivery slice now plans batch-unique output variants per product and can create the internal recipes needed for later automated preview/final runs
-- the second auto-factory delivery slice now turns folder contracts into product creation, asset intake, and batch recipe materialization without duplicating already-ingested deterministic asset codes
-- the third auto-factory delivery slice now turns materialized batches into real preview outputs with per-recipe batch reporting, while still stopping before output approval, recipe approval, or final render
-- the latest architecture loop now locks the four-plane factory vocabulary: `Control Plane`, `Execution Plane`, `State Plane`, and `Operator Plane`
-- the latest implementation loop now persists control-plane `materialize`, `preview`, and `review` stage truth through dedicated production-order tables and service orchestration
-- folder-driven automation now supports reviewed `scan_depth` discovery semantics so one selected root can intentionally include root-only, child-level, or deeper nested product folders
-- tag assignment ergonomics now support reusable tag-group suggestions plus filterable/searchable asset narrowing within the `Tags` screen itself
+- delivered a real desktop `Auto Factory` control surface with guided root-folder browse, batch-code override, `scan_depth`, and explicit run-mode selection
+- delivered truthful in-app reporting for discovered product folders, product create/reuse outcomes, deterministic asset intake actions, recent production orders, and stage-by-stage order results
+- delivered a UI orchestration seam that performs folder intake first and then routes materialize/preview runs through persisted `ProductionOrderService` control-plane records
 
 ## Still Open
 
@@ -116,5 +85,5 @@
 
 ## Verification Baseline
 
-- `python -m pytest` in `.venv`: `170 passed`
-- `QT_QPA_PLATFORM=offscreen` UI smoke: `6` main windows instantiated
+- `python -m pytest` in `.venv`: `179 passed, 4 warnings`
+- targeted `QT_QPA_PLATFORM=offscreen` UI/theme coverage for the new `Auto Factory` window and existing app windows: passed

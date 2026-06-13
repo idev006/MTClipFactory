@@ -8,6 +8,8 @@ The current implementation now also has a persisted control-plane seam through [
 
 Folder discovery depth and assisted tagging ergonomics for this workflow are extended in [36_Folder_Discovery_Depth_And_Assisted_Tagging_Workflow_2026-06-13.md](/F:/programming/python/MTClipFactory/doc/36_Folder_Discovery_Depth_And_Assisted_Tagging_Workflow_2026-06-13.md).
 
+The first desktop operator control surface for this workflow is now defined in [37_Auto_Factory_Control_Surface_Workflow_2026-06-13.md](/F:/programming/python/MTClipFactory/doc/37_Auto_Factory_Control_Surface_Workflow_2026-06-13.md).
+
 ## Purpose
 
 - let operators request output counts by product instead of building recipes one by one
@@ -273,7 +275,6 @@ Explicitly deferred again:
 - filesystem watcher loops
 - archive movement
 - preview/final auto-run
-- desktop UI for automation control
 
 ## Reviewed Third Implementation Slice
 
@@ -323,6 +324,21 @@ sequenceDiagram
 - folder-driven runs can now optionally continue from intake and materialization into preview production
 - approval and final render remain explicitly outside this automation slice
 
+## Reviewed Fourth Implementation Slice
+
+The reviewed fourth delivery slice should be:
+
+1. add a desktop `Auto Factory` window reachable from the dashboard
+2. let operators browse to one root folder, choose `scan_depth`, and pick an explicit run mode
+3. show truthful intake results in-screen instead of relying on service-only calls
+4. route materialize and preview modes through persisted `ProductionOrderService` records
+
+Explicitly deferred again:
+
+- scheduler or watcher driven execution
+- automatic final-render automation
+- review-by-exception queue management beyond current stage truth
+
 ## Folder Intake Sequence
 
 ```mermaid
@@ -368,3 +384,9 @@ Before coding, the plan was reviewed against the current architecture and the fo
 6. folder-driven automation should stay idempotent for repeated intake runs before watcher behavior is introduced
 7. preview automation may run automatically only up to the normal review gate; it must not silently cross the human approval boundary
 8. batch preview reporting must expose both success and failure per recipe so PM and operators can audit partial outcomes truthfully
+
+## Delivered Fourth Slice
+
+- a dedicated desktop `Auto Factory` control surface now exists with guided root-folder browse, batch-code override, `scan_depth`, and explicit run-mode selection
+- the screen now shows discovered product folders, product create/reuse outcomes, deterministic asset-intake actions, recent production orders, and selected order stages
+- materialize and preview runs now use the persisted `ProductionOrderService` seam after intake so operator automation stays aligned to control-plane truth

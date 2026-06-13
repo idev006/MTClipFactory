@@ -262,10 +262,20 @@ classDiagram
         +composition_plan
     }
 
+    class AutoFactoryControlViewModel {
+        +load()
+        +run_batch_root(...)
+        +select_order(production_order_id)
+        +recent_orders
+        +run_report
+        +selected_order
+    }
+
     class DashboardWindow {
         +open_products()
         +open_assets()
         +open_recipes()
+        +open_auto_factory()
         +open_tags()
         +open_settings()
     }
@@ -316,6 +326,13 @@ classDiagram
         +show output lineage details
         +show composition/render summaries
         +show review-gate evidence
+    }
+
+    class AutoFactoryControlWindow {
+        +browse root folder
+        +run auto factory
+        +select recent order
+        +show intake and order truth
     }
 
     class SqlAlchemyUnitOfWork {
@@ -405,13 +422,18 @@ classDiagram
     RecipeBuilderViewModel --> ProductApplicationService
     RecipeBuilderViewModel --> AssetIntakeService
     RecipeBuilderViewModel --> VideoAssemblyFactoryService
+    AutoFactoryControlViewModel --> AutoFactoryFolderService
+    AutoFactoryControlViewModel --> ProductionOrderService
     DashboardWindow --> RecipeBuilderWindow
+    DashboardWindow --> AutoFactoryControlWindow
     DashboardWindow --> SettingsWindow
     DashboardWindow --> UIThemeLoader
     ProductLibraryWindow --> UIThemeLoader
     AssetLibraryWindow --> UIThemeLoader
     TagDictionaryWindow --> UIThemeLoader
     RecipeBuilderWindow --> UIThemeLoader
+    AutoFactoryControlWindow --> AutoFactoryControlViewModel
+    AutoFactoryControlWindow --> UIThemeLoader
     SettingsWindow --> UIThemeLoader
     VideoAssemblyFactoryService --> PreviewManifestBuilder
     AutoFactoryBatchService --> ProductApplicationService
@@ -578,6 +600,29 @@ sequenceDiagram
         end
     end
     FolderSvc-->>Operator: discovered product folders
+```
+
+## Auto Factory Control Surface Sequence
+
+```mermaid
+sequenceDiagram
+    actor Operator
+    participant View as AutoFactoryControlWindow
+    participant VM as AutoFactoryControlViewModel
+    participant FolderSvc as AutoFactoryFolderService
+    participant OrderSvc as ProductionOrderService
+
+    Operator->>View: choose root folder, scan depth, run mode
+    View->>VM: run_batch_root(...)
+    VM->>FolderSvc: run_batch_root(..., materialize=False)
+    FolderSvc-->>VM: intake report + order DTO
+    alt intake only
+        VM-->>View: intake report + feedback
+    else materialize or previews
+        VM->>OrderSvc: create_and_run_order(order,...)
+        OrderSvc-->>VM: persisted order details + stages
+        VM-->>View: intake report + recent order truth
+    end
 ```
 
 ## Assisted Tagging Sequence

@@ -39,10 +39,14 @@ The project now uses two roadmap layers:
 - `IR-17` Auto Factory preview production baseline: complete on 2026-06-13
 - `IR-18` Enterprise factory pipeline review and architecture blueprint: complete on 2026-06-13
 - `IR-19` Production-order and shared job-state orchestration baseline: complete on 2026-06-13
+- `IR-21` Folder discovery depth and assisted tagging ergonomics: complete on 2026-06-13
+- `IR-22` Auto Factory desktop control surface baseline: complete on 2026-06-13
 
 ## Current Execution Stream
 
 The next mandatory implementation stream should build worker lease, heartbeat, and retry semantics on top of the new production-order control-plane baseline.
+
+The newly delivered auto-factory desktop control surface is intentionally additive and does not change the mandatory priority of `IR-20`.
 
 Backlog activation rules:
 
@@ -659,6 +663,35 @@ Make folder-driven automation easier to aim at real operator media trees while a
 - delivered deterministic root-level and nested product-folder discovery coverage in pytest, plus truthful failure for invalid negative depth input
 - delivered `TagDictionaryViewModel` asset filtering by product, status, and free-text search
 - delivered `TagDictionaryWindow` guided controls through an editable group combo box, filter combos, and search-assisted asset narrowing
+
+## IR-22 | Auto Factory Desktop Control Surface Baseline
+
+### Goal
+
+Give operators a real desktop control surface for folder-root automation without bypassing the new production-order control plane.
+
+### Scope
+
+- add a dedicated `Auto Factory` desktop window reachable from the dashboard
+- provide guided controls for root-folder browse, optional batch-code override, `scan_depth`, and explicit run mode
+- run folder discovery and deterministic intake first through `AutoFactoryFolderService`
+- route materialize and preview modes through `ProductionOrderService` so stage truth is persisted
+- surface recent production orders, selected order stages, and intake outcomes in-screen
+- cover the new view-model and window seams with pytest
+
+### Acceptance Criteria
+
+- operators can run folder intake from the desktop app without hidden scripts
+- materialize and preview modes create persisted production-order records instead of bypassing control-plane truth
+- the screen shows discovered folders, asset-intake actions, and order-stage outcomes clearly enough for operator review
+- roadmap, status, progress, UML, manual, and test-plan docs remain aligned to the delivered slice
+
+### Delivery Result
+
+- delivered `AutoFactoryControlViewModel` and `AutoFactoryControlWindow` as the first operator-facing automation control surface
+- delivered dashboard navigation into the new screen plus guided browse, depth, and run-mode controls
+- delivered a composed intake-then-order execution flow that keeps `Intake Only` available while routing materialize and preview runs through persisted `ProductionOrderService` records
+- covered the new operator-control seam with pytest for both the view model and offscreen window wiring
 
 ## Cross-Milestone Rules
 

@@ -4,6 +4,8 @@ This document is the SSOT for `IR-19`.
 
 It defines the first implementation seam that turns the enterprise factory blueprint into persisted control-plane state.
 
+The desktop operator bridge for using this seam from folder-driven automation is defined in [37_Auto_Factory_Control_Surface_Workflow_2026-06-13.md](/F:/programming/python/MTClipFactory/doc/37_Auto_Factory_Control_Surface_Workflow_2026-06-13.md).
+
 ## Purpose
 
 - persist `Production Order` independently from recipe rows
@@ -196,3 +198,4 @@ This plan was reviewed against the current codebase and the following decisions 
 - delivered `ProductionOrderService` for create, run, list, and inspect flows
 - mapped low-level preview outcomes into explicit control-plane `succeeded`, `failed_retryable`, `failed_terminal`, and `review_required` states
 - kept the baseline additive to existing job orchestration instead of rewriting every execution-plane status path
+- the service is now also consumed by the desktop `Auto Factory` screen after folder intake so operator-triggered materialize/preview runs persist stage truth instead of bypassing it

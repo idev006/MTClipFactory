@@ -74,6 +74,8 @@ This Markdown board is the SSOT Kanban for the repository.
 - recipe builder window and view model
 - `IR-18` enterprise factory pipeline review and architecture blueprint
 - `IR-19` persisted production-order and shared job-state orchestration baseline
+- `IR-21` folder discovery depth and assisted tagging ergonomics
+- `IR-22` auto-factory desktop control surface baseline
 
 ## Board Policy
 

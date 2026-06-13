@@ -28,6 +28,7 @@ class DashboardWindow(QMainWindow):
         open_products: Callable[[], None],
         open_assets: Callable[[], None],
         open_recipes: Callable[[], None],
+        open_auto_factory: Callable[[], None],
         open_tags: Callable[[], None],
         open_settings: Callable[[], None],
     ) -> None:
@@ -36,6 +37,7 @@ class DashboardWindow(QMainWindow):
         self._open_products = open_products
         self._open_assets = open_assets
         self._open_recipes = open_recipes
+        self._open_auto_factory = open_auto_factory
         self._open_tags = open_tags
         self._open_settings = open_settings
         self.setWindowTitle("MTClipFactory - Dashboard")
@@ -75,6 +77,7 @@ class DashboardWindow(QMainWindow):
         products_button = QPushButton("Products")
         assets_button = QPushButton("Assets")
         recipes_button = QPushButton("Recipes")
+        auto_factory_button = QPushButton("Auto Factory")
         tags_button = QPushButton("Tags")
         settings_button = QPushButton("Settings")
         dashboard_refresh_button.clicked.connect(self._view_model.load)
@@ -83,6 +86,7 @@ class DashboardWindow(QMainWindow):
         products_button.clicked.connect(self._open_products)
         assets_button.clicked.connect(self._open_assets)
         recipes_button.clicked.connect(self._open_recipes)
+        auto_factory_button.clicked.connect(self._open_auto_factory)
         tags_button.clicked.connect(self._open_tags)
         settings_button.clicked.connect(self._open_settings)
         for button in (
@@ -92,6 +96,7 @@ class DashboardWindow(QMainWindow):
             products_button,
             assets_button,
             recipes_button,
+            auto_factory_button,
             tags_button,
             settings_button,
         ):
