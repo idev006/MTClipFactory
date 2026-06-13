@@ -5,7 +5,7 @@ from collections.abc import Sequence
 from sqlalchemy import Select, delete, func, select
 from sqlalchemy.orm import Session
 
-from mt_clip_factory.domain.assets import Asset, AssetSummary
+from mt_clip_factory.domain.assets import Asset, AssetJobReference, AssetRecipeReference, AssetSummary
 from mt_clip_factory.domain.entities import Product, ProductSummary
 from mt_clip_factory.domain.enums import AssetType
 from mt_clip_factory.domain.tags import Tag, TagSummary
@@ -233,6 +233,48 @@ class SqlAlchemyAssetRepository:
     def has_job_references(self, asset_id: int) -> bool:
         statement = select(func.count(JobModel.id)).where(JobModel.asset_id == asset_id)
         return self._session.execute(statement).scalar_one() > 0
+
+    def list_recipe_references(self, asset_id: int) -> Sequence[AssetRecipeReference]:
+        statement = (
+            select(
+                RecipeModel.id,
+                RecipeModel.recipe_code,
+                RecipeModel.status,
+                func.count(func.distinct(OutputModel.id)).label("output_count"),
+            )
+            .join(RecipeItemModel, RecipeItemModel.recipe_id == RecipeModel.id)
+            .outerjoin(OutputModel, OutputModel.recipe_id == RecipeModel.id)
+            .where(RecipeItemModel.asset_id == asset_id)
+            .group_by(RecipeModel.id, RecipeModel.recipe_code, RecipeModel.status)
+            .order_by(RecipeModel.id.asc())
+        )
+        rows = self._session.execute(statement).all()
+        return [
+            AssetRecipeReference(
+                recipe_id=row.id,
+                recipe_code=row.recipe_code,
+                recipe_status=row.status,
+                output_count=row.output_count,
+            )
+            for row in rows
+        ]
+
+    def list_job_references(self, asset_id: int) -> Sequence[AssetJobReference]:
+        statement = (
+            select(JobModel.id, JobModel.job_code, JobModel.job_type, JobModel.status)
+            .where(JobModel.asset_id == asset_id)
+            .order_by(JobModel.id.asc())
+        )
+        rows = self._session.execute(statement).all()
+        return [
+            AssetJobReference(
+                job_id=row.id,
+                job_code=row.job_code,
+                job_type=row.job_type,
+                job_status=row.status,
+            )
+            for row in rows
+        ]
 
     def list_summaries(
         self,

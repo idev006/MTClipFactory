@@ -47,3 +47,19 @@ class AssetSummary:
     tag_labels: tuple[str, ...] = ()
     thumbnail_path: str | None = None
     proxy_path: str | None = None
+
+
+@dataclass(slots=True, frozen=True)
+class AssetRecipeReference:
+    recipe_id: int
+    recipe_code: str
+    recipe_status: str
+    output_count: int
+
+
+@dataclass(slots=True, frozen=True)
+class AssetJobReference:
+    job_id: int
+    job_code: str
+    job_type: str
+    job_status: str

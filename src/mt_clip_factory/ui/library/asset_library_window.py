@@ -97,17 +97,21 @@ class AssetLibraryWindow(QMainWindow):
         for asset_type in AssetType:
             self.filter_asset_type_combo.addItem(asset_type.value, asset_type.value)
         self.filter_status_combo.addItem("All", None)
-        for status in ("ready", "needs_review"):
+        for status in ("ready", "needs_review", "analyzed", "retired", "purged"):
             self.filter_status_combo.addItem(status, status)
         filter_layout.addRow("Filter Product", self.filter_product_combo)
         filter_layout.addRow("Filter Type", self.filter_asset_type_combo)
         filter_layout.addRow("Filter Status", self.filter_status_combo)
         outer_layout.addLayout(filter_layout)
 
-        button_row = QHBoxLayout()
+        maintenance_row = QHBoxLayout()
+        action_row = QHBoxLayout()
         self.register_button = QPushButton("Register")
         self.update_button = QPushButton("Update Selected")
         self.delete_button = QPushButton("Delete Selected")
+        self.references_button = QPushButton("Show References")
+        self.retire_button = QPushButton("Retire Selected")
+        self.purge_button = QPushButton("Purge Media")
         self.thumbnail_button = QPushButton("Generate Thumbnail")
         self.proxy_button = QPushButton("Generate Proxy")
         self.tags_button = QPushButton("Tag Dictionary")
@@ -116,20 +120,27 @@ class AssetLibraryWindow(QMainWindow):
         self.register_button.clicked.connect(self._register_asset)
         self.update_button.clicked.connect(self._update_asset)
         self.delete_button.clicked.connect(self._delete_asset)
+        self.references_button.clicked.connect(self._show_references)
+        self.retire_button.clicked.connect(self._retire_asset)
+        self.purge_button.clicked.connect(self._purge_asset_media)
         self.thumbnail_button.clicked.connect(self._generate_thumbnail)
         self.proxy_button.clicked.connect(self._generate_proxy)
         self.tags_button.clicked.connect(self._handle_open_tag_dictionary)
         self.apply_filters_button.clicked.connect(self._apply_filters)
         self.refresh_button.clicked.connect(self._view_model.load)
-        button_row.addWidget(self.register_button)
-        button_row.addWidget(self.update_button)
-        button_row.addWidget(self.delete_button)
-        button_row.addWidget(self.thumbnail_button)
-        button_row.addWidget(self.proxy_button)
-        button_row.addWidget(self.tags_button)
-        button_row.addWidget(self.apply_filters_button)
-        button_row.addWidget(self.refresh_button)
-        outer_layout.addLayout(button_row)
+        maintenance_row.addWidget(self.register_button)
+        maintenance_row.addWidget(self.update_button)
+        maintenance_row.addWidget(self.delete_button)
+        maintenance_row.addWidget(self.references_button)
+        maintenance_row.addWidget(self.retire_button)
+        maintenance_row.addWidget(self.purge_button)
+        action_row.addWidget(self.thumbnail_button)
+        action_row.addWidget(self.proxy_button)
+        action_row.addWidget(self.tags_button)
+        action_row.addWidget(self.apply_filters_button)
+        action_row.addWidget(self.refresh_button)
+        outer_layout.addLayout(maintenance_row)
+        outer_layout.addLayout(action_row)
 
         self.feedback_label = QLabel()
         self.feedback_label.setWordWrap(True)
@@ -264,6 +275,72 @@ class AssetLibraryWindow(QMainWindow):
         self.asset_code_input.clear()
         self.source_path_input.clear()
 
+    def _show_references(self) -> None:
+        asset = self._selected_asset_summary()
+        if asset is None:
+            QMessageBox.warning(self, "Show References", "Select an asset first.")
+            return
+        try:
+            report = self._view_model.describe_asset_references(asset.asset_id)
+        except Exception as exc:  # noqa: BLE001
+            QMessageBox.warning(self, "Show References", str(exc))
+            return
+        QMessageBox.information(self, "Asset References", self._format_reference_report(report))
+
+    def _retire_asset(self) -> None:
+        asset = self._selected_asset_summary()
+        if asset is None:
+            QMessageBox.warning(self, "Retire Asset", "Select an asset first.")
+            return
+        confirmation = QMessageBox.question(
+            self,
+            "Retire Asset",
+            (
+                f"Retire asset {asset.asset_code}?\n\n"
+                "This keeps history intact but prevents future active use."
+            ),
+        )
+        if confirmation != QMessageBox.Yes:
+            return
+        try:
+            self._view_model.retire_asset(asset.asset_id)
+        except Exception as exc:  # noqa: BLE001
+            QMessageBox.warning(self, "Retire Asset", str(exc))
+            return
+        self.asset_code_input.clear()
+        self.source_path_input.clear()
+
+    def _purge_asset_media(self) -> None:
+        asset = self._selected_asset_summary()
+        if asset is None:
+            QMessageBox.warning(self, "Purge Media", "Select an asset first.")
+            return
+        confirmation = QMessageBox.question(
+            self,
+            "Purge Media",
+            (
+                f"Purge media files for asset {asset.asset_code}?\n\n"
+                "This deletes the stored files from disk but keeps the record for history. "
+                "Rebuilding old outputs will require a replacement asset."
+            ),
+        )
+        if confirmation != QMessageBox.Yes:
+            return
+        try:
+            report = self._view_model.purge_asset_media(asset.asset_id)
+        except Exception as exc:  # noqa: BLE001
+            QMessageBox.warning(self, "Purge Media", str(exc))
+            return
+        reclaimed_mb = report.reclaimed_bytes / (1024 * 1024)
+        QMessageBox.information(
+            self,
+            "Purge Media",
+            (
+                f"Purged {report.purged_file_count} files for asset {report.asset_code}.\n"
+                f"Reclaimed approximately {reclaimed_mb:.2f} MB."
+            ),
+        )
+
     def _handle_open_tag_dictionary(self) -> None:
         if self._open_tag_dictionary is not None:
             self._open_tag_dictionary()
@@ -313,3 +390,39 @@ class AssetLibraryWindow(QMainWindow):
             self._view_model.generate_proxy(asset_id)
         except Exception as exc:  # noqa: BLE001
             QMessageBox.warning(self, "Generate Proxy", str(exc))
+
+    @staticmethod
+    def _format_reference_report(report) -> str:
+        lines = [
+            f"Asset #{report.asset_id}: {report.asset_code}",
+            f"Current status: {report.asset_status}",
+            "",
+            "Recipe references:",
+        ]
+        if report.recipe_references:
+            for reference in report.recipe_references:
+                lines.append(
+                    f"- Recipe #{reference.recipe_id} | {reference.recipe_code} | "
+                    f"status={reference.recipe_status} | outputs={reference.output_count}"
+                )
+        else:
+            lines.append("- none")
+
+        lines.extend(["", "Job references:"])
+        if report.job_references:
+            for reference in report.job_references:
+                lines.append(
+                    f"- Job #{reference.job_id} | {reference.job_code} | "
+                    f"type={reference.job_type} | status={reference.job_status}"
+                )
+        else:
+            lines.append("- none")
+
+        lines.extend(
+            [
+                "",
+                f"Delete allowed: {'yes' if report.can_delete else 'no'}",
+                f"Purge allowed now: {'yes' if report.can_purge_media else 'no'}",
+            ]
+        )
+        return "\n".join(lines)

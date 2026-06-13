@@ -6,12 +6,14 @@ from PySide6.QtCore import QObject, Property, Signal, Slot
 
 from mt_clip_factory.application.services import ProductApplicationService
 from mt_clip_factory.library.artifact_services import ArtifactGenerationService
-from mt_clip_factory.library.dto import AssetSummaryDTO, RegisterAssetCommand, UpdateAssetCommand
+from mt_clip_factory.library.dto import AssetMediaPurgeReportDTO, AssetReferenceReportDTO, AssetSummaryDTO, RegisterAssetCommand, UpdateAssetCommand
 from mt_clip_factory.library.services import (
     AssetCodeAlreadyExistsError,
     AssetInUseError,
     AssetIntakeService,
+    AssetMediaAlreadyPurgedError,
     AssetNotFoundError,
+    AssetRetireRequiredError,
     AssetSourceFileMissingError,
 )
 
@@ -147,6 +149,49 @@ class AssetLibraryViewModel(QObject):
 
         self._set_feedback(f"Deleted asset #{asset_id}")
         self.load()
+
+    def retire_asset(self, asset_id: int) -> int:
+        self._set_status("submitting")
+        try:
+            retired_asset_id = self._asset_intake_service.retire_asset(asset_id)
+        except (AssetMediaAlreadyPurgedError, AssetNotFoundError, ValueError) as exc:
+            self._set_feedback(str(exc))
+            self._set_status("error")
+            raise
+
+        self._set_feedback(f"Retired asset #{retired_asset_id}")
+        self.load()
+        return retired_asset_id
+
+    def purge_asset_media(self, asset_id: int) -> AssetMediaPurgeReportDTO:
+        self._set_status("submitting")
+        try:
+            report = self._asset_intake_service.purge_asset_media(asset_id)
+        except (AssetMediaAlreadyPurgedError, AssetNotFoundError, AssetRetireRequiredError, ValueError) as exc:
+            self._set_feedback(str(exc))
+            self._set_status("error")
+            raise
+
+        reclaimed_mb = report.reclaimed_bytes / (1024 * 1024)
+        self._set_feedback(
+            f"Purged media for asset #{report.asset_id} "
+            f"({report.purged_file_count} files, {reclaimed_mb:.2f} MB reclaimed)"
+        )
+        self.load()
+        return report
+
+    def describe_asset_references(self, asset_id: int) -> AssetReferenceReportDTO:
+        self._set_status("loading")
+        try:
+            report = self._asset_intake_service.describe_asset_references(asset_id)
+        except (AssetNotFoundError, ValueError) as exc:
+            self._set_feedback(str(exc))
+            self._set_status("error")
+            raise
+
+        self._set_feedback(f"Loaded references for asset #{report.asset_id}")
+        self._set_status("ready")
+        return report
 
     def generate_thumbnail(self, asset_id: int) -> int:
         self._set_status("processing")

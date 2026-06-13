@@ -8,7 +8,15 @@ from mt_clip_factory.domain.assets import Asset
 from mt_clip_factory.domain.enums import AssetType
 from mt_clip_factory.domain.services import UnitOfWork
 from mt_clip_factory.library.contracts import AssetMetadataAnalyzer, AssetStorage
-from mt_clip_factory.library.dto import AssetSummaryDTO, RegisterAssetCommand, UpdateAssetCommand
+from mt_clip_factory.library.dto import (
+    AssetJobReferenceDTO,
+    AssetMediaPurgeReportDTO,
+    AssetRecipeReferenceDTO,
+    AssetReferenceReportDTO,
+    AssetSummaryDTO,
+    RegisterAssetCommand,
+    UpdateAssetCommand,
+)
 from mt_clip_factory.library.readiness import AssetReadinessEvaluator
 
 
@@ -30,6 +38,14 @@ class AssetNotFoundError(ValueError):
 
 class AssetInUseError(ValueError):
     """Raised when an asset is still referenced by workflow records."""
+
+
+class AssetRetireRequiredError(ValueError):
+    """Raised when an asset must be retired before media purge."""
+
+
+class AssetMediaAlreadyPurgedError(ValueError):
+    """Raised when an asset's media files were already purged."""
 
 
 def _slugify_asset_code(value: str) -> str:
@@ -150,9 +166,11 @@ class AssetIntakeService:
             raise ValueError("Asset code is required.")
 
         with self._unit_of_work_factory() as uow:
-            asset = uow.assets.get_by_id(command.asset_id)
-            if asset is None or asset.id is None:
-                raise AssetNotFoundError(str(command.asset_id))
+            asset = _require_asset(uow, command.asset_id)
+            if asset.status == "purged":
+                raise AssetSourceFileMissingError(
+                    "Asset media has already been purged. Register a replacement asset instead of renaming this record."
+                )
 
             existing = uow.assets.get_by_code(asset_code)
             if existing is not None and existing.id != asset.id:
@@ -184,20 +202,16 @@ class AssetIntakeService:
 
     def delete_asset(self, asset_id: int) -> None:
         with self._unit_of_work_factory() as uow:
-            asset = uow.assets.get_by_id(asset_id)
-            if asset is None or asset.id is None:
-                raise AssetNotFoundError(str(asset_id))
+            asset = _require_asset(uow, asset_id)
             if uow.assets.has_recipe_item_references(asset_id):
-                raise AssetInUseError("Asset is attached to one or more recipe items.")
+                raise AssetInUseError(
+                    "Asset is attached to one or more recipe items. Use 'Show References' and 'Retire Selected' instead."
+                )
             if uow.assets.has_job_references(asset_id):
-                raise AssetInUseError("Asset has artifact jobs and cannot be deleted.")
-            file_paths = [
-                Path(asset.file_path),
-                Path(asset.thumbnail_path) if asset.thumbnail_path else None,
-                Path(asset.proxy_path) if asset.proxy_path else None,
-                Path(asset.alpha_path) if asset.alpha_path else None,
-                Path(asset.rgba_cache_path) if asset.rgba_cache_path else None,
-            ]
+                raise AssetInUseError(
+                    "Asset has artifact jobs and cannot be deleted. Use 'Show References' and 'Retire Selected' instead."
+                )
+            file_paths = _asset_file_paths(asset)
             uow.assets.delete(asset_id)
             uow.commit()
 
@@ -208,6 +222,103 @@ class AssetIntakeService:
                 file_path.unlink(missing_ok=True)
             except OSError:
                 continue
+
+    def retire_asset(self, asset_id: int) -> int:
+        with self._unit_of_work_factory() as uow:
+            asset = _require_asset(uow, asset_id)
+            if asset.status == "purged":
+                raise AssetMediaAlreadyPurgedError(
+                    "Asset media is already purged. Keep this record for history and register a replacement asset for future work."
+                )
+            if asset.status == "retired":
+                return asset.id
+            asset.status = "retired"
+            uow.assets.update(asset)
+            uow.commit()
+            return asset.id
+
+    def purge_asset_media(self, asset_id: int) -> AssetMediaPurgeReportDTO:
+        with self._unit_of_work_factory() as uow:
+            asset = _require_asset(uow, asset_id)
+            if asset.status == "purged":
+                raise AssetMediaAlreadyPurgedError("Asset media is already purged.")
+            if asset.status != "retired":
+                raise AssetRetireRequiredError("Retire the asset before purging its media.")
+            file_paths = _asset_file_paths(asset)
+            asset.status = "purged"
+            asset.thumbnail_path = None
+            asset.proxy_path = None
+            asset.alpha_path = None
+            asset.rgba_cache_path = None
+            uow.assets.update(asset)
+            uow.commit()
+
+        deleted_count = 0
+        reclaimed_bytes = 0
+        for file_path in file_paths:
+            if file_path is None or not file_path.exists():
+                continue
+            try:
+                reclaimed_bytes += file_path.stat().st_size
+                file_path.unlink()
+                deleted_count += 1
+            except OSError:
+                continue
+
+        return AssetMediaPurgeReportDTO(
+            asset_id=asset_id,
+            asset_code=asset.asset_code,
+            purged_file_count=deleted_count,
+            reclaimed_bytes=reclaimed_bytes,
+        )
+
+    def describe_asset_references(self, asset_id: int) -> AssetReferenceReportDTO:
+        with self._unit_of_work_factory() as uow:
+            asset = _require_asset(uow, asset_id)
+            recipe_references = tuple(
+                AssetRecipeReferenceDTO(
+                    recipe_id=reference.recipe_id,
+                    recipe_code=reference.recipe_code,
+                    recipe_status=reference.recipe_status,
+                    output_count=reference.output_count,
+                )
+                for reference in uow.assets.list_recipe_references(asset_id)
+            )
+            job_references = tuple(
+                AssetJobReferenceDTO(
+                    job_id=reference.job_id,
+                    job_code=reference.job_code,
+                    job_type=reference.job_type,
+                    job_status=reference.job_status,
+                )
+                for reference in uow.assets.list_job_references(asset_id)
+            )
+            return AssetReferenceReportDTO(
+                asset_id=asset.id,
+                asset_code=asset.asset_code,
+                asset_status=asset.status,
+                recipe_references=recipe_references,
+                job_references=job_references,
+                can_delete=not recipe_references and not job_references,
+                can_purge_media=asset.status == "retired",
+            )
+
+
+def _require_asset(uow: UnitOfWork, asset_id: int) -> Asset:
+    asset = uow.assets.get_by_id(asset_id)
+    if asset is None or asset.id is None:
+        raise AssetNotFoundError(str(asset_id))
+    return asset
+
+
+def _asset_file_paths(asset: Asset) -> list[Path | None]:
+    return [
+        Path(asset.file_path),
+        Path(asset.thumbnail_path) if asset.thumbnail_path else None,
+        Path(asset.proxy_path) if asset.proxy_path else None,
+        Path(asset.alpha_path) if asset.alpha_path else None,
+        Path(asset.rgba_cache_path) if asset.rgba_cache_path else None,
+    ]
 
 
 def _rename_path_for_asset_code(

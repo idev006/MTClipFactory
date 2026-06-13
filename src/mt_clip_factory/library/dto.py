@@ -33,3 +33,38 @@ class AssetSummaryDTO:
     tag_labels: tuple[str, ...]
     thumbnail_path: str | None
     proxy_path: str | None
+
+
+@dataclass(slots=True, frozen=True)
+class AssetRecipeReferenceDTO:
+    recipe_id: int
+    recipe_code: str
+    recipe_status: str
+    output_count: int
+
+
+@dataclass(slots=True, frozen=True)
+class AssetJobReferenceDTO:
+    job_id: int
+    job_code: str
+    job_type: str
+    job_status: str
+
+
+@dataclass(slots=True, frozen=True)
+class AssetReferenceReportDTO:
+    asset_id: int
+    asset_code: str
+    asset_status: str
+    recipe_references: tuple[AssetRecipeReferenceDTO, ...]
+    job_references: tuple[AssetJobReferenceDTO, ...]
+    can_delete: bool
+    can_purge_media: bool
+
+
+@dataclass(slots=True, frozen=True)
+class AssetMediaPurgeReportDTO:
+    asset_id: int
+    asset_code: str
+    purged_file_count: int
+    reclaimed_bytes: int

@@ -7,7 +7,7 @@ import pytest
 from mt_clip_factory.application.dto import CreateProductCommand
 from mt_clip_factory.application.services import ProductApplicationService
 from mt_clip_factory.library.artifact_dto import ArtifactJobSummaryDTO
-from mt_clip_factory.library.dto import AssetSummaryDTO
+from mt_clip_factory.library.dto import AssetMediaPurgeReportDTO, AssetReferenceReportDTO, AssetSummaryDTO
 from mt_clip_factory.library.services import AssetSourceFileMissingError
 from mt_clip_factory.presentation.library.asset_library import AssetLibraryViewModel
 
@@ -18,6 +18,8 @@ class FakeAssetIntakeService:
         self.calls: list[tuple[int, str, str, str | None]] = []
         self.updated_assets: list[tuple[int, str]] = []
         self.deleted_asset_ids: list[int] = []
+        self.retired_asset_ids: list[int] = []
+        self.purged_asset_ids: list[int] = []
 
     def register_asset(self, command) -> int:
         if "missing" in str(command.source_file_path):
@@ -65,6 +67,44 @@ class FakeAssetIntakeService:
     def delete_asset(self, asset_id: int) -> None:
         self.deleted_asset_ids.append(asset_id)
         self.assets = [asset for asset in self.assets if asset.asset_id != asset_id]
+
+    def retire_asset(self, asset_id: int) -> int:
+        self.retired_asset_ids.append(asset_id)
+        for index, asset in enumerate(self.assets):
+            if asset.asset_id != asset_id:
+                continue
+            self.assets[index] = replace(asset, status="retired")
+            return asset_id
+        raise ValueError(str(asset_id))
+
+    def purge_asset_media(self, asset_id: int) -> AssetMediaPurgeReportDTO:
+        self.purged_asset_ids.append(asset_id)
+        for index, asset in enumerate(self.assets):
+            if asset.asset_id != asset_id:
+                continue
+            self.assets[index] = replace(asset, status="purged", thumbnail_path=None, proxy_path=None)
+            return AssetMediaPurgeReportDTO(
+                asset_id=asset_id,
+                asset_code=asset.asset_code,
+                purged_file_count=2,
+                reclaimed_bytes=1024,
+            )
+        raise ValueError(str(asset_id))
+
+    def describe_asset_references(self, asset_id: int) -> AssetReferenceReportDTO:
+        for asset in self.assets:
+            if asset.asset_id != asset_id:
+                continue
+            return AssetReferenceReportDTO(
+                asset_id=asset_id,
+                asset_code=asset.asset_code,
+                asset_status=asset.status,
+                recipe_references=(),
+                job_references=(),
+                can_delete=True,
+                can_purge_media=asset.status == "retired",
+            )
+        raise ValueError(str(asset_id))
 
 
 class FakeArtifactGenerationService:
@@ -288,3 +328,79 @@ def test_asset_view_model_deletes_selected_asset(unit_of_work_factory, tmp_path)
     assert asset_service.deleted_asset_ids == [1]
     assert view_model.assets == []
     assert view_model.feedback == "Deleted asset #1"
+
+
+def test_asset_view_model_retires_selected_asset(unit_of_work_factory, tmp_path) -> None:
+    product_service = ProductApplicationService(unit_of_work_factory=unit_of_work_factory)
+    product_id = product_service.create_product(CreateProductCommand(product_code="honey", product_name="Honey"))
+    asset_service = FakeAssetIntakeService()
+    artifact_service = FakeArtifactGenerationService(asset_service)
+    view_model = AssetLibraryViewModel(
+        product_service=product_service,
+        asset_intake_service=asset_service,
+        artifact_generation_service=artifact_service,
+    )
+    view_model.register_asset(
+        product_id=product_id,
+        asset_type="background_video",
+        source_file_path=str(tmp_path / "hero.mp4"),
+        asset_code="hero_asset",
+    )
+
+    retired_asset_id = view_model.retire_asset(1)
+
+    assert retired_asset_id == 1
+    assert asset_service.retired_asset_ids == [1]
+    assert view_model.assets[0].status == "retired"
+    assert view_model.feedback == "Retired asset #1"
+
+
+def test_asset_view_model_purges_media_and_refreshes(unit_of_work_factory, tmp_path) -> None:
+    product_service = ProductApplicationService(unit_of_work_factory=unit_of_work_factory)
+    product_id = product_service.create_product(CreateProductCommand(product_code="honey", product_name="Honey"))
+    asset_service = FakeAssetIntakeService()
+    artifact_service = FakeArtifactGenerationService(asset_service)
+    view_model = AssetLibraryViewModel(
+        product_service=product_service,
+        asset_intake_service=asset_service,
+        artifact_generation_service=artifact_service,
+    )
+    view_model.register_asset(
+        product_id=product_id,
+        asset_type="background_video",
+        source_file_path=str(tmp_path / "hero.mp4"),
+        asset_code="hero_asset",
+    )
+    view_model.retire_asset(1)
+
+    report = view_model.purge_asset_media(1)
+
+    assert report.asset_id == 1
+    assert asset_service.purged_asset_ids == [1]
+    assert view_model.assets[0].status == "purged"
+    assert "1 files" not in view_model.feedback
+    assert "Purged media for asset #1" in view_model.feedback
+
+
+def test_asset_view_model_describes_references(unit_of_work_factory, tmp_path) -> None:
+    product_service = ProductApplicationService(unit_of_work_factory=unit_of_work_factory)
+    product_id = product_service.create_product(CreateProductCommand(product_code="honey", product_name="Honey"))
+    asset_service = FakeAssetIntakeService()
+    artifact_service = FakeArtifactGenerationService(asset_service)
+    view_model = AssetLibraryViewModel(
+        product_service=product_service,
+        asset_intake_service=asset_service,
+        artifact_generation_service=artifact_service,
+    )
+    view_model.register_asset(
+        product_id=product_id,
+        asset_type="background_video",
+        source_file_path=str(tmp_path / "hero.mp4"),
+        asset_code="hero_asset",
+    )
+
+    report = view_model.describe_asset_references(1)
+
+    assert report.asset_code == "hero_asset"
+    assert view_model.status == "ready"
+    assert view_model.feedback == "Loaded references for asset #1"

@@ -44,6 +44,9 @@ classDiagram
         +register_asset(command)
         +update_asset(command)
         +delete_asset(asset_id)
+        +retire_asset(asset_id)
+        +purge_asset_media(asset_id)
+        +describe_asset_references(asset_id)
         +list_assets(...)
     }
 
@@ -184,6 +187,9 @@ classDiagram
         +register_asset(...)
         +update_asset(asset_id, asset_code)
         +delete_asset(asset_id)
+        +retire_asset(asset_id)
+        +purge_asset_media(asset_id)
+        +describe_asset_references(asset_id)
         +generate_thumbnail(asset_id)
         +generate_proxy(asset_id)
     }
@@ -216,6 +222,9 @@ classDiagram
         +register_asset()
         +update_asset()
         +delete_asset()
+        +retire_asset()
+        +purge_asset_media()
+        +show_references()
         +generate_thumbnail()
         +generate_proxy()
     }
@@ -408,6 +417,30 @@ sequenceDiagram
         Intake->>FS: rename primary/artifact files
         Intake->>AssetRepo: persist renamed paths
         Intake->>DB: COMMIT
+        VM-->>View: refresh list + feedback
+    else inspect references
+        User->>View: select asset + click Show References
+        View->>VM: describe_asset_references(asset_id)
+        VM->>Intake: describe_asset_references(asset_id)
+        Intake->>AssetRepo: load recipe/job references
+        AssetRepo-->>Intake: reference details
+        VM-->>View: show summary dialog
+    else retire selected asset
+        User->>View: select asset + confirm retire
+        View->>VM: retire_asset(asset_id)
+        VM->>Intake: retire_asset(asset_id)
+        Intake->>AssetRepo: load asset
+        Intake->>AssetRepo: persist status=retired
+        Intake->>DB: COMMIT
+        VM-->>View: refresh list + feedback
+    else purge retired media
+        User->>View: select asset + confirm purge
+        View->>VM: purge_asset_media(asset_id)
+        VM->>Intake: purge_asset_media(asset_id)
+        Intake->>AssetRepo: load asset + validate retired state
+        Intake->>AssetRepo: persist status=purged
+        Intake->>DB: COMMIT
+        Intake->>FS: delete primary/artifact files
         VM-->>View: refresh list + feedback
     else delete selected asset
         User->>View: select asset + confirm delete

@@ -161,6 +161,23 @@ def test_primary_windows_apply_app_theme(qapp: QApplication) -> None:
         window.close()
 
 
+def test_asset_library_window_exposes_lifecycle_maintenance_controls(qapp: QApplication) -> None:
+    asset_window = AssetLibraryWindow(FakeAssetLibraryViewModel())
+
+    assert asset_window.references_button.text() == "Show References"
+    assert asset_window.retire_button.text() == "Retire Selected"
+    assert asset_window.purge_button.text() == "Purge Media"
+    assert [asset_window.filter_status_combo.itemText(index) for index in range(asset_window.filter_status_combo.count())] == [
+        "All",
+        "ready",
+        "needs_review",
+        "analyzed",
+        "retired",
+        "purged",
+    ]
+    asset_window.close()
+
+
 def test_recipe_builder_window_explains_ready_assets_and_keeps_asset_panel_usable(qapp: QApplication) -> None:
     recipe_window = RecipeBuilderWindow(FakeRecipeBuilderViewModel())
 

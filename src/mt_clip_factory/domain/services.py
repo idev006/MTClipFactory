@@ -4,7 +4,7 @@ from collections.abc import Sequence
 from contextlib import AbstractContextManager
 from typing import Protocol
 
-from mt_clip_factory.domain.assets import Asset, AssetSummary
+from mt_clip_factory.domain.assets import Asset, AssetJobReference, AssetRecipeReference, AssetSummary
 from mt_clip_factory.domain.composition_plans import CompositionPlan
 from mt_clip_factory.domain.decision_events import DecisionEvent
 from mt_clip_factory.domain.entities import Product, ProductSummary
@@ -59,6 +59,12 @@ class AssetRepository(Protocol):
         ...
 
     def has_job_references(self, asset_id: int) -> bool:
+        ...
+
+    def list_recipe_references(self, asset_id: int) -> Sequence[AssetRecipeReference]:
+        ...
+
+    def list_job_references(self, asset_id: int) -> Sequence[AssetJobReference]:
         ...
 
     def list_summaries(

@@ -54,6 +54,7 @@
 - shared app-window buttons now use balanced gradient, border-depth, focus, and pressed-state affordance so primary actions read clearly as clickable controls without feeling oversized
 - Recipe Builder now explains its recipe-to-final purpose more directly, clarifies that the attach list shows only `ready` assets, keeps the asset panel tall enough for practical scanning, and offers composition-aware attach-role suggestions that combine asset type, current recipe segment order, auto-selection, and on-screen guidance instead of relying on free-typed role names alone
 - assets can now be safely renamed or deleted from the `Assets` screen, with repository checks that block deletion when recipe-item or artifact-job references still exist
+- the `Assets` screen now supports `Show References`, `Retire Selected`, and `Purge Media` so referenced assets can leave active use and disk without destroying audit truth
 - preview and final render now normalize mixed visual source ratios into the recipe `Target Ratio` frame so output dimensions stay bounded and operator intent is respected
 - operators can now set exact preview and final output resolutions through the `Settings` UI, with `.toml` persistence and renderer enforcement for frames such as `1080x1920`
 - widget-level settings UI verification coverage, including hybrid control mapping, high-value config preservation, and exact-entry synchronization
@@ -80,7 +81,7 @@
 
 ## Verification Baseline
 
-- `python -m pytest` via `.venv`: `121 passed`
+- `python -m pytest` via `.venv`: `134 passed`
 - UI smoke via `QT_QPA_PLATFORM=offscreen`: `6` windows instantiated successfully
 
 ## Current Focus
@@ -90,15 +91,17 @@
 - monitor whether the new recipe scoring baseline stays operationally useful for operators
 - monitor whether hybrid settings controls remain operator-friendly in real manual use
 - validate whether the new asset-maintenance controls are clear enough for operators without additional UI restructuring
+- validate whether the new referenced-asset lifecycle controls are clear enough for operators during controlled use
 - validate broader controlled operator use on real campaign media before claiming broad release readiness
 - monitor whether operators understand the distinction between recipe `Target Ratio` and settings-level exact output resolution
 - keep project documents truthful through per-milestone revision checkpoints
 
 ## Next Steps
 
-1. Run broader controlled operator use on real campaign media without service-side assistance and record operator findings.
-2. Recalibrate recipe scoring only if operator feedback shows the current metadata, asset-diversity, and runtime-evidence baseline is not useful enough.
-3. Clean the Alembic `path_separator=os` warning in a maintenance pass.
+1. Run broader controlled operator use on real campaign media without service-side assistance and record operator findings, including whether `Show References`, `Retire Selected`, and `Purge Media` are understandable without extra training.
+2. Design the follow-up replacement workflow for reattaching corrected assets into affected recipes without damaging history.
+3. Recalibrate recipe scoring only if operator feedback shows the current metadata, asset-diversity, and runtime-evidence baseline is not useful enough.
+4. Clean the Alembic `path_separator=os` warning in a maintenance pass.
 
 ## Direction Locked In This Documentation Revision
 
