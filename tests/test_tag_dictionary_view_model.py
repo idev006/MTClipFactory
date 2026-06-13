@@ -81,6 +81,8 @@ def test_tag_dictionary_view_model_loads_tags_and_assets() -> None:
 
     assert view_model.status == "ready"
     assert len(view_model.assets) == 2
+    assert view_model.selected_asset is not None
+    assert view_model.selected_asset.asset_code == "hero_asset"
     assert view_model.asset_filter_product_options == ["honey", "tea"]
     assert view_model.asset_filter_type_options == ["background_video", "foreground_video"]
     assert view_model.tags == []
@@ -114,4 +116,20 @@ def test_tag_dictionary_view_model_filters_assets_for_tag_assignment() -> None:
 
     assert view_model.status == "ready"
     assert [asset.asset_code for asset in view_model.assets] == ["proof_asset"]
+    assert view_model.selected_asset is not None
+    assert view_model.selected_asset.asset_code == "proof_asset"
     assert "Showing 1 asset(s)" in view_model.feedback
+
+
+def test_tag_dictionary_view_model_can_filter_tags_and_select_asset() -> None:
+    tag_service = FakeTagManagementService()
+    view_model = TagDictionaryViewModel(tag_service, FakeAssetIntakeService())
+    view_model.create_tag(tag_name="Proof", tag_group="Message")
+    view_model.create_tag(tag_name="Warm", tag_group="Mood")
+
+    view_model.apply_tag_filters(tag_group="message", search_text="proof")
+    view_model.select_asset(2)
+
+    assert [tag.tag_name for tag in view_model.tags] == ["proof"]
+    assert view_model.selected_asset is not None
+    assert view_model.selected_asset.asset_code == "proof_asset"

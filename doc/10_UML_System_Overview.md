@@ -301,10 +301,14 @@ classDiagram
 
     class TagDictionaryWindow {
         +create_tag()
+        +create and attach to selected asset
         +assign_tag()
         +apply_asset_filters()
+        +apply_tag_filters()
+        +select_asset(asset_id)
         +filter by asset type
         +show current asset tag labels
+        +show selected asset details
         +reuse existing tag-group suggestions
     }
 
@@ -643,12 +647,21 @@ sequenceDiagram
     VM->>TagSvc: list_tags()
     VM->>AssetSvc: list_assets()
     VM-->>View: tag-group suggestions + filterable asset rows
-    Operator->>View: choose product/status/search filters
+    Operator->>View: choose product/status/type/search filters
     View->>VM: apply_asset_filters(...)
     VM->>VM: narrow asset list
-    Operator->>View: select tag + asset
-    View->>VM: assign_tag_to_asset(...)
-    VM->>TagSvc: assign_tag_to_asset(...)
+    Operator->>View: select asset
+    View->>VM: select_asset(asset_id)
+    VM-->>View: selected asset + current tags
+    Operator->>View: search existing tags or create new tag
+    alt existing tag
+        View->>VM: assign_tag_to_selected_asset(...)
+        VM->>TagSvc: assign_tag_to_asset(...)
+    else create and attach
+        View->>VM: create_tag_and_assign_to_selected_asset(...)
+        VM->>TagSvc: create_tag(...)
+        VM->>TagSvc: assign_tag_to_asset(...)
+    end
     VM-->>View: refreshed state + feedback
 ```
 

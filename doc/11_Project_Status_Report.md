@@ -64,6 +64,7 @@
 - the `Auto Factory` screen now composes folder-intake truth with persisted `Production Order` execution, so materialize/preview runs stop bypassing the control-plane seam
 - auto-factory planning can now also consume explicit asset tag requirements from `pipeline.toml`, so tagged assets can influence which ready media enters automated recipe generation
 - the `Tags` screen now shows current asset tag labels and supports `Asset Type` filtering so operators can prepare automation-relevant tags more safely
+- the `Tags` screen now also follows an asset-first workflow so operators can select one asset, inspect its current tags, search existing tags, and create-and-attach new tags from one focused loop
 - assets can now be safely renamed or deleted from the `Assets` screen, with repository checks that block deletion when recipe-item or artifact-job references still exist
 - the `Assets` screen now supports `Show References`, `Retire Selected`, and `Purge Media` so referenced assets can leave active use and disk without destroying audit truth
 - the `Assets` screen now also supports `Replace In Recipes...` with recipe-safe validation, recipe reset-to-candidate behavior, and approval guards that prevent stale pre-replacement outputs from being reused as evidence for changed recipes

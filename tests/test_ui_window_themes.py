@@ -86,6 +86,7 @@ class FakeAssetLibraryViewModel(QObject):
 class FakeTagDictionaryViewModel(QObject):
     tags_changed = Signal()
     assets_changed = Signal()
+    selected_asset_changed = Signal()
     feedback_changed = Signal()
     status_changed = Signal()
 
@@ -93,21 +94,41 @@ class FakeTagDictionaryViewModel(QObject):
         super().__init__()
         self.tags = []
         self.assets = []
+        self.selected_asset = None
         self.feedback = ""
         self.status = "ready"
         self.tag_group_suggestions = []
+        self.tag_filter_group_options = []
         self.asset_filter_product_options = []
         self.asset_filter_type_options = []
 
     def load(self) -> None:
         self.tags_changed.emit()
         self.assets_changed.emit()
+        self.selected_asset_changed.emit()
         self.feedback_changed.emit()
         self.status_changed.emit()
 
     def apply_asset_filters(self, *, product_code=None, status=None, asset_type=None, search_text=None) -> None:  # noqa: ANN001
         self.assets_changed.emit()
+        self.selected_asset_changed.emit()
         self.feedback_changed.emit()
+
+    def apply_tag_filters(self, *, tag_group=None, search_text=None) -> None:  # noqa: ANN001
+        self.tags_changed.emit()
+        self.feedback_changed.emit()
+
+    def select_asset(self, asset_id: int | None) -> None:
+        self.selected_asset_changed.emit()
+
+    def assign_tag_to_selected_asset(self, *, tag_id: int) -> None:
+        self.feedback = f"assigned {tag_id}"
+        self.feedback_changed.emit()
+
+    def create_tag_and_assign_to_selected_asset(self, *, tag_name: str, tag_group: str, description: str | None = None) -> int:
+        self.feedback = f"created and attached {tag_group}:{tag_name}"
+        self.feedback_changed.emit()
+        return 1
 
 
 class FakeRecipeBuilderViewModel(QObject):
@@ -213,13 +234,17 @@ def test_tag_dictionary_window_uses_guided_filter_controls(qapp: QApplication) -
 
     assert isinstance(tag_window.tag_group_input, QComboBox)
     assert tag_window.tag_group_input.isEditable() is True
+    assert isinstance(tag_window.tag_filter_group_combo, QComboBox)
     assert isinstance(tag_window.asset_filter_product_combo, QComboBox)
     assert isinstance(tag_window.asset_filter_status_combo, QComboBox)
     assert isinstance(tag_window.asset_filter_type_combo, QComboBox)
     assert tag_window.asset_search_input.placeholderText().startswith("search asset code")
+    assert tag_window.tag_filter_search_input.placeholderText().startswith("search group:name")
     assert "Automation can consume normalized tag labels" in tag_window.automation_hint_label.text()
     assert tag_window.apply_filters_button.text() == "Apply Filters"
     assert tag_window.clear_filters_button.text() == "Clear Filters"
+    assert tag_window.create_and_attach_button.text() == "Create And Attach"
+    assert tag_window.assign_tag_button.text().startswith("Attach Selected Tag")
     tag_window.close()
 
 

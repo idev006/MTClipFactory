@@ -66,6 +66,7 @@
 - The new desktop `Auto Factory` screen now composes `AutoFactoryFolderService` with `ProductionOrderService`, so any materialize/preview run records control-plane stage truth instead of hiding it behind direct service-only automation.
 - Auto-factory planning can now also consume explicit asset tag requirements from `pipeline.toml`, so operators can narrow foreground, background, music, and voice pools using normalized `group:name` labels.
 - The `Tags` screen now exposes `Asset Type` filtering and visible current asset tag labels, making automation-oriented tagging easier to verify before a batch run.
+- The `Tags` screen can now operate in an asset-first loop where one selected asset becomes the main focus for inspecting current tags, attaching existing tags, or creating-and-attaching a new tag immediately.
 - An enterprise pipeline review and architecture blueprint now exist so the project can grow into a true Video Production Factory instead of accumulating disconnected automation slices.
 - Production orders and orchestration stages are now persisted independently from recipe rows, giving the system a first real control-plane baseline for automated factory runs.
 - The `Tags` screen now provides guided group reuse plus product/status/search filtering so operators can narrow the asset list before assigning labels.
@@ -78,6 +79,7 @@
 - delivered tag-aware auto-factory planning rules through optional `pipeline.toml [selection_tags]` inputs for foreground/background/music/voice asset pools
 - delivered deterministic all-of tag matching against normalized `group:name` asset labels, plus truthful shortfall reporting when configured tag rules remove otherwise-ready visual assets
 - delivered `Tags` screen hardening with `Asset Type` filtering, visible asset tag labels, and operator guidance that automation can consume those normalized labels
+- delivered an asset-first tagging workflow with selected-asset state, tag search/group narrowing, and `Create And Attach` for the current asset
 - delivered a real desktop `Auto Factory` control surface with guided root-folder browse, batch-code override, `scan_depth`, and explicit run-mode selection
 - delivered truthful in-app reporting for discovered product folders, product create/reuse outcomes, deterministic asset intake actions, recent production orders, and stage-by-stage order results
 - delivered a UI orchestration seam that performs folder intake first and then routes materialize/preview runs through persisted `ProductionOrderService` control-plane records

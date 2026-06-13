@@ -39,6 +39,7 @@ It complements [07_Testing_Strategy.md](/F:/programming/python/MTClipFactory/doc
 - persisted production-order and orchestration-stage tracking
 - desktop `Auto Factory` control-surface workflow for root selection, scan depth, run mode, intake reporting, and recent-order inspection
 - tag-aware auto-factory asset-pool filtering from normalized asset labels
+- asset-first tagging workflow for selected-asset details, tag search, and create-and-attach behavior
 - preview job flow
 - final render flow
 - target-ratio visual normalization across mixed source sizes
@@ -189,6 +190,7 @@ It complements [07_Testing_Strategy.md](/F:/programming/python/MTClipFactory/doc
 24. Confirm `pipeline.toml [selection_tags]` can restrict foreground/background/music/voice pools by normalized `group:name` labels.
 25. Confirm planner shortfalls caused by tag filters remain truthful and do not silently fall back to untagged visual assets.
 26. Confirm the `Tags` screen shows current asset tag labels and supports `Asset Type` filtering during assignment work.
+27. Confirm the `Tags` screen keeps a selected asset in focus and allows `Create And Attach` plus existing-tag attach from the same workflow.
 
 ### C. Review And Approval Flow
 

@@ -77,6 +77,7 @@ This Markdown board is the SSOT Kanban for the repository.
 - `IR-21` folder discovery depth and assisted tagging ergonomics
 - `IR-22` auto-factory desktop control surface baseline
 - `IR-23` tag-aware auto-factory selection baseline
+- `IR-24` asset-first tagging workflow baseline
 
 ## Board Policy
 

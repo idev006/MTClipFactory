@@ -64,6 +64,7 @@ The next additive UX hardening for this same workflow should also provide:
 1. asset-type filtering inside the tag-assignment screen
 2. visible current assigned tag labels per asset
 3. clear guidance that normalized `group:name` labels may be consumed by automation
+4. an asset-first tagging loop where the selected asset becomes the main focus instead of the tag table
 
 ## Reviewed Workflow
 

@@ -42,6 +42,7 @@ The project now uses two roadmap layers:
 - `IR-21` Folder discovery depth and assisted tagging ergonomics: complete on 2026-06-13
 - `IR-22` Auto Factory desktop control surface baseline: complete on 2026-06-13
 - `IR-23` Tag-aware auto-factory selection baseline: complete on 2026-06-13
+- `IR-24` Asset-first tagging workflow baseline: complete on 2026-06-13
 
 ## Current Execution Stream
 
@@ -721,6 +722,33 @@ Make asset tags operational inside auto-factory planning while improving the tag
 - delivered deterministic tag-aware planner filtering across foreground/background/music/voice pools using normalized `group:name` labels
 - delivered truthful limiting-reason reporting when tag rules remove all renderable visual candidates
 - delivered `Tags` window hardening with `Asset Type` filtering, visible asset tag labels, and operator guidance that automation consumes normalized labels
+
+## IR-24 | Asset-First Tagging Workflow Baseline
+
+### Goal
+
+Make tag assignment feel natural for operators by centering the workflow on the selected asset instead of forcing two-table coordination first.
+
+### Scope
+
+- persist selected-asset state inside `TagDictionaryViewModel`
+- allow tag search and group narrowing for the available-tag list
+- add `Create And Attach` for the selected asset
+- show selected asset details plus current tag labels in a dedicated panel
+- keep the slice compatible with the existing tag service seam
+
+### Acceptance Criteria
+
+- operators can select one asset and complete most tagging work without mentally bouncing between unrelated tables
+- existing tag assignment still works through the same service seam
+- UI and pytest stay aligned to the asset-first interaction model
+- roadmap, UML, user manual, and status docs remain truthful
+
+### Delivery Result
+
+- delivered selected-asset state, available-tag filtering, and create-and-attach behavior in `TagDictionaryViewModel`
+- delivered an asset-first `Tag Dictionary` layout with asset list, selected asset details, available tags, and focused attach actions
+- covered the new workflow with pytest for both the view model and offscreen window contract
 
 ## Cross-Milestone Rules
 
