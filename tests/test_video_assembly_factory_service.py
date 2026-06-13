@@ -110,10 +110,29 @@ def _build_factory_service(
                         "reason": render_ducking_reason,
                     },
                 }
+            visual_composite_summary = None
+            if segment_clips:
+                visual_composite_summary = {
+                    "mode": "fake_layered_visual_stack",
+                    "background_segment_count": sum(1 for segment in segment_clips if segment.background_layer is not None),
+                    "keyed_segment_count": 0,
+                    "segments": [
+                        {
+                            "sequence_index": segment.sequence_index,
+                            "segment_type": segment.segment_type,
+                            "primary_asset_code": segment.asset_code,
+                            "primary_layer_name": segment.layer_name,
+                            "background_asset_code": None if segment.background_layer is None else segment.background_layer.asset_code,
+                            "composite_mode": "single_layer",
+                        }
+                        for segment in segment_clips
+                    ],
+                }
             return RenderedPreviewOutput(
                 file_path=target_path,
                 duration_sec=duration_sec,
                 audio_mix_summary=audio_mix_summary,
+                visual_composite_summary=visual_composite_summary,
             )
 
     renderer = FakePreviewRenderer()
@@ -284,6 +303,41 @@ def test_factory_service_writes_runtime_audio_mix_summary_to_manifest(unit_of_wo
     assert manifest_payload["audio_mix"]["music_track_count"] == 1
     assert manifest_payload["audio_mix"]["mix_balance"]["music_mix_gain_db"] == -4
     assert manifest_payload["audio_mix"]["ducking"]["applied"] is True
+
+
+def test_factory_service_builds_layered_visual_stack_when_background_and_foreground_exist(unit_of_work_factory, tmp_path) -> None:
+    product_id, background_asset_id = _register_ready_asset(
+        unit_of_work_factory,
+        tmp_path,
+        asset_type="background_video",
+        asset_code="bg_asset",
+        file_name="bg.mp4",
+    )
+    _, foreground_asset_id = _register_ready_asset(
+        unit_of_work_factory,
+        tmp_path,
+        asset_type="foreground_video",
+        asset_code="fg_asset",
+        file_name="fg.mp4",
+    )
+    service = _build_factory_service(unit_of_work_factory, tmp_path / "previews")
+    recipe_id = service.create_recipe(CreateRecipeCommand(product_id=product_id, recipe_code="Layered", target_ratio="9:16"))
+    service.assign_asset_to_recipe(AssignAssetToRecipeCommand(recipe_id=recipe_id, asset_id=background_asset_id, role="background"))
+    service.assign_asset_to_recipe(AssignAssetToRecipeCommand(recipe_id=recipe_id, asset_id=foreground_asset_id, role="hero"))
+
+    job_id = service.enqueue_preview_job(recipe_id)
+    service.run_preview_job(job_id)
+
+    recipe = service.get_recipe(recipe_id)
+    output = service.list_outputs(recipe_id=recipe_id)[0]
+    manifest_payload = json.loads(Path(output.manifest_path).read_text(encoding="utf-8"))
+    segment_clips = service._preview_renderer.calls[0]["segment_clips"]
+
+    assert all(segment.layer_name == "product_focus_visual" for segment in segment_clips)
+    assert all(segment.background_layer is not None for segment in segment_clips)
+    assert recipe.status == "candidate"
+    assert manifest_payload["visual_composite"]["background_segment_count"] == 3
+    assert manifest_payload["segments"][0]["background_layer"]["asset_code"] == "bg_asset"
 
 
 def test_factory_service_routes_audio_masking_risk_to_review_manifest(unit_of_work_factory, tmp_path) -> None:

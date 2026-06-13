@@ -153,6 +153,7 @@ def build_output_detail_lines(
             lines.append(f"- More Decisions: {len(composition_plan.decisions) - 6}")
     lines.extend(_build_manifest_review_lines(output.manifest_path))
     lines.extend(_build_manifest_audio_lines(output.manifest_path))
+    lines.extend(_build_manifest_visual_lines(output.manifest_path))
     return lines
 
 
@@ -217,6 +218,34 @@ def _build_manifest_audio_lines(manifest_path: str | None) -> list[str]:
         lines.append(f"- Voice Track Count: {len(voice_tracks)}")
     if isinstance(music_tracks, list):
         lines.append(f"- Music Track Count: {len(music_tracks)}")
+    return lines
+
+
+def _build_manifest_visual_lines(manifest_path: str | None) -> list[str]:
+    payload = _read_manifest_payload(manifest_path)
+    visual_composite = payload.get("visual_composite")
+    if not isinstance(visual_composite, dict):
+        return []
+    lines = [
+        "",
+        "Runtime Visual Composite:",
+        f"- Mode: {visual_composite.get('mode', '-')}",
+        f"- Background Segment Count: {visual_composite.get('background_segment_count', '-')}",
+        f"- Keyed Segment Count: {visual_composite.get('keyed_segment_count', '-')}",
+    ]
+    segments = visual_composite.get("segments")
+    if isinstance(segments, list):
+        for segment in segments[:5]:
+            if not isinstance(segment, dict):
+                continue
+            lines.append(
+                f"- Segment Composite: #{segment.get('sequence_index', '-')} "
+                f"{segment.get('segment_type', '-')} | mode={segment.get('composite_mode', '-')} "
+                f"| primary={segment.get('primary_asset_code', '-')} "
+                f"| background={segment.get('background_asset_code', '-')}"
+            )
+        if len(segments) > 5:
+            lines.append(f"- More Segment Composites: {len(segments) - 5}")
     return lines
 
 

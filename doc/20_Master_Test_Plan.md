@@ -164,6 +164,8 @@ It complements [07_Testing_Strategy.md](/F:/programming/python/MTClipFactory/doc
 5. Confirm output record, manifest, and dashboard counts update.
 6. Validate preview output dimensions follow the selected recipe `Target Ratio` even when attached visual assets use different source ratios.
 7. Validate preview manifest contains composition and review evidence.
+8. Validate a recipe with both `background_video` and `foreground_video` writes layered segment evidence instead of flattening to one visual choice only.
+9. Validate a likely green-screen foreground is keyed over the background layer and that manifest evidence records the applied composite mode.
 
 ### C. Review And Approval Flow
 

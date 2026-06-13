@@ -19,6 +19,7 @@ from mt_clip_factory.factory.audio_ducking import (
 )
 from mt_clip_factory.factory.preview_composition import PreviewSegmentClip
 from mt_clip_factory.factory.video_frame_normalization import build_visual_filter
+from mt_clip_factory.factory.visual_compositing import render_segmented_visual_output
 
 
 @dataclass(slots=True, frozen=True)
@@ -26,6 +27,7 @@ class RenderedPreviewOutput:
     file_path: Path
     duration_sec: float | None = None
     audio_mix_summary: dict | None = None
+    visual_composite_summary: dict | None = None
 
 
 class FFmpegPreviewRenderer:
@@ -58,7 +60,7 @@ class FFmpegPreviewRenderer:
         output_dir.mkdir(parents=True, exist_ok=True)
         target_path = output_dir / f"{output_stem}.mp4"
         if audio_mix_plan is not None:
-            audio_mix_summary = self._render_output_with_audio_mix(
+            audio_mix_summary, visual_composite_summary = self._render_output_with_audio_mix(
                 settings=settings,
                 target_path=target_path,
                 source_files=source_files,
@@ -70,8 +72,9 @@ class FFmpegPreviewRenderer:
                 file_path=target_path,
                 duration_sec=audio_mix_plan.target_duration_sec,
                 audio_mix_summary=audio_mix_summary,
+                visual_composite_summary=visual_composite_summary,
             )
-        self._render_visual_output(
+        visual_composite_summary = self._render_visual_output(
             settings=settings,
             target_path=target_path,
             source_files=source_files,
@@ -83,8 +86,9 @@ class FFmpegPreviewRenderer:
             return RenderedPreviewOutput(
                 file_path=target_path,
                 duration_sec=round(sum(segment.target_duration_sec for segment in segment_clips), 3),
+                visual_composite_summary=visual_composite_summary,
             )
-        return RenderedPreviewOutput(file_path=target_path)
+        return RenderedPreviewOutput(file_path=target_path, visual_composite_summary=visual_composite_summary)
 
     def render_preview(
         self,
@@ -114,11 +118,11 @@ class FFmpegPreviewRenderer:
         segment_clips: tuple[PreviewSegmentClip, ...],
         audio_mix_plan: PreviewAudioMixPlan,
         target_ratio: str | None,
-    ) -> dict:
+    ) -> tuple[dict, dict | None]:
         with TemporaryDirectory(prefix="mtclipfactory_preview_audio_mix_") as temp_dir_name:
             temp_dir = Path(temp_dir_name)
             silent_video_path = temp_dir / "silent_video.mp4"
-            self._render_visual_output(
+            visual_composite_summary = self._render_visual_output(
                 settings=settings,
                 target_path=silent_video_path,
                 source_files=source_files,
@@ -213,7 +217,7 @@ class FFmpegPreviewRenderer:
             "music_mix": music_summary,
             "ducking": ducking_summary,
             "audio_present": mixed_audio_path is not None,
-        }
+        }, visual_composite_summary
 
     def _render_visual_output(
         self,
@@ -224,16 +228,15 @@ class FFmpegPreviewRenderer:
         segment_clips: tuple[PreviewSegmentClip, ...],
         include_audio: bool,
         target_ratio: str | None,
-    ) -> None:
+    ) -> dict | None:
         if segment_clips:
-            self._render_segmented_output(
+            return self._render_segmented_output(
                 settings=settings,
                 segment_clips=segment_clips,
                 target_path=target_path,
                 include_audio=include_audio,
                 target_ratio=target_ratio,
             )
-            return
         if len(source_files) == 1:
             self._render_single_source(
                 settings=settings,
@@ -242,7 +245,7 @@ class FFmpegPreviewRenderer:
                 include_audio=include_audio,
                 target_ratio=target_ratio,
             )
-            return
+            return None
         self._render_concat_sources(
             settings=settings,
             source_files=source_files,
@@ -250,6 +253,7 @@ class FFmpegPreviewRenderer:
             include_audio=include_audio,
             target_ratio=target_ratio,
         )
+        return None
 
     def _render_single_source(
         self,
@@ -329,57 +333,16 @@ class FFmpegPreviewRenderer:
         target_path: Path,
         include_audio: bool,
         target_ratio: str | None,
-    ) -> None:
-        output_resolution = self._configured_output_resolution(settings)
-        with TemporaryDirectory(prefix="mtclipfactory_preview_segments_") as temp_dir_name:
-            temp_dir = Path(temp_dir_name)
-            rendered_segments: list[Path] = []
-            for segment in segment_clips:
-                segment_path = temp_dir / f"{segment.sequence_index:02d}_{segment.segment_type}.mp4"
-                arguments = [
-                    "-y",
-                    "-stream_loop",
-                    "-1",
-                    "-i",
-                    str(segment.source_file),
-                    "-t",
-                    str(segment.target_duration_sec),
-                    "-vf",
-                    build_visual_filter(target_ratio=target_ratio, output_resolution=output_resolution),
-                    "-c:v",
-                    "libx264",
-                    "-preset",
-                    "veryfast",
-                    "-crf",
-                    "30",
-                ]
-                if include_audio:
-                    arguments.extend(["-c:a", "aac", "-b:a", "96k", "-shortest"])
-                else:
-                    arguments.append("-an")
-                arguments.append(str(segment_path))
-                self._run_ffmpeg(settings=settings, arguments=arguments)
-                rendered_segments.append(segment_path)
-            concat_file = temp_dir / "segments_concat.txt"
-            concat_file.write_text(
-                "\n".join(f"file '{_escape_concat_path(file_path)}'" for file_path in rendered_segments),
-                encoding="utf-8",
-            )
-            self._run_ffmpeg(
-                settings=settings,
-                arguments=[
-                    "-y",
-                    "-f",
-                    "concat",
-                    "-safe",
-                    "0",
-                    "-i",
-                    str(concat_file),
-                    "-c",
-                    "copy",
-                    str(target_path),
-                ],
-            )
+    ) -> dict:
+        return render_segmented_visual_output(
+            settings=settings,
+            segment_clips=segment_clips,
+            target_path=target_path,
+            include_audio=include_audio,
+            target_ratio=target_ratio,
+            output_resolution=self._configured_output_resolution(settings),
+            run_ffmpeg=self._run_ffmpeg,
+        )
 
     def _configured_output_resolution(self, settings: SystemSettingsDTO) -> str | None:
         return getattr(settings, self._output_resolution_field, "") or None
@@ -719,10 +682,15 @@ class LocalPreviewRenderer:
                 file_path=target_path,
                 duration_sec=round(sum(segment.target_duration_sec for segment in segment_clips), 3),
                 audio_mix_summary=audio_mix_summary,
+                visual_composite_summary=_build_local_visual_composite_summary(segment_clips),
             )
         shutil.copy2(source_files[0], target_path)
         audio_mix_summary = None if audio_mix_plan is None else _build_local_audio_mix_summary(audio_mix_plan)
-        return RenderedPreviewOutput(file_path=target_path, audio_mix_summary=audio_mix_summary)
+        return RenderedPreviewOutput(
+            file_path=target_path,
+            audio_mix_summary=audio_mix_summary,
+            visual_composite_summary=None,
+        )
 
     def render_preview(
         self,
@@ -754,6 +722,25 @@ def _build_local_audio_mix_summary(audio_mix_plan: PreviewAudioMixPlan) -> dict:
             "applied": bool(audio_mix_plan.voice_tracks and audio_mix_plan.music_tracks),
             "reason": "simulated_local_renderer",
         },
+    }
+
+
+def _build_local_visual_composite_summary(segment_clips: tuple[PreviewSegmentClip, ...]) -> dict:
+    return {
+        "mode": "local_simulated_visual_stack",
+        "background_segment_count": sum(1 for segment in segment_clips if segment.background_layer is not None),
+        "keyed_segment_count": 0,
+        "segments": [
+            {
+                "segment_type": segment.segment_type,
+                "sequence_index": segment.sequence_index,
+                "primary_asset_code": segment.asset_code,
+                "primary_layer_name": segment.layer_name,
+                "background_asset_code": None if segment.background_layer is None else segment.background_layer.asset_code,
+                "composite_mode": "single_layer",
+            }
+            for segment in segment_clips
+        ],
     }
 
 

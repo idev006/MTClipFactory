@@ -59,6 +59,15 @@ Current implemented baseline on 2026-06-06:
 - final render now follows the same visual composition path and writes inspectable manifest lineage
 - Recipe Builder attach-role guidance can now use current asset type plus the selected recipe's segment order to suggest the next likely semantic role before preview is built
 
+Layered-compositing baseline direction locked on 2026-06-13:
+
+- a segment may carry both `background_visual` and `product_focus_visual` at the same time
+- the background layer should be treated as a persistent base plate when a background visual exists
+- the product-focus layer should sit above the background layer for product-led segments
+- preview and final must use the same layer-stack business rules so operator trust does not split between the two outputs
+- if a foreground/product visual appears to be green-screen media, the renderer may apply chroma-key compositing automatically and must write that decision into manifest evidence
+- if a foreground/product visual cannot be composited safely, the fallback behavior must stay explicit in the manifest instead of silently pretending layered composition happened
+
 ## Layer Model
 
 The composition engine should treat these as separate layers:
@@ -174,6 +183,61 @@ Current preview/final baseline:
 - ducking now uses a configurable engine with `sidechain_compressor` as the default runtime path and `windowed_volume_duck` as fallback
 - preview and final now apply configurable voice/music gain staging before the final mix
 - preview and final now normalize visual clips into the recipe `target_ratio` frame so mixed source ratios render into one bounded output canvas
+
+Layered visual compositing baseline on 2026-06-13:
+
+- preview and final should now treat segment visuals as a stack, not only a single chosen file
+- a background visual may remain active underneath a keyed product-focus visual for the same segment
+- green-screen detection is allowed as a render-time baseline when no explicit alpha asset is available yet
+- manifests should expose whether a segment used:
+  - `single_layer`
+  - `background_only`
+  - `green_chroma_key_overlay`
+  - future explicit alpha-based modes
+
+## Layered Visual Workflow
+
+Operator-intent workflow for keyed presenter-over-background composition:
+
+1. register a `background_video`
+2. register a `foreground_video`
+3. attach both to the recipe
+4. build preview
+5. renderer resolves the background plate and the product-focus clip per segment
+6. if the product-focus clip looks like green-screen media, renderer applies keyed overlay over the background plate
+7. manifest records the applied composite mode per segment
+8. operator reviews the preview and then proceeds with normal approval/final flow
+
+## Layered Visual Sequence
+
+```mermaid
+sequenceDiagram
+    actor User
+    participant View as RecipeBuilderWindow
+    participant VM as RecipeBuilderViewModel
+    participant Factory as VideoAssemblyFactoryService
+    participant Planner as Composition Planner
+    participant Render as FFmpegPreviewRenderer
+    participant Detect as Visual Composite Analyzer
+    participant Manifest as PreviewManifestBuilder
+
+    User->>View: Build Preview
+    View->>VM: queue_preview(recipe_id)
+    VM->>Factory: run_preview_job(job_id)
+    Factory->>Planner: resolve timeline + visual stack per segment
+    Planner-->>Factory: background layer + product-focus layer candidates
+    Factory->>Render: render_output(segment visual stacks)
+    Render->>Detect: inspect foreground frames when background + product layer exist
+    alt likely green-screen foreground
+        Detect-->>Render: green_chroma_key_overlay
+        Render->>Render: composite foreground over background
+    else no safe key path
+        Detect-->>Render: single-layer fallback
+        Render->>Render: render explicit fallback
+    end
+    Render-->>Factory: rendered file + visual composite summary
+    Factory->>Manifest: write layer/composite evidence
+```
 
 ## Review Gate Rule
 

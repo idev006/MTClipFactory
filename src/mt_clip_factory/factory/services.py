@@ -483,6 +483,8 @@ class VideoAssemblyFactoryService:
                 manifest_payload["review_gate"] = review_gate_manifest_payload(review_assessment)
                 if rendered_output.audio_mix_summary is not None:
                     manifest_payload["audio_mix"] = rendered_output.audio_mix_summary
+                if rendered_output.visual_composite_summary is not None:
+                    manifest_payload["visual_composite"] = rendered_output.visual_composite_summary
                 manifest_path = self._preview_manifest_builder.write_manifest(
                     product_code=product.product_code,
                     recipe_code=recipe.recipe_code,
@@ -618,6 +620,8 @@ class VideoAssemblyFactoryService:
                 manifest_payload["review_gate"] = review_gate_manifest_payload(review_assessment)
                 if rendered_output.audio_mix_summary is not None:
                     manifest_payload["audio_mix"] = rendered_output.audio_mix_summary
+                if rendered_output.visual_composite_summary is not None:
+                    manifest_payload["visual_composite"] = rendered_output.visual_composite_summary
                 manifest_path = self._preview_manifest_builder.write_manifest(
                     product_code=product.product_code,
                     recipe_code=f"{recipe.recipe_code}_final",

@@ -6,7 +6,10 @@ from pathlib import Path
 
 from mt_clip_factory.control_center.dto import SystemSettingsDTO
 from mt_clip_factory.factory.audio_composition import PreviewAudioMixPlan, PreviewAudioTrack
+from mt_clip_factory.factory.preview_composition import PreviewLayerClip, PreviewSegmentClip
 from mt_clip_factory.factory.renderers import FFmpegPreviewRenderer, LocalPreviewRenderer
+from mt_clip_factory.factory.visual_compositing import GreenscreenAnalysis, dominant_green_ratio
+from mt_clip_factory.ui.factory.recipe_builder_aftercare import _build_manifest_visual_lines
 from mt_clip_factory.ui.factory.recipe_builder_window import _build_manifest_audio_lines, _build_manifest_review_lines
 
 
@@ -187,6 +190,53 @@ def test_local_renderer_returns_simulated_audio_mix_summary(tmp_path) -> None:
     assert rendered.audio_mix_summary["ducking"]["applied"] is True
 
 
+def test_ffmpeg_renderer_builds_green_screen_overlay_when_background_layer_exists(tmp_path, monkeypatch) -> None:
+    settings = _settings(tmp_path)
+    renderer = InspectableFFmpegPreviewRenderer(StaticSettingsService(settings), tmp_path / "preview_root")
+    background_source = tmp_path / "background.mp4"
+    foreground_source = tmp_path / "foreground.mp4"
+    background_source.write_bytes(b"background")
+    foreground_source.write_bytes(b"foreground")
+    monkeypatch.setattr(
+        "mt_clip_factory.factory.visual_compositing.analyze_likely_greenscreen",
+        lambda settings, source_file: GreenscreenAnalysis(likely_greenscreen=True, dominant_green_ratio=0.8),
+    )
+
+    rendered = renderer.render_output(
+        product_code="honey",
+        output_stem="layered_preview",
+        source_files=[foreground_source],
+        segment_clips=(
+            PreviewSegmentClip(
+                sequence_index=1,
+                segment_type="hook",
+                layer_name="product_focus_visual",
+                asset_id=11,
+                asset_code="foreground_asset",
+                source_file=foreground_source,
+                start_sec=0.0,
+                end_sec=3.0,
+                target_duration_sec=3.0,
+                fill_mode="trim_to_segment",
+                background_layer=PreviewLayerClip(
+                    layer_name="background_visual",
+                    asset_id=22,
+                    asset_code="background_asset",
+                    source_file=background_source,
+                    fill_mode="trim_to_segment",
+                ),
+            ),
+        ),
+        target_ratio="9:16",
+    )
+
+    assert rendered.visual_composite_summary is not None
+    assert rendered.visual_composite_summary["keyed_segment_count"] == 1
+    assert any("-filter_complex" in command for command in renderer.commands)
+    assert any("colorkey=" in " ".join(command) for command in renderer.commands)
+    assert any("overlay=0:0" in " ".join(command) for command in renderer.commands)
+
+
 def test_output_detail_helper_reads_runtime_audio_mix_from_manifest(tmp_path) -> None:
     manifest_path = tmp_path / "preview_manifest.json"
     manifest_path.write_text(
@@ -259,3 +309,45 @@ def test_output_detail_helper_reads_review_metrics_from_manifest(tmp_path) -> No
     assert "- Signal: audio_masking_risk | value=duck_disabled_in_settings | threshold=ducking_applied" in lines
     assert "- Metric: duration_unknown_audio_tracks=1" in lines
     assert "- Metric: voice_track_count=1" in lines
+
+
+def test_dominant_green_ratio_identifies_green_screen_like_frames() -> None:
+    green_pixel = bytes((10, 220, 10))
+    skin_pixel = bytes((180, 140, 120))
+    sample = (green_pixel * 8) + (skin_pixel * 2)
+
+    ratio = dominant_green_ratio(sample)
+
+    assert ratio == 0.8
+
+
+def test_output_detail_helper_reads_visual_composite_summary_from_manifest(tmp_path) -> None:
+    manifest_path = tmp_path / "preview_manifest.json"
+    manifest_path.write_text(
+        json.dumps(
+            {
+                "visual_composite": {
+                    "mode": "layered_visual_stack",
+                    "background_segment_count": 3,
+                    "keyed_segment_count": 2,
+                    "segments": [
+                        {
+                            "sequence_index": 1,
+                            "segment_type": "hook",
+                            "composite_mode": "green_chroma_key_overlay",
+                            "primary_asset_code": "fg_asset",
+                            "background_asset_code": "bg_asset",
+                        }
+                    ],
+                }
+            }
+        ),
+        encoding="utf-8",
+    )
+
+    lines = _build_manifest_visual_lines(str(manifest_path))
+
+    assert "Runtime Visual Composite:" in lines
+    assert "- Mode: layered_visual_stack" in lines
+    assert "- Keyed Segment Count: 2" in lines
+    assert "- Segment Composite: #1 hook | mode=green_chroma_key_overlay | primary=fg_asset | background=bg_asset" in lines

@@ -15,6 +15,15 @@ VISUAL_LAYER_FALLBACK = ("product_focus_visual", "background_visual")
 
 
 @dataclass(slots=True, frozen=True)
+class PreviewLayerClip:
+    layer_name: str
+    asset_id: int
+    asset_code: str
+    source_file: Path
+    fill_mode: str
+
+
+@dataclass(slots=True, frozen=True)
 class PreviewSegmentClip:
     sequence_index: int
     segment_type: str
@@ -29,6 +38,7 @@ class PreviewSegmentClip:
     message_text: str | None = None
     text_rule: str | None = None
     audio_policy: str | None = None
+    background_layer: PreviewLayerClip | None = None
 
 
 @dataclass(slots=True, frozen=True)
@@ -116,23 +126,66 @@ def _build_segment_clip(
     segment: TimelineSegment,
     visual_assets_by_layer: dict[str, tuple[Asset, ...]],
 ) -> PreviewSegmentClip:
-    layer_name, candidate_assets = _resolve_candidate_assets(segment, visual_assets_by_layer)
-    asset = candidate_assets[(segment.sequence_index - 1) % len(candidate_assets)]
-    fill_mode = _resolve_fill_mode(asset.duration_sec, segment.target_duration_sec)
+    background_layer = _build_optional_layer_clip(
+        segment,
+        visual_assets_by_layer,
+        layer_name="background_visual",
+    )
+    foreground_layer = _build_optional_layer_clip(
+        segment,
+        visual_assets_by_layer,
+        layer_name="product_focus_visual",
+    )
+    primary_layer = foreground_layer or background_layer
+    if primary_layer is None:
+        layer_name, candidate_assets = _resolve_candidate_assets(segment, visual_assets_by_layer)
+        primary_layer = _build_layer_clip(
+            layer_name=layer_name,
+            asset=candidate_assets[(segment.sequence_index - 1) % len(candidate_assets)],
+            target_duration_sec=segment.target_duration_sec,
+        )
     return PreviewSegmentClip(
         sequence_index=segment.sequence_index,
         segment_type=segment.segment_type,
+        layer_name=primary_layer.layer_name,
+        asset_id=primary_layer.asset_id,
+        asset_code=primary_layer.asset_code,
+        source_file=primary_layer.source_file,
+        start_sec=segment.start_sec,
+        end_sec=segment.end_sec,
+        target_duration_sec=segment.target_duration_sec,
+        fill_mode=primary_layer.fill_mode,
+        message_text=segment.message_text,
+        text_rule=segment.text_rule,
+        audio_policy=segment.audio_policy,
+        background_layer=background_layer if foreground_layer is not None else None,
+    )
+
+
+def _build_optional_layer_clip(
+    segment: TimelineSegment,
+    visual_assets_by_layer: dict[str, tuple[Asset, ...]],
+    *,
+    layer_name: str,
+) -> PreviewLayerClip | None:
+    candidate_assets = visual_assets_by_layer.get(layer_name)
+    if not candidate_assets:
+        return None
+    asset = candidate_assets[(segment.sequence_index - 1) % len(candidate_assets)]
+    return _build_layer_clip(
+        layer_name=layer_name,
+        asset=asset,
+        target_duration_sec=segment.target_duration_sec,
+    )
+
+
+def _build_layer_clip(*, layer_name: str, asset: Asset, target_duration_sec: float) -> PreviewLayerClip:
+    return PreviewLayerClip(
         layer_name=layer_name,
         asset_id=asset.id or 0,
         asset_code=asset.asset_code,
         source_file=Path(asset.file_path),
-        start_sec=segment.start_sec,
-        end_sec=segment.end_sec,
-        target_duration_sec=segment.target_duration_sec,
-        fill_mode=fill_mode,
-        message_text=segment.message_text,
-        text_rule=segment.text_rule,
-        audio_policy=segment.audio_policy,
+        fill_mode=_resolve_fill_mode(asset.duration_sec, target_duration_sec),
     )
 
 
@@ -199,6 +252,17 @@ def _build_manifest_payload(
                 "start_sec": segment.start_sec,
                 "target_duration_sec": segment.target_duration_sec,
                 "text_rule": segment.text_rule,
+                "background_layer": (
+                    {
+                        "asset_code": segment.background_layer.asset_code,
+                        "asset_id": segment.background_layer.asset_id,
+                        "fill_mode": segment.background_layer.fill_mode,
+                        "layer_name": segment.background_layer.layer_name,
+                        "source_file": str(segment.background_layer.source_file),
+                    }
+                    if segment.background_layer is not None
+                    else None
+                ),
             }
             for segment in segments
         ],

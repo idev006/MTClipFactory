@@ -93,7 +93,7 @@ def assess_review_gate(
                 threshold=settings.max_looped_segments,
             )
         )
-    distinct_visual_assets = len({clip.asset_id for clip in segment_clips})
+    distinct_visual_assets = len(_distinct_visual_asset_ids(segment_clips))
     if segment_clips and distinct_visual_assets < min(settings.min_distinct_visual_assets, len(segment_clips)):
         signals.append(
             ReviewSignal(
@@ -223,6 +223,15 @@ def _max_consecutive_same_asset_segments(segment_clips) -> int:
             current = 1
             previous_asset_id = clip.asset_id
     return longest
+
+
+def _distinct_visual_asset_ids(segment_clips) -> set[int]:
+    asset_ids: set[int] = set()
+    for clip in segment_clips:
+        asset_ids.add(clip.asset_id)
+        if clip.background_layer is not None:
+            asset_ids.add(clip.background_layer.asset_id)
+    return asset_ids
 
 
 def _duplicate_risk(signals: list[ReviewSignal]) -> float:

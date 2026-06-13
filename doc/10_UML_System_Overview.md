@@ -118,6 +118,8 @@ classDiagram
         +render_output(..., segment_clips, target_ratio)
         +runtime audio mix
         +target-frame normalization
+        +layered visual compositing
+        +visual composite evidence
         +operator-configured exact output resolution
         +configurable duck mode
         +configurable gain staging
@@ -589,6 +591,39 @@ sequenceDiagram
     Factory->>Out: add(final output + lineage)
     Factory->>JobRepo: update(done/failed)
     Factory->>DB: COMMIT
+```
+
+## Output Reporting Sequence
+
+## Layered Visual Compositing Sequence
+
+```mermaid
+sequenceDiagram
+    actor User
+    participant View as RecipeBuilderWindow
+    participant VM as RecipeBuilderViewModel
+    participant Factory as VideoAssemblyFactoryService
+    participant Planner as Composition Planner
+    participant Render as FFmpegPreviewRenderer
+    participant Detect as Visual Composite Analyzer
+    participant Preview as PreviewManifestBuilder
+
+    User->>View: build preview or final
+    View->>VM: queue action(recipe_id)
+    VM->>Factory: run render job
+    Factory->>Planner: persist composition plan + timeline segments
+    Factory->>Planner: resolve background_visual + product_focus_visual stacks
+    Factory->>Render: render_output(segment visual stacks)
+    Render->>Detect: analyze foreground for likely green-screen usage
+    alt background + likely green-screen foreground
+        Detect-->>Render: green_chroma_key_overlay
+        Render->>Render: overlay keyed foreground on background
+    else no safe layered key path
+        Detect-->>Render: explicit single-layer fallback
+        Render->>Render: keep fallback truthful
+    end
+    Render-->>Factory: output path + visual composite summary
+    Factory->>Preview: write manifest with visual composite evidence
 ```
 
 ## Output Reporting Sequence
