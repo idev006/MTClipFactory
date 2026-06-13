@@ -43,7 +43,7 @@ The system separates `record lifecycle` from `binary-file lifecycle`.
 | Asset is unused | `Delete Selected` | Record and files are removed |
 | Asset is referenced and should not be used again | `Retire Selected` | Record stays, future use is blocked |
 | Retired asset still wastes disk and only historical truth must remain | `Purge Media` | Files are deleted, record stays |
-| Retired or purged asset must be replaced for future output rebuilding | Register replacement asset and reattach it in recipes | Historical lineage stays truthful while future work uses the new asset |
+| Retired or purged asset must be replaced for future output rebuilding | `Replace In Recipes...` with a ready same-product same-type asset | Historical lineage stays truthful while future work uses the new asset |
 
 ## 3. Operator Workflow
 
@@ -55,8 +55,9 @@ The system separates `record lifecycle` from `binary-file lifecycle`.
 4. Review the recipe and job references
 5. Click `Retire Selected`
 6. Register a replacement asset if future recipe/output work is required
-7. Rebuild affected recipe outputs as a separate corrective workflow
-8. If the old media is no longer needed on disk, click `Purge Media`
+7. Click `Replace In Recipes...` and choose a replacement asset
+8. Rebuild affected recipe outputs as a separate corrective workflow
+9. If the old media is no longer needed on disk, click `Purge Media`
 
 ### B. Unused Asset Cleanup
 
@@ -64,6 +65,17 @@ The system separates `record lifecycle` from `binary-file lifecycle`.
 2. Select the asset
 3. Confirm it has no references
 4. Click `Delete Selected`
+
+### C. Corrective Replacement Workflow
+
+1. Open `Assets`
+2. Select the bad or outdated asset
+3. Click `Show References`
+4. Confirm which recipes will be affected
+5. Click `Replace In Recipes...`
+6. Choose a replacement asset from the suggested ready candidates
+7. Confirm the replacement summary
+8. Rebuild and re-approve outputs for the affected recipes through the normal factory workflow
 
 ## 4. Safety Rules
 
@@ -73,6 +85,10 @@ The system separates `record lifecycle` from `binary-file lifecycle`.
 - `Purge Media` removes the stored binary files but preserves enough metadata for audit truth, including asset id, code, type, filename, status, and historical path fields.
 - Purged assets must not appear as `ready` candidates in the Recipe Builder.
 - Rebuilding an old recipe after its asset was purged is expected to require a replacement asset first.
+- `Replace In Recipes...` only allows replacement assets that are `ready`, belong to the same product, and use the same asset type as the source asset.
+- If replacement would create a duplicate `asset + role` pair inside an affected recipe, the workflow must stop and ask the operator to resolve the conflict manually.
+- After replacement, affected recipes return to a non-approved state and must produce a newly approved preview before they can be approved again.
+- Historical outputs remain visible for lineage, but outputs created before the replacement event must not be re-approved as if they matched the new recipe content.
 
 ## 5. Sequence Design
 
@@ -132,31 +148,44 @@ sequenceDiagram
 sequenceDiagram
     actor Operator
     participant AssetsUI as AssetLibraryWindow
-    participant RecipesUI as RecipeBuilderWindow
     participant Intake as AssetIntakeService
+    participant RecipeRepo as RecipeRepository
+    participant EventRepo as DecisionEventRepository
+    participant RecipesUI as RecipeBuilderWindow
     participant Factory as VideoAssemblyFactoryService
+    participant DB as SQLite
 
     Operator->>AssetsUI: inspect bad asset references
     AssetsUI->>Intake: describe_asset_references(asset_id)
     Intake-->>AssetsUI: recipes/jobs using asset
     Operator->>AssetsUI: retire asset
     AssetsUI->>Intake: retire_asset(asset_id)
-    Operator->>AssetsUI: optionally purge media later
-    Operator->>AssetsUI: register replacement asset
-    Operator->>RecipesUI: attach replacement asset to affected recipe
+    Operator->>AssetsUI: choose Replace In Recipes...
+    AssetsUI->>Intake: list_replacement_candidates(asset_id)
+    Intake-->>AssetsUI: ready same-product same-type candidates
+    Operator->>AssetsUI: confirm selected replacement asset
+    AssetsUI->>Intake: replace_asset_in_recipes(old_asset_id, new_asset_id)
+    Intake->>RecipeRepo: validate affected recipes + role conflicts
+    Intake->>RecipeRepo: replace recipe item asset ids
+    Intake->>RecipeRepo: reset affected recipes to candidate
+    Intake->>EventRepo: append recipe_assets_replaced events
+    Intake->>DB: COMMIT
+    AssetsUI-->>Operator: replacement summary
     Operator->>RecipesUI: rebuild preview/final through normal approval flow
-    Note over Factory: Historical lineage remains truthful to the old asset.\nFuture outputs move to the replacement asset.
+    Factory->>EventRepo: require newly approved output after replacement event
+    Note over Factory: Historical outputs remain visible,\nbut they are no longer valid approval evidence for the changed recipe.
 ```
 
 ## 6. Plan Review
 
-The reviewed implementation plan for the first delivery slice is:
+The reviewed implementation plan for the replacement delivery slice is:
 
-1. document the lifecycle policy and UML first
-2. add reference-report, retire, and media-purge behavior without a schema migration
+1. extend the lifecycle policy and UML first
+2. add replacement candidate discovery and recipe-item replacement without a schema migration
 3. keep hard delete restricted to unreferenced assets only
-4. expose the new operator actions in the `Assets` UI
-5. verify with pytest and UI smoke
+4. keep historical outputs visible but prevent stale approvals after recipe replacement
+5. expose the new replacement action in the `Assets` UI
+6. verify with pytest and UI smoke
 
 ### Why No Schema Migration In This Slice
 
@@ -164,6 +193,13 @@ The current `assets.status` field is sufficient for `retired` and `purged`, and 
 
 This keeps the implementation testable and low-risk while solving the operator problem immediately.
 
-### Known Follow-Up
+### Replacement Design Review
 
-This slice does not yet auto-replace asset references inside recipes. Replacement remains an explicit operator workflow and should be designed as a separate milestone because it changes recipe state intentionally.
+The replacement workflow deliberately avoids rewriting or deleting historical outputs. Instead, it:
+
+1. records a `recipe_assets_replaced` event
+2. rewrites current recipe-item references to the new asset
+3. pushes the affected recipe back to a rebuild-required state
+4. blocks approval of outputs that predate the replacement event
+
+This keeps lineage truthful without needing a schema migration for output supersession in the current delivery slice.

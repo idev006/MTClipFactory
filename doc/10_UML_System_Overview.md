@@ -47,6 +47,8 @@ classDiagram
         +retire_asset(asset_id)
         +purge_asset_media(asset_id)
         +describe_asset_references(asset_id)
+        +list_replacement_candidates(asset_id)
+        +replace_asset_in_recipes(old_asset_id, new_asset_id)
         +list_assets(...)
     }
 
@@ -70,6 +72,7 @@ classDiagram
         +approve_recipe(recipe_id)
         +reject_recipe(recipe_id)
         +assign_asset_to_recipe(command)
+        +require post-replacement approved output
         +enqueue_preview_job(recipe_id)
         +run_preview_job(job_id)
         +list_preview_jobs(...)
@@ -190,6 +193,8 @@ classDiagram
         +retire_asset(asset_id)
         +purge_asset_media(asset_id)
         +describe_asset_references(asset_id)
+        +list_replacement_candidates(asset_id)
+        +replace_asset_in_recipes(old_asset_id, new_asset_id)
         +generate_thumbnail(asset_id)
         +generate_proxy(asset_id)
     }
@@ -225,6 +230,7 @@ classDiagram
         +retire_asset()
         +purge_asset_media()
         +show_references()
+        +replace_in_recipes()
         +generate_thumbnail()
         +generate_proxy()
     }
@@ -406,6 +412,8 @@ sequenceDiagram
     participant VM as AssetLibraryViewModel
     participant Intake as AssetIntakeService
     participant AssetRepo as AssetRepository
+    participant RecipeRepo as RecipeRepository
+    participant DecisionRepo as DecisionEventRepository
     participant DB as SQLite
     participant FS as Filesystem
 
@@ -442,6 +450,17 @@ sequenceDiagram
         Intake->>DB: COMMIT
         Intake->>FS: delete primary/artifact files
         VM-->>View: refresh list + feedback
+    else replace in recipes
+        User->>View: select source asset + choose replacement
+        View->>VM: replace_asset_in_recipes(old_asset_id, new_asset_id)
+        VM->>Intake: replace_asset_in_recipes(old_asset_id, new_asset_id)
+        Intake->>AssetRepo: validate source/replacement compatibility
+        Intake->>RecipeRepo: validate affected items + role conflicts
+        Intake->>RecipeRepo: replace recipe item asset ids
+        Intake->>RecipeRepo: reset affected recipe approval state
+        Intake->>DecisionRepo: append recipe_assets_replaced event
+        Intake->>DB: COMMIT
+        VM-->>View: refresh list + replacement summary
     else delete selected asset
         User->>View: select asset + confirm delete
         View->>VM: delete_asset(asset_id)

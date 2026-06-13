@@ -167,6 +167,7 @@ def test_asset_library_window_exposes_lifecycle_maintenance_controls(qapp: QAppl
     assert asset_window.references_button.text() == "Show References"
     assert asset_window.retire_button.text() == "Retire Selected"
     assert asset_window.purge_button.text() == "Purge Media"
+    assert asset_window.replace_button.text() == "Replace In Recipes..."
     assert [asset_window.filter_status_combo.itemText(index) for index in range(asset_window.filter_status_combo.count())] == [
         "All",
         "ready",

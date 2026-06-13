@@ -5,12 +5,17 @@ from collections.abc import Callable
 from pathlib import Path
 
 from mt_clip_factory.domain.assets import Asset
-from mt_clip_factory.domain.enums import AssetType
+from mt_clip_factory.domain.decision_events import DecisionEvent
+from mt_clip_factory.domain.entities import utc_now
+from mt_clip_factory.domain.enums import AssetType, RecipeStatus
 from mt_clip_factory.domain.services import UnitOfWork
+from mt_clip_factory.factory.recipe_scoring import score_and_persist_recipe
 from mt_clip_factory.library.contracts import AssetMetadataAnalyzer, AssetStorage
 from mt_clip_factory.library.dto import (
     AssetJobReferenceDTO,
     AssetMediaPurgeReportDTO,
+    AssetReplacementAffectedRecipeDTO,
+    AssetReplacementReportDTO,
     AssetRecipeReferenceDTO,
     AssetReferenceReportDTO,
     AssetSummaryDTO,
@@ -46,6 +51,14 @@ class AssetRetireRequiredError(ValueError):
 
 class AssetMediaAlreadyPurgedError(ValueError):
     """Raised when an asset's media files were already purged."""
+
+
+class AssetReplacementError(ValueError):
+    """Raised when an asset replacement request is invalid."""
+
+
+class AssetReplacementConflictError(ValueError):
+    """Raised when replacement would create a conflicting recipe-item assignment."""
 
 
 def _slugify_asset_code(value: str) -> str:
@@ -158,6 +171,33 @@ class AssetIntakeService:
                     asset_type=asset_type,
                     status=status,
                 )
+            ]
+
+    def list_replacement_candidates(self, asset_id: int) -> list[AssetSummaryDTO]:
+        with self._unit_of_work_factory() as uow:
+            source_asset = _require_asset(uow, asset_id)
+            return [
+                AssetSummaryDTO(
+                    asset_id=summary.asset_id,
+                    product_id=summary.product_id,
+                    product_code=summary.product_code,
+                    asset_code=summary.asset_code,
+                    asset_type=summary.asset_type.value,
+                    file_name=summary.file_name,
+                    status=summary.status,
+                    ratio=summary.ratio,
+                    duration_sec=summary.duration_sec,
+                    file_size_mb=summary.file_size_mb,
+                    tag_labels=summary.tag_labels,
+                    thumbnail_path=summary.thumbnail_path,
+                    proxy_path=summary.proxy_path,
+                )
+                for summary in uow.assets.list_summaries(
+                    product_id=source_asset.product_id,
+                    asset_type=source_asset.asset_type.value,
+                    status="ready",
+                )
+                if summary.asset_id != asset_id
             ]
 
     def update_asset(self, command: UpdateAssetCommand) -> int:
@@ -303,6 +343,82 @@ class AssetIntakeService:
                 can_purge_media=asset.status == "retired",
             )
 
+    def replace_asset_in_recipes(self, source_asset_id: int, replacement_asset_id: int) -> AssetReplacementReportDTO:
+        with self._unit_of_work_factory() as uow:
+            source_asset = _require_asset(uow, source_asset_id)
+            replacement_asset = _require_asset(uow, replacement_asset_id)
+            _validate_replacement_pair(source_asset, replacement_asset)
+
+            recipe_references = list(uow.assets.list_recipe_references(source_asset_id))
+            if not recipe_references:
+                raise AssetReplacementError("Source asset is not attached to any recipes.")
+
+            conflicts = _find_replacement_conflicts(
+                uow,
+                recipe_ids=[reference.recipe_id for reference in recipe_references],
+                source_asset_id=source_asset_id,
+                replacement_asset_id=replacement_asset_id,
+            )
+            if conflicts:
+                raise AssetReplacementConflictError(
+                    "Replacement would duplicate an existing asset-role pair in: " + ", ".join(conflicts)
+                )
+
+            replaced_item_count = 0
+            event_time = utc_now()
+            affected_recipes: list[AssetReplacementAffectedRecipeDTO] = []
+            for reference in recipe_references:
+                recipe = uow.recipes.get_by_id(reference.recipe_id)
+                if recipe is None or recipe.id is None:
+                    continue
+                items = list(uow.recipes.list_items(recipe.id))
+                for item in items:
+                    if item.asset_id != source_asset_id or item.id is None:
+                        continue
+                    uow.recipes.update_item_asset(item.id, replacement_asset_id)
+                    replaced_item_count += 1
+
+                recipe.status = RecipeStatus.CANDIDATE
+                recipe.decision_actor = None
+                recipe.decision_at = None
+                recipe.decision_reason = None
+                uow.recipes.update(recipe)
+
+                rescored_items = list(uow.recipes.list_items(recipe.id))
+                rescored_assets = _load_assets_for_items(uow, rescored_items)
+                score_and_persist_recipe(uow, recipe=recipe, items=rescored_items, assets=rescored_assets)
+
+                uow.decision_events.add(
+                    DecisionEvent(
+                        recipe_id=recipe.id,
+                        event_type="recipe_assets_replaced",
+                        actor="asset_replacement_workflow",
+                        reason=(
+                            f"Replaced asset {source_asset.asset_code} with {replacement_asset.asset_code} "
+                            "and reset recipe for rebuild."
+                        ),
+                        created_at=event_time,
+                    )
+                )
+                affected_recipes.append(
+                    AssetReplacementAffectedRecipeDTO(
+                        recipe_id=recipe.id,
+                        recipe_code=recipe.recipe_code,
+                        previous_status=reference.recipe_status,
+                        output_count=reference.output_count,
+                    )
+                )
+
+            uow.commit()
+            return AssetReplacementReportDTO(
+                source_asset_id=source_asset_id,
+                source_asset_code=source_asset.asset_code,
+                replacement_asset_id=replacement_asset_id,
+                replacement_asset_code=replacement_asset.asset_code,
+                replaced_item_count=replaced_item_count,
+                affected_recipes=tuple(affected_recipes),
+            )
+
 
 def _require_asset(uow: UnitOfWork, asset_id: int) -> Asset:
     asset = uow.assets.get_by_id(asset_id)
@@ -319,6 +435,50 @@ def _asset_file_paths(asset: Asset) -> list[Path | None]:
         Path(asset.alpha_path) if asset.alpha_path else None,
         Path(asset.rgba_cache_path) if asset.rgba_cache_path else None,
     ]
+
+
+def _validate_replacement_pair(source_asset: Asset, replacement_asset: Asset) -> None:
+    if source_asset.id == replacement_asset.id:
+        raise AssetReplacementError("Select a different replacement asset.")
+    if replacement_asset.status != "ready":
+        raise AssetReplacementError("Replacement asset must be in status 'ready'.")
+    if source_asset.product_id != replacement_asset.product_id:
+        raise AssetReplacementError("Replacement asset must belong to the same product.")
+    if source_asset.asset_type != replacement_asset.asset_type:
+        raise AssetReplacementError("Replacement asset must use the same asset type.")
+
+
+def _find_replacement_conflicts(
+    uow: UnitOfWork,
+    *,
+    recipe_ids: list[int],
+    source_asset_id: int,
+    replacement_asset_id: int,
+) -> list[str]:
+    conflicts: list[str] = []
+    for recipe_id in recipe_ids:
+        recipe = uow.recipes.get_by_id(recipe_id)
+        if recipe is None or recipe.id is None:
+            continue
+        items = list(uow.recipes.list_items(recipe.id))
+        source_roles = {item.role for item in items if item.asset_id == source_asset_id}
+        duplicate_roles = {
+            item.role
+            for item in items
+            if item.asset_id == replacement_asset_id and item.role in source_roles
+        }
+        if duplicate_roles:
+            conflicts.append(f"{recipe.recipe_code} ({', '.join(sorted(duplicate_roles))})")
+    return conflicts
+
+
+def _load_assets_for_items(uow: UnitOfWork, items) -> dict[int, Asset]:
+    return {
+        item.asset_id: asset
+        for item in items
+        for asset in [uow.assets.get_by_id(item.asset_id)]
+        if asset is not None
+    }
 
 
 def _rename_path_for_asset_code(

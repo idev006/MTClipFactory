@@ -139,6 +139,9 @@ class RecipeRepository(Protocol):
     def add_item(self, recipe_id: int, asset_id: int, role: str) -> RecipeItem:
         ...
 
+    def update_item_asset(self, recipe_item_id: int, asset_id: int) -> RecipeItem:
+        ...
+
     def list_items(self, recipe_id: int) -> Sequence[RecipeItem]:
         ...
 

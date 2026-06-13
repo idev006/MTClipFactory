@@ -10,6 +10,7 @@ from PySide6.QtWidgets import (
     QGridLayout,
     QGroupBox,
     QHBoxLayout,
+    QInputDialog,
     QLabel,
     QLineEdit,
     QMainWindow,
@@ -112,6 +113,7 @@ class AssetLibraryWindow(QMainWindow):
         self.references_button = QPushButton("Show References")
         self.retire_button = QPushButton("Retire Selected")
         self.purge_button = QPushButton("Purge Media")
+        self.replace_button = QPushButton("Replace In Recipes...")
         self.thumbnail_button = QPushButton("Generate Thumbnail")
         self.proxy_button = QPushButton("Generate Proxy")
         self.tags_button = QPushButton("Tag Dictionary")
@@ -123,6 +125,7 @@ class AssetLibraryWindow(QMainWindow):
         self.references_button.clicked.connect(self._show_references)
         self.retire_button.clicked.connect(self._retire_asset)
         self.purge_button.clicked.connect(self._purge_asset_media)
+        self.replace_button.clicked.connect(self._replace_in_recipes)
         self.thumbnail_button.clicked.connect(self._generate_thumbnail)
         self.proxy_button.clicked.connect(self._generate_proxy)
         self.tags_button.clicked.connect(self._handle_open_tag_dictionary)
@@ -134,6 +137,7 @@ class AssetLibraryWindow(QMainWindow):
         maintenance_row.addWidget(self.references_button)
         maintenance_row.addWidget(self.retire_button)
         maintenance_row.addWidget(self.purge_button)
+        maintenance_row.addWidget(self.replace_button)
         action_row.addWidget(self.thumbnail_button)
         action_row.addWidget(self.proxy_button)
         action_row.addWidget(self.tags_button)
@@ -338,6 +342,87 @@ class AssetLibraryWindow(QMainWindow):
             (
                 f"Purged {report.purged_file_count} files for asset {report.asset_code}.\n"
                 f"Reclaimed approximately {reclaimed_mb:.2f} MB."
+            ),
+        )
+
+    def _replace_in_recipes(self) -> None:
+        asset = self._selected_asset_summary()
+        if asset is None:
+            QMessageBox.warning(self, "Replace In Recipes", "Select an asset first.")
+            return
+        try:
+            candidates = self._view_model.list_replacement_candidates(asset.asset_id)
+            reference_report = self._view_model.describe_asset_references(asset.asset_id)
+        except Exception as exc:  # noqa: BLE001
+            QMessageBox.warning(self, "Replace In Recipes", str(exc))
+            return
+        if not reference_report.recipe_references:
+            QMessageBox.information(
+                self,
+                "Replace In Recipes",
+                "This asset is not attached to any recipes, so there is nothing to replace.",
+            )
+            return
+        if not candidates:
+            QMessageBox.warning(
+                self,
+                "Replace In Recipes",
+                "No ready same-product same-type replacement assets are available.",
+            )
+            return
+
+        candidate_labels = [
+            f"#{candidate.asset_id} | {candidate.asset_code} | {candidate.asset_type} | status={candidate.status}"
+            for candidate in candidates
+        ]
+        selected_label, confirmed = QInputDialog.getItem(
+            self,
+            "Replace In Recipes",
+            "Choose the replacement asset:",
+            candidate_labels,
+            0,
+            False,
+        )
+        if not confirmed:
+            return
+        replacement_index = candidate_labels.index(selected_label)
+        replacement_asset = candidates[replacement_index]
+        confirmation = QMessageBox.question(
+            self,
+            "Replace In Recipes",
+            (
+                f"Replace asset {asset.asset_code} with {replacement_asset.asset_code} in "
+                f"{len(reference_report.recipe_references)} recipe(s)?\n\n"
+                "Affected recipes will return to candidate state and must be rebuilt and re-approved. "
+                "Historical outputs remain visible for lineage."
+            ),
+        )
+        if confirmation != QMessageBox.Yes:
+            return
+        try:
+            report = self._view_model.replace_asset_in_recipes(asset.asset_id, replacement_asset.asset_id)
+        except Exception as exc:  # noqa: BLE001
+            QMessageBox.warning(self, "Replace In Recipes", str(exc))
+            return
+
+        recipe_lines = [
+            f"- Recipe #{recipe.recipe_id} | {recipe.recipe_code} | previous_status={recipe.previous_status} | outputs={recipe.output_count}"
+            for recipe in report.affected_recipes
+        ]
+        QMessageBox.information(
+            self,
+            "Replace In Recipes",
+            "\n".join(
+                [
+                    (
+                        f"Replaced {report.source_asset_code} with {report.replacement_asset_code} "
+                        f"in {len(report.affected_recipes)} recipe(s)."
+                    ),
+                    f"Updated recipe items: {report.replaced_item_count}",
+                    "",
+                    "Affected recipes:",
+                    *recipe_lines,
+                ]
             ),
         )
 

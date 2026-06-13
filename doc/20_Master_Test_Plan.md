@@ -26,6 +26,7 @@ It complements [07_Testing_Strategy.md](/F:/programming/python/MTClipFactory/doc
 - asset readiness classification
 - asset rename/delete maintenance rules
 - referenced-asset retire/purge workflow and reference visibility
+- recipe-safe asset replacement workflow with approval-safety guards
 - tag creation, assignment, and filtering
 - thumbnail and proxy generation jobs
 
@@ -150,6 +151,8 @@ It complements [07_Testing_Strategy.md](/F:/programming/python/MTClipFactory/doc
 10. Retire a referenced asset and confirm it no longer participates in active recipe attachment.
 11. Purge a retired asset's media files and confirm the record remains visible for historical truth.
 12. Inspect an asset's reference report and confirm recipe/job usage is visible before destructive maintenance decisions.
+13. Replace a referenced asset in affected recipes and confirm the item references move to the selected ready replacement asset.
+14. Confirm affected recipes require a newly approved output after asset replacement before recipe approval can happen again.
 
 ### B. Recipe And Preview Flow
 
@@ -223,6 +226,7 @@ It complements [07_Testing_Strategy.md](/F:/programming/python/MTClipFactory/doc
 - runtime reload does not silently leave old path roots active
 - asset maintenance does not orphan media files or silently delete referenced assets
 - retired/purged asset behavior remains truthful about what was removed from disk versus what remains in history
+- replaced-asset workflows do not allow stale pre-replacement outputs to be re-approved as evidence for the changed recipe
 
 ### Usability
 

@@ -15,6 +15,7 @@ from mt_clip_factory.factory.renderers import RenderedPreviewOutput
 from mt_clip_factory.factory.services import (
     FactoryJobNotFoundError,
     FinalRenderPrerequisiteError,
+    OutputApprovalError,
     PreviewBuildInputError,
     RecipeAlreadyExistsError,
     RecipeApprovalError,
@@ -501,6 +502,42 @@ def test_factory_service_builds_final_render_job(unit_of_work_factory, tmp_path)
     assert events[0].event_type == "output_auto_approved"
     assert events[0].output_id == outputs[0].output_id
     assert products[0].output_count == 2
+
+
+def test_factory_service_requires_post_replacement_output_before_reapproval(unit_of_work_factory, tmp_path) -> None:
+    product_id, source_asset_id = _register_ready_asset(unit_of_work_factory, tmp_path, asset_code="hero_asset")
+    _, replacement_asset_id = _register_ready_asset(unit_of_work_factory, tmp_path, asset_code="hero_asset_v2", file_name="hero_v2.mp4")
+    asset_service = _build_asset_service(unit_of_work_factory, tmp_path / "media_library")
+    service = _build_factory_service(unit_of_work_factory, tmp_path / "previews")
+    recipe_id = service.create_recipe(CreateRecipeCommand(product_id=product_id, recipe_code="Honey Launch"))
+    service.assign_asset_to_recipe(AssignAssetToRecipeCommand(recipe_id=recipe_id, asset_id=source_asset_id, role="hero"))
+    preview_job_id = service.enqueue_preview_job(recipe_id)
+    service.run_preview_job(preview_job_id)
+    original_output_id = service.list_outputs(recipe_id=recipe_id)[0].output_id
+    service.approve_output(original_output_id, actor="qa_lead", reason="ready to publish")
+    service.approve_recipe(recipe_id, actor="qa_lead", reason="creative approved")
+
+    asset_service.replace_asset_in_recipes(source_asset_id, replacement_asset_id)
+
+    replaced_recipe = service.get_recipe(recipe_id)
+    assert replaced_recipe.status == "candidate"
+
+    with pytest.raises(OutputApprovalError, match="newly rebuilt output"):
+        service.approve_output(original_output_id, actor="qa_lead", reason="stale approval")
+
+    with pytest.raises(RecipeApprovalError, match="newly rebuilt output"):
+        service.approve_recipe(recipe_id, actor="qa_lead", reason="creative approved")
+
+    rebuilt_preview_job_id = service.enqueue_preview_job(recipe_id)
+    service.run_preview_job(rebuilt_preview_job_id)
+    rebuilt_output_id = service.list_outputs(recipe_id=recipe_id)[0].output_id
+    service.approve_output(rebuilt_output_id, actor="qa_lead", reason="replacement approved")
+    service.approve_recipe(recipe_id, actor="qa_lead", reason="creative approved after replacement")
+
+    recipe = service.get_recipe(recipe_id)
+    events = service.list_decision_events(recipe_id)
+    assert recipe.status == "approved"
+    assert any(event.event_type == "recipe_assets_replaced" for event in events)
 
 
 def test_factory_service_lists_append_only_decision_history(unit_of_work_factory, tmp_path) -> None:

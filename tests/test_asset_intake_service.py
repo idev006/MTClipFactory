@@ -18,6 +18,8 @@ from mt_clip_factory.library.services import (
     AssetInUseError,
     AssetMediaAlreadyPurgedError,
     AssetNotFoundError,
+    AssetReplacementConflictError,
+    AssetReplacementError,
     AssetRetireRequiredError,
     AssetIntakeService,
     AssetSourceFileMissingError,
@@ -383,6 +385,184 @@ def test_purge_asset_media_rejects_repeat_purge(unit_of_work_factory, tmp_path) 
 
     with pytest.raises(AssetMediaAlreadyPurgedError):
         asset_service.purge_asset_media(asset_id)
+
+
+def test_list_replacement_candidates_returns_ready_same_product_same_type_only(unit_of_work_factory, tmp_path) -> None:
+    product_service = ProductApplicationService(unit_of_work_factory=unit_of_work_factory)
+    product_id = product_service.create_product(CreateProductCommand(product_code="honey", product_name="Honey"))
+    other_product_id = product_service.create_product(CreateProductCommand(product_code="tea", product_name="Tea"))
+    asset_service = _build_asset_service(unit_of_work_factory, tmp_path / "media_library")
+
+    source_file = tmp_path / "source.mp4"
+    replacement_file = tmp_path / "replacement.mp4"
+    voice_file = tmp_path / "voice.mp3"
+    other_product_file = tmp_path / "other.mp4"
+    source_file.write_bytes(b"source")
+    replacement_file.write_bytes(b"replacement")
+    voice_file.write_bytes(b"voice")
+    other_product_file.write_bytes(b"other")
+
+    source_asset_id = asset_service.register_asset(
+        RegisterAssetCommand(
+            product_id=product_id,
+            asset_type="background_video",
+            source_file_path=source_file,
+            asset_code="hero_asset",
+        )
+    )
+    asset_service.register_asset(
+        RegisterAssetCommand(
+            product_id=product_id,
+            asset_type="background_video",
+            source_file_path=replacement_file,
+            asset_code="hero_asset_v2",
+        )
+    )
+    asset_service.register_asset(
+        RegisterAssetCommand(
+            product_id=product_id,
+            asset_type="voiceover",
+            source_file_path=voice_file,
+            asset_code="voice_asset",
+        )
+    )
+    asset_service.register_asset(
+        RegisterAssetCommand(
+            product_id=other_product_id,
+            asset_type="background_video",
+            source_file_path=other_product_file,
+            asset_code="other_product_asset",
+        )
+    )
+
+    candidates = asset_service.list_replacement_candidates(source_asset_id)
+
+    assert [candidate.asset_code for candidate in candidates] == ["hero_asset_v2"]
+
+
+def test_replace_asset_in_recipes_updates_items_resets_recipe_and_records_event(unit_of_work_factory, tmp_path) -> None:
+    product_service = ProductApplicationService(unit_of_work_factory=unit_of_work_factory)
+    product_id = product_service.create_product(CreateProductCommand(product_code="honey", product_name="Honey"))
+    asset_service = _build_asset_service(unit_of_work_factory, tmp_path / "media_library")
+
+    source_file = tmp_path / "source.mp4"
+    replacement_file = tmp_path / "replacement.mp4"
+    source_file.write_bytes(b"source")
+    replacement_file.write_bytes(b"replacement")
+
+    source_asset_id = asset_service.register_asset(
+        RegisterAssetCommand(
+            product_id=product_id,
+            asset_type="background_video",
+            source_file_path=source_file,
+            asset_code="hero_asset",
+        )
+    )
+    replacement_asset_id = asset_service.register_asset(
+        RegisterAssetCommand(
+            product_id=product_id,
+            asset_type="background_video",
+            source_file_path=replacement_file,
+            asset_code="hero_asset_v2",
+        )
+    )
+
+    with unit_of_work_factory() as uow:
+        recipe = uow.recipes.add(Recipe(product_id=product_id, recipe_code="recipe_01", status=RecipeStatus.APPROVED))
+        assert recipe.id is not None
+        recipe.decision_actor = "qa_lead"
+        uow.recipes.update(recipe)
+        uow.recipes.add_item(recipe.id, source_asset_id, "hook")
+        uow.outputs.add(Output(recipe_id=recipe.id, output_code="preview_01", file_path=str(tmp_path / "preview.mp4")))
+        uow.commit()
+
+    report = asset_service.replace_asset_in_recipes(source_asset_id, replacement_asset_id)
+
+    assert report.replaced_item_count == 1
+    assert report.affected_recipes[0].recipe_code == "recipe_01"
+    assert report.affected_recipes[0].previous_status == "approved"
+
+    with unit_of_work_factory() as uow:
+        recipe = uow.recipes.get_by_id(report.affected_recipes[0].recipe_id)
+        items = list(uow.recipes.list_items(report.affected_recipes[0].recipe_id))
+        events = list(uow.decision_events.list_by_recipe(report.affected_recipes[0].recipe_id))
+
+    assert recipe is not None
+    assert recipe.status == RecipeStatus.CANDIDATE
+    assert recipe.decision_actor is None
+    assert items[0].asset_id == replacement_asset_id
+    assert events[0].event_type == "recipe_assets_replaced"
+    assert "hero_asset" in (events[0].reason or "")
+    assert "hero_asset_v2" in (events[0].reason or "")
+
+
+def test_replace_asset_in_recipes_rejects_duplicate_asset_role_conflict(unit_of_work_factory, tmp_path) -> None:
+    product_service = ProductApplicationService(unit_of_work_factory=unit_of_work_factory)
+    product_id = product_service.create_product(CreateProductCommand(product_code="honey", product_name="Honey"))
+    asset_service = _build_asset_service(unit_of_work_factory, tmp_path / "media_library")
+
+    source_file = tmp_path / "source.mp4"
+    replacement_file = tmp_path / "replacement.mp4"
+    source_file.write_bytes(b"source")
+    replacement_file.write_bytes(b"replacement")
+
+    source_asset_id = asset_service.register_asset(
+        RegisterAssetCommand(
+            product_id=product_id,
+            asset_type="background_video",
+            source_file_path=source_file,
+            asset_code="hero_asset",
+        )
+    )
+    replacement_asset_id = asset_service.register_asset(
+        RegisterAssetCommand(
+            product_id=product_id,
+            asset_type="background_video",
+            source_file_path=replacement_file,
+            asset_code="hero_asset_v2",
+        )
+    )
+
+    with unit_of_work_factory() as uow:
+        recipe = uow.recipes.add(Recipe(product_id=product_id, recipe_code="recipe_01"))
+        assert recipe.id is not None
+        uow.recipes.add_item(recipe.id, source_asset_id, "hook")
+        uow.recipes.add_item(recipe.id, replacement_asset_id, "hook")
+        uow.commit()
+
+    with pytest.raises(AssetReplacementConflictError, match="recipe_01"):
+        asset_service.replace_asset_in_recipes(source_asset_id, replacement_asset_id)
+
+
+def test_replace_asset_in_recipes_rejects_incompatible_replacement(unit_of_work_factory, tmp_path) -> None:
+    product_service = ProductApplicationService(unit_of_work_factory=unit_of_work_factory)
+    product_id = product_service.create_product(CreateProductCommand(product_code="honey", product_name="Honey"))
+    asset_service = _build_asset_service(unit_of_work_factory, tmp_path / "media_library")
+
+    source_file = tmp_path / "source.mp4"
+    voice_file = tmp_path / "voice.mp3"
+    source_file.write_bytes(b"source")
+    voice_file.write_bytes(b"voice")
+
+    source_asset_id = asset_service.register_asset(
+        RegisterAssetCommand(
+            product_id=product_id,
+            asset_type="background_video",
+            source_file_path=source_file,
+            asset_code="hero_asset",
+        )
+    )
+    replacement_asset_id = asset_service.register_asset(
+        RegisterAssetCommand(
+            product_id=product_id,
+            asset_type="voiceover",
+            source_file_path=voice_file,
+            asset_code="voice_asset",
+        )
+    )
+
+    with pytest.raises(AssetReplacementError, match="same asset type"):
+        asset_service.replace_asset_in_recipes(source_asset_id, replacement_asset_id)
 
 
 def test_update_asset_rejects_unknown_asset(unit_of_work_factory, tmp_path) -> None:

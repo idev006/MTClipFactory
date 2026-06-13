@@ -56,6 +56,9 @@ class PreviewBuildInputError(ValueError):
 class OutputNotFoundError(ValueError):
     """Raised when an output cannot be found."""
 
+class OutputApprovalError(ValueError):
+    """Raised when an output cannot be approved for the current recipe state."""
+
 class RecipeApprovalError(ValueError):
     """Raised when a recipe approval decision is invalid."""
 
@@ -75,6 +78,7 @@ class VideoAssemblyFactoryService:
     RECIPE_REJECTED_EVENT = "recipe_rejected"
     RECIPE_REVIEW_REQUIRED_EVENT = "recipe_review_required"
     RECIPE_REVIEW_CLEARED_EVENT = "recipe_review_cleared"
+    RECIPE_ASSET_REPLACED_EVENT = "recipe_assets_replaced"
     SYSTEM_REVIEW_ACTOR = "system_review_gate"
 
     def __init__(
@@ -315,6 +319,15 @@ class VideoAssemblyFactoryService:
             output = uow.outputs.get_by_id(output_id)
             if output is None or output.id is None:
                 raise OutputNotFoundError(str(output_id))
+            replacement_event_at = _latest_event_timestamp(
+                uow,
+                recipe_id=output.recipe_id,
+                event_type=self.RECIPE_ASSET_REPLACED_EVENT,
+            )
+            if replacement_event_at is not None and output.created_at <= replacement_event_at:
+                raise OutputApprovalError(
+                    "Select a newly rebuilt output after asset replacement before approving output."
+                )
             approved_at = _utc_now()
             output.approved = True
             output.approved_by = actor_name
@@ -344,6 +357,18 @@ class VideoAssemblyFactoryService:
             approved_outputs = list(uow.outputs.list_summaries(recipe_id=recipe_id, approved=True))
             if not approved_outputs:
                 raise RecipeApprovalError("Approve at least one output before approving the recipe.")
+            replacement_event_at = _latest_event_timestamp(
+                uow,
+                recipe_id=recipe_id,
+                event_type=self.RECIPE_ASSET_REPLACED_EVENT,
+            )
+            if replacement_event_at is not None and not any(
+                output.approved_at is not None and output.approved_at > replacement_event_at
+                for output in approved_outputs
+            ):
+                raise RecipeApprovalError(
+                    "Approve a newly rebuilt output after asset replacement before approving the recipe."
+                )
             decided_at = _utc_now()
             recipe.status = RecipeStatus.APPROVED
             recipe.decision_actor = actor_name
@@ -795,3 +820,10 @@ def _record_decision_event(
             created_at=created_at,
         )
     )
+
+
+def _latest_event_timestamp(uow: UnitOfWork, *, recipe_id: int, event_type: str) -> datetime | None:
+    for event in uow.decision_events.list_by_recipe(recipe_id):
+        if event.event_type == event_type:
+            return event.created_at
+    return None

@@ -68,3 +68,21 @@ class AssetMediaPurgeReportDTO:
     asset_code: str
     purged_file_count: int
     reclaimed_bytes: int
+
+
+@dataclass(slots=True, frozen=True)
+class AssetReplacementAffectedRecipeDTO:
+    recipe_id: int
+    recipe_code: str
+    previous_status: str
+    output_count: int
+
+
+@dataclass(slots=True, frozen=True)
+class AssetReplacementReportDTO:
+    source_asset_id: int
+    source_asset_code: str
+    replacement_asset_id: int
+    replacement_asset_code: str
+    replaced_item_count: int
+    affected_recipes: tuple[AssetReplacementAffectedRecipeDTO, ...]

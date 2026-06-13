@@ -143,6 +143,19 @@ class SqlAlchemyRecipeRepository:
         self._session.flush()
         return RecipeItem(recipe_id=recipe_id, asset_id=asset_id, role=role, id=model.id)
 
+    def update_item_asset(self, recipe_item_id: int, asset_id: int) -> RecipeItem:
+        model = self._session.get(RecipeItemModel, recipe_item_id)
+        if model is None:
+            raise ValueError(f"Unknown recipe item id: {recipe_item_id}")
+        model.asset_id = asset_id
+        self._session.flush()
+        return RecipeItem(
+            id=model.id,
+            recipe_id=model.recipe_id,
+            asset_id=model.asset_id,
+            role=model.role,
+        )
+
     def list_items(self, recipe_id: int) -> Sequence[RecipeItem]:
         statement = (
             select(

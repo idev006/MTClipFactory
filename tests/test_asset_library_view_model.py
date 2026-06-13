@@ -7,7 +7,13 @@ import pytest
 from mt_clip_factory.application.dto import CreateProductCommand
 from mt_clip_factory.application.services import ProductApplicationService
 from mt_clip_factory.library.artifact_dto import ArtifactJobSummaryDTO
-from mt_clip_factory.library.dto import AssetMediaPurgeReportDTO, AssetReferenceReportDTO, AssetSummaryDTO
+from mt_clip_factory.library.dto import (
+    AssetMediaPurgeReportDTO,
+    AssetReferenceReportDTO,
+    AssetReplacementAffectedRecipeDTO,
+    AssetReplacementReportDTO,
+    AssetSummaryDTO,
+)
 from mt_clip_factory.library.services import AssetSourceFileMissingError
 from mt_clip_factory.presentation.library.asset_library import AssetLibraryViewModel
 
@@ -20,6 +26,7 @@ class FakeAssetIntakeService:
         self.deleted_asset_ids: list[int] = []
         self.retired_asset_ids: list[int] = []
         self.purged_asset_ids: list[int] = []
+        self.replaced_pairs: list[tuple[int, int]] = []
 
     def register_asset(self, command) -> int:
         if "missing" in str(command.source_file_path):
@@ -105,6 +112,29 @@ class FakeAssetIntakeService:
                 can_purge_media=asset.status == "retired",
             )
         raise ValueError(str(asset_id))
+
+    def list_replacement_candidates(self, asset_id: int) -> list[AssetSummaryDTO]:
+        return [asset for asset in self.assets if asset.asset_id != asset_id and asset.status == "ready"]
+
+    def replace_asset_in_recipes(self, source_asset_id: int, replacement_asset_id: int) -> AssetReplacementReportDTO:
+        self.replaced_pairs.append((source_asset_id, replacement_asset_id))
+        source_asset = next(asset for asset in self.assets if asset.asset_id == source_asset_id)
+        replacement_asset = next(asset for asset in self.assets if asset.asset_id == replacement_asset_id)
+        return AssetReplacementReportDTO(
+            source_asset_id=source_asset_id,
+            source_asset_code=source_asset.asset_code,
+            replacement_asset_id=replacement_asset_id,
+            replacement_asset_code=replacement_asset.asset_code,
+            replaced_item_count=2,
+            affected_recipes=(
+                AssetReplacementAffectedRecipeDTO(
+                    recipe_id=11,
+                    recipe_code="recipe_11",
+                    previous_status="approved",
+                    output_count=2,
+                ),
+            ),
+        )
 
 
 class FakeArtifactGenerationService:
@@ -404,3 +434,62 @@ def test_asset_view_model_describes_references(unit_of_work_factory, tmp_path) -
     assert report.asset_code == "hero_asset"
     assert view_model.status == "ready"
     assert view_model.feedback == "Loaded references for asset #1"
+
+
+def test_asset_view_model_lists_replacement_candidates(unit_of_work_factory, tmp_path) -> None:
+    product_service = ProductApplicationService(unit_of_work_factory=unit_of_work_factory)
+    product_id = product_service.create_product(CreateProductCommand(product_code="honey", product_name="Honey"))
+    asset_service = FakeAssetIntakeService()
+    artifact_service = FakeArtifactGenerationService(asset_service)
+    view_model = AssetLibraryViewModel(
+        product_service=product_service,
+        asset_intake_service=asset_service,
+        artifact_generation_service=artifact_service,
+    )
+    view_model.register_asset(
+        product_id=product_id,
+        asset_type="background_video",
+        source_file_path=str(tmp_path / "hero.mp4"),
+        asset_code="hero_asset",
+    )
+    view_model.register_asset(
+        product_id=product_id,
+        asset_type="background_video",
+        source_file_path=str(tmp_path / "hero_alt.mp4"),
+        asset_code="hero_asset_v2",
+    )
+
+    candidates = view_model.list_replacement_candidates(1)
+
+    assert [candidate.asset_code for candidate in candidates] == ["hero_asset_v2"]
+    assert view_model.feedback == "Loaded replacement candidates for asset #1"
+
+
+def test_asset_view_model_replaces_asset_in_recipes(unit_of_work_factory, tmp_path) -> None:
+    product_service = ProductApplicationService(unit_of_work_factory=unit_of_work_factory)
+    product_id = product_service.create_product(CreateProductCommand(product_code="honey", product_name="Honey"))
+    asset_service = FakeAssetIntakeService()
+    artifact_service = FakeArtifactGenerationService(asset_service)
+    view_model = AssetLibraryViewModel(
+        product_service=product_service,
+        asset_intake_service=asset_service,
+        artifact_generation_service=artifact_service,
+    )
+    view_model.register_asset(
+        product_id=product_id,
+        asset_type="background_video",
+        source_file_path=str(tmp_path / "hero.mp4"),
+        asset_code="hero_asset",
+    )
+    view_model.register_asset(
+        product_id=product_id,
+        asset_type="background_video",
+        source_file_path=str(tmp_path / "hero_alt.mp4"),
+        asset_code="hero_asset_v2",
+    )
+
+    report = view_model.replace_asset_in_recipes(1, 2)
+
+    assert report.replaced_item_count == 2
+    assert asset_service.replaced_pairs == [(1, 2)]
+    assert view_model.feedback == "Replaced asset #1 with #2 in 1 recipe(s)"

@@ -6,13 +6,22 @@ from PySide6.QtCore import QObject, Property, Signal, Slot
 
 from mt_clip_factory.application.services import ProductApplicationService
 from mt_clip_factory.library.artifact_services import ArtifactGenerationService
-from mt_clip_factory.library.dto import AssetMediaPurgeReportDTO, AssetReferenceReportDTO, AssetSummaryDTO, RegisterAssetCommand, UpdateAssetCommand
+from mt_clip_factory.library.dto import (
+    AssetMediaPurgeReportDTO,
+    AssetReferenceReportDTO,
+    AssetReplacementReportDTO,
+    AssetSummaryDTO,
+    RegisterAssetCommand,
+    UpdateAssetCommand,
+)
 from mt_clip_factory.library.services import (
     AssetCodeAlreadyExistsError,
     AssetInUseError,
     AssetIntakeService,
     AssetMediaAlreadyPurgedError,
     AssetNotFoundError,
+    AssetReplacementConflictError,
+    AssetReplacementError,
     AssetRetireRequiredError,
     AssetSourceFileMissingError,
 )
@@ -191,6 +200,39 @@ class AssetLibraryViewModel(QObject):
 
         self._set_feedback(f"Loaded references for asset #{report.asset_id}")
         self._set_status("ready")
+        return report
+
+    def list_replacement_candidates(self, asset_id: int) -> list[AssetSummaryDTO]:
+        self._set_status("loading")
+        try:
+            candidates = self._asset_intake_service.list_replacement_candidates(asset_id)
+        except (AssetNotFoundError, ValueError) as exc:
+            self._set_feedback(str(exc))
+            self._set_status("error")
+            raise
+
+        self._set_feedback(f"Loaded replacement candidates for asset #{asset_id}")
+        self._set_status("ready")
+        return candidates
+
+    def replace_asset_in_recipes(self, source_asset_id: int, replacement_asset_id: int) -> AssetReplacementReportDTO:
+        self._set_status("submitting")
+        try:
+            report = self._asset_intake_service.replace_asset_in_recipes(source_asset_id, replacement_asset_id)
+        except (
+            AssetNotFoundError,
+            AssetReplacementConflictError,
+            AssetReplacementError,
+            ValueError,
+        ) as exc:
+            self._set_feedback(str(exc))
+            self._set_status("error")
+            raise
+
+        self._set_feedback(
+            f"Replaced asset #{source_asset_id} with #{replacement_asset_id} in {len(report.affected_recipes)} recipe(s)"
+        )
+        self.load()
         return report
 
     def generate_thumbnail(self, asset_id: int) -> int:
