@@ -5,6 +5,7 @@ from dataclasses import dataclass
 from mt_clip_factory.application.services import ProductApplicationService
 from mt_clip_factory.control_center.services import DashboardService, SystemSettingsService
 from mt_clip_factory.factory.auto_factory import AutoFactoryBatchService
+from mt_clip_factory.factory.auto_factory_folder import AutoFactoryFolderService
 from mt_clip_factory.factory.services import VideoAssemblyFactoryService
 from mt_clip_factory.library.artifact_services import ArtifactGenerationService
 from mt_clip_factory.library.services import AssetIntakeService
@@ -21,3 +22,4 @@ class ResourceLibraryModule:
     system_settings_service: SystemSettingsService
     dashboard_service: DashboardService
     auto_factory_service: AutoFactoryBatchService | None = None
+    auto_factory_folder_service: AutoFactoryFolderService | None = None

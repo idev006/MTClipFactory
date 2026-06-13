@@ -80,6 +80,37 @@ Folder meaning:
 
 `pipeline.toml` should define production policy.
 
+### Baseline TOML Examples
+
+`product.toml`
+
+```toml
+[product]
+product_code = "product_a"
+product_name = "Product A"
+default_platform = "shopee"
+```
+
+`pipeline.toml`
+
+```toml
+[request]
+requested_output_count = 100
+target_platform = "shopee"
+target_ratio = "9:16"
+uniqueness_scope = "batch"
+duration_mode = "voice_with_bounds"
+min_duration_sec = 12.0
+max_duration_sec = 30.0
+```
+
+### Intake Rules
+
+- the folder service should create the product automatically when `product_code` does not already exist
+- if the product already exists, the service should reuse it instead of silently rewriting its metadata
+- asset registration should derive deterministic globally-safe asset codes using product code plus type prefix
+- rerunning the same folder should skip already-registered deterministic asset codes instead of duplicating records
+
 ## Uniqueness Policy
 
 The initial automation baseline should enforce uniqueness only within the current batch.
@@ -220,6 +251,50 @@ Explicitly deferred to later slices:
 - historical uniqueness modes
 - asset cooldown or historical reuse weighting
 
+## Reviewed Second Implementation Slice
+
+The reviewed second delivery slice should be:
+
+1. parse `product.toml` and `pipeline.toml`
+2. discover product folders under one batch root
+3. create missing products automatically
+4. intake eligible media files from `foreground/background/music/voice`
+5. skip already-ingested deterministic asset codes on rerun
+6. build and materialize one `Production Order` from the folder tree
+
+Explicitly deferred again:
+
+- filesystem watcher loops
+- archive movement
+- preview/final auto-run
+- desktop UI for automation control
+
+## Folder Intake Sequence
+
+```mermaid
+sequenceDiagram
+    actor Operator
+    participant FolderSvc as AutoFactoryFolderService
+    participant ProductSvc as ProductApplicationService
+    participant AssetSvc as AssetIntakeService
+    participant Planner as AutoFactoryBatchService
+
+    Operator->>FolderSvc: run_batch_root(batch_root)
+    FolderSvc->>FolderSvc: read product.toml + pipeline.toml
+    FolderSvc->>ProductSvc: find or create product
+    loop each folder type
+        FolderSvc->>AssetSvc: register deterministic asset code
+        alt asset code already exists
+            AssetSvc-->>FolderSvc: skip existing
+        else new asset
+            AssetSvc-->>FolderSvc: registered ready asset
+        end
+    end
+    FolderSvc->>Planner: materialize_batch(order)
+    Planner-->>FolderSvc: created internal recipes
+    FolderSvc-->>Operator: folder run report
+```
+
 ## Why This Slice First
 
 - it reuses current `Product`, `Asset`, and `Recipe` services instead of bypassing them
@@ -236,3 +311,4 @@ Before coding, the plan was reviewed against the current architecture and the fo
 3. `voice_with_bounds` is the right first duration policy
 4. `internal recipe generation` is a safe first implementation seam
 5. render and approval automation should only follow after planner truth is stable
+6. folder-driven automation should stay idempotent for repeated intake runs before watcher behavior is introduced

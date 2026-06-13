@@ -29,6 +29,7 @@ classDiagram
         +artifact_generation_service
         +video_assembly_factory_service
         +auto_factory_service
+        +auto_factory_folder_service
         +tag_management_service
         +system_settings_service
         +dashboard_service
@@ -89,6 +90,14 @@ classDiagram
         +batch-only uniqueness planning
         +voice-with-bounds duration planning
         +internal recipe generation
+    }
+
+    class AutoFactoryFolderService {
+        +run_batch_root(batch_root)
+        +parse product.toml + pipeline.toml
+        +create missing products
+        +intake deterministic asset codes
+        +skip existing assets on rerun
     }
 
     class ReviewGateEvaluator {
@@ -352,6 +361,7 @@ classDiagram
     ResourceLibraryModule --> ArtifactGenerationService
     ResourceLibraryModule --> VideoAssemblyFactoryService
     ResourceLibraryModule --> AutoFactoryBatchService
+    ResourceLibraryModule --> AutoFactoryFolderService
     ResourceLibraryModule --> DashboardService
     ResourceLibraryModule --> SystemSettingsService
     ResourceLibraryModule --> MigrationGuard
@@ -373,6 +383,9 @@ classDiagram
     AutoFactoryBatchService --> ProductApplicationService
     AutoFactoryBatchService --> AssetIntakeService
     AutoFactoryBatchService --> VideoAssemblyFactoryService
+    AutoFactoryFolderService --> ProductApplicationService
+    AutoFactoryFolderService --> AssetIntakeService
+    AutoFactoryFolderService --> AutoFactoryBatchService
     VideoAssemblyFactoryService --> FFmpegPreviewRenderer
     FFmpegPreviewRenderer --> VideoFrameNormalization
     VideoAssemblyFactoryService --> PreviewComposition

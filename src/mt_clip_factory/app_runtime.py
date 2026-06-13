@@ -30,6 +30,14 @@ class ApplicationRuntime:
         self.asset_intake_service = ReloadableServiceProxy(self._module.asset_intake_service)
         self.artifact_generation_service = ReloadableServiceProxy(self._module.artifact_generation_service)
         self.video_assembly_factory_service = ReloadableServiceProxy(self._module.video_assembly_factory_service)
+        self.auto_factory_service = (
+            None if self._module.auto_factory_service is None else ReloadableServiceProxy(self._module.auto_factory_service)
+        )
+        self.auto_factory_folder_service = (
+            None
+            if self._module.auto_factory_folder_service is None
+            else ReloadableServiceProxy(self._module.auto_factory_folder_service)
+        )
         self.tag_management_service = ReloadableServiceProxy(self._module.tag_management_service)
         self.system_settings_service = ReloadableServiceProxy(self._module.system_settings_service)
         self.dashboard_service = ReloadableServiceProxy(self._module.dashboard_service)
@@ -44,6 +52,8 @@ class ApplicationRuntime:
             tag_management_service=self.tag_management_service,
             system_settings_service=self.system_settings_service,
             dashboard_service=self.dashboard_service,
+            auto_factory_service=self.auto_factory_service,
+            auto_factory_folder_service=self.auto_factory_folder_service,
         )
 
     def reload_path_roots(self) -> PathRootStatusDTO:
@@ -56,6 +66,10 @@ class ApplicationRuntime:
         self.asset_intake_service.set_target(self._module.asset_intake_service)
         self.artifact_generation_service.set_target(self._module.artifact_generation_service)
         self.video_assembly_factory_service.set_target(self._module.video_assembly_factory_service)
+        if self.auto_factory_service is not None and self._module.auto_factory_service is not None:
+            self.auto_factory_service.set_target(self._module.auto_factory_service)
+        if self.auto_factory_folder_service is not None and self._module.auto_factory_folder_service is not None:
+            self.auto_factory_folder_service.set_target(self._module.auto_factory_folder_service)
         self.tag_management_service.set_target(self._module.tag_management_service)
         self.system_settings_service.set_target(self._module.system_settings_service)
         self.dashboard_service.set_target(self._module.dashboard_service)

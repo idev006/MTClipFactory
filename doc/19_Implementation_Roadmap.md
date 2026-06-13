@@ -488,6 +488,35 @@ Add a truthful first automation seam so operators can request output counts by p
 - delivered internal recipe generation through the existing `VideoAssemblyFactoryService` instead of bypassing business rules
 - covered unique-capacity planning, shortfall blocking, duration fallback, and recipe materialization with pytest
 
+## IR-16 | Folder-Driven Batch Intake Baseline
+
+### Goal
+
+Turn the new auto-factory planner into a practical ingestion seam by reading product folders plus `.toml` contracts instead of requiring all assets and requests to be supplied manually in code.
+
+### Scope
+
+- define `product.toml` and `pipeline.toml` as the folder-contract SSOT inputs
+- discover product folders under one batch root
+- create missing products automatically from `product.toml`
+- register deterministic asset codes from `foreground/background/music/voice`
+- skip already-ingested deterministic asset codes on rerun
+- build one production order from the folder tree and materialize internal recipes
+
+### Acceptance Criteria
+
+- a batch root with one or more valid product folders can be processed end to end into internal recipes
+- rerunning the same batch root does not duplicate asset records for already-ingested files
+- invalid or incomplete folder contracts fail truthfully before silent partial production
+- roadmap, UML, status, progress, and test-plan docs remain aligned to the delivered slice
+
+### Delivery Result
+
+- delivered `AutoFactoryFolderService` to parse folder contracts, bootstrap products, ingest deterministic asset codes, and invoke the existing batch planner
+- delivered rerun-safe skip behavior for already-ingested deterministic asset codes instead of duplicating asset records
+- delivered folder-contract pytest coverage for success, rerun idempotence, shortfall propagation, and invalid TOML structure
+- kept preview/final auto-run, watcher loops, and automation UI explicitly deferred behind the new folder-intake baseline
+
 ## Cross-Milestone Rules
 
 - every milestone must update related SSOT docs in the same loop

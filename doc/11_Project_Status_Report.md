@@ -56,6 +56,7 @@
 - Recipe Builder now uses a resizable three-column workspace so setup/actions, asset attachment, and output review can each claim more space without forcing the operator to fight one fixed grid
 - Recipe Builder tables now declare vertical-scroll behavior explicitly so overflow rows stay usable without adding pagination
 - Auto Factory batch planning now exists as a first automation slice, including production-order DTOs, batch-only uniqueness planning, voice-with-bounds duration resolution, planner-capacity truth, and internal recipe generation through the existing factory service seam
+- Auto Factory can now also read folder contracts through `product.toml` and `pipeline.toml`, create missing products, ingest deterministic asset codes from typed media folders, and materialize internal recipes from one batch root
 - assets can now be safely renamed or deleted from the `Assets` screen, with repository checks that block deletion when recipe-item or artifact-job references still exist
 - the `Assets` screen now supports `Show References`, `Retire Selected`, and `Purge Media` so referenced assets can leave active use and disk without destroying audit truth
 - the `Assets` screen now also supports `Replace In Recipes...` with recipe-safe validation, recipe reset-to-candidate behavior, and approval guards that prevent stale pre-replacement outputs from being reused as evidence for changed recipes
@@ -88,7 +89,7 @@
 
 ## Verification Baseline
 
-- `python -m pytest` via `.venv`: `156 passed`
+- `python -m pytest` via `.venv`: `161 passed`
 - UI smoke via `QT_QPA_PLATFORM=offscreen`: `6` windows instantiated successfully
 
 ## Current Focus
@@ -104,13 +105,13 @@
 - validate whether the new green-screen compositing baseline is robust enough across real foreground media and not only the current controlled sample
 - validate whether the new non-green key policy is clear enough for operators and whether per-asset overrides are needed after broader use
 - validate whether the new resizable Recipe Builder workspace reduces operator confusion during attach-versus-review work
-- validate folder-driven batch intake and preview/final automation only after the new auto-factory planner baseline proves stable
+- validate preview/final automation only after the new folder-driven auto-factory intake baseline proves stable
 - keep project documents truthful through per-milestone revision checkpoints
 
 ## Next Steps
 
 1. Run broader controlled operator use on real campaign media without service-side assistance and record operator findings on both the asset-replacement and layered-compositing workflows.
-2. Extend the auto-factory baseline from internal recipe generation into controlled preview/final automation only after planner-capacity truth is accepted.
+2. Extend the auto-factory baseline from folder-driven intake plus internal recipe generation into controlled preview/final automation only after intake and planner truth are accepted.
 3. Decide whether per-asset compositing overrides are justified beyond the new settings-level key policy.
 4. Recalibrate recipe scoring only if operator feedback shows the current metadata, asset-diversity, and runtime-evidence baseline is not useful enough.
 5. Clean the Alembic `path_separator=os` warning in a maintenance pass.

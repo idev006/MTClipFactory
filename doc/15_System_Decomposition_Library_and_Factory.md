@@ -46,6 +46,7 @@ Compose prepared assets into reviewable preview and later final-output workflows
 - recipe item assignment
 - production-order batch planning
 - internal recipe generation for automated factory runs
+- folder-contract driven intake orchestration for automated factory runs
 - preview job enqueue
 - preview output generation
 - output approval decisions

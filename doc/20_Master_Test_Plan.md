@@ -34,6 +34,7 @@ It complements [07_Testing_Strategy.md](/F:/programming/python/MTClipFactory/doc
 
 - recipe creation and item assignment
 - auto-factory batch planning and internal recipe generation
+- folder-driven batch intake using `product.toml` and `pipeline.toml`
 - preview job flow
 - final render flow
 - target-ratio visual normalization across mixed source sizes
@@ -171,6 +172,9 @@ It complements [07_Testing_Strategy.md](/F:/programming/python/MTClipFactory/doc
 11. Submit a batch production order and confirm the planner reports requested count versus planner-feasible unique count truthfully.
 12. Confirm batch materialization blocks strict orders when current planner policy cannot fulfill the requested unique count exactly.
 13. Confirm a satisfiable batch creates internal recipes automatically with the expected asset-role assignments.
+14. Confirm a valid batch root with `product.toml` and `pipeline.toml` creates the product, ingests assets, and materializes internal recipes.
+15. Confirm rerunning the same batch root skips already-ingested deterministic asset codes instead of duplicating them.
+16. Confirm invalid folder contracts fail truthfully before silent partial production.
 
 ### C. Review And Approval Flow
 

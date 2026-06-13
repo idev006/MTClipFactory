@@ -60,6 +60,7 @@
 - quality gate, approval, output tracking
 - production-order planning for batch automation
 - internal recipe generation for factory-style runs
+- folder-driven batch intake that translates product folders into production-order materialization
 
 ## Timeline-Driven Composition Rule
 
