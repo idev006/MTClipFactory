@@ -58,6 +58,8 @@
 - Template-driven overlays
 - Quality gate before final output
 - Job orchestration with resumable state
+- Hybrid manual-plus-automated production workflow
+- Worker-scalable execution direction for future factory deployment
 
 ## Composition Direction
 
@@ -105,6 +107,18 @@ Voice-over policy for future implementation:
 - component-based
 
 สิ่งเหล่านี้ไม่ใช่งานเสริม แต่เป็นข้อกำหนดหลักของระบบ
+
+## Factory Expansion Direction
+
+The long-term target is a `Video Production Factory`, not only a desktop workflow tool.
+
+That target requires:
+
+- explicit `Production Order` handling
+- scalable worker-oriented execution
+- durable lineage and recovery state
+- one end-to-end production pipeline from intake through archive
+- documented boundaries between manual approval work and automated production work
 
 ## MVP Boundary
 

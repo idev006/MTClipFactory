@@ -3,165 +3,158 @@
 ## Target Stack
 
 - Python 3.12 only
-- SQLite for local source of truth
+- SQLite for the current local source of truth
 - SQLAlchemy 2.x as ORM
 - Alembic for schema migration
 - PySide6 for desktop UI
-- pytest for automated tests
+- pytest for automated verification
 - MVVM for presentation structure
 
 ## Architectural Layers
 
 ### Domain
 
-เก็บ entity, enum, business invariant, domain policy และ protocol ที่ไม่ผูกกับ framework
+Holds entities, enums, business invariants, domain policies, and protocols that should not depend on frameworks.
 
 ### Application
 
-เก็บ use case และ application service เช่น create product, queue preview render, approve recipe
+Holds use cases and application services such as product CRUD, asset intake, preview orchestration, approval flow, and factory automation.
 
 ### Infrastructure
 
-เก็บ implementation ของ database, filesystem, FFmpeg adapter, repository, unit of work
+Holds implementations for database access, filesystem storage, FFmpeg and FFprobe adapters, repositories, and unit-of-work wiring.
 
 ### Presentation
 
-เก็บ ViewModel ที่เชื่อม UI กับ application service โดยไม่แบก business rule หนัก
+Holds view models that coordinate UI input and application services without embedding heavy business rules.
 
 ### UI
 
-- packaged QSS theme assets should be loaded through a dedicated theme helper instead of embedding inline stylesheet strings inside window code
-- the current Qt baseline should share one packaged app-window theme across dashboard, library, and factory windows, with per-window overrides only when a screen has justified special styling needs
+Holds windows, dialogs, widgets, and reusable theme assets.
 
-เก็บ widget, window, dialog หรือ QML adapter ถ้ามี
+Rules:
+
+- packaged QSS theme assets should be loaded through dedicated theme helpers instead of inline stylesheet strings
+- common dashboard, library, and factory surfaces should share one app-window theme baseline unless a screen has a justified local override
 
 ### Control Center
 
-เก็บ dashboard, settings, และ system-level orchestration view ที่รวมข้อมูลจากหลายโมดูลมาแสดงใน operational surface เดียว
+Holds dashboard, settings, and system-level orchestration visibility.
 
 ## System Modules
 
-สถาปัตยกรรมเชิง business ถูกแบ่งเป็น 2 โมดูลหลักที่ใช้ domain และ infrastructure ร่วมกัน
+The business architecture is intentionally split into two major modules that share one domain and infrastructure base.
 
 ### Resource Library Management Module
 
-รับผิดชอบ:
+Responsibilities:
 
 - product setup
-- asset lifecycle ก่อนเข้าสู่การผลิต
-- metadata, tags, thumbnails, proxy, readiness
+- asset lifecycle before production use
+- metadata analysis
+- tags
+- thumbnails and proxies
+- readiness state
 
 ### Video Assembly Factory Module
 
-รับผิดชอบ:
+Responsibilities:
 
 - recipe lifecycle
-- orchestration ของ preview/final workflow
-- quality gate, approval, output tracking
-- production-order planning for batch automation
+- preview and final workflow orchestration
+- quality gate, approval, and output tracking
+- production-order planning for automation
 - internal recipe generation for factory-style runs
-- folder-driven batch intake that translates product folders into production-order materialization
-- batch preview orchestration that stops at the normal review gate instead of auto-approving recipes or finals
+- folder-driven batch intake from `product.toml` and `pipeline.toml`
+- batch preview orchestration up to the review boundary
+
+## Shared Core
+
+Both `Library` and `Factory` share:
+
+- domain model
+- SQLite schema
+- identity and naming rules
+- audit and traceability rules
+- decision-event ledger
+- dashboard and settings authority services
 
 ## Timeline-Driven Composition Rule
 
-Future render architecture must evolve toward:
+Render architecture must remain timeline-driven rather than simple file stitching.
 
-- `master timeline` resolution
-- semantic segment planning
-- layered audio/visual composition
-- configurable loop, trim, and duck policy
-- persisted render-decision reporting
-
-Current implemented baseline now includes:
+Current implemented baseline includes:
 
 - persisted `composition_plans`
 - persisted `timeline_segments`
 - persisted `render_decisions`
-- service-level composition plan retrieval with validation-backed segment planning
-- segment-aware preview/final composition with manifest-guided visual clip selection
-- runtime voice/music mix foundation with manifest-visible audio-mix evidence
-- settings-driven duck gain and attack/release policy consumption in preview/final renderers
-- configurable duck mode selection with `sidechain_compressor` as the higher-quality default and `windowed_volume_duck` as fallback
-- settings-driven voice/music gain staging with manifest-visible balance evidence
-- review-gate assessment with configurable duration and visual-repetition thresholds
-- manifest-backed review evidence plus output quality/duplicate-risk summaries
-- recipe-level score/risk persistence derived from metadata completeness, asset diversity, and runtime review evidence
-- desktop app runtime path reload via whole-module rebuild plus reloadable service proxies
+- segment-aware preview and final composition
+- manifest-visible audio and visual evidence
+- review-gate evidence
+- recipe score and duplicate-risk persistence
 
-The architecture must keep `voice-over` as a foreground layer:
+Composition guardrails:
 
 - narration does not auto-loop
-- music may loop
+- background music may loop under explicit policy
 - music ducks while narration is active
-
-## Deployment Guidance
-
-- ช่วงแรกให้ใช้ codebase เดียวและฐานข้อมูลเดียว
-- การแยกนี้เป็น `module split` ก่อน ไม่ใช่ `repository split`
-- อนุญาตให้มีหลาย entry point ได้ในอนาคต
-- ยังไม่บังคับให้เป็น 2 executable apps ตั้งแต่ MVP
+- loop, trim, freeze, and duck decisions must remain operator-visible
 
 ## Control Center Architecture Rule
 
-- `Dashboard` ต้องเป็น entry surface หลักของระบบ
-- `Dashboard` ต้อง aggregate จาก service layer ไม่ query DB ตรงใน UI
-- `Settings` ต้องผ่าน service ที่ควบคุม source of truth อย่างชัดเจน
-- runtime paths และ operational thresholds ต้องถูกอ่านจาก config/service กลางเดียว
-- review thresholds and flagged-recipe counts must flow through the same dashboard/settings authority surfaces
-- settings-window styling should flow through reusable theme assets so the same theme-loading seam can expand to other Qt windows later
-- dashboard, resource-library, and recipe-builder windows should also consume the shared packaged app-window theme seam so styling policy stays centralized
-
-## Shared Core
-
-ทั้ง `Library` และ `Factory` ต้องใช้สิ่งเหล่านี้ร่วมกัน:
-
-- shared domain model
-- shared SQLite schema
-- shared tag dictionary
-- shared identity and naming rules
-- shared audit and traceability rules
-- shared decision-event ledger for immutable review history
-
-## Runtime Tooling
-
-- FFmpeg runtime ถูกอ้างอิงผ่าน `app_config.toml`
-- ฝั่ง Library ใช้ `ffprobe` สำหรับ metadata analysis
-- runtime tool path ต้องอ่านได้จาก config ไม่ hardcode กระจัดกระจายหลายจุด
+- `Dashboard` is the primary operational truth surface
+- `Dashboard` must aggregate from service seams, not query the database directly from UI code
+- `Settings` must persist through services and remain the authority surface for editable runtime policy
+- runtime paths and operational thresholds must flow through the same central configuration model
 
 ## MVVM Rules
 
-- View รับ input และ bind กับ ViewModel
-- ViewModel เรียก use case ผ่าน service ที่ inject เข้ามา
-- ViewModel ไม่ query database ตรง
-- ViewModel ไม่เขียน SQL และไม่จัดการ transaction
-- Domain และ Application ต้องรันเทสต์ได้โดยไม่ต้องเปิด UI
+- views collect input and render state
+- view models call injected services
+- view models do not write SQL or manage transactions directly
+- domain and application logic must stay testable without opening the UI
 
 ## Testability Seams
 
-- Repository ถูก inject ผ่าน protocol
-- Unit of work ถูก inject ผ่าน factory
-- ViewModel ใช้ service abstraction แทนการสร้าง dependency เอง
-- Infrastructure สามารถถูกแทนด้วย in-memory adapter ใน test
+- repositories should be injected through protocols or explicit constructors
+- unit of work should be injected through factories
+- IO-heavy services should stay behind narrow abstractions
+- infrastructure should remain replaceable with fake or in-memory adapters in pytest
 
-## Documentation and Modeling Rules
+## Documentation And Modeling Rules
 
-- เอกสารโครงการทั้งหมดต้องเก็บเป็น `.md`
-- ไฟล์ config ใหม่ให้ใช้ `.toml`
-- architecture, workflow, และ state transition สำคัญต้องมี UML
-- สามารถใช้ Mermaid ใน Markdown เพื่อสื่อ UML ได้
-- diagram ต้องอัปเดตพร้อมกับการเปลี่ยนแปลงเชิงสถาปัตยกรรม
+- project documents must remain `.md`
+- new config files must remain `.toml`
+- non-trivial architecture and workflow changes must be reflected in Mermaid-backed UML
+- document conversion and file-text extraction should use `markitdown` by default when such conversion is needed
 
 ## Revision Checkpoint Rule
 
 - every milestone ends with a revision checkpoint across docs, architecture notes, Kanban, issues, and lessons learned
-- if the checkpoint reveals workflow or boundary drift, the documents are corrected before claiming the milestone complete
+- if the checkpoint reveals drift, documents are corrected before the milestone is claimed complete
 
 ## Planned Evolution
 
-สถาปัตยกรรมนี้เปิดทางให้:
+The current architecture intentionally leaves room to evolve from a local desktop baseline into a stronger factory deployment:
 
-- เปลี่ยน SQLite เป็น PostgreSQL
-- เปลี่ยน local worker เป็น distributed worker
-- เพิ่ม Docker build/runtime ภายหลัง
-- แยก desktop shell ออกจาก backend service ถ้าจำเป็น
+- SQLite to PostgreSQL when multi-node state demands justify it
+- local workers to distributed workers
+- local filesystem assumptions to shared-storage abstractions
+- one desktop shell to separated service and worker processes when needed
+
+## Enterprise Factory Re-Baseline
+
+The next architecture step is to treat MTClipFactory as a four-plane production system:
+
+- `Control Plane`: production-order intake, orchestration, scheduling, retry, escalation, and policy
+- `Execution Plane`: worker classes for intake, analysis, planning, preview, final, packaging, and archive work
+- `State Plane`: durable SSOT for products, assets, recipes, jobs, outputs, lineage, leases, and approvals
+- `Operator Plane`: manual authoring, review queues, dashboard, settings, and override tools
+
+Before multi-node scaling is implemented, the following rules are now locked:
+
+- queueable work must have one documented job state machine
+- worker claims must use a lease or equivalent ownership rule
+- repeated execution must be made safe through idempotency rules
+- manual mode and automated mode are both first-class operating modes
+- automation must not cross human approval boundaries silently

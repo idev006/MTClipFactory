@@ -8,6 +8,8 @@
 | ISS-002 | 2026-06-05 | Medium | Module Boundary | `Video Assembly Factory` must consume prepared assets without mutating core asset metadata ownership owned by `Resource Library Management`. | Engineering | Open | Keep ownership rule explicit in architecture and service contracts. |
 | ISS-019 | 2026-06-06 | Medium | Execution Roadmap Discipline | The project now needs implementation milestones with acceptance criteria so composition work lands in a controlled sequence instead of broad feature waves. | Project Management | Open | Maintain the implementation roadmap and keep Kanban/issues aligned to the current milestone. |
 | ISS-020 | 2026-06-06 | Medium | Segment Heuristic Depth | Timeline segments are now persisted and validated, but segment content is still inferred from duration bands and recipe metadata instead of operator-authored structure. | Engineering | Open | Expose stronger segment authoring or refinement controls and reduce heuristic planning over time. |
+| ISS-031 | 2026-06-13 | High | Production-Order State Model | The enterprise factory target now requires `Production Order`, stage state, and orchestration truth as first-class SSOT concepts instead of only transient service flow. | Engineering | Open | Define the production-order schema and state transitions before multi-node automation expands. |
+| ISS-032 | 2026-06-13 | High | Distributed Worker Orchestration | Scalable worker-node execution now depends on a documented lease, heartbeat, retry, and idempotency model that does not yet exist in the implementation SSOT. | Engineering | Open | Deliver the shared job-state and worker-lease baseline before distributed execution work begins. |
 
 ## Closed Issues
 

@@ -145,6 +145,8 @@ The following must flow through config or services whenever user control is appr
 
 1. Recipe scoring now uses metadata, asset diversity, and runtime review evidence, but further calibration remains a future decision if operators find the baseline misleading.
 2. Recipe-score calibration remains a future decision if the new scoring baseline proves misleading in real operator use.
+3. The project does not yet have one documented shared job-state, lease, and heartbeat model for scalable worker-node execution.
+4. `Production Order` and orchestration stage state are not yet first-class durability concepts in the current implementation SSOT.
 
 ## Composition Reliability Direction
 
@@ -156,3 +158,14 @@ To keep future renders trustworthy:
 - duration mismatch handling must be logged instead of silently hidden
 - risky visual repetition must be routed to human review instead of being silently normalized
 - repeated failed-job retries must escalate visibly instead of blending into one generic failure count
+
+## Enterprise Factory Reliability Direction
+
+Before scalable worker-node execution is implemented, the reliability model should expand to include:
+
+- explicit `Production Order` persistence
+- one shared queueable-job state machine
+- worker lease ownership and lease-expiration rules
+- worker heartbeat visibility
+- retryable-versus-terminal failure classification
+- queue depth and throughput observability by job class

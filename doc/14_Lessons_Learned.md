@@ -205,3 +205,8 @@
 
 - once the richer-media UAT run added a second distinct foreground visual plus voice and music, the same workflow moved from `needs_review` into a clean no-review-gate result without needing hidden rule changes
 - this suggests operator confidence improves most when media coverage improves first, while the review gate stays stable and honest
+
+## LL-042 | 2026-06-13 | Automation Slices Need A Factory Operating Model Before Scale-Out
+
+- once the project gained batch planning, folder intake, and batch preview automation, the main architectural gap stopped being one missing feature and became the lack of one factory-grade operating model
+- documenting control plane, execution plane, state plane, and operator plane before distributed worker work begins is cheaper and safer than scaling local automation seams blindly

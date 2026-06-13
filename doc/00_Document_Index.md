@@ -38,6 +38,8 @@ When code changes, the related Markdown documents in this folder must be updated
 30. [30_Controlled_Operator_UAT_Round2_Report_2026-06-13.md](/F:/programming/python/MTClipFactory/doc/30_Controlled_Operator_UAT_Round2_Report_2026-06-13.md)
 31. [31_Asset_Lifecycle_and_Media_Purge_Workflow.md](/F:/programming/python/MTClipFactory/doc/31_Asset_Lifecycle_and_Media_Purge_Workflow.md)
 32. [32_Auto_Factory_Batch_Production_Workflow.md](/F:/programming/python/MTClipFactory/doc/32_Auto_Factory_Batch_Production_Workflow.md)
+33. [33_Enterprise_Video_Production_Factory_Pipeline_Review_2026-06-13.md](/F:/programming/python/MTClipFactory/doc/33_Enterprise_Video_Production_Factory_Pipeline_Review_2026-06-13.md)
+34. [34_Enterprise_Factory_Architecture_Blueprint_2026-06-13.md](/F:/programming/python/MTClipFactory/doc/34_Enterprise_Factory_Architecture_Blueprint_2026-06-13.md)
 
 ## Governance
 

@@ -881,3 +881,48 @@ sequenceDiagram
     Factory->>Audit: persist render decisions
     Factory-->>VM: recipe score/risk summary + output summary + review signals + operator-visible decisions
 ```
+
+## Target Factory Plane Map
+
+```mermaid
+flowchart TB
+    OP["Operator Plane"] --> CP["Control Plane"]
+    CP --> SP["State Plane"]
+    CP --> Q["Dispatch Queue"]
+    Q --> EP["Execution Plane Workers"]
+    EP --> SP
+    EP --> FS["Shared Media / Output Storage"]
+```
+
+## Target Job State Machine
+
+```mermaid
+stateDiagram-v2
+    [*] --> queued
+    queued --> leased
+    leased --> processing
+    processing --> succeeded
+    processing --> failed_retryable
+    processing --> failed_terminal
+    processing --> review_required
+    failed_retryable --> queued
+    review_required --> queued
+    review_required --> cancelled
+    failed_terminal --> cancelled
+    succeeded --> [*]
+    cancelled --> [*]
+```
+
+## Target Worker Deployment Topology
+
+```mermaid
+flowchart LR
+    CP["Control Plane Node"] --> DB["State Plane"]
+    CP --> Q["Dispatch Queue"]
+    Q --> WA["Worker A / Analysis"]
+    Q --> WB["Worker B / Preview"]
+    Q --> WC["Worker C / Final"]
+    WA --> FS["Shared Storage"]
+    WB --> FS
+    WC --> FS
+```

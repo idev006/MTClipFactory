@@ -37,14 +37,16 @@ The project now uses two roadmap layers:
 - `IR-15` Auto Factory batch planning baseline: complete on 2026-06-13
 - `IR-16` Folder-driven batch intake baseline: complete on 2026-06-13
 - `IR-17` Auto Factory preview production baseline: complete on 2026-06-13
+- `IR-18` Enterprise factory pipeline review and architecture blueprint: complete on 2026-06-13
 
 ## Current Execution Stream
 
-There is no active mandatory implementation milestone right now.
+The next mandatory implementation stream should begin with control-plane and shared-job orchestration, not directly with more render automation.
 
 Backlog activation rules:
 
 1. Further recipe-score calibration only activates if the delivered metadata, asset-diversity, and runtime-evidence baseline stops being operationally useful.
+2. Distributed worker execution does not activate before production-order persistence plus shared job-state semantics are documented and implemented.
 
 ## IR-01 | Composition Data Model
 
@@ -549,6 +551,55 @@ Turn materialized auto-factory recipes into real preview outputs automatically, 
 - delivered optional folder-run preview automation through `AutoFactoryFolderService.run_batch_root(..., build_previews=True)`
 - delivered pytest coverage for happy-path preview automation, partial preview failure continuity, folder-run preview production, and invalid preview-without-materialization requests
 - kept approval automation, final-render automation, watcher loops, and automation UI explicitly deferred
+
+## IR-18 | Enterprise Factory Pipeline Review And Architecture Blueprint
+
+### Goal
+
+Lock the enterprise operating model before scalable worker orchestration or deeper final-render automation begins.
+
+### Scope
+
+- review the current system as a full video-production pipeline instead of only milestone slices
+- define the four-plane architecture vocabulary: `Control Plane`, `Execution Plane`, `State Plane`, and `Operator Plane`
+- document the end-to-end stage model from production order through archive
+- define the need for first-class `Production Order`, shared job-state, lease, heartbeat, retry, and idempotency rules
+- align status, UML, reliability, Kanban, issues, and lessons-learned docs to that decision
+
+### Acceptance Criteria
+
+- the project has one SSOT pipeline review for the factory target
+- the project has one SSOT architecture blueprint for scalable worker evolution
+- UML reflects the future plane map, job-state model, and worker topology direction
+- roadmap, status, Kanban, issues, and lessons learned all describe the same next implementation direction
+
+### Delivery Result
+
+- delivered a full enterprise pipeline review document for MTClipFactory as a hybrid manual-plus-automated Video Production Factory
+- delivered an enterprise architecture blueprint covering planes, worker classes, job model, lease model, scaling rules, and observability direction
+- aligned implementation architecture, UML, reliability, status, progress, Kanban, issues, and lessons-learned docs to the re-baselined factory direction
+- locked the next implementation stream to `Production Order` persistence plus shared job-state orchestration before distributed execution
+
+## IR-19 | Production-Order And Shared Job-State Orchestration Baseline
+
+### Goal
+
+Turn the documented factory architecture into a real control-plane baseline by making production orders and stage-aware job orchestration first-class persisted concepts.
+
+### Planned Scope
+
+- persist `Production Order` as a first-class state-plane object
+- define one shared job-state vocabulary across factory automation stages
+- introduce orchestration records that map orders to materialization, preview, review, and final stages
+- classify retryable versus terminal failures explicitly
+- keep the baseline compatible with the current local runtime before multi-node worker rollout
+
+### Planned Acceptance Criteria
+
+- production orders can be persisted, queried, and tracked independently of recipe rows
+- automated factory stages report through one shared orchestration state model
+- retry, failure, and review-needed states are explicit and inspectable
+- docs, UML, issues, Kanban, and tests stay aligned to the new orchestration seam
 
 ## Cross-Milestone Rules
 
