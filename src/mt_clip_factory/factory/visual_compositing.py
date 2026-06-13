@@ -8,8 +8,8 @@ from tempfile import TemporaryDirectory
 from mt_clip_factory.control_center.dto import SystemSettingsDTO
 from mt_clip_factory.factory.preview_composition import PreviewSegmentClip
 from mt_clip_factory.factory.video_frame_normalization import build_visual_filter
+from mt_clip_factory.visual_keying import KEY_COLOR_PRESETS, normalize_visual_key_color, normalize_visual_key_profile, resolve_profile_key_color
 
-_GREEN_SCREEN_COLOR = "0x00FF00"
 _GREEN_SCREEN_SIMILARITY = "0.26"
 _GREEN_SCREEN_BLEND = "0.10"
 _SAMPLE_SIZE = 48
@@ -19,7 +19,9 @@ _MIN_GREEN_SCREEN_RATIO = 0.28
 @dataclass(slots=True, frozen=True)
 class GreenscreenAnalysis:
     likely_greenscreen: bool
-    dominant_green_ratio: float
+    dominant_color_ratio: float | None
+    key_profile: str | None
+    key_color: str | None
 
 
 def render_segmented_visual_output(
@@ -74,7 +76,7 @@ def render_segmented_visual_output(
     return {
         "mode": "layered_visual_stack",
         "background_segment_count": sum(1 for summary in summaries if summary["background_asset_code"] is not None),
-        "keyed_segment_count": sum(1 for summary in summaries if summary["composite_mode"] == "green_chroma_key_overlay"),
+        "keyed_segment_count": sum(1 for summary in summaries if summary["composite_mode"].endswith("_chroma_key_overlay")),
         "segments": summaries,
     }
 
@@ -123,16 +125,27 @@ def _render_segment(
     _render_green_screen_overlay_segment(
         settings=settings,
         segment=segment,
+        analysis=analysis,
         target_path=segment_path,
         include_audio=include_audio,
         target_ratio=target_ratio,
         output_resolution=output_resolution,
         run_ffmpeg=run_ffmpeg,
     )
-    return _segment_summary(segment, composite_mode="green_chroma_key_overlay", analysis=analysis)
+    return _segment_summary(segment, composite_mode=_composite_mode_for_profile(analysis.key_profile), analysis=analysis)
 
 
 def analyze_likely_greenscreen(settings: SystemSettingsDTO, source_file: Path) -> GreenscreenAnalysis:
+    profile = normalize_visual_key_profile(settings.visual_key_profile)
+    if profile == "disabled":
+        return GreenscreenAnalysis(False, None, None, None)
+    if profile != "auto":
+        return GreenscreenAnalysis(
+            likely_greenscreen=True,
+            dominant_color_ratio=None,
+            key_profile=profile,
+            key_color=_to_ffmpeg_color(resolve_profile_key_color(profile, settings.visual_key_color)),
+        )
     ffmpeg_path = Path(settings.ffmpeg_path)
     if not ffmpeg_path.exists():
         raise FileNotFoundError(str(ffmpeg_path))
@@ -158,10 +171,18 @@ def analyze_likely_greenscreen(settings: SystemSettingsDTO, source_file: Path) -
         check=True,
         capture_output=True,
     ).stdout
-    ratio = dominant_green_ratio(sample)
+    ranked_profiles = [
+        ("green", dominant_green_ratio(sample)),
+        ("blue", dominant_blue_ratio(sample)),
+        ("magenta", dominant_magenta_ratio(sample)),
+    ]
+    detected_profile, ratio = max(ranked_profiles, key=lambda item: item[1])
+    likely = ratio >= _MIN_GREEN_SCREEN_RATIO
     return GreenscreenAnalysis(
-        likely_greenscreen=ratio >= _MIN_GREEN_SCREEN_RATIO,
-        dominant_green_ratio=round(ratio, 4),
+        likely_greenscreen=likely,
+        dominant_color_ratio=round(ratio, 4),
+        key_profile=detected_profile if likely else None,
+        key_color=_to_ffmpeg_color(KEY_COLOR_PRESETS[detected_profile]) if likely else None,
     )
 
 
@@ -179,6 +200,38 @@ def dominant_green_ratio(sample: bytes) -> float:
         if green >= 90 and green >= (red * 1.25) and green >= (blue * 1.25):
             dominant_green_pixels += 1
     return dominant_green_pixels / total_pixels
+
+
+def dominant_blue_ratio(sample: bytes) -> float:
+    if not sample:
+        return 0.0
+    total_pixels = len(sample) // 3
+    if total_pixels <= 0:
+        return 0.0
+    dominant_blue_pixels = 0
+    for index in range(0, total_pixels * 3, 3):
+        red = sample[index]
+        green = sample[index + 1]
+        blue = sample[index + 2]
+        if blue >= 90 and blue >= (red * 1.25) and blue >= (green * 1.25):
+            dominant_blue_pixels += 1
+    return dominant_blue_pixels / total_pixels
+
+
+def dominant_magenta_ratio(sample: bytes) -> float:
+    if not sample:
+        return 0.0
+    total_pixels = len(sample) // 3
+    if total_pixels <= 0:
+        return 0.0
+    dominant_magenta_pixels = 0
+    for index in range(0, total_pixels * 3, 3):
+        red = sample[index]
+        green = sample[index + 1]
+        blue = sample[index + 2]
+        if red >= 90 and blue >= 90 and red >= (green * 1.25) and blue >= (green * 1.25):
+            dominant_magenta_pixels += 1
+    return dominant_magenta_pixels / total_pixels
 
 
 def _render_single_layer_segment(
@@ -221,6 +274,7 @@ def _render_green_screen_overlay_segment(
     *,
     settings: SystemSettingsDTO,
     segment: PreviewSegmentClip,
+    analysis: GreenscreenAnalysis,
     target_path: Path,
     include_audio: bool,
     target_ratio: str | None,
@@ -229,6 +283,8 @@ def _render_green_screen_overlay_segment(
 ) -> None:
     if segment.background_layer is None:
         raise ValueError("Background layer is required for green-screen overlay rendering.")
+    if analysis.key_color is None:
+        raise ValueError("Resolved key color is required for chroma-key overlay rendering.")
     arguments = [
         "-y",
         "-stream_loop",
@@ -242,7 +298,12 @@ def _render_green_screen_overlay_segment(
         "-t",
         str(segment.target_duration_sec),
         "-filter_complex",
-        _overlay_filter_graph(target_ratio=target_ratio, output_resolution=output_resolution),
+        _overlay_filter_graph(
+            target_ratio=target_ratio,
+            output_resolution=output_resolution,
+            key_color=analysis.key_color,
+            key_profile=analysis.key_profile,
+        ),
         "-map",
         "[vout]",
         "-c:v",
@@ -260,11 +321,18 @@ def _render_green_screen_overlay_segment(
     run_ffmpeg(settings=settings, arguments=arguments)
 
 
-def _overlay_filter_graph(*, target_ratio: str | None, output_resolution: str | None) -> str:
+def _overlay_filter_graph(
+    *,
+    target_ratio: str | None,
+    output_resolution: str | None,
+    key_color: str,
+    key_profile: str | None,
+) -> str:
     base_filter = build_visual_filter(target_ratio=target_ratio, output_resolution=output_resolution)
+    despill_filter = ",despill=green" if key_profile == "green" else ""
     return (
         f"[0:v]{base_filter}[bg];"
-        f"[1:v]{base_filter},colorkey={_GREEN_SCREEN_COLOR}:{_GREEN_SCREEN_SIMILARITY}:{_GREEN_SCREEN_BLEND},despill=green[fg];"
+        f"[1:v]{base_filter},colorkey={key_color}:{_GREEN_SCREEN_SIMILARITY}:{_GREEN_SCREEN_BLEND}{despill_filter}[fg];"
         "[bg][fg]overlay=0:0:format=auto[vout]"
     )
 
@@ -282,10 +350,32 @@ def _segment_summary(
         "primary_layer_name": segment.layer_name,
         "background_asset_code": None if segment.background_layer is None else segment.background_layer.asset_code,
         "composite_mode": composite_mode,
-        "dominant_green_ratio": None if analysis is None else analysis.dominant_green_ratio,
-        "likely_greenscreen": None if analysis is None else analysis.likely_greenscreen,
+        "dominant_key_ratio": None if analysis is None else analysis.dominant_color_ratio,
+        "likely_keyed_foreground": None if analysis is None else analysis.likely_greenscreen,
+        "key_color_profile": None if analysis is None else analysis.key_profile,
+        "key_color": None if analysis is None else analysis.key_color,
     }
 
 
 def _escape_concat_path(file_path: Path) -> str:
     return str(file_path).replace("\\", "/").replace("'", r"'\''")
+
+
+def _to_ffmpeg_color(value: str | None) -> str | None:
+    if value is None:
+        return None
+    return normalize_visual_key_color(value).replace("#", "0x")
+
+
+def _composite_mode_for_profile(profile: str | None) -> str:
+    match profile:
+        case "green":
+            return "green_chroma_key_overlay"
+        case "blue":
+            return "blue_chroma_key_overlay"
+        case "magenta":
+            return "magenta_chroma_key_overlay"
+        case "custom":
+            return "custom_chroma_key_overlay"
+        case _:
+            return "chroma_key_overlay"

@@ -56,6 +56,8 @@ def _settings(tmp_path: Path) -> SystemSettingsDTO:
         voice_loop_enabled=False,
         background_music_loop_enabled=True,
         music_duck_enabled=True,
+        visual_key_profile="auto",
+        visual_key_color="#00FF00",
         music_duck_mode="sidechain_compressor",
         music_duck_db=-15,
         music_duck_attack_ms=250,
@@ -199,7 +201,12 @@ def test_ffmpeg_renderer_builds_green_screen_overlay_when_background_layer_exist
     foreground_source.write_bytes(b"foreground")
     monkeypatch.setattr(
         "mt_clip_factory.factory.visual_compositing.analyze_likely_greenscreen",
-        lambda settings, source_file: GreenscreenAnalysis(likely_greenscreen=True, dominant_green_ratio=0.8),
+        lambda settings, source_file: GreenscreenAnalysis(
+            likely_greenscreen=True,
+            dominant_color_ratio=0.8,
+            key_profile="green",
+            key_color="0x00FF00",
+        ),
     )
 
     rendered = renderer.render_output(
@@ -235,6 +242,47 @@ def test_ffmpeg_renderer_builds_green_screen_overlay_when_background_layer_exist
     assert any("-filter_complex" in command for command in renderer.commands)
     assert any("colorkey=" in " ".join(command) for command in renderer.commands)
     assert any("overlay=0:0" in " ".join(command) for command in renderer.commands)
+
+
+def test_ffmpeg_renderer_honors_blue_key_policy_for_non_green_backgrounds(tmp_path) -> None:
+    settings = replace(_settings(tmp_path), visual_key_profile="blue", visual_key_color="#0000FF")
+    renderer = InspectableFFmpegPreviewRenderer(StaticSettingsService(settings), tmp_path / "preview_root")
+    background_source = tmp_path / "background.mp4"
+    foreground_source = tmp_path / "foreground.mp4"
+    background_source.write_bytes(b"background")
+    foreground_source.write_bytes(b"foreground")
+
+    rendered = renderer.render_output(
+        product_code="honey",
+        output_stem="blue_key_preview",
+        source_files=[foreground_source],
+        segment_clips=(
+            PreviewSegmentClip(
+                sequence_index=1,
+                segment_type="hook",
+                layer_name="product_focus_visual",
+                asset_id=11,
+                asset_code="foreground_asset",
+                source_file=foreground_source,
+                start_sec=0.0,
+                end_sec=3.0,
+                target_duration_sec=3.0,
+                fill_mode="trim_to_segment",
+                background_layer=PreviewLayerClip(
+                    layer_name="background_visual",
+                    asset_id=22,
+                    asset_code="background_asset",
+                    source_file=background_source,
+                    fill_mode="trim_to_segment",
+                ),
+            ),
+        ),
+        target_ratio="9:16",
+    )
+
+    assert rendered.visual_composite_summary is not None
+    assert rendered.visual_composite_summary["segments"][0]["composite_mode"] == "blue_chroma_key_overlay"
+    assert any("colorkey=0x0000FF" in " ".join(command) for command in renderer.commands)
 
 
 def test_output_detail_helper_reads_runtime_audio_mix_from_manifest(tmp_path) -> None:
@@ -337,6 +385,8 @@ def test_output_detail_helper_reads_visual_composite_summary_from_manifest(tmp_p
                             "composite_mode": "green_chroma_key_overlay",
                             "primary_asset_code": "fg_asset",
                             "background_asset_code": "bg_asset",
+                            "key_color_profile": "green",
+                            "key_color": "0x00FF00",
                         }
                     ],
                 }
@@ -351,3 +401,4 @@ def test_output_detail_helper_reads_visual_composite_summary_from_manifest(tmp_p
     assert "- Mode: layered_visual_stack" in lines
     assert "- Keyed Segment Count: 2" in lines
     assert "- Segment Composite: #1 hook | mode=green_chroma_key_overlay | primary=fg_asset | background=bg_asset" in lines
+    assert "- Key Policy: green | color=0x00FF00" in lines

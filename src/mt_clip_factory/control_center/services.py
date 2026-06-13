@@ -20,6 +20,7 @@ from mt_clip_factory.domain.enums import RecipeStatus
 from mt_clip_factory.library.services import AssetIntakeService
 from mt_clip_factory.library.tag_services import TagManagementService
 from mt_clip_factory.output_resolution import normalize_output_resolution
+from mt_clip_factory.visual_keying import normalize_visual_key_color, normalize_visual_key_profile
 
 if TYPE_CHECKING:
     from mt_clip_factory.factory.services import VideoAssemblyFactoryService
@@ -45,6 +46,7 @@ class SystemSettingsService:
         ffmpeg = data.get("ffmpeg", {})
         system = data.get("system", {})
         audio = data.get("audio", {})
+        visual = data.get("visual", {})
         review = data.get("review", {})
         database_path = _resolve_runtime_path(workspace_root, str(paths.get("database_path", "ad_kitchen.db")))
         media_root = _resolve_runtime_path(workspace_root, str(paths.get("media_root", "media_library")))
@@ -83,6 +85,8 @@ class SystemSettingsService:
             voice_loop_enabled=_coerce_bool(audio.get("voice_loop_enabled", False)),
             background_music_loop_enabled=_coerce_bool(audio.get("background_music_loop_enabled", True)),
             music_duck_enabled=_coerce_bool(audio.get("music_duck_enabled", True)),
+            visual_key_profile=normalize_visual_key_profile(str(visual.get("key_profile", "auto"))),
+            visual_key_color=normalize_visual_key_color(str(visual.get("key_color", "#00FF00"))),
             music_duck_mode=str(audio.get("music_duck_mode", "sidechain_compressor")),
             music_duck_db=int(audio.get("music_duck_db", -15)),
             music_duck_attack_ms=int(audio.get("music_duck_attack_ms", 250)),
@@ -100,6 +104,8 @@ class SystemSettingsService:
     def save(self, settings: SystemSettingsDTO) -> None:
         preview_output_resolution = normalize_output_resolution(settings.preview_output_resolution)
         final_output_resolution = normalize_output_resolution(settings.final_output_resolution)
+        visual_key_profile = normalize_visual_key_profile(settings.visual_key_profile)
+        visual_key_color = normalize_visual_key_color(settings.visual_key_color)
         content = "\n".join(
             [
                 "[paths]",
@@ -126,6 +132,10 @@ class SystemSettingsService:
                 f"auto_recover_queued_jobs = {_format_toml_bool(settings.auto_recover_queued_jobs)}",
                 f"max_recovery_jobs_per_run = {settings.max_recovery_jobs_per_run}",
                 f"failed_job_escalation_threshold = {settings.failed_job_escalation_threshold}",
+                "",
+                "[visual]",
+                f'key_profile = "{_escape_toml(visual_key_profile)}"',
+                f'key_color = "{_escape_toml(visual_key_color)}"',
                 "",
                 "[audio]",
                 f"voice_loop_enabled = {_format_toml_bool(settings.voice_loop_enabled)}",

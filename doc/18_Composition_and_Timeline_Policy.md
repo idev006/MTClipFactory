@@ -66,6 +66,7 @@ Layered-compositing baseline direction locked on 2026-06-13:
 - the product-focus layer should sit above the background layer for product-led segments
 - preview and final must use the same layer-stack business rules so operator trust does not split between the two outputs
 - if a foreground/product visual appears to be green-screen media, the renderer may apply chroma-key compositing automatically and must write that decision into manifest evidence
+- the keyed foreground baseline must not stay hardcoded to green only; operators need a visible policy seam for other studio/background colors
 - if a foreground/product visual cannot be composited safely, the fallback behavior must stay explicit in the manifest instead of silently pretending layered composition happened
 
 ## Layer Model
@@ -193,7 +194,19 @@ Layered visual compositing baseline on 2026-06-13:
   - `single_layer`
   - `background_only`
   - `green_chroma_key_overlay`
+  - `blue_chroma_key_overlay`
+  - `magenta_chroma_key_overlay`
+  - `custom_chroma_key_overlay`
   - future explicit alpha-based modes
+
+Multi-color keyed-compositing direction locked on 2026-06-13:
+
+- the visual key policy should support `auto`, `green`, `blue`, `magenta`, `custom`, and `disabled`
+- `auto` may detect from a small known palette for common studio key colors
+- named key policies should override auto-detection when the operator knows the capture setup
+- `custom` should accept a hex color value for unusual studio backgrounds
+- `disabled` should keep layered compositing from attempting chroma-key work and should fall back truthfully
+- the chosen key policy must be visible in settings, not hidden inside render code
 
 ## Layered Visual Workflow
 
@@ -207,6 +220,26 @@ Operator-intent workflow for keyed presenter-over-background composition:
 6. if the product-focus clip looks like green-screen media, renderer applies keyed overlay over the background plate
 7. manifest records the applied composite mode per segment
 8. operator reviews the preview and then proceeds with normal approval/final flow
+
+## Visual Key UI Direction
+
+Settings should expose a dedicated `Visual Composite` section with:
+
+- `Key Color Policy`
+  - `auto`
+  - `green`
+  - `blue`
+  - `magenta`
+  - `custom`
+  - `disabled`
+- `Custom Key Color`
+  - hex color such as `#00FF00` or `#2255FF`
+
+UI rule:
+
+- keep the key policy in `Settings`, not on every recipe row, until per-asset overrides are justified by operator evidence
+- enable the custom hex input only when the policy is `custom`
+- output details and manifests must reveal which composite mode and key color were actually used
 
 ## Layered Visual Sequence
 
@@ -228,8 +261,8 @@ sequenceDiagram
     Planner-->>Factory: background layer + product-focus layer candidates
     Factory->>Render: render_output(segment visual stacks)
     Render->>Detect: inspect foreground frames when background + product layer exist
-    alt likely green-screen foreground
-        Detect-->>Render: green_chroma_key_overlay
+    alt auto or named key policy resolves a safe key color
+        Detect-->>Render: chroma_key_overlay(color/profile)
         Render->>Render: composite foreground over background
     else no safe key path
         Detect-->>Render: single-layer fallback

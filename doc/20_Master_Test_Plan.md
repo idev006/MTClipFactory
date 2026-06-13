@@ -166,6 +166,7 @@ It complements [07_Testing_Strategy.md](/F:/programming/python/MTClipFactory/doc
 7. Validate preview manifest contains composition and review evidence.
 8. Validate a recipe with both `background_video` and `foreground_video` writes layered segment evidence instead of flattening to one visual choice only.
 9. Validate a likely green-screen foreground is keyed over the background layer and that manifest evidence records the applied composite mode.
+10. Validate a non-green keyed foreground can be driven by Settings `Key Color Policy` and that the manifest records the chosen composite mode truthfully.
 
 ### C. Review And Approval Flow
 

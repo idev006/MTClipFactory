@@ -244,6 +244,10 @@ def _build_manifest_visual_lines(manifest_path: str | None) -> list[str]:
                 f"| primary={segment.get('primary_asset_code', '-')} "
                 f"| background={segment.get('background_asset_code', '-')}"
             )
+            if segment.get("key_color_profile") is not None:
+                lines.append(
+                    f"- Key Policy: {segment.get('key_color_profile', '-')} | color={segment.get('key_color', '-')}"
+                )
         if len(segments) > 5:
             lines.append(f"- More Segment Composites: {len(segments) - 5}")
     return lines

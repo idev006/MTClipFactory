@@ -25,6 +25,7 @@ from PySide6.QtWidgets import (
 from mt_clip_factory.control_center.dto import SystemSettingsDTO
 from mt_clip_factory.presentation.control_center.settings import SettingsViewModel
 from mt_clip_factory.ui.theme import apply_theme
+from mt_clip_factory.visual_keying import VISUAL_KEY_PROFILE_OPTIONS
 
 
 class IntSliderField(QWidget):
@@ -320,6 +321,18 @@ class SettingsWindow(QMainWindow):
         )
         grid.addWidget(
             self._build_form_panel(
+                "Visual Composite",
+                "Use auto for common studio key colors, pick a named color when the operator knows the screen color, or enter a custom hex color for unusual backgrounds.",
+                [
+                    ("Key Color Policy", self.visual_key_profile_input),
+                    ("Custom Key Color", self.visual_key_color_input),
+                ],
+            ),
+            2,
+            1,
+        )
+        grid.addWidget(
+            self._build_form_panel(
                 "Audio Behavior",
                 "Looping, ducking, and mix gain controls shape how narration and music behave during assembly.",
                 [
@@ -373,6 +386,8 @@ class SettingsWindow(QMainWindow):
         self.preview_root_input = QLineEdit()
         self.preview_output_resolution_input = QLineEdit()
         self.final_output_resolution_input = QLineEdit()
+        self.visual_key_profile_input = QComboBox()
+        self.visual_key_color_input = QLineEdit()
         self.cpu_limit_input = IntSliderField(0, 100, suffix="%", editor_minimum=0, editor_maximum=100)
         self.ram_limit_input = IntSliderField(0, 100, suffix="%", editor_minimum=0, editor_maximum=100)
         self.disk_free_input = IntSliderField(0, 1000, suffix=" GB", editor_minimum=0, editor_maximum=100000)
@@ -406,13 +421,16 @@ class SettingsWindow(QMainWindow):
         self.review_max_consecutive_visual_input = IntSliderField(0, 100, editor_minimum=0, editor_maximum=100000)
 
         self.music_duck_mode_input.addItems(["sidechain_compressor", "windowed_volume_duck"])
+        self.visual_key_profile_input.addItems(list(VISUAL_KEY_PROFILE_OPTIONS))
         self.preview_output_resolution_input.setPlaceholderText("optional, e.g. 1080x1920")
         self.final_output_resolution_input.setPlaceholderText("optional, e.g. 1080x1920")
+        self.visual_key_color_input.setPlaceholderText("#00FF00")
 
         self.auto_recover_input.setText("Recover queued jobs during startup")
         self.voice_loop_input.setText("Allow narration looping when the timeline runs longer than voice assets")
         self.music_loop_input.setText("Allow background music looping to fill timeline gaps")
         self.music_duck_input.setText("Reduce music while narration is active")
+        self.visual_key_profile_input.currentTextChanged.connect(self._refresh_visual_key_inputs)
 
     def _build_form_panel(self, title: str, hint: str, rows: list[tuple[str, QWidget]]) -> QGroupBox:
         panel = QGroupBox(title)
@@ -494,6 +512,8 @@ class SettingsWindow(QMainWindow):
         self.ffmpeg_path_input.setText(settings.ffmpeg_path)
         self.preview_output_resolution_input.setText(settings.preview_output_resolution)
         self.final_output_resolution_input.setText(settings.final_output_resolution)
+        self.visual_key_profile_input.setCurrentText(settings.visual_key_profile)
+        self.visual_key_color_input.setText(settings.visual_key_color)
         self.cpu_limit_input.setValue(settings.cpu_limit_percent)
         self.ram_limit_input.setValue(settings.ram_limit_percent)
         self.disk_free_input.setValue(settings.disk_free_gb_min)
@@ -518,6 +538,11 @@ class SettingsWindow(QMainWindow):
         self.review_max_looped_segments_input.setValue(settings.review_max_looped_segments)
         self.review_min_distinct_visual_assets_input.setValue(settings.review_min_distinct_visual_assets)
         self.review_max_consecutive_visual_input.setValue(settings.review_max_consecutive_same_visual_segments)
+        self._refresh_visual_key_inputs()
+
+    def _refresh_visual_key_inputs(self, *_args) -> None:
+        is_custom = self.visual_key_profile_input.currentText() == "custom"
+        self.visual_key_color_input.setEnabled(is_custom)
 
     def _refresh_feedback(self) -> None:
         self.status_value_label.setText(self._view_model.status.title())
@@ -543,6 +568,8 @@ class SettingsWindow(QMainWindow):
                     auto_refresh_seconds=self.auto_refresh_input.value(),
                     preview_output_resolution=self.preview_output_resolution_input.text(),
                     final_output_resolution=self.final_output_resolution_input.text(),
+                    visual_key_profile=self.visual_key_profile_input.currentText(),
+                    visual_key_color=self.visual_key_color_input.text(),
                     auto_recover_queued_jobs=self.auto_recover_input.isChecked(),
                     max_recovery_jobs_per_run=self.max_recovery_jobs_input.value(),
                     failed_job_escalation_threshold=self.failed_job_escalation_threshold_input.value(),

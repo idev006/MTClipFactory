@@ -59,6 +59,7 @@
 - Recipe Builder now surfaces replacement aftercare directly in the outputs area, including workflow guidance, per-output aftercare state, and historical-only visibility for outputs created before replacement
 - preview and final render now normalize mixed visual source ratios into the recipe `Target Ratio` frame so output dimensions stay bounded and operator intent is respected
 - preview and final render now support a layered visual compositing baseline for stacked `background_video` plus keyed `foreground_video`, with manifest-visible visual composite evidence and green-screen detection for clear presenter-over-background cases
+- settings now expose a `Visual Composite` policy seam so operators can choose `auto`, `green`, `blue`, `magenta`, `custom`, or `disabled` key-color behavior for non-green studio backgrounds
 - operators can now set exact preview and final output resolutions through the `Settings` UI, with `.toml` persistence and renderer enforcement for frames such as `1080x1920`
 - widget-level settings UI verification coverage, including hybrid control mapping, high-value config preservation, and exact-entry synchronization
 - scripted full-system release audit coverage for product-to-final workflow, recovery/escalation behavior, and runtime path hot reload
@@ -84,7 +85,7 @@
 
 ## Verification Baseline
 
-- `python -m pytest` via `.venv`: `149 passed`
+- `python -m pytest` via `.venv`: `151 passed`
 - UI smoke via `QT_QPA_PLATFORM=offscreen`: `6` windows instantiated successfully
 
 ## Current Focus
@@ -98,12 +99,13 @@
 - validate broader controlled operator use on real campaign media before claiming broad release readiness
 - monitor whether operators understand the distinction between recipe `Target Ratio` and settings-level exact output resolution
 - validate whether the new green-screen compositing baseline is robust enough across real foreground media and not only the current controlled sample
+- validate whether the new non-green key policy is clear enough for operators and whether per-asset overrides are needed after broader use
 - keep project documents truthful through per-milestone revision checkpoints
 
 ## Next Steps
 
 1. Run broader controlled operator use on real campaign media without service-side assistance and record operator findings on both the asset-replacement and layered-compositing workflows.
-2. Decide whether green-screen tuning should become operator-configurable or remain an automatic baseline after more real media is reviewed.
+2. Decide whether per-asset compositing overrides are justified beyond the new settings-level key policy.
 3. Recalibrate recipe scoring only if operator feedback shows the current metadata, asset-diversity, and runtime-evidence baseline is not useful enough.
 4. Clean the Alembic `path_separator=os` warning in a maintenance pass.
 

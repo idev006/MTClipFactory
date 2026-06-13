@@ -58,6 +58,8 @@ def _settings(
     max_recovery_jobs_per_run: int = 25,
     failed_job_escalation_threshold: int = 2,
     music_duck_ratio: float = 8.0,
+    visual_key_profile: str = "auto",
+    visual_key_color: str = "#00FF00",
 ) -> SystemSettingsDTO:
     return SystemSettingsDTO(
         database_path="ad_kitchen.db",
@@ -80,6 +82,8 @@ def _settings(
         voice_loop_enabled=False,
         background_music_loop_enabled=True,
         music_duck_enabled=True,
+        visual_key_profile=visual_key_profile,
+        visual_key_color=visual_key_color,
         music_duck_mode="sidechain_compressor",
         music_duck_db=-15,
         music_duck_attack_ms=250,
@@ -163,6 +167,9 @@ def test_settings_window_populates_grouped_controls(qapp: QApplication) -> None:
     assert window.auto_recover_input.isChecked() is False
     assert window.preview_output_resolution_input.text() == ""
     assert window.final_output_resolution_input.text() == ""
+    assert window.visual_key_profile_input.currentText() == "auto"
+    assert window.visual_key_color_input.text() == "#00FF00"
+    assert window.visual_key_color_input.isEnabled() is False
     assert window.feedback_label.text() == "Settings loaded."
     assert "QGroupBox#panelBox" in window.styleSheet()
     titles = {group.title() for group in window.findChildren(QGroupBox)}
@@ -172,6 +179,7 @@ def test_settings_window_populates_grouped_controls(qapp: QApplication) -> None:
         "Runtime Limits",
         "Render Output",
         "Recovery Policy",
+        "Visual Composite",
         "Audio Behavior",
         "Review Gate",
         "Save Guidance",
@@ -188,6 +196,8 @@ def test_settings_window_save_maps_slider_values_into_dto(qapp: QApplication) ->
     window.database_path_input.setText("custom.db")
     window.preview_output_resolution_input.setText("1080*1920")
     window.final_output_resolution_input.setText("720x1280")
+    window.visual_key_profile_input.setCurrentText("custom")
+    window.visual_key_color_input.setText("#1122CC")
     window.cpu_limit_input._editor.setValue(77)
     window.max_recovery_jobs_input._editor.setValue(44)
     window.failed_job_escalation_threshold_input._editor.setValue(5)
@@ -200,6 +210,8 @@ def test_settings_window_save_maps_slider_values_into_dto(qapp: QApplication) ->
     assert view_model.saved_settings.database_path == "custom.db"
     assert view_model.saved_settings.preview_output_resolution == "1080*1920"
     assert view_model.saved_settings.final_output_resolution == "720x1280"
+    assert view_model.saved_settings.visual_key_profile == "custom"
+    assert view_model.saved_settings.visual_key_color == "#1122CC"
     assert view_model.saved_settings.cpu_limit_percent == 77
     assert view_model.saved_settings.max_recovery_jobs_per_run == 44
     assert view_model.saved_settings.failed_job_escalation_threshold == 5
@@ -245,4 +257,17 @@ def test_settings_window_exact_entry_allows_precise_high_value_updates(qapp: QAp
     assert view_model.saved_settings.max_recovery_jobs_per_run == 730
     assert view_model.saved_settings.failed_job_escalation_threshold == 145
     assert math.isclose(view_model.saved_settings.music_duck_ratio, 32.25, rel_tol=0.0, abs_tol=0.01)
+    window.close()
+
+
+def test_settings_window_enables_custom_key_color_only_for_custom_policy(qapp: QApplication) -> None:
+    view_model = FakeSettingsViewModel(_settings(visual_key_profile="blue", visual_key_color="#0000FF"))
+    window = SettingsWindow(view_model)
+    qapp.processEvents()
+
+    assert window.visual_key_color_input.isEnabled() is False
+    window.visual_key_profile_input.setCurrentText("custom")
+    assert window.visual_key_color_input.isEnabled() is True
+    window.visual_key_profile_input.setCurrentText("disabled")
+    assert window.visual_key_color_input.isEnabled() is False
     window.close()

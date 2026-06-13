@@ -226,6 +226,10 @@ def test_settings_view_model_loads_and_saves(tmp_path) -> None:
                 "max_recovery_jobs_per_run = 25",
                 "failed_job_escalation_threshold = 2",
                 "",
+                "[visual]",
+                'key_profile = "auto"',
+                'key_color = "#00FF00"',
+                "",
                 "[audio]",
                 "voice_loop_enabled = false",
                 "background_music_loop_enabled = true",
@@ -281,6 +285,8 @@ def test_settings_view_model_loads_and_saves(tmp_path) -> None:
             voice_loop_enabled=False,
             background_music_loop_enabled=True,
             music_duck_enabled=True,
+            visual_key_profile="custom",
+            visual_key_color="#2255FF",
             music_duck_mode="windowed_volume_duck",
             music_duck_db=-18,
             music_duck_attack_ms=180,
@@ -299,6 +305,8 @@ def test_settings_view_model_loads_and_saves(tmp_path) -> None:
     assert view_model.settings.auto_recover_queued_jobs is True
     assert view_model.settings.max_recovery_jobs_per_run == 12
     assert view_model.settings.failed_job_escalation_threshold == 3
+    assert view_model.settings.visual_key_profile == "custom"
+    assert view_model.settings.visual_key_color == "#2255FF"
     assert view_model.settings.music_duck_mode == "windowed_volume_duck"
     assert view_model.settings.music_duck_db == -18
     assert view_model.settings.music_duck_threshold_db == -20

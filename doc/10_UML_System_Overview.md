@@ -160,6 +160,7 @@ classDiagram
         +update(...)
         +path_root_status(...)
         +failed-job escalation threshold
+        +visual key policy fields
         +audio policy fields
         +preview/final output resolution fields
         +review threshold fields

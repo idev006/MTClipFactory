@@ -27,6 +27,8 @@ class SystemSettingsDTO:
     music_duck_enabled: bool
     preview_output_resolution: str = ""
     final_output_resolution: str = ""
+    visual_key_profile: str = "auto"
+    visual_key_color: str = "#00FF00"
     music_duck_mode: str = "sidechain_compressor"
     music_duck_db: int = -15
     music_duck_attack_ms: int = 250
