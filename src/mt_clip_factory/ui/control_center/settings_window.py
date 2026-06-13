@@ -222,7 +222,7 @@ class SettingsWindow(QMainWindow):
         title = QLabel("System Settings")
         title.setObjectName("headerTitle")
         hint = QLabel(
-            "Grouped controls for path roots, runtime policy, recovery, audio behavior, and review rules."
+            "Grouped controls for path roots, runtime policy, output sizing, recovery, audio behavior, and review rules."
         )
         hint.setObjectName("headerHint")
         hint.setWordWrap(True)
@@ -295,6 +295,18 @@ class SettingsWindow(QMainWindow):
         )
         grid.addWidget(
             self._build_form_panel(
+                "Render Output",
+                "Optional exact output frames override ratio-derived preview/final sizing. Leave blank to keep automatic ratio-based sizing.",
+                [
+                    ("Preview Output Resolution", self.preview_output_resolution_input),
+                    ("Final Output Resolution", self.final_output_resolution_input),
+                ],
+            ),
+            1,
+            1,
+        )
+        grid.addWidget(
+            self._build_form_panel(
                 "Recovery Policy",
                 "Startup recovery and escalation thresholds help operators control how aggressively failed work is revisited.",
                 [
@@ -303,8 +315,8 @@ class SettingsWindow(QMainWindow):
                     ("Failed Job Escalation Threshold", self.failed_job_escalation_threshold_input),
                 ],
             ),
-            1,
-            1,
+            2,
+            0,
         )
         grid.addWidget(
             self._build_form_panel(
@@ -324,7 +336,7 @@ class SettingsWindow(QMainWindow):
                     ("Music Mix Gain (dB)", self.music_mix_gain_input),
                 ],
             ),
-            2,
+            3,
             0,
             1,
             2,
@@ -340,10 +352,10 @@ class SettingsWindow(QMainWindow):
                     ("Max Consecutive Same Visual", self.review_max_consecutive_visual_input),
                 ],
             ),
-            3,
+            4,
             0,
         )
-        grid.addWidget(self._build_save_guidance_panel(), 3, 1)
+        grid.addWidget(self._build_save_guidance_panel(), 4, 1)
         grid.setColumnStretch(0, 1)
         grid.setColumnStretch(1, 1)
 
@@ -359,6 +371,8 @@ class SettingsWindow(QMainWindow):
         self.docs_root_input = QLineEdit()
         self.outputs_root_input = QLineEdit()
         self.preview_root_input = QLineEdit()
+        self.preview_output_resolution_input = QLineEdit()
+        self.final_output_resolution_input = QLineEdit()
         self.cpu_limit_input = IntSliderField(0, 100, suffix="%", editor_minimum=0, editor_maximum=100)
         self.ram_limit_input = IntSliderField(0, 100, suffix="%", editor_minimum=0, editor_maximum=100)
         self.disk_free_input = IntSliderField(0, 1000, suffix=" GB", editor_minimum=0, editor_maximum=100000)
@@ -392,6 +406,8 @@ class SettingsWindow(QMainWindow):
         self.review_max_consecutive_visual_input = IntSliderField(0, 100, editor_minimum=0, editor_maximum=100000)
 
         self.music_duck_mode_input.addItems(["sidechain_compressor", "windowed_volume_duck"])
+        self.preview_output_resolution_input.setPlaceholderText("optional, e.g. 1080x1920")
+        self.final_output_resolution_input.setPlaceholderText("optional, e.g. 1080x1920")
 
         self.auto_recover_input.setText("Recover queued jobs during startup")
         self.voice_loop_input.setText("Allow narration looping when the timeline runs longer than voice assets")
@@ -428,7 +444,7 @@ class SettingsWindow(QMainWindow):
 
         guidance = QLabel(
             "Save writes the current settings to app_config.toml. Path-root changes may hot-reload immediately "
-            "or may apply on next startup depending on runtime policy."
+            "or may apply on next startup depending on runtime policy. Exact output resolution fields are optional."
         )
         guidance.setObjectName("sectionHint")
         guidance.setWordWrap(True)
@@ -476,6 +492,8 @@ class SettingsWindow(QMainWindow):
         self.ffmpeg_root_input.setText(settings.ffmpeg_root)
         self.ffprobe_path_input.setText(settings.ffprobe_path)
         self.ffmpeg_path_input.setText(settings.ffmpeg_path)
+        self.preview_output_resolution_input.setText(settings.preview_output_resolution)
+        self.final_output_resolution_input.setText(settings.final_output_resolution)
         self.cpu_limit_input.setValue(settings.cpu_limit_percent)
         self.ram_limit_input.setValue(settings.ram_limit_percent)
         self.disk_free_input.setValue(settings.disk_free_gb_min)
@@ -523,6 +541,8 @@ class SettingsWindow(QMainWindow):
                     max_preview_workers=self.max_preview_input.value(),
                     max_final_workers=self.max_final_input.value(),
                     auto_refresh_seconds=self.auto_refresh_input.value(),
+                    preview_output_resolution=self.preview_output_resolution_input.text(),
+                    final_output_resolution=self.final_output_resolution_input.text(),
                     auto_recover_queued_jobs=self.auto_recover_input.isChecked(),
                     max_recovery_jobs_per_run=self.max_recovery_jobs_input.value(),
                     failed_job_escalation_threshold=self.failed_job_escalation_threshold_input.value(),
@@ -543,5 +563,5 @@ class SettingsWindow(QMainWindow):
                     review_max_consecutive_same_visual_segments=self.review_max_consecutive_visual_input.value(),
                 )
             )
-        except OSError as exc:
+        except (OSError, ValueError) as exc:
             QMessageBox.warning(self, "Save Settings", str(exc))

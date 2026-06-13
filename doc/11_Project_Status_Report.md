@@ -55,6 +55,7 @@
 - Recipe Builder now explains its recipe-to-final purpose more directly, clarifies that the attach list shows only `ready` assets, keeps the asset panel tall enough for practical scanning, and offers composition-aware attach-role suggestions that combine asset type, current recipe segment order, auto-selection, and on-screen guidance instead of relying on free-typed role names alone
 - assets can now be safely renamed or deleted from the `Assets` screen, with repository checks that block deletion when recipe-item or artifact-job references still exist
 - preview and final render now normalize mixed visual source ratios into the recipe `Target Ratio` frame so output dimensions stay bounded and operator intent is respected
+- operators can now set exact preview and final output resolutions through the `Settings` UI, with `.toml` persistence and renderer enforcement for frames such as `1080x1920`
 - widget-level settings UI verification coverage, including hybrid control mapping, high-value config preservation, and exact-entry synchronization
 - scripted full-system release audit coverage for product-to-final workflow, recovery/escalation behavior, and runtime path hot reload
 - operator-facing user manual now exists as SSOT guidance for controlled rollout and UAT
@@ -90,6 +91,7 @@
 - monitor whether hybrid settings controls remain operator-friendly in real manual use
 - validate whether the new asset-maintenance controls are clear enough for operators without additional UI restructuring
 - validate broader controlled operator use on real campaign media before claiming broad release readiness
+- monitor whether operators understand the distinction between recipe `Target Ratio` and settings-level exact output resolution
 - keep project documents truthful through per-milestone revision checkpoints
 
 ## Next Steps

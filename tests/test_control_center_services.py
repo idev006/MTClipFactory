@@ -273,6 +273,8 @@ def test_system_settings_service_reads_and_writes_toml(tmp_path) -> None:
         max_preview_workers=2,
         max_final_workers=1,
         auto_refresh_seconds=5,
+        preview_output_resolution="1080*1920",
+        final_output_resolution="720x1280",
         auto_recover_queued_jobs=True,
         max_recovery_jobs_per_run=12,
         failed_job_escalation_threshold=3,
@@ -294,6 +296,8 @@ def test_system_settings_service_reads_and_writes_toml(tmp_path) -> None:
     assert loaded.database_path.endswith("db.sqlite")
     assert loaded.ffmpeg_root == r"F:\custom_ffmpeg"
     assert loaded.cpu_limit_percent == 88
+    assert loaded.preview_output_resolution == "1080x1920"
+    assert loaded.final_output_resolution == "720x1280"
     assert loaded.auto_recover_queued_jobs is True
     assert loaded.max_recovery_jobs_per_run == 12
     assert loaded.failed_job_escalation_threshold == 3
@@ -392,6 +396,8 @@ def test_dashboard_service_aggregates_system_information(unit_of_work_factory, t
     assert summary.failed_job_count == 2
     assert summary.escalated_job_count == 0
     assert summary.auto_recover_queued_jobs is True
+    assert summary.preview_output_resolution == ""
+    assert summary.final_output_resolution == ""
     assert summary.max_recovery_jobs_per_run == 3
     assert summary.failed_job_escalation_threshold == 2
     assert summary.path_restart_required is False

@@ -115,10 +115,12 @@ Recommended configurable policy:
 ### Target Frame Normalization Rule
 
 - preview and final render must respect the recipe `target_ratio` when one is provided
+- preview and final render may also consume operator-configured exact output resolution when one is configured
 - mixed visual source sizes should be normalized into one requested output frame instead of leaking source dimensions directly into the final output
 - the normalization path should preserve aspect ratio first, then pad to the target frame when needed
 - normalization behavior must stay aligned between preview and final render
 - any fallback when ratio parsing fails should be explicit and testable
+- exact output resolution should override heuristic max-dimension scaling when it is configured intentionally
 
 ### Background Visual Rule
 

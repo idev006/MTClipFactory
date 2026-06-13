@@ -112,6 +112,7 @@ classDiagram
         +render_output(..., segment_clips, target_ratio)
         +runtime audio mix
         +target-frame normalization
+        +operator-configured exact output resolution
         +configurable duck mode
         +configurable gain staging
     }
@@ -152,6 +153,7 @@ classDiagram
         +path_root_status(...)
         +failed-job escalation threshold
         +audio policy fields
+        +preview/final output resolution fields
         +review threshold fields
         +duck mode tuning fields
         +gain-stage tuning fields
@@ -647,6 +649,28 @@ sequenceDiagram
     Dash->>Settings: path_root_status(current settings)
     Dash-->>User: runtime active paths + configured paths
     Note over Runtime: path-root dependent services reload as one coherent runtime module
+```
+
+## Output Resolution Settings Sequence
+
+```mermaid
+sequenceDiagram
+    actor User
+    participant SettingsView as SettingsWindow
+    participant SettingsVM as SettingsViewModel
+    participant Settings as SystemSettingsService
+    participant Factory as VideoAssemblyFactoryService
+    participant Render as FFmpegPreviewRenderer
+
+    User->>SettingsView: enter preview/final output resolution
+    SettingsView->>SettingsVM: save(settings)
+    SettingsVM->>Settings: save(settings)
+    Settings-->>SettingsVM: persisted .toml values
+    User->>Factory: build preview/final
+    Factory->>Settings: load()
+    Settings-->>Factory: preview/final output resolution policy
+    Factory->>Render: render_preview/render_output(..., target_ratio, target_resolution)
+    Render->>Render: normalize into exact output frame when configured
 ```
 
 ## Failed Retry Sequence

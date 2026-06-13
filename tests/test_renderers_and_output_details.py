@@ -153,6 +153,23 @@ def test_ffmpeg_renderer_supports_windowed_duck_fallback_mode(tmp_path) -> None:
     assert any("pad=1280:720" in " ".join(command) for command in renderer.commands)
 
 
+def test_ffmpeg_renderer_uses_configured_exact_output_resolution(tmp_path) -> None:
+    settings = _settings(tmp_path)
+    settings = replace(settings, preview_output_resolution="1080x1920")
+    renderer = InspectableFFmpegPreviewRenderer(StaticSettingsService(settings), tmp_path / "preview_root")
+    source_file = tmp_path / "visual.mp4"
+    source_file.write_bytes(b"visual")
+
+    renderer.render_output(
+        product_code="honey",
+        output_stem="exact_resolution",
+        source_files=[source_file],
+        target_ratio="9:16",
+    )
+
+    assert any("pad=1080:1920" in " ".join(command) for command in renderer.commands)
+
+
 def test_local_renderer_returns_simulated_audio_mix_summary(tmp_path) -> None:
     source_file = tmp_path / "visual.mp4"
     source_file.write_bytes(b"visual")

@@ -212,6 +212,8 @@ class DashboardWindow(QMainWindow):
                     f"Max Preview Workers: {summary.max_preview_workers}",
                     f"Max Final Workers: {summary.max_final_workers}",
                     f"Auto Refresh Seconds: {summary.auto_refresh_seconds}",
+                    f"Preview Output Resolution: {summary.preview_output_resolution or 'auto'}",
+                    f"Final Output Resolution: {summary.final_output_resolution or 'auto'}",
                     f"Auto Recover Queued Jobs: {summary.auto_recover_queued_jobs}",
                     f"Max Recovery Jobs Per Run: {summary.max_recovery_jobs_per_run}",
                     f"Failed Job Escalation Threshold: {summary.failed_job_escalation_threshold}",

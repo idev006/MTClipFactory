@@ -161,6 +161,8 @@ def test_settings_window_populates_grouped_controls(qapp: QApplication) -> None:
     assert window.cpu_limit_input.value() == 90
     assert window.music_duck_ratio_input.value() == 8.0
     assert window.auto_recover_input.isChecked() is False
+    assert window.preview_output_resolution_input.text() == ""
+    assert window.final_output_resolution_input.text() == ""
     assert window.feedback_label.text() == "Settings loaded."
     assert "QGroupBox#panelBox" in window.styleSheet()
     titles = {group.title() for group in window.findChildren(QGroupBox)}
@@ -168,6 +170,7 @@ def test_settings_window_populates_grouped_controls(qapp: QApplication) -> None:
         "Workspace Paths",
         "FFmpeg Toolchain",
         "Runtime Limits",
+        "Render Output",
         "Recovery Policy",
         "Audio Behavior",
         "Review Gate",
@@ -183,6 +186,8 @@ def test_settings_window_save_maps_slider_values_into_dto(qapp: QApplication) ->
     qapp.processEvents()
 
     window.database_path_input.setText("custom.db")
+    window.preview_output_resolution_input.setText("1080*1920")
+    window.final_output_resolution_input.setText("720x1280")
     window.cpu_limit_input._editor.setValue(77)
     window.max_recovery_jobs_input._editor.setValue(44)
     window.failed_job_escalation_threshold_input._editor.setValue(5)
@@ -193,6 +198,8 @@ def test_settings_window_save_maps_slider_values_into_dto(qapp: QApplication) ->
 
     assert view_model.saved_settings is not None
     assert view_model.saved_settings.database_path == "custom.db"
+    assert view_model.saved_settings.preview_output_resolution == "1080*1920"
+    assert view_model.saved_settings.final_output_resolution == "720x1280"
     assert view_model.saved_settings.cpu_limit_percent == 77
     assert view_model.saved_settings.max_recovery_jobs_per_run == 44
     assert view_model.saved_settings.failed_job_escalation_threshold == 5

@@ -1,8 +1,19 @@
 from __future__ import annotations
 
+from mt_clip_factory.output_resolution import parse_output_resolution
 
-def build_visual_filter(*, target_ratio: str | None, max_dimension: int = 1280) -> str:
-    dimensions = _resolve_target_dimensions(target_ratio=target_ratio, max_dimension=max_dimension)
+
+def build_visual_filter(
+    *,
+    target_ratio: str | None,
+    output_resolution: str | None = None,
+    max_dimension: int = 1280,
+) -> str:
+    dimensions = _resolve_output_dimensions(
+        target_ratio=target_ratio,
+        output_resolution=output_resolution,
+        max_dimension=max_dimension,
+    )
     if dimensions is None:
         return "scale='min(1280,iw)':-2"
     target_width, target_height = dimensions
@@ -10,6 +21,19 @@ def build_visual_filter(*, target_ratio: str | None, max_dimension: int = 1280) 
         f"scale={target_width}:{target_height}:force_original_aspect_ratio=decrease,"
         f"pad={target_width}:{target_height}:(ow-iw)/2:(oh-ih)/2:black,setsar=1"
     )
+
+
+def _resolve_output_dimensions(
+    *,
+    target_ratio: str | None,
+    output_resolution: str | None,
+    max_dimension: int,
+) -> tuple[int, int] | None:
+    resolution_pair = parse_output_resolution(output_resolution)
+    if resolution_pair is not None:
+        width, height = resolution_pair
+        return _round_even(width), _round_even(height)
+    return _resolve_target_dimensions(target_ratio=target_ratio, max_dimension=max_dimension)
 
 
 def _resolve_target_dimensions(*, target_ratio: str | None, max_dimension: int) -> tuple[int, int] | None:

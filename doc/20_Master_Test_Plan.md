@@ -45,6 +45,7 @@ It complements [07_Testing_Strategy.md](/F:/programming/python/MTClipFactory/doc
 - recent-job, failed-job, and escalated-job visibility
 - recovery actions and operator playbook guidance
 - settings persistence through `.toml`
+- exact preview/final output resolution settings through the operator UI
 - runtime path-root hot reload behavior
 
 ### Shared Reliability Surfaces
@@ -188,6 +189,7 @@ It complements [07_Testing_Strategy.md](/F:/programming/python/MTClipFactory/doc
 3. Confirm runtime hot reload applies new roots in the desktop app.
 4. Confirm dashboard path surfaces show active and configured roots truthfully.
 5. Confirm view models continue working after runtime reload.
+6. Set exact preview/final output resolutions and confirm generated outputs use the configured frame.
 
 ### G. Reporting And Operator Visibility
 

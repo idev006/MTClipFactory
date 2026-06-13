@@ -25,6 +25,8 @@ class SystemSettingsDTO:
     voice_loop_enabled: bool
     background_music_loop_enabled: bool
     music_duck_enabled: bool
+    preview_output_resolution: str = ""
+    final_output_resolution: str = ""
     music_duck_mode: str = "sidechain_compressor"
     music_duck_db: int = -15
     music_duck_attack_ms: int = 250
@@ -138,6 +140,8 @@ class DashboardSummaryDTO:
     max_preview_workers: int
     max_final_workers: int
     auto_refresh_seconds: int
+    preview_output_resolution: str
+    final_output_resolution: str
     auto_recover_queued_jobs: bool
     max_recovery_jobs_per_run: int
     failed_job_escalation_threshold: int

@@ -97,8 +97,16 @@ def build_resource_library_module(
     video_assembly_factory_service = VideoAssemblyFactoryService(
         unit_of_work_factory=uow_factory,
         preview_manifest_builder=PreviewManifestBuilder(config.paths.preview_root / "manifests"),
-        preview_renderer=FFmpegPreviewRenderer(settings_service, config.paths.preview_root),
-        final_renderer=FFmpegPreviewRenderer(settings_service, config.paths.outputs_root / "final"),
+        preview_renderer=FFmpegPreviewRenderer(
+            settings_service,
+            config.paths.preview_root,
+            output_resolution_field="preview_output_resolution",
+        ),
+        final_renderer=FFmpegPreviewRenderer(
+            settings_service,
+            config.paths.outputs_root / "final",
+            output_resolution_field="final_output_resolution",
+        ),
         system_settings_service=settings_service,
     )
     tag_management_service = TagManagementService(unit_of_work_factory=uow_factory)

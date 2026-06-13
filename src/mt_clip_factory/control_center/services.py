@@ -19,6 +19,7 @@ from mt_clip_factory.control_center.dto import (
 from mt_clip_factory.domain.enums import RecipeStatus
 from mt_clip_factory.library.services import AssetIntakeService
 from mt_clip_factory.library.tag_services import TagManagementService
+from mt_clip_factory.output_resolution import normalize_output_resolution
 
 if TYPE_CHECKING:
     from mt_clip_factory.factory.services import VideoAssemblyFactoryService
@@ -74,6 +75,8 @@ class SystemSettingsService:
             max_preview_workers=int(system.get("max_preview_workers", 0)),
             max_final_workers=int(system.get("max_final_workers", 0)),
             auto_refresh_seconds=int(system.get("auto_refresh_seconds", 0)),
+            preview_output_resolution=str(system.get("preview_output_resolution", "")),
+            final_output_resolution=str(system.get("final_output_resolution", "")),
             auto_recover_queued_jobs=_coerce_bool(system.get("auto_recover_queued_jobs", False)),
             max_recovery_jobs_per_run=int(system.get("max_recovery_jobs_per_run", 25)),
             failed_job_escalation_threshold=int(system.get("failed_job_escalation_threshold", 2)),
@@ -95,6 +98,8 @@ class SystemSettingsService:
         )
 
     def save(self, settings: SystemSettingsDTO) -> None:
+        preview_output_resolution = normalize_output_resolution(settings.preview_output_resolution)
+        final_output_resolution = normalize_output_resolution(settings.final_output_resolution)
         content = "\n".join(
             [
                 "[paths]",
@@ -116,6 +121,8 @@ class SystemSettingsService:
                 f"max_preview_workers = {settings.max_preview_workers}",
                 f"max_final_workers = {settings.max_final_workers}",
                 f"auto_refresh_seconds = {settings.auto_refresh_seconds}",
+                f'preview_output_resolution = "{_escape_toml(preview_output_resolution)}"',
+                f'final_output_resolution = "{_escape_toml(final_output_resolution)}"',
                 f"auto_recover_queued_jobs = {_format_toml_bool(settings.auto_recover_queued_jobs)}",
                 f"max_recovery_jobs_per_run = {settings.max_recovery_jobs_per_run}",
                 f"failed_job_escalation_threshold = {settings.failed_job_escalation_threshold}",
@@ -258,6 +265,8 @@ class DashboardService:
             max_preview_workers=settings.max_preview_workers,
             max_final_workers=settings.max_final_workers,
             auto_refresh_seconds=settings.auto_refresh_seconds,
+            preview_output_resolution=settings.preview_output_resolution,
+            final_output_resolution=settings.final_output_resolution,
             auto_recover_queued_jobs=settings.auto_recover_queued_jobs,
             max_recovery_jobs_per_run=settings.max_recovery_jobs_per_run,
             failed_job_escalation_threshold=settings.failed_job_escalation_threshold,

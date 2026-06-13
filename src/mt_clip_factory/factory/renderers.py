@@ -29,9 +29,16 @@ class RenderedPreviewOutput:
 
 
 class FFmpegPreviewRenderer:
-    def __init__(self, settings_service: SystemSettingsService, preview_root: Path) -> None:
+    def __init__(
+        self,
+        settings_service: SystemSettingsService,
+        preview_root: Path,
+        *,
+        output_resolution_field: str = "preview_output_resolution",
+    ) -> None:
         self._settings_service = settings_service
         self._preview_root = preview_root
+        self._output_resolution_field = output_resolution_field
 
     def render_output(
         self,
@@ -253,12 +260,13 @@ class FFmpegPreviewRenderer:
         include_audio: bool,
         target_ratio: str | None,
     ) -> None:
+        output_resolution = self._configured_output_resolution(settings)
         arguments = [
             "-y",
             "-i",
             str(source_file),
             "-vf",
-            build_visual_filter(target_ratio=target_ratio),
+            build_visual_filter(target_ratio=target_ratio, output_resolution=output_resolution),
             "-c:v",
             "libx264",
             "-preset",
@@ -282,6 +290,7 @@ class FFmpegPreviewRenderer:
         include_audio: bool,
         target_ratio: str | None,
     ) -> None:
+        output_resolution = self._configured_output_resolution(settings)
         with TemporaryDirectory(prefix="mtclipfactory_preview_") as temp_dir_name:
             concat_file = Path(temp_dir_name) / "concat_list.txt"
             concat_file.write_text(
@@ -297,7 +306,7 @@ class FFmpegPreviewRenderer:
                 "-i",
                 str(concat_file),
                 "-vf",
-                build_visual_filter(target_ratio=target_ratio),
+                build_visual_filter(target_ratio=target_ratio, output_resolution=output_resolution),
                 "-c:v",
                 "libx264",
                 "-preset",
@@ -321,6 +330,7 @@ class FFmpegPreviewRenderer:
         include_audio: bool,
         target_ratio: str | None,
     ) -> None:
+        output_resolution = self._configured_output_resolution(settings)
         with TemporaryDirectory(prefix="mtclipfactory_preview_segments_") as temp_dir_name:
             temp_dir = Path(temp_dir_name)
             rendered_segments: list[Path] = []
@@ -335,7 +345,7 @@ class FFmpegPreviewRenderer:
                     "-t",
                     str(segment.target_duration_sec),
                     "-vf",
-                    build_visual_filter(target_ratio=target_ratio),
+                    build_visual_filter(target_ratio=target_ratio, output_resolution=output_resolution),
                     "-c:v",
                     "libx264",
                     "-preset",
@@ -370,6 +380,9 @@ class FFmpegPreviewRenderer:
                     str(target_path),
                 ],
             )
+
+    def _configured_output_resolution(self, settings: SystemSettingsDTO) -> str | None:
+        return getattr(settings, self._output_resolution_field, "") or None
 
     def _render_audio_track_sequence(
         self,

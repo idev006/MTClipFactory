@@ -33,6 +33,7 @@
 - Preview composition is now segment-aware and writes inspectable manifest data for chosen visual clips.
 - Final render now rerenders from the planned composition path instead of depending on the approved preview file alone.
 - Settings now expose `voice_loop_enabled`, `background_music_loop_enabled`, and music duck controls through `.toml` and the desktop settings screen.
+- Settings now also allow exact preview/final output frame entry so operators can request sizes like `1080x1920` without editing code.
 - Dashboard and Recipe Builder now show more of the composition/render story instead of only output lineage.
 - Preview and final renderers now emit manifest-visible runtime audio-mix evidence.
 - Preview and final renderers now also emit manifest-visible review-gate evidence plus quality/duplicate-risk summaries.
@@ -76,6 +77,7 @@
 - operator-facing user manual is now published as SSOT document `27` for controlled rollout and UAT use
 - first controlled operator/UAT execution now confirms a real `9:16` preview/final output can be produced successfully from the current workspace baseline
 - second controlled operator/UAT execution now confirms manifest-backed audio mixing, ducking, and five-segment richer-media composition on the same baseline
+- render configuration now also supports UI-managed exact preview/final frame sizing with `.toml` persistence instead of a fixed code-only normalization ceiling
 
 ## Still Open
 
