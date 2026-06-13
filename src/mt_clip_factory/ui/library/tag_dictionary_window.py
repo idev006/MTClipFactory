@@ -2,6 +2,8 @@ from __future__ import annotations
 
 from PySide6.QtCore import Qt
 from PySide6.QtWidgets import (
+    QComboBox,
+    QCompleter,
     QFormLayout,
     QGridLayout,
     QGroupBox,
@@ -60,7 +62,10 @@ class TagDictionaryWindow(QMainWindow):
         form_layout = QFormLayout()
 
         self.tag_name_input = QLineEdit()
-        self.tag_group_input = QLineEdit()
+        self.tag_name_input.setPlaceholderText("for example: warm, premium, testimonial")
+        self.tag_group_input = QComboBox()
+        self.tag_group_input.setEditable(True)
+        self.tag_group_input.setInsertPolicy(QComboBox.NoInsert)
         self.tag_description_input = QTextEdit()
         self.tag_description_input.setFixedHeight(90)
 
@@ -69,17 +74,37 @@ class TagDictionaryWindow(QMainWindow):
         form_layout.addRow("Description", self.tag_description_input)
         layout.addLayout(form_layout)
 
+        filter_group = QGroupBox("Asset Filters")
+        filter_layout = QFormLayout(filter_group)
+        self.asset_filter_product_combo = QComboBox()
+        self.asset_filter_status_combo = QComboBox()
+        self.asset_filter_status_combo.addItem("All", None)
+        for status in ("ready", "needs_review", "analyzed", "retired", "purged"):
+            self.asset_filter_status_combo.addItem(status, status)
+        self.asset_search_input = QLineEdit()
+        self.asset_search_input.setPlaceholderText("search asset code, file, type, product, or tag")
+        filter_layout.addRow("Product", self.asset_filter_product_combo)
+        filter_layout.addRow("Status", self.asset_filter_status_combo)
+        filter_layout.addRow("Search", self.asset_search_input)
+        layout.addWidget(filter_group)
+
         button_row = QHBoxLayout()
         self.create_tag_button = QPushButton("Create Tag")
         self.assign_tag_button = QPushButton("Assign Selected Tag")
+        self.apply_filters_button = QPushButton("Apply Filters")
+        self.clear_filters_button = QPushButton("Clear Filters")
         self.refresh_button = QPushButton("Refresh")
 
         self.create_tag_button.clicked.connect(self._create_tag)
         self.assign_tag_button.clicked.connect(self._assign_tag)
+        self.apply_filters_button.clicked.connect(self._apply_filters)
+        self.clear_filters_button.clicked.connect(self._clear_filters)
         self.refresh_button.clicked.connect(self._view_model.load)
 
         button_row.addWidget(self.create_tag_button)
         button_row.addWidget(self.assign_tag_button)
+        button_row.addWidget(self.apply_filters_button)
+        button_row.addWidget(self.clear_filters_button)
         button_row.addWidget(self.refresh_button)
         layout.addLayout(button_row)
 
@@ -122,6 +147,14 @@ class TagDictionaryWindow(QMainWindow):
 
     def _refresh_tags(self) -> None:
         tags = self._view_model.tags
+        current_group = self.tag_group_input.currentText()
+        self.tag_group_input.blockSignals(True)
+        self.tag_group_input.clear()
+        for tag_group in self._view_model.tag_group_suggestions:
+            self.tag_group_input.addItem(tag_group, tag_group)
+        self.tag_group_input.setCurrentText(current_group)
+        self.tag_group_input.setCompleter(QCompleter(self._view_model.tag_group_suggestions, self))
+        self.tag_group_input.blockSignals(False)
         self.tag_table.setRowCount(len(tags))
         for row_index, tag in enumerate(tags):
             values = [str(tag.tag_id), tag.tag_group, tag.tag_name, tag.description or ""]
@@ -130,6 +163,27 @@ class TagDictionaryWindow(QMainWindow):
 
     def _refresh_assets(self) -> None:
         assets = self._view_model.assets
+        current_product = self.asset_filter_product_combo.currentData()
+        self.asset_filter_product_combo.blockSignals(True)
+        self.asset_filter_product_combo.clear()
+        self.asset_filter_product_combo.addItem("All", None)
+        for product_code in self._view_model.asset_filter_product_options:
+            self.asset_filter_product_combo.addItem(product_code, product_code)
+        if current_product is not None:
+            product_index = self.asset_filter_product_combo.findData(current_product)
+            if product_index >= 0:
+                self.asset_filter_product_combo.setCurrentIndex(product_index)
+        self.asset_filter_product_combo.blockSignals(False)
+        search_suggestions = sorted(
+            {
+                asset.asset_code
+                for asset in assets
+            }
+            | {asset.file_name for asset in assets}
+            | {asset.product_code for asset in assets}
+            | {tag_label for asset in assets for tag_label in asset.tag_labels}
+        )
+        self.asset_search_input.setCompleter(QCompleter(search_suggestions, self))
         self.asset_table.setRowCount(len(assets))
         for row_index, asset in enumerate(assets):
             values = [str(asset.asset_id), asset.product_code, asset.asset_code, asset.asset_type, asset.status]
@@ -140,7 +194,7 @@ class TagDictionaryWindow(QMainWindow):
         try:
             self._view_model.create_tag(
                 tag_name=self.tag_name_input.text(),
-                tag_group=self.tag_group_input.text(),
+                tag_group=self.tag_group_input.currentText(),
                 description=self.tag_description_input.toPlainText(),
             )
         except ValueError as exc:
@@ -148,7 +202,9 @@ class TagDictionaryWindow(QMainWindow):
             return
 
         self.tag_name_input.clear()
-        self.tag_group_input.clear()
+        self.tag_group_input.setCurrentIndex(-1)
+        if self.tag_group_input.lineEdit() is not None:
+            self.tag_group_input.lineEdit().clear()
         self.tag_description_input.clear()
 
     def _assign_tag(self) -> None:
@@ -164,3 +220,16 @@ class TagDictionaryWindow(QMainWindow):
             self._view_model.assign_tag_to_asset(asset_id=asset_id, tag_id=tag_id)
         except ValueError as exc:
             QMessageBox.warning(self, "Assign Tag", str(exc))
+
+    def _apply_filters(self) -> None:
+        self._view_model.apply_asset_filters(
+            product_code=self.asset_filter_product_combo.currentData(),
+            status=self.asset_filter_status_combo.currentData(),
+            search_text=self.asset_search_input.text(),
+        )
+
+    def _clear_filters(self) -> None:
+        self.asset_filter_product_combo.setCurrentIndex(0)
+        self.asset_filter_status_combo.setCurrentIndex(0)
+        self.asset_search_input.clear()
+        self._view_model.apply_asset_filters()

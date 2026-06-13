@@ -6,6 +6,8 @@ This workflow now sits inside the broader enterprise-factory pipeline defined in
 
 The current implementation now also has a persisted control-plane seam through [35_Production_Order_And_Orchestration_Workflow_2026-06-13.md](/F:/programming/python/MTClipFactory/doc/35_Production_Order_And_Orchestration_Workflow_2026-06-13.md).
 
+Folder discovery depth and assisted tagging ergonomics for this workflow are extended in [36_Folder_Discovery_Depth_And_Assisted_Tagging_Workflow_2026-06-13.md](/F:/programming/python/MTClipFactory/doc/36_Folder_Discovery_Depth_And_Assisted_Tagging_Workflow_2026-06-13.md).
+
 ## Purpose
 
 - let operators request output counts by product instead of building recipes one by one

@@ -98,7 +98,9 @@ classDiagram
 
     class AutoFactoryFolderService {
         +run_batch_root(batch_root)
+        +run_batch_root(batch_root, scan_depth)
         +parse product.toml + pipeline.toml
+        +discover product folders up to scan depth
         +create missing products
         +intake deterministic asset codes
         +skip existing assets on rerun
@@ -289,6 +291,8 @@ classDiagram
     class TagDictionaryWindow {
         +create_tag()
         +assign_tag()
+        +apply_asset_filters()
+        +reuse existing tag-group suggestions
     }
 
     class UIThemeLoader {
@@ -552,6 +556,52 @@ sequenceDiagram
     VM-->>View: refresh recipe items + composition plan
     View->>View: rank role suggestions by asset type + remaining segment roles
     View-->>User: auto-select next likely role + show Role Guidance
+```
+
+## Folder Discovery Depth Sequence
+
+```mermaid
+sequenceDiagram
+    actor Operator
+    participant FolderSvc as AutoFactoryFolderService
+    participant FS as Filesystem
+
+    Operator->>FolderSvc: run_batch_root(root_folder, scan_depth=n)
+    FolderSvc->>FolderSvc: validate scan_depth
+    FolderSvc->>FS: walk directories up to depth n
+    loop each directory
+        FolderSvc->>FolderSvc: check product.toml + pipeline.toml
+        alt valid product folder
+            FolderSvc->>FolderSvc: append ordered match
+        else invalid folder
+            FolderSvc->>FolderSvc: skip
+        end
+    end
+    FolderSvc-->>Operator: discovered product folders
+```
+
+## Assisted Tagging Sequence
+
+```mermaid
+sequenceDiagram
+    actor Operator
+    participant View as TagDictionaryWindow
+    participant VM as TagDictionaryViewModel
+    participant TagSvc as TagManagementService
+    participant AssetSvc as AssetIntakeService
+
+    Operator->>View: open Tags
+    View->>VM: load()
+    VM->>TagSvc: list_tags()
+    VM->>AssetSvc: list_assets()
+    VM-->>View: tag-group suggestions + filterable asset rows
+    Operator->>View: choose product/status/search filters
+    View->>VM: apply_asset_filters(...)
+    VM->>VM: narrow asset list
+    Operator->>View: select tag + asset
+    View->>VM: assign_tag_to_asset(...)
+    VM->>TagSvc: assign_tag_to_asset(...)
+    VM-->>View: refreshed state + feedback
 ```
 
 ## Recipe Replacement Aftercare Sequence

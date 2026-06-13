@@ -631,6 +631,35 @@ Make the new control-plane baseline safe for future multi-worker execution by in
 - retry policy becomes more precise than one generic failed state
 - docs, UML, issues, Kanban, and tests stay aligned to the new worker-control seam
 
+## IR-21 | Folder Discovery Depth And Assisted Tagging Ergonomics
+
+### Goal
+
+Make folder-driven automation easier to aim at real operator media trees while also reducing manual typing and visual scanning during tag assignment.
+
+### Scope
+
+- add explicit `scan_depth` semantics to auto-factory root-folder discovery
+- allow root-level or deeper nested product-folder contracts to be discovered deterministically
+- keep valid product-folder matches terminal so product asset subfolders are not reinterpreted as deeper product candidates
+- add guided tag-group reuse plus product/status/search asset filtering in the `Tags` screen
+- keep the slice additive to current services and existing desktop workflows
+
+### Acceptance Criteria
+
+- folder-driven runs can discover valid product folders at depth `0..n` from a selected root
+- invalid negative depth values fail truthfully
+- reruns stay deterministic and do not break current direct-child folder behavior
+- operators can narrow tag-assignment candidates without manually scanning the full asset table
+- docs, UML, manual, and pytest stay aligned to the delivered ergonomics slice
+
+### Delivery Result
+
+- delivered `scan_depth` support to `AutoFactoryFolderService.run_batch_root(...)` while preserving the existing direct-child baseline as the default behavior
+- delivered deterministic root-level and nested product-folder discovery coverage in pytest, plus truthful failure for invalid negative depth input
+- delivered `TagDictionaryViewModel` asset filtering by product, status, and free-text search
+- delivered `TagDictionaryWindow` guided controls through an editable group combo box, filter combos, and search-assisted asset narrowing
+
 ## Cross-Milestone Rules
 
 - every milestone must update related SSOT docs in the same loop

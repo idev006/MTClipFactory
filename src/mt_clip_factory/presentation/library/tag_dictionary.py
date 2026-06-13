@@ -19,9 +19,13 @@ class TagDictionaryViewModel(QObject):
         self._tag_management_service = tag_management_service
         self._asset_intake_service = asset_intake_service
         self._tags: list[TagSummaryDTO] = []
+        self._all_assets: list[AssetSummaryDTO] = []
         self._assets: list[AssetSummaryDTO] = []
         self._status = "idle"
         self._feedback = ""
+        self._asset_filter_product_code: str | None = None
+        self._asset_filter_status: str | None = None
+        self._asset_filter_search_text = ""
 
     def _get_status(self) -> str:
         return self._status
@@ -52,11 +56,20 @@ class TagDictionaryViewModel(QObject):
     def assets(self) -> list[AssetSummaryDTO]:
         return list(self._assets)
 
+    @property
+    def tag_group_suggestions(self) -> list[str]:
+        return sorted({tag.tag_group for tag in self._tags})
+
+    @property
+    def asset_filter_product_options(self) -> list[str]:
+        return sorted({asset.product_code for asset in self._all_assets})
+
     @Slot()
     def load(self) -> None:
         self._set_status("loading")
         self._tags = self._tag_management_service.list_tags()
-        self._assets = self._asset_intake_service.list_assets()
+        self._all_assets = self._asset_intake_service.list_assets()
+        self._assets = self._filter_assets(self._all_assets)
         self.tags_changed.emit()
         self.assets_changed.emit()
         self._set_status("ready")
@@ -76,6 +89,23 @@ class TagDictionaryViewModel(QObject):
         self.load()
         return tag_id
 
+    def apply_asset_filters(
+        self,
+        *,
+        product_code: str | None = None,
+        status: str | None = None,
+        search_text: str | None = None,
+    ) -> None:
+        self._asset_filter_product_code = _normalize_optional_filter(product_code)
+        self._asset_filter_status = _normalize_optional_filter(status)
+        self._asset_filter_search_text = (search_text or "").strip().casefold()
+        self._assets = self._filter_assets(self._all_assets)
+        self.assets_changed.emit()
+        self._set_feedback(
+            f"Showing {len(self._assets)} asset(s) after tag-assignment filters."
+        )
+        self._set_status("ready")
+
     def assign_tag_to_asset(self, *, asset_id: int, tag_id: int) -> None:
         self._set_status("assigning")
         try:
@@ -89,3 +119,36 @@ class TagDictionaryViewModel(QObject):
 
         self._set_feedback(f"Assigned tag #{tag_id} to asset #{asset_id}")
         self.load()
+
+    def _filter_assets(self, assets: list[AssetSummaryDTO]) -> list[AssetSummaryDTO]:
+        filtered: list[AssetSummaryDTO] = []
+        for asset in assets:
+            if self._asset_filter_product_code is not None and asset.product_code != self._asset_filter_product_code:
+                continue
+            if self._asset_filter_status is not None and asset.status != self._asset_filter_status:
+                continue
+            if self._asset_filter_search_text and not _asset_matches_search(asset, self._asset_filter_search_text):
+                continue
+            filtered.append(asset)
+        return filtered
+
+
+def _normalize_optional_filter(value: str | None) -> str | None:
+    if value is None:
+        return None
+    normalized = value.strip()
+    return normalized or None
+
+
+def _asset_matches_search(asset: AssetSummaryDTO, search_text: str) -> bool:
+    haystack = " ".join(
+        [
+            asset.product_code,
+            asset.asset_code,
+            asset.asset_type,
+            asset.file_name,
+            asset.status,
+            *asset.tag_labels,
+        ]
+    ).casefold()
+    return search_text in haystack

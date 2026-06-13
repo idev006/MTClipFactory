@@ -167,9 +167,11 @@ def test_folder_service_creates_products_registers_assets_and_materializes_batch
     report = folder_service.run_batch_root(batch_root)
 
     assert report.batch_code == "batch_root"
+    assert report.scan_depth == 1
     assert len(report.product_reports) == 1
     assert report.product_reports[0].created_product is True
     assert report.product_reports[0].registered_asset_count == 5
+    assert report.discovered_product_dirs == (str(batch_root / "ProductA"),)
     assert report.materialization is not None
     assert len(report.materialization.created_recipes) == 2
     recipes = sorted(factory_service.list_recipes(), key=lambda recipe: recipe.recipe_code)
@@ -321,3 +323,66 @@ def test_folder_service_rejects_missing_request_section(unit_of_work_factory, tm
 
     with pytest.raises(AutoFactoryFolderContractError, match="Missing \\[request\\] section"):
         folder_service.run_batch_root(batch_root, materialize=False)
+
+
+def test_folder_service_can_discover_root_level_product_folder_at_depth_zero(unit_of_work_factory, tmp_path) -> None:
+    product_service, asset_service, _, folder_service = _build_services(
+        unit_of_work_factory,
+        tmp_path,
+        {"voice_a.mp3": 12.0},
+    )
+    batch_root = tmp_path / "single_product_root"
+    _write_product_folder(
+        batch_root.parent,
+        folder_name=batch_root.name,
+        product_code="root_product",
+        product_name="Root Product",
+        requested_output_count=1,
+    )
+
+    report = folder_service.run_batch_root(batch_root, scan_depth=0, materialize=False)
+
+    assert report.scan_depth == 0
+    assert report.discovered_product_dirs == (str(batch_root),)
+    assert [product.product_code for product in product_service.list_products()] == ["root_product"]
+    assert sorted(asset.asset_code for asset in asset_service.list_assets()) == [
+        "root_product_bg_bg_a",
+        "root_product_fg_hook_a",
+        "root_product_fg_hook_b",
+        "root_product_music_music_a",
+        "root_product_voice_voice_a",
+    ]
+
+
+def test_folder_service_can_discover_nested_product_folders_up_to_requested_depth(unit_of_work_factory, tmp_path) -> None:
+    product_service, _, _, folder_service = _build_services(
+        unit_of_work_factory,
+        tmp_path,
+        {"voice_a.mp3": 12.0},
+    )
+    batch_root = tmp_path / "nested_batch_root"
+    nested_parent = batch_root / "group_a" / "campaign_x"
+    _write_product_folder(
+        nested_parent,
+        folder_name="ProductNested",
+        product_code="nested_product",
+        product_name="Nested Product",
+        requested_output_count=1,
+    )
+
+    with pytest.raises(AutoFactoryFolderContractError, match="No product folders were found"):
+        folder_service.run_batch_root(batch_root, scan_depth=1, materialize=False)
+
+    report = folder_service.run_batch_root(batch_root, scan_depth=3, materialize=False)
+
+    assert report.discovered_product_dirs == (str(nested_parent / "ProductNested"),)
+    assert [product.product_code for product in product_service.list_products()] == ["nested_product"]
+
+
+def test_folder_service_rejects_negative_scan_depth(unit_of_work_factory, tmp_path) -> None:
+    _, _, _, folder_service = _build_services(unit_of_work_factory, tmp_path, {})
+    batch_root = tmp_path / "batch_root"
+    batch_root.mkdir(parents=True)
+
+    with pytest.raises(AutoFactoryFolderContractError, match="scan_depth must be >= 0"):
+        folder_service.run_batch_root(batch_root, scan_depth=-1, materialize=False)

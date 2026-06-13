@@ -54,6 +54,7 @@ class AutoFactoryFolderService:
         batch_root: Path,
         *,
         batch_code: str | None = None,
+        scan_depth: int = 1,
         materialize: bool = True,
         build_previews: bool = False,
     ) -> AutoFactoryFolderRunReportDTO:
@@ -61,7 +62,7 @@ class AutoFactoryFolderService:
             raise AutoFactoryFolderContractError("build_previews requires materialize=True so preview jobs have recipes to run.")
 
         root_path = Path(batch_root)
-        product_dirs = _discover_product_dirs(root_path)
+        product_dirs = _discover_product_dirs(root_path, scan_depth=scan_depth)
         product_configs = {product_dir: _load_product_config(product_dir) for product_dir in product_dirs}
         pipeline_configs = {product_dir: _load_pipeline_config(product_dir) for product_dir in product_dirs}
 
@@ -123,7 +124,9 @@ class AutoFactoryFolderService:
             materialization = self._auto_factory_service.materialize_batch(order)
         return AutoFactoryFolderRunReportDTO(
             batch_code=effective_batch_code,
+            scan_depth=scan_depth,
             order=order,
+            discovered_product_dirs=tuple(str(product_dir) for product_dir in product_dirs),
             product_reports=tuple(product_reports),
             asset_actions=tuple(asset_actions),
             materialization=materialization,
@@ -186,21 +189,34 @@ class AutoFactoryFolderService:
         return registered_asset_count, skipped_existing_asset_count, actions
 
 
-def _discover_product_dirs(batch_root: Path) -> tuple[Path, ...]:
+def _discover_product_dirs(batch_root: Path, *, scan_depth: int) -> tuple[Path, ...]:
     if not batch_root.exists() or not batch_root.is_dir():
         raise AutoFactoryFolderContractError(f"Batch root does not exist or is not a directory: {batch_root}")
-    product_dirs = tuple(
-        sorted(
-            product_dir
-            for product_dir in batch_root.iterdir()
-            if product_dir.is_dir() and (product_dir / "product.toml").exists() and (product_dir / "pipeline.toml").exists()
-        )
-    )
+    if scan_depth < 0:
+        raise AutoFactoryFolderContractError(f"scan_depth must be >= 0 but got {scan_depth}")
+
+    product_dirs: list[Path] = []
+
+    def walk(current_dir: Path, depth: int) -> None:
+        if _is_product_contract_dir(current_dir):
+            product_dirs.append(current_dir)
+            return
+        if depth >= scan_depth:
+            return
+        child_dirs = sorted(path for path in current_dir.iterdir() if path.is_dir())
+        for child_dir in child_dirs:
+            walk(child_dir, depth + 1)
+
+    walk(batch_root, 0)
     if not product_dirs:
         raise AutoFactoryFolderContractError(
             f"No product folders were found under {batch_root}. Expected directories containing product.toml and pipeline.toml."
         )
-    return product_dirs
+    return tuple(product_dirs)
+
+
+def _is_product_contract_dir(path: Path) -> bool:
+    return path.is_dir() and (path / "product.toml").exists() and (path / "pipeline.toml").exists()
 
 
 def _load_product_config(product_dir: Path) -> AutoFactoryFolderProductConfigDTO:

@@ -94,12 +94,18 @@ class FakeTagDictionaryViewModel(QObject):
         self.assets = []
         self.feedback = ""
         self.status = "ready"
+        self.tag_group_suggestions = []
+        self.asset_filter_product_options = []
 
     def load(self) -> None:
         self.tags_changed.emit()
         self.assets_changed.emit()
         self.feedback_changed.emit()
         self.status_changed.emit()
+
+    def apply_asset_filters(self, *, product_code=None, status=None, search_text=None) -> None:  # noqa: ANN001
+        self.assets_changed.emit()
+        self.feedback_changed.emit()
 
 
 class FakeRecipeBuilderViewModel(QObject):
@@ -162,6 +168,19 @@ def test_primary_windows_apply_app_theme(qapp: QApplication) -> None:
         assert "QMainWindow" in window.styleSheet()
         assert "QPushButton" in window.styleSheet()
         window.close()
+
+
+def test_tag_dictionary_window_uses_guided_filter_controls(qapp: QApplication) -> None:
+    tag_window = TagDictionaryWindow(FakeTagDictionaryViewModel())
+
+    assert isinstance(tag_window.tag_group_input, QComboBox)
+    assert tag_window.tag_group_input.isEditable() is True
+    assert isinstance(tag_window.asset_filter_product_combo, QComboBox)
+    assert isinstance(tag_window.asset_filter_status_combo, QComboBox)
+    assert tag_window.asset_search_input.placeholderText().startswith("search asset code")
+    assert tag_window.apply_filters_button.text() == "Apply Filters"
+    assert tag_window.clear_filters_button.text() == "Clear Filters"
+    tag_window.close()
 
 
 def test_asset_library_window_exposes_lifecycle_maintenance_controls(qapp: QApplication) -> None:

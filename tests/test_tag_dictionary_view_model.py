@@ -29,7 +29,22 @@ class FakeAssetIntakeService:
                 tag_labels=("mood:warm",),
                 thumbnail_path=None,
                 proxy_path=None,
-            )
+            ),
+            AssetSummaryDTO(
+                asset_id=2,
+                product_id=2,
+                product_code="tea",
+                asset_code="proof_asset",
+                asset_type="foreground_video",
+                file_name="proof.mp4",
+                status="retired",
+                ratio="9:16",
+                duration_sec=2.0,
+                file_size_mb=0.002,
+                tag_labels=("message:proof",),
+                thumbnail_path=None,
+                proxy_path=None,
+            ),
         ]
 
 
@@ -65,7 +80,8 @@ def test_tag_dictionary_view_model_loads_tags_and_assets() -> None:
     view_model.load()
 
     assert view_model.status == "ready"
-    assert len(view_model.assets) == 1
+    assert len(view_model.assets) == 2
+    assert view_model.asset_filter_product_options == ["honey", "tea"]
     assert view_model.tags == []
 
 
@@ -87,3 +103,14 @@ def test_tag_dictionary_view_model_surfaces_errors() -> None:
         view_model.create_tag(tag_name="   ", tag_group="Mood")
 
     assert view_model.status == "error"
+
+
+def test_tag_dictionary_view_model_filters_assets_for_tag_assignment() -> None:
+    view_model = TagDictionaryViewModel(FakeTagManagementService(), FakeAssetIntakeService())
+
+    view_model.load()
+    view_model.apply_asset_filters(product_code="tea", status="retired", search_text="proof")
+
+    assert view_model.status == "ready"
+    assert [asset.asset_code for asset in view_model.assets] == ["proof_asset"]
+    assert "Showing 1 asset(s)" in view_model.feedback

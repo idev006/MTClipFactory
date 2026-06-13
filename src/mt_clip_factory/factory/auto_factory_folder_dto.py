@@ -52,7 +52,9 @@ class AutoFactoryFolderProductReportDTO:
 @dataclass(slots=True, frozen=True)
 class AutoFactoryFolderRunReportDTO:
     batch_code: str
+    scan_depth: int
     order: AutoFactoryBatchOrderDTO
+    discovered_product_dirs: tuple[str, ...]
     product_reports: tuple[AutoFactoryFolderProductReportDTO, ...]
     asset_actions: tuple[AutoFactoryFolderAssetActionDTO, ...]
     materialization: AutoFactoryBatchMaterializationDTO | None = None

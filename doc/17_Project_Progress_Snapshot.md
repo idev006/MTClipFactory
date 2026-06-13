@@ -60,9 +60,11 @@
 - Recipe Builder tables now keep explicit vertical-scroll behavior for overflow rows instead of depending on one long page or pagination.
 - An Auto Factory batch-planning baseline now exists so operators can request counts by product, enforce batch-only uniqueness, and materialize internal recipes automatically without hand-building each one.
 - The auto-factory baseline can now also read product folders with `product.toml` and `pipeline.toml`, create missing products, ingest deterministic asset codes, and materialize internal recipes from one batch root.
+- The auto-factory folder baseline now also supports explicit root-folder scan depth so valid product folders can be discovered at root, child, or deeper nested levels deterministically.
 - The auto-factory baseline can now also run preview jobs automatically for those materialized internal recipes and report per-recipe success, failure, output path, and resulting review state.
 - An enterprise pipeline review and architecture blueprint now exist so the project can grow into a true Video Production Factory instead of accumulating disconnected automation slices.
 - Production orders and orchestration stages are now persisted independently from recipe rows, giving the system a first real control-plane baseline for automated factory runs.
+- The `Tags` screen now provides guided group reuse plus product/status/search filtering so operators can narrow the asset list before assigning labels.
 - The first controlled operator/UAT run has now completed end to end and produced a real final output from the current workspace.
 - A second controlled operator/UAT run has now validated runtime voice/music mixing, richer visual coverage, and a no-review-gate path on a stronger recipe.
 - The roadmap is now split into strategic and implementation layers, and the current mandatory implementation slice is complete.
@@ -103,6 +105,8 @@
 - the third auto-factory delivery slice now turns materialized batches into real preview outputs with per-recipe batch reporting, while still stopping before output approval, recipe approval, or final render
 - the latest architecture loop now locks the four-plane factory vocabulary: `Control Plane`, `Execution Plane`, `State Plane`, and `Operator Plane`
 - the latest implementation loop now persists control-plane `materialize`, `preview`, and `review` stage truth through dedicated production-order tables and service orchestration
+- folder-driven automation now supports reviewed `scan_depth` discovery semantics so one selected root can intentionally include root-only, child-level, or deeper nested product folders
+- tag assignment ergonomics now support reusable tag-group suggestions plus filterable/searchable asset narrowing within the `Tags` screen itself
 
 ## Still Open
 
