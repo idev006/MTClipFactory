@@ -41,6 +41,7 @@ The project now uses two roadmap layers:
 - `IR-19` Production-order and shared job-state orchestration baseline: complete on 2026-06-13
 - `IR-21` Folder discovery depth and assisted tagging ergonomics: complete on 2026-06-13
 - `IR-22` Auto Factory desktop control surface baseline: complete on 2026-06-13
+- `IR-23` Tag-aware auto-factory selection baseline: complete on 2026-06-13
 
 ## Current Execution Stream
 
@@ -692,6 +693,34 @@ Give operators a real desktop control surface for folder-root automation without
 - delivered dashboard navigation into the new screen plus guided browse, depth, and run-mode controls
 - delivered a composed intake-then-order execution flow that keeps `Intake Only` available while routing materialize and preview runs through persisted `ProductionOrderService` records
 - covered the new operator-control seam with pytest for both the view model and offscreen window wiring
+
+## IR-23 | Tag-Aware Auto Factory Selection Baseline
+
+### Goal
+
+Make asset tags operational inside auto-factory planning while improving the tagging screen so operators can prepare automation-relevant labels confidently.
+
+### Scope
+
+- extend `pipeline.toml` with optional `[selection_tags]` rules for `foreground`, `background`, `music`, and `voice`
+- filter ready asset pools by explicit required `group:name` labels before planner capacity is estimated
+- keep the first matching mode deterministic through all-of tag matching per asset type
+- surface the automation direction more clearly in the `Tags` screen through `Asset Type` filtering and visible current asset tag labels
+- cover planner filtering, folder parsing, and tagging UI seams with pytest
+
+### Acceptance Criteria
+
+- configured tag rules can change which assets are eligible for automated recipe generation
+- planner shortfalls caused by tag rules remain truthful and do not silently fall back to untagged assets
+- operators can see and filter current asset tags in the `Tags` screen while preparing assets for automation
+- roadmap, status, progress, UML, manual, and test-plan docs remain aligned to the delivered slice
+
+### Delivery Result
+
+- delivered optional `pipeline.toml [selection_tags]` parsing into auto-factory product requests
+- delivered deterministic tag-aware planner filtering across foreground/background/music/voice pools using normalized `group:name` labels
+- delivered truthful limiting-reason reporting when tag rules remove all renderable visual candidates
+- delivered `Tags` window hardening with `Asset Type` filtering, visible asset tag labels, and operator guidance that automation consumes normalized labels
 
 ## Cross-Milestone Rules
 

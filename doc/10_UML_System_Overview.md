@@ -92,6 +92,7 @@ classDiagram
         +materialize_batch_and_build_previews(order)
         +batch-only uniqueness planning
         +voice-with-bounds duration planning
+        +required tag-label filtering by asset type
         +internal recipe generation
         +batch preview orchestration up to review gate
     }
@@ -302,6 +303,8 @@ classDiagram
         +create_tag()
         +assign_tag()
         +apply_asset_filters()
+        +filter by asset type
+        +show current asset tag labels
         +reuse existing tag-group suggestions
     }
 
@@ -647,6 +650,26 @@ sequenceDiagram
     View->>VM: assign_tag_to_asset(...)
     VM->>TagSvc: assign_tag_to_asset(...)
     VM-->>View: refreshed state + feedback
+```
+
+## Tag-Aware Auto Factory Planner Sequence
+
+```mermaid
+sequenceDiagram
+    actor Operator
+    participant View as TagDictionaryWindow
+    participant FolderSvc as AutoFactoryFolderService
+    participant Planner as AutoFactoryBatchService
+    participant AssetSvc as AssetIntakeService
+
+    Operator->>View: assign normalized group:name tags
+    Operator->>FolderSvc: run batch root
+    FolderSvc->>FolderSvc: read pipeline.toml [selection_tags]
+    FolderSvc->>Planner: plan_batch(order)
+    Planner->>AssetSvc: list_assets(product_id, status="ready")
+    Planner->>Planner: filter pools by required tag labels
+    Planner->>Planner: estimate feasible capacity
+    Planner-->>FolderSvc: filtered plan or truthful shortfall
 ```
 
 ## Recipe Replacement Aftercare Sequence

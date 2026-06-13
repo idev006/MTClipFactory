@@ -64,6 +64,8 @@
 - The auto-factory baseline can now also run preview jobs automatically for those materialized internal recipes and report per-recipe success, failure, output path, and resulting review state.
 - A first desktop `Auto Factory` screen now exists so operators can browse to one root folder, set `scan_depth`, choose `Intake Only` versus materializing run modes, and inspect recent production-order status from inside the app.
 - The new desktop `Auto Factory` screen now composes `AutoFactoryFolderService` with `ProductionOrderService`, so any materialize/preview run records control-plane stage truth instead of hiding it behind direct service-only automation.
+- Auto-factory planning can now also consume explicit asset tag requirements from `pipeline.toml`, so operators can narrow foreground, background, music, and voice pools using normalized `group:name` labels.
+- The `Tags` screen now exposes `Asset Type` filtering and visible current asset tag labels, making automation-oriented tagging easier to verify before a batch run.
 - An enterprise pipeline review and architecture blueprint now exist so the project can grow into a true Video Production Factory instead of accumulating disconnected automation slices.
 - Production orders and orchestration stages are now persisted independently from recipe rows, giving the system a first real control-plane baseline for automated factory runs.
 - The `Tags` screen now provides guided group reuse plus product/status/search filtering so operators can narrow the asset list before assigning labels.
@@ -73,6 +75,9 @@
 
 ## Delivered In The Latest Loop
 
+- delivered tag-aware auto-factory planning rules through optional `pipeline.toml [selection_tags]` inputs for foreground/background/music/voice asset pools
+- delivered deterministic all-of tag matching against normalized `group:name` asset labels, plus truthful shortfall reporting when configured tag rules remove otherwise-ready visual assets
+- delivered `Tags` screen hardening with `Asset Type` filtering, visible asset tag labels, and operator guidance that automation can consume those normalized labels
 - delivered a real desktop `Auto Factory` control surface with guided root-folder browse, batch-code override, `scan_depth`, and explicit run-mode selection
 - delivered truthful in-app reporting for discovered product folders, product create/reuse outcomes, deterministic asset intake actions, recent production orders, and stage-by-stage order results
 - delivered a UI orchestration seam that performs folder intake first and then routes materialize/preview runs through persisted `ProductionOrderService` control-plane records
@@ -81,7 +86,7 @@
 
 1. run broader controlled operator use on real campaign media and capture operator notes without service-side intervention
 2. implement worker lease, heartbeat, and retry-policy semantics on top of the new control-plane baseline
-3. extend the new auto-preview factory baseline into controlled final-render automation only after operators accept the current planner and review-gate truth
+3. extend the new auto-preview factory baseline into controlled final-render automation only after operators accept the current planner, tag-aware selection rules, and review-gate truth
 
 ## Verification Baseline
 

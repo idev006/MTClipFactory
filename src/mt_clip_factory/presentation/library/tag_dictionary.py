@@ -25,6 +25,7 @@ class TagDictionaryViewModel(QObject):
         self._feedback = ""
         self._asset_filter_product_code: str | None = None
         self._asset_filter_status: str | None = None
+        self._asset_filter_asset_type: str | None = None
         self._asset_filter_search_text = ""
 
     def _get_status(self) -> str:
@@ -64,6 +65,10 @@ class TagDictionaryViewModel(QObject):
     def asset_filter_product_options(self) -> list[str]:
         return sorted({asset.product_code for asset in self._all_assets})
 
+    @property
+    def asset_filter_type_options(self) -> list[str]:
+        return sorted({asset.asset_type for asset in self._all_assets})
+
     @Slot()
     def load(self) -> None:
         self._set_status("loading")
@@ -94,10 +99,12 @@ class TagDictionaryViewModel(QObject):
         *,
         product_code: str | None = None,
         status: str | None = None,
+        asset_type: str | None = None,
         search_text: str | None = None,
     ) -> None:
         self._asset_filter_product_code = _normalize_optional_filter(product_code)
         self._asset_filter_status = _normalize_optional_filter(status)
+        self._asset_filter_asset_type = _normalize_optional_filter(asset_type)
         self._asset_filter_search_text = (search_text or "").strip().casefold()
         self._assets = self._filter_assets(self._all_assets)
         self.assets_changed.emit()
@@ -126,6 +133,8 @@ class TagDictionaryViewModel(QObject):
             if self._asset_filter_product_code is not None and asset.product_code != self._asset_filter_product_code:
                 continue
             if self._asset_filter_status is not None and asset.status != self._asset_filter_status:
+                continue
+            if self._asset_filter_asset_type is not None and asset.asset_type != self._asset_filter_asset_type:
                 continue
             if self._asset_filter_search_text and not _asset_matches_search(asset, self._asset_filter_search_text):
                 continue

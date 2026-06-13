@@ -247,6 +247,11 @@ def _load_pipeline_config(product_dir: Path) -> AutoFactoryFolderPipelineConfigD
     section = data.get("request")
     if not isinstance(section, dict):
         raise AutoFactoryFolderContractError(f"Missing [request] section in {product_dir / 'pipeline.toml'}")
+    selection_tags_section = data.get("selection_tags")
+    if selection_tags_section is None:
+        selection_tags_section = {}
+    if not isinstance(selection_tags_section, dict):
+        raise AutoFactoryFolderContractError(f"Invalid [selection_tags] section in {product_dir / 'pipeline.toml'}")
 
     requested_output_count = section.get("requested_output_count")
     if not isinstance(requested_output_count, int) or requested_output_count <= 0:
@@ -262,6 +267,10 @@ def _load_pipeline_config(product_dir: Path) -> AutoFactoryFolderPipelineConfigD
         fixed_duration_sec=_optional_float(section.get("fixed_duration_sec")),
         min_duration_sec=_optional_float(section.get("min_duration_sec"), fallback=12.0),
         max_duration_sec=_optional_float(section.get("max_duration_sec"), fallback=30.0),
+        foreground_required_tag_labels=_optional_text_list(selection_tags_section.get("foreground")),
+        background_required_tag_labels=_optional_text_list(selection_tags_section.get("background")),
+        music_required_tag_labels=_optional_text_list(selection_tags_section.get("music")),
+        voice_required_tag_labels=_optional_text_list(selection_tags_section.get("voice")),
     )
 
 
@@ -287,6 +296,10 @@ def _to_product_request(
         fixed_duration_sec=pipeline_config.fixed_duration_sec,
         min_duration_sec=pipeline_config.min_duration_sec,
         max_duration_sec=pipeline_config.max_duration_sec,
+        foreground_required_tag_labels=pipeline_config.foreground_required_tag_labels,
+        background_required_tag_labels=pipeline_config.background_required_tag_labels,
+        music_required_tag_labels=pipeline_config.music_required_tag_labels,
+        voice_required_tag_labels=pipeline_config.voice_required_tag_labels,
     )
 
 
@@ -317,3 +330,17 @@ def _optional_float(value, *, fallback: float | None = None) -> float | None:
         return float(value)
     except (TypeError, ValueError) as exc:
         raise AutoFactoryFolderContractError(f"Expected numeric value but got {value!r}") from exc
+
+
+def _optional_text_list(value) -> tuple[str, ...]:
+    if value is None:
+        return ()
+    if not isinstance(value, list):
+        raise AutoFactoryFolderContractError(f"Expected list of text values but got {value!r}")
+    normalized_values: list[str] = []
+    for item in value:
+        text = _optional_text(item)
+        if text is None:
+            continue
+        normalized_values.append(text.casefold())
+    return tuple(normalized_values)

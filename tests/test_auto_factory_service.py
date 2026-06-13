@@ -24,6 +24,8 @@ from mt_clip_factory.library.dto import RegisterAssetCommand
 from mt_clip_factory.library.readiness import AssetReadinessEvaluator
 from mt_clip_factory.library.services import AssetIntakeService
 from mt_clip_factory.library.storage import LocalAssetStorage
+from mt_clip_factory.library.tag_dto import AssignTagToAssetCommand, CreateTagCommand
+from mt_clip_factory.library.tag_services import TagManagementService
 
 
 class PlanningMetadataAnalyzer:
@@ -134,6 +136,12 @@ def _register_asset(
     )
 
 
+def _assign_tag_to_asset(tag_service: TagManagementService, *, asset_id: int, tag_group: str, tag_name: str) -> int:
+    tag_id = tag_service.create_tag(CreateTagCommand(tag_name=tag_name, tag_group=tag_group))
+    tag_service.assign_tag_to_asset(AssignTagToAssetCommand(asset_id=asset_id, tag_id=tag_id))
+    return tag_id
+
+
 def _build_auto_factory_service(unit_of_work_factory, tmp_path: Path, durations_by_name: dict[str, float]) -> AutoFactoryBatchService:
     product_service = ProductApplicationService(unit_of_work_factory=unit_of_work_factory)
     asset_service = _build_asset_service(unit_of_work_factory, tmp_path / "media_library", durations_by_name)
@@ -211,6 +219,98 @@ def test_auto_factory_reports_shortfall_and_blocks_strict_materialization(unit_o
     assert plan.summaries[0].can_fulfill_exactly is False
     with pytest.raises(AutoFactoryCapacityError, match="requested=3, feasible=2"):
         service.materialize_batch(order)
+
+
+def test_auto_factory_filters_asset_pools_by_required_tag_labels(unit_of_work_factory, tmp_path) -> None:
+    product_service = ProductApplicationService(unit_of_work_factory=unit_of_work_factory)
+    product_id = product_service.create_product(CreateProductCommand(product_code="gel", product_name="Gel"))
+    asset_service = _build_asset_service(unit_of_work_factory, tmp_path / "media_library", {})
+    tag_service = TagManagementService(unit_of_work_factory=unit_of_work_factory)
+    fg_proof = _register_asset(
+        asset_service,
+        product_id=product_id,
+        tmp_path=tmp_path,
+        asset_type="foreground_video",
+        asset_code="fg_proof",
+        file_name="fg_proof.mp4",
+    )
+    fg_hook = _register_asset(
+        asset_service,
+        product_id=product_id,
+        tmp_path=tmp_path,
+        asset_type="foreground_video",
+        asset_code="fg_hook",
+        file_name="fg_hook.mp4",
+    )
+    bg_studio = _register_asset(
+        asset_service,
+        product_id=product_id,
+        tmp_path=tmp_path,
+        asset_type="background_video",
+        asset_code="bg_studio",
+        file_name="bg_studio.mp4",
+    )
+    _assign_tag_to_asset(tag_service, asset_id=fg_proof, tag_group="message", tag_name="proof")
+    _assign_tag_to_asset(tag_service, asset_id=fg_hook, tag_group="message", tag_name="hook")
+    _assign_tag_to_asset(tag_service, asset_id=bg_studio, tag_group="scene", tag_name="studio")
+    service = _build_auto_factory_service(unit_of_work_factory, tmp_path, {})
+
+    plan = service.plan_batch(
+        AutoFactoryBatchOrderDTO(
+            batch_code="gel_batch",
+            product_requests=(
+                AutoFactoryProductRequestDTO(
+                    product_code="gel",
+                    requested_output_count=1,
+                    fixed_duration_sec=15.0,
+                    foreground_required_tag_labels=("message:proof",),
+                    background_required_tag_labels=("scene:studio",),
+                ),
+            ),
+        )
+    )
+
+    assert plan.summaries[0].planner_feasible_unique_count == 1
+    assert [assignment.asset_code for assignment in plan.planned_recipes[0].assignments] == [
+        "bg_studio",
+        "fg_proof",
+        "fg_proof",
+        "fg_proof",
+        "fg_proof",
+        "fg_proof",
+    ]
+
+
+def test_auto_factory_reports_truthful_shortfall_when_tag_filters_remove_visual_assets(unit_of_work_factory, tmp_path) -> None:
+    product_service = ProductApplicationService(unit_of_work_factory=unit_of_work_factory)
+    product_id = product_service.create_product(CreateProductCommand(product_code="foam", product_name="Foam"))
+    asset_service = _build_asset_service(unit_of_work_factory, tmp_path / "media_library", {})
+    _register_asset(
+        asset_service,
+        product_id=product_id,
+        tmp_path=tmp_path,
+        asset_type="foreground_video",
+        asset_code="fg_plain",
+        file_name="fg_plain.mp4",
+    )
+    service = _build_auto_factory_service(unit_of_work_factory, tmp_path, {})
+
+    plan = service.plan_batch(
+        AutoFactoryBatchOrderDTO(
+            batch_code="foam_batch",
+            product_requests=(
+                AutoFactoryProductRequestDTO(
+                    product_code="foam",
+                    requested_output_count=1,
+                    fixed_duration_sec=15.0,
+                    foreground_required_tag_labels=("message:proof",),
+                ),
+            ),
+        )
+    )
+
+    assert plan.summaries[0].planner_feasible_unique_count == 0
+    assert plan.summaries[0].limiting_reason == "no ready renderable visual assets matched required tag filters"
 
 
 def test_auto_factory_materializes_internal_recipes(unit_of_work_factory, tmp_path) -> None:

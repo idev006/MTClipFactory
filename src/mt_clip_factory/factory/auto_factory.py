@@ -184,12 +184,31 @@ class AutoFactoryBatchService:
             )
 
         ready_assets = self._asset_intake_service.list_assets(product_id=product.product_id, status="ready")
-        foreground_assets = tuple(asset for asset in ready_assets if asset.asset_type == "foreground_video")
-        background_assets = tuple(asset for asset in ready_assets if asset.asset_type == "background_video")
-        voice_assets = tuple(asset for asset in ready_assets if asset.asset_type == "voiceover")
-        music_assets = tuple(asset for asset in ready_assets if asset.asset_type == "background_music")
+        all_foreground_assets = tuple(asset for asset in ready_assets if asset.asset_type == "foreground_video")
+        all_background_assets = tuple(asset for asset in ready_assets if asset.asset_type == "background_video")
+        all_voice_assets = tuple(asset for asset in ready_assets if asset.asset_type == "voiceover")
+        all_music_assets = tuple(asset for asset in ready_assets if asset.asset_type == "background_music")
+        foreground_assets = _filter_assets_by_required_tags(
+            all_foreground_assets,
+            product_request.foreground_required_tag_labels,
+        )
+        background_assets = _filter_assets_by_required_tags(
+            all_background_assets,
+            product_request.background_required_tag_labels,
+        )
+        voice_assets = _filter_assets_by_required_tags(
+            all_voice_assets,
+            product_request.voice_required_tag_labels,
+        )
+        music_assets = _filter_assets_by_required_tags(
+            all_music_assets,
+            product_request.music_required_tag_labels,
+        )
 
         if not foreground_assets and not background_assets:
+            limiting_reason = "no ready renderable visual assets"
+            if (all_foreground_assets or all_background_assets) and _has_any_required_tag_filters(product_request):
+                limiting_reason = "no ready renderable visual assets matched required tag filters"
             summary = ProductBatchPlanSummaryDTO(
                 product_id=product.product_id,
                 product_code=product.product_code,
@@ -198,7 +217,7 @@ class AutoFactoryBatchService:
                 planned_output_count=0,
                 can_fulfill_exactly=False,
                 shortfall_count=product_request.requested_output_count,
-                limiting_reason="no ready renderable visual assets",
+                limiting_reason=limiting_reason,
             )
             return {"summary": summary, "recipes": ()}
 
@@ -391,3 +410,31 @@ def _build_fingerprint(
         *grouped_assignments,
     )
     return "|".join(fingerprint_parts)
+
+
+def _filter_assets_by_required_tags(
+    assets: tuple[AssetSummaryDTO, ...],
+    required_tag_labels: tuple[str, ...],
+) -> tuple[AssetSummaryDTO, ...]:
+    if not required_tag_labels:
+        return assets
+    required = {label.strip().casefold() for label in required_tag_labels if label.strip()}
+    if not required:
+        return assets
+    filtered_assets: list[AssetSummaryDTO] = []
+    for asset in assets:
+        asset_tags = {label.strip().casefold() for label in asset.tag_labels if label.strip()}
+        if required.issubset(asset_tags):
+            filtered_assets.append(asset)
+    return tuple(filtered_assets)
+
+
+def _has_any_required_tag_filters(product_request: AutoFactoryProductRequestDTO) -> bool:
+    return any(
+        (
+            product_request.foreground_required_tag_labels,
+            product_request.background_required_tag_labels,
+            product_request.music_required_tag_labels,
+            product_request.voice_required_tag_labels,
+        )
+    )

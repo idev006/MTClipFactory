@@ -59,6 +59,12 @@ The first assisted-input slice should provide:
 3. one filtered asset list dedicated to tag assignment instead of forcing the operator to scan the entire asset inventory manually
 4. editable combo-box style controls where free typing is still allowed, but guided choices are preferred first
 
+The next additive UX hardening for this same workflow should also provide:
+
+1. asset-type filtering inside the tag-assignment screen
+2. visible current assigned tag labels per asset
+3. clear guidance that normalized `group:name` labels may be consumed by automation
+
 ## Reviewed Workflow
 
 ```mermaid

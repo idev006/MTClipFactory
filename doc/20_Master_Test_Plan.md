@@ -38,6 +38,7 @@ It complements [07_Testing_Strategy.md](/F:/programming/python/MTClipFactory/doc
 - automatic preview production from materialized auto-factory batches
 - persisted production-order and orchestration-stage tracking
 - desktop `Auto Factory` control-surface workflow for root selection, scan depth, run mode, intake reporting, and recent-order inspection
+- tag-aware auto-factory asset-pool filtering from normalized asset labels
 - preview job flow
 - final render flow
 - target-ratio visual normalization across mixed source sizes
@@ -185,6 +186,9 @@ It complements [07_Testing_Strategy.md](/F:/programming/python/MTClipFactory/doc
 21. Confirm the desktop `Auto Factory` screen can browse/select a root folder, set `scan_depth`, and complete `Intake Only` mode with truthful discovered-folder, product, and asset-action reporting.
 22. Confirm `Intake + Materialize` creates a persisted `Production Order` and shows stage truth in the screen's recent-order surfaces.
 23. Confirm `Intake + Materialize + Build Previews` records preview and review stages while still stopping at the human approval boundary.
+24. Confirm `pipeline.toml [selection_tags]` can restrict foreground/background/music/voice pools by normalized `group:name` labels.
+25. Confirm planner shortfalls caused by tag filters remain truthful and do not silently fall back to untagged visual assets.
+26. Confirm the `Tags` screen shows current asset tag labels and supports `Asset Type` filtering during assignment work.
 
 ### C. Review And Approval Flow
 

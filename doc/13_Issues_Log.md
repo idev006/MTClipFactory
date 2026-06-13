@@ -14,6 +14,7 @@
 
 | ID | Date Closed | Topic | Resolution |
 | --- | --- | --- | --- |
+| ISS-034-CLOSED | 2026-06-13 | Tag-Aware Automation Selection | Closed by delivering optional `pipeline.toml [selection_tags]` planner rules, deterministic required-tag filtering for auto-factory asset pools, truthful shortfall reporting when tag rules remove ready visuals, and `Tags` screen hardening with `Asset Type` filtering plus visible current asset tag labels. |
 | ISS-033-CLOSED | 2026-06-13 | Auto Factory Operator Control Surface | Closed by delivering a dashboard-reachable `Auto Factory` desktop screen with guided root-folder selection, `scan_depth`, explicit run modes, truthful intake reporting, recent production-order visibility, and a composed flow that routes materialize/preview runs through persisted `ProductionOrderService` records. |
 | ISS-028-CLOSED | 2026-06-06 | Path Hot Reload Implementation | Closed by delivering a desktop-app runtime coordinator that rebuilds path-root dependent services, swaps live service proxies, hot-reloads database/media/output roots without a full restart, refreshes bound view models, and keeps dashboard path truth aligned through pytest-backed coverage. |
 | ISS-031-CLOSED | 2026-06-13 | Production-Order State Model | Closed by delivering persisted `production_orders`, `production_order_items`, and `production_order_stages`, plus a `ProductionOrderService` that records control-plane `materialize`, `preview`, and `review` orchestration truth independently from recipe rows. |

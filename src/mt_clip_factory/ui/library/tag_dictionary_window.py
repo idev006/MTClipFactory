@@ -78,6 +78,7 @@ class TagDictionaryWindow(QMainWindow):
         filter_layout = QFormLayout(filter_group)
         self.asset_filter_product_combo = QComboBox()
         self.asset_filter_status_combo = QComboBox()
+        self.asset_filter_type_combo = QComboBox()
         self.asset_filter_status_combo.addItem("All", None)
         for status in ("ready", "needs_review", "analyzed", "retired", "purged"):
             self.asset_filter_status_combo.addItem(status, status)
@@ -85,8 +86,15 @@ class TagDictionaryWindow(QMainWindow):
         self.asset_search_input.setPlaceholderText("search asset code, file, type, product, or tag")
         filter_layout.addRow("Product", self.asset_filter_product_combo)
         filter_layout.addRow("Status", self.asset_filter_status_combo)
+        filter_layout.addRow("Asset Type", self.asset_filter_type_combo)
         filter_layout.addRow("Search", self.asset_search_input)
         layout.addWidget(filter_group)
+
+        self.automation_hint_label = QLabel(
+            "Automation can consume normalized tag labels like `mood:warm` or `message:proof` from tagged assets."
+        )
+        self.automation_hint_label.setWordWrap(True)
+        layout.addWidget(self.automation_hint_label)
 
         button_row = QHBoxLayout()
         self.create_tag_button = QPushButton("Create Tag")
@@ -130,8 +138,8 @@ class TagDictionaryWindow(QMainWindow):
 
         asset_group = QGroupBox("Assets")
         asset_layout = QVBoxLayout(asset_group)
-        self.asset_table = QTableWidget(0, 5)
-        self.asset_table.setHorizontalHeaderLabels(["ID", "Product", "Code", "Type", "Status"])
+        self.asset_table = QTableWidget(0, 6)
+        self.asset_table.setHorizontalHeaderLabels(["ID", "Product", "Code", "Type", "Status", "Tags"])
         self.asset_table.setSelectionBehavior(QTableWidget.SelectRows)
         self.asset_table.setSelectionMode(QTableWidget.SingleSelection)
         self.asset_table.setEditTriggers(QTableWidget.NoEditTriggers)
@@ -164,16 +172,27 @@ class TagDictionaryWindow(QMainWindow):
     def _refresh_assets(self) -> None:
         assets = self._view_model.assets
         current_product = self.asset_filter_product_combo.currentData()
+        current_asset_type = self.asset_filter_type_combo.currentData()
         self.asset_filter_product_combo.blockSignals(True)
+        self.asset_filter_type_combo.blockSignals(True)
         self.asset_filter_product_combo.clear()
+        self.asset_filter_type_combo.clear()
         self.asset_filter_product_combo.addItem("All", None)
+        self.asset_filter_type_combo.addItem("All", None)
         for product_code in self._view_model.asset_filter_product_options:
             self.asset_filter_product_combo.addItem(product_code, product_code)
+        for asset_type in self._view_model.asset_filter_type_options:
+            self.asset_filter_type_combo.addItem(asset_type, asset_type)
         if current_product is not None:
             product_index = self.asset_filter_product_combo.findData(current_product)
             if product_index >= 0:
                 self.asset_filter_product_combo.setCurrentIndex(product_index)
+        if current_asset_type is not None:
+            asset_type_index = self.asset_filter_type_combo.findData(current_asset_type)
+            if asset_type_index >= 0:
+                self.asset_filter_type_combo.setCurrentIndex(asset_type_index)
         self.asset_filter_product_combo.blockSignals(False)
+        self.asset_filter_type_combo.blockSignals(False)
         search_suggestions = sorted(
             {
                 asset.asset_code
@@ -186,7 +205,14 @@ class TagDictionaryWindow(QMainWindow):
         self.asset_search_input.setCompleter(QCompleter(search_suggestions, self))
         self.asset_table.setRowCount(len(assets))
         for row_index, asset in enumerate(assets):
-            values = [str(asset.asset_id), asset.product_code, asset.asset_code, asset.asset_type, asset.status]
+            values = [
+                str(asset.asset_id),
+                asset.product_code,
+                asset.asset_code,
+                asset.asset_type,
+                asset.status,
+                ", ".join(asset.tag_labels),
+            ]
             for column_index, value in enumerate(values):
                 self.asset_table.setItem(row_index, column_index, QTableWidgetItem(value))
 
@@ -225,11 +251,13 @@ class TagDictionaryWindow(QMainWindow):
         self._view_model.apply_asset_filters(
             product_code=self.asset_filter_product_combo.currentData(),
             status=self.asset_filter_status_combo.currentData(),
+            asset_type=self.asset_filter_type_combo.currentData(),
             search_text=self.asset_search_input.text(),
         )
 
     def _clear_filters(self) -> None:
         self.asset_filter_product_combo.setCurrentIndex(0)
         self.asset_filter_status_combo.setCurrentIndex(0)
+        self.asset_filter_type_combo.setCurrentIndex(0)
         self.asset_search_input.clear()
         self._view_model.apply_asset_filters()

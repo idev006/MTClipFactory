@@ -14,6 +14,10 @@ class AutoFactoryProductRequestDTO:
     fixed_duration_sec: float | None = None
     min_duration_sec: float = 12.0
     max_duration_sec: float = 30.0
+    foreground_required_tag_labels: tuple[str, ...] = ()
+    background_required_tag_labels: tuple[str, ...] = ()
+    music_required_tag_labels: tuple[str, ...] = ()
+    voice_required_tag_labels: tuple[str, ...] = ()
 
 
 @dataclass(slots=True, frozen=True)

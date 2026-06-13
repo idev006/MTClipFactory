@@ -62,6 +62,8 @@
 - production orders are now persisted independently from recipes, and control-plane orchestration stages now track `materialize`, `preview`, and `review` state across automated factory runs
 - a first desktop `Auto Factory` control surface now exists so operators can choose a root folder, set `scan_depth`, pick an explicit run mode, and review recent production-order truth without leaving the app
 - the `Auto Factory` screen now composes folder-intake truth with persisted `Production Order` execution, so materialize/preview runs stop bypassing the control-plane seam
+- auto-factory planning can now also consume explicit asset tag requirements from `pipeline.toml`, so tagged assets can influence which ready media enters automated recipe generation
+- the `Tags` screen now shows current asset tag labels and supports `Asset Type` filtering so operators can prepare automation-relevant tags more safely
 - assets can now be safely renamed or deleted from the `Assets` screen, with repository checks that block deletion when recipe-item or artifact-job references still exist
 - the `Assets` screen now supports `Show References`, `Retire Selected`, and `Purge Media` so referenced assets can leave active use and disk without destroying audit truth
 - the `Assets` screen now also supports `Replace In Recipes...` with recipe-safe validation, recipe reset-to-candidate behavior, and approval guards that prevent stale pre-replacement outputs from being reused as evidence for changed recipes
@@ -112,6 +114,7 @@
 - validate whether the new resizable Recipe Builder workspace reduces operator confusion during attach-versus-review work
 - validate whether the new auto-preview batch orchestration stays truthful and useful before extending automation across the final-render approval boundary
 - validate whether the new `Auto Factory` desktop control surface is clear enough for operators without engineering assistance
+- validate whether the new tag-aware planner rules are expressive enough before adding richer weighted or role-specific selection logic
 - validate whether the new production-order orchestration model remains stable enough to carry future lease and multi-worker execution semantics
 - keep project documents truthful through per-milestone revision checkpoints
 
@@ -119,7 +122,7 @@
 
 1. Implement worker lease, heartbeat, and retry-policy semantics on top of the new production-order orchestration baseline.
 2. Run broader controlled operator use on real campaign media, including the new `Auto Factory` screen, without service-side assistance.
-3. Extend the auto-factory baseline from automated preview production into controlled final-render automation only after operators accept the current planner, control-surface flow, and review-gate truth.
+3. Extend the auto-factory baseline from automated preview production into controlled final-render automation only after operators accept the current planner, tag-aware selection flow, control-surface flow, and review-gate truth.
 4. Decide whether production-order orchestration should surface on the dashboard before multi-node execution begins.
 5. Clean the Alembic `path_separator=os` warning in a maintenance pass.
 

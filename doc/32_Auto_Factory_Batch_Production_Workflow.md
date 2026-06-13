@@ -10,6 +10,8 @@ Folder discovery depth and assisted tagging ergonomics for this workflow are ext
 
 The first desktop operator control surface for this workflow is now defined in [37_Auto_Factory_Control_Surface_Workflow_2026-06-13.md](/F:/programming/python/MTClipFactory/doc/37_Auto_Factory_Control_Surface_Workflow_2026-06-13.md).
 
+Tag-aware asset-pool filtering for this workflow is now defined in [38_Tag_Aware_Auto_Factory_Selection_Workflow_2026-06-13.md](/F:/programming/python/MTClipFactory/doc/38_Tag_Aware_Auto_Factory_Selection_Workflow_2026-06-13.md).
+
 ## Purpose
 
 - let operators request output counts by product instead of building recipes one by one
@@ -186,10 +188,11 @@ Why:
 The batch planner should instead:
 
 1. load the ready asset pool for the requested product
-2. generate planner-approved foreground sequences for semantic roles
-3. combine those sequences with optional background, music, and voice pools
-4. stop duplicate fingerprints within the same batch
-5. select the first `N` unique variants in deterministic order
+2. optionally filter those pools by explicit required asset tag labels
+3. generate planner-approved foreground sequences for semantic roles
+4. combine those sequences with optional background, music, and voice pools
+5. stop duplicate fingerprints within the same batch
+6. select the first `N` unique variants in deterministic order
 
 ## Capacity Rule
 

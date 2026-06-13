@@ -213,11 +213,7 @@ class AutoFactoryControlWindow(QMainWindow):
             return
 
         request_lines = [
-            (
-                f"- {request.product_code}: requested={request.requested_output_count}, "
-                f"platform={request.target_platform or 'default'}, ratio={request.target_ratio or 'default'}, "
-                f"duration_mode={request.duration_mode}"
-            )
+            _format_product_request_summary(request)
             for request in run_report.order.product_requests
         ]
         self.run_summary_text.setPlainText(
@@ -345,3 +341,23 @@ class AutoFactoryControlWindow(QMainWindow):
             self._view_model.select_order(int(order_id_item.text()))
         except Exception as exc:
             QMessageBox.warning(self, "Load Production Order", str(exc))
+
+
+def _format_product_request_summary(request) -> str:
+    summary = (
+        f"- {request.product_code}: requested={request.requested_output_count}, "
+        f"platform={request.target_platform or 'default'}, ratio={request.target_ratio or 'default'}, "
+        f"duration_mode={request.duration_mode}"
+    )
+    tag_filter_parts: list[str] = []
+    if request.foreground_required_tag_labels:
+        tag_filter_parts.append(f"foreground={', '.join(request.foreground_required_tag_labels)}")
+    if request.background_required_tag_labels:
+        tag_filter_parts.append(f"background={', '.join(request.background_required_tag_labels)}")
+    if request.music_required_tag_labels:
+        tag_filter_parts.append(f"music={', '.join(request.music_required_tag_labels)}")
+    if request.voice_required_tag_labels:
+        tag_filter_parts.append(f"voice={', '.join(request.voice_required_tag_labels)}")
+    if not tag_filter_parts:
+        return summary
+    return f"{summary} | tag_filters: {'; '.join(tag_filter_parts)}"

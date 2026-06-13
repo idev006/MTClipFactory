@@ -386,3 +386,44 @@ def test_folder_service_rejects_negative_scan_depth(unit_of_work_factory, tmp_pa
 
     with pytest.raises(AutoFactoryFolderContractError, match="scan_depth must be >= 0"):
         folder_service.run_batch_root(batch_root, scan_depth=-1, materialize=False)
+
+
+def test_folder_service_reads_optional_selection_tags_into_order(unit_of_work_factory, tmp_path) -> None:
+    _, _, _, folder_service = _build_services(unit_of_work_factory, tmp_path, {})
+    batch_root = tmp_path / "batch_root"
+    product_dir = _write_product_folder(
+        batch_root,
+        folder_name="ProductA",
+        product_code="product_a",
+        product_name="Product A",
+        requested_output_count=1,
+    )
+    (product_dir / "pipeline.toml").write_text(
+        "\n".join(
+            [
+                "[request]",
+                "requested_output_count = 1",
+                'target_platform = "shopee"',
+                'target_ratio = "9:16"',
+                'uniqueness_scope = "batch"',
+                'duration_mode = "voice_with_bounds"',
+                "min_duration_sec = 12.0",
+                "max_duration_sec = 30.0",
+                "",
+                "[selection_tags]",
+                'foreground = ["message:proof"]',
+                'background = ["scene:studio"]',
+                'music = ["mood:warm"]',
+                'voice = ["language:th"]',
+            ]
+        ),
+        encoding="utf-8",
+    )
+
+    report = folder_service.run_batch_root(batch_root, materialize=False)
+
+    product_request = report.order.product_requests[0]
+    assert product_request.foreground_required_tag_labels == ("message:proof",)
+    assert product_request.background_required_tag_labels == ("scene:studio",)
+    assert product_request.music_required_tag_labels == ("mood:warm",)
+    assert product_request.voice_required_tag_labels == ("language:th",)

@@ -97,6 +97,7 @@ class FakeTagDictionaryViewModel(QObject):
         self.status = "ready"
         self.tag_group_suggestions = []
         self.asset_filter_product_options = []
+        self.asset_filter_type_options = []
 
     def load(self) -> None:
         self.tags_changed.emit()
@@ -104,7 +105,7 @@ class FakeTagDictionaryViewModel(QObject):
         self.feedback_changed.emit()
         self.status_changed.emit()
 
-    def apply_asset_filters(self, *, product_code=None, status=None, search_text=None) -> None:  # noqa: ANN001
+    def apply_asset_filters(self, *, product_code=None, status=None, asset_type=None, search_text=None) -> None:  # noqa: ANN001
         self.assets_changed.emit()
         self.feedback_changed.emit()
 
@@ -214,7 +215,9 @@ def test_tag_dictionary_window_uses_guided_filter_controls(qapp: QApplication) -
     assert tag_window.tag_group_input.isEditable() is True
     assert isinstance(tag_window.asset_filter_product_combo, QComboBox)
     assert isinstance(tag_window.asset_filter_status_combo, QComboBox)
+    assert isinstance(tag_window.asset_filter_type_combo, QComboBox)
     assert tag_window.asset_search_input.placeholderText().startswith("search asset code")
+    assert "Automation can consume normalized tag labels" in tag_window.automation_hint_label.text()
     assert tag_window.apply_filters_button.text() == "Apply Filters"
     assert tag_window.clear_filters_button.text() == "Clear Filters"
     tag_window.close()
