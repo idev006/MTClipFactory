@@ -447,7 +447,31 @@ class FFmpegPreviewRenderer:
                 "base_duration_sec": total_duration_sec,
                 "output_duration_sec": target_duration_sec,
             }
-        applied_fill_mode = "natural" if total_duration_sec >= target_duration_sec else "silence_tail"
+        if total_duration_sec < target_duration_sec:
+            padded_path = temp_dir / f"{prefix}_silence_tail.m4a"
+            self._run_ffmpeg(
+                settings=settings,
+                arguments=[
+                    "-y",
+                    "-i",
+                    str(base_path),
+                    "-vn",
+                    "-af",
+                    f"apad=pad_dur={round(target_duration_sec - total_duration_sec, 3)}",
+                    "-t",
+                    str(target_duration_sec),
+                    "-c:a",
+                    "aac",
+                    str(padded_path),
+                ],
+            )
+            return padded_path, {
+                "track_count": len(tracks),
+                "applied_fill_mode": "silence_tail",
+                "base_duration_sec": total_duration_sec,
+                "output_duration_sec": target_duration_sec,
+            }
+        applied_fill_mode = "natural"
         return base_path, {
             "track_count": len(tracks),
             "applied_fill_mode": applied_fill_mode,

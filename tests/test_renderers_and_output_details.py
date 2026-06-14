@@ -106,6 +106,28 @@ def _audio_mix_plan(tmp_path: Path) -> PreviewAudioMixPlan:
     )
 
 
+def _voice_only_audio_mix_plan(tmp_path: Path) -> PreviewAudioMixPlan:
+    voice_source = tmp_path / "voice_only.mp3"
+    voice_source.write_bytes(b"voice")
+    return PreviewAudioMixPlan(
+        target_duration_sec=10.0,
+        voice_tracks=(
+            PreviewAudioTrack(
+                sequence_index=1,
+                layer_name="primary_voice",
+                asset_id=11,
+                asset_code="voice_asset",
+                source_file=voice_source,
+                start_sec=0.0,
+                playback_duration_sec=4.0,
+                source_duration_sec=4.0,
+                fill_mode="no_loop",
+            ),
+        ),
+        music_tracks=(),
+    )
+
+
 def test_ffmpeg_renderer_builds_runtime_audio_mix_commands(tmp_path) -> None:
     settings = _settings(tmp_path)
     renderer = InspectableFFmpegPreviewRenderer(StaticSettingsService(settings), tmp_path / "preview_root")
@@ -157,6 +179,26 @@ def test_ffmpeg_renderer_supports_windowed_duck_fallback_mode(tmp_path) -> None:
     assert any("volume=2dB" in " ".join(command) for command in renderer.commands)
     assert any("volume=-6dB" in " ".join(command) for command in renderer.commands)
     assert any("pad=1280:720" in " ".join(command) for command in renderer.commands)
+
+
+def test_ffmpeg_renderer_pads_voice_only_mix_with_silence_tail_to_target_duration(tmp_path) -> None:
+    settings = _settings(tmp_path)
+    renderer = InspectableFFmpegPreviewRenderer(StaticSettingsService(settings), tmp_path / "preview_root")
+    source_file = tmp_path / "visual.mp4"
+    source_file.write_bytes(b"visual")
+
+    rendered = renderer.render_output(
+        product_code="honey",
+        output_stem="voice_only_mix",
+        source_files=[source_file],
+        audio_mix_plan=_voice_only_audio_mix_plan(tmp_path),
+        target_ratio="9:16",
+    )
+
+    assert rendered.audio_mix_summary is not None
+    assert rendered.audio_mix_summary["voice_mix"]["applied_fill_mode"] == "silence_tail"
+    assert rendered.audio_mix_summary["voice_mix"]["output_duration_sec"] == 10.0
+    assert any("apad=pad_dur=6.0" in " ".join(command) for command in renderer.commands)
 
 
 def test_ffmpeg_renderer_uses_configured_exact_output_resolution(tmp_path) -> None:
