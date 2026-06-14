@@ -43,8 +43,10 @@ It complements [07_Testing_Strategy.md](/F:/programming/python/MTClipFactory/doc
 - bulk asset tagging workflow for multi-select assignment and primary selected-asset review
 - folder-driven tag metadata sync from `tags.toml`
 - caption runtime sync and render behavior from product-level `captions.toml`
+- caption safe-band defaults and role-specific vertical placement overrides from product-level `captions.toml`
 - product-local run artifact layout, order snapshot, and run journal behavior
 - per-asset-type fill policy from product-level `pipeline.toml`
+- longest-contributing-layer duration resolution plus shorter-layer fill continuation behavior
 - preview job flow
 - final render flow
 - target-ratio visual normalization across mixed source sizes
@@ -178,6 +180,8 @@ It complements [07_Testing_Strategy.md](/F:/programming/python/MTClipFactory/doc
 7. Validate preview manifest contains composition and review evidence.
 8. Validate a recipe with both `background_video` and `foreground_video` writes layered segment evidence instead of flattening to one visual choice only.
 9. Validate a likely green-screen foreground is keyed over the background layer and that manifest evidence records the applied composite mode.
+10. Validate default `main` and `sub` caption roles render in separated safe vertical bands when no explicit override is authored.
+11. Validate a longer contributing visual or music layer can raise the resolved clip duration above the previous narrower fallback source.
 10. Validate a non-green keyed foreground can be driven by Settings `Key Color Policy` and that the manifest records the chosen composite mode truthfully.
 11. Submit a batch production order and confirm the planner reports requested count versus planner-feasible unique count truthfully.
 12. Confirm batch materialization blocks strict orders when current planner policy cannot fulfill the requested unique count exactly.

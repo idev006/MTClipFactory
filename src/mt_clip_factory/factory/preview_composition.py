@@ -436,6 +436,8 @@ def _build_caption_manifest_payload(resolved_captions: dict[int, ResolvedSegment
                         "max_chars_per_line": role.max_chars_per_line,
                         "max_width_ratio": role.max_width_ratio,
                         "line_spacing_ratio": role.line_spacing_ratio,
+                        "safe_top_ratio": role.safe_top_ratio,
+                        "safe_bottom_ratio": role.safe_bottom_ratio,
                         "line_spacing_px": role.line_spacing_px,
                         "line_widths_px": list(role.line_widths_px),
                         "line_height_px": role.line_height_px,

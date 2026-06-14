@@ -46,6 +46,8 @@ class CaptionRoleStyle:
     max_chars_per_line: int
     max_width_ratio: float
     line_spacing_ratio: float
+    safe_top_ratio: float
+    safe_bottom_ratio: float
     overflow_policy: str
     enter_animation: str | None
     review_required_if_overflow: bool
@@ -95,6 +97,8 @@ class ResolvedCaptionRole:
     max_chars_per_line: int
     max_width_ratio: float
     line_spacing_ratio: float
+    safe_top_ratio: float
+    safe_bottom_ratio: float
     line_spacing_px: int
     line_widths_px: tuple[int, ...]
     line_height_px: int
@@ -349,6 +353,8 @@ class CaptionRuntimeService:
             padding=style.padding,
             alignment=style.alignment,
             position=style.position,
+            safe_top_ratio=style.safe_top_ratio,
+            safe_bottom_ratio=style.safe_bottom_ratio,
             overflow_policy=style.overflow_policy,
             review_required_if_overflow=style.review_required_if_overflow,
         )
@@ -388,6 +394,8 @@ class CaptionRuntimeService:
             max_chars_per_line=style.max_chars_per_line,
             max_width_ratio=style.max_width_ratio,
             line_spacing_ratio=style.line_spacing_ratio,
+            safe_top_ratio=style.safe_top_ratio,
+            safe_bottom_ratio=style.safe_bottom_ratio,
             line_spacing_px=layout.line_spacing_px,
             line_widths_px=layout.line_widths_px,
             line_height_px=layout.line_height_px,
@@ -422,15 +430,17 @@ def _expect_table(value, *, table_name: str, required: bool) -> dict[str, object
 
 def _parse_role_style(value, *, role: str) -> CaptionRoleStyle:
     section = _expect_table(value, table_name=f"[caption_properties.{role}]", required=False)
-    default_position = "center" if role == "main" else "bottom"
+    default_position = "top" if role == "main" else "bottom"
     default_font_size = 72 if role == "main" else 40
     default_min_font_size = 48 if role == "main" else 30
     default_padding = 20 if role == "main" else 16
     default_max_lines = 3
     default_max_chars = 18 if role == "main" else 28
-    default_max_width = 0.78 if role == "main" else 0.82
+    default_max_width = 0.68 if role == "main" else 0.74
     default_overflow_policy = "wrap_then_scale_then_review" if role == "main" else "wrap_then_truncate_or_review"
     default_animation = "pop_in" if role == "main" else "fade_in"
+    default_safe_top = 0.14 if role == "main" else 0.64
+    default_safe_bottom = 0.46 if role == "main" else 0.88
     return CaptionRoleStyle(
         position=_optional_text(section.get("position")) or default_position,
         alignment=_optional_text(section.get("alignment")) or "center",
@@ -479,6 +489,20 @@ def _parse_role_style(value, *, role: str) -> CaptionRoleStyle:
             minimum=0.0,
             maximum=1.0,
             context=f"[caption_properties.{role}].line_spacing_ratio",
+        ),
+        safe_top_ratio=_bounded_float(
+            section.get("safe_top_ratio"),
+            default=default_safe_top,
+            minimum=0.0,
+            maximum=1.0,
+            context=f"[caption_properties.{role}].safe_top_ratio",
+        ),
+        safe_bottom_ratio=_bounded_float(
+            section.get("safe_bottom_ratio"),
+            default=default_safe_bottom,
+            minimum=0.0,
+            maximum=1.0,
+            context=f"[caption_properties.{role}].safe_bottom_ratio",
         ),
         overflow_policy=_optional_text(section.get("overflow_policy")) or default_overflow_policy,
         enter_animation=_optional_text(section.get("enter_animation")) or default_animation,

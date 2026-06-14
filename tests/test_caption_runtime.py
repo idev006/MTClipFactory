@@ -84,7 +84,49 @@ def test_caption_runtime_resolves_deterministic_roles_and_workspace_font(tmp_pat
     assert first[0].roles[0].font_file == fonts_root / "THSarabun.ttf"
     assert first[0].roles[0].font_resolution_mode == "workspace_primary"
     assert first[0].roles[0].text_block_width_px > 0
+    assert first[0].roles[0].position == "top"
+    assert first[0].roles[0].safe_top_ratio == 0.14
+    assert first[0].roles[0].safe_bottom_ratio == 0.46
     assert first[0].roles[1].role == "sub"
+    assert first[0].roles[1].position == "bottom"
+    assert first[0].roles[1].safe_top_ratio == 0.64
+    assert first[0].roles[1].safe_bottom_ratio == 0.88
+
+
+def test_caption_runtime_places_default_main_and_sub_in_separate_safe_bands(tmp_path) -> None:
+    media_root = tmp_path / "media_library"
+    fonts_root = tmp_path / "fonts"
+    fonts_root.mkdir(parents=True, exist_ok=True)
+    (fonts_root / "THSarabun.ttf").write_bytes(b"font")
+    product_dir = tmp_path / "product_safe_bands"
+    product_dir.mkdir(parents=True, exist_ok=True)
+    caption_file = _write_caption_contract(product_dir)
+    store = ProductAutomationMetadataStore(media_root)
+    store.sync_caption_contract(product_code="product_safe_bands", source_file=caption_file)
+    service = CaptionRuntimeService(metadata_store=store, fonts_root=fonts_root)
+    segments = (
+        TimelineSegment(
+            recipe_id=1,
+            segment_type="hook",
+            sequence_index=1,
+            start_sec=0.0,
+            end_sec=4.0,
+            target_duration_sec=4.0,
+        ),
+    )
+
+    resolved = service.resolve_for_segments(
+        product_code="product_safe_bands",
+        recipe_code="product_safe_bands_batch_001",
+        segments=segments,
+        frame_width_px=1080,
+        frame_height_px=1920,
+    )
+    main_role, sub_role = resolved[0].roles
+
+    assert main_role.box_top_px < 650
+    assert sub_role.box_top_px > 1100
+    assert main_role.box_top_px < sub_role.box_top_px
 
 
 def test_caption_runtime_flags_overflow_for_review(tmp_path) -> None:

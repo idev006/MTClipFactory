@@ -16,9 +16,12 @@ from mt_clip_factory.library.storage import LocalAssetStorage
 
 
 class FakeMetadataAnalyzer:
+    def __init__(self, duration_sec: float = 3.0) -> None:
+        self._duration_sec = duration_sec
+
     def analyze(self, file_path: Path) -> AnalyzedMediaMetadata:
         return AnalyzedMediaMetadata(
-            duration_sec=3.0,
+            duration_sec=self._duration_sec,
             width=1920,
             height=1080,
             fps=30.0,
@@ -29,11 +32,11 @@ class FakeMetadataAnalyzer:
         )
 
 
-def _build_asset_service(unit_of_work_factory, media_root: Path) -> AssetIntakeService:
+def _build_asset_service(unit_of_work_factory, media_root: Path, *, duration_sec: float = 3.0) -> AssetIntakeService:
     return AssetIntakeService(
         unit_of_work_factory=unit_of_work_factory,
         asset_storage=LocalAssetStorage(media_root),
-        metadata_analyzer=FakeMetadataAnalyzer(),
+        metadata_analyzer=FakeMetadataAnalyzer(duration_sec),
         readiness_evaluator=AssetReadinessEvaluator(),
     )
 
@@ -65,14 +68,21 @@ def _build_factory_service(unit_of_work_factory, preview_root: Path) -> VideoAss
     )
 
 
-def _register_ready_asset(unit_of_work_factory, tmp_path: Path, *, asset_type: str, asset_code: str) -> tuple[int, int]:
+def _register_ready_asset(
+    unit_of_work_factory,
+    tmp_path: Path,
+    *,
+    asset_type: str,
+    asset_code: str,
+    duration_sec: float = 3.0,
+) -> tuple[int, int]:
     product_service = ProductApplicationService(unit_of_work_factory=unit_of_work_factory)
     products = product_service.list_products()
     if products:
         product_id = products[0].product_id
     else:
         product_id = product_service.create_product(CreateProductCommand(product_code="honey", product_name="Honey"))
-    asset_service = _build_asset_service(unit_of_work_factory, tmp_path / "media_library")
+    asset_service = _build_asset_service(unit_of_work_factory, tmp_path / "media_library", duration_sec=duration_sec)
     source_file = tmp_path / f"{asset_code}.mp4"
     source_file.write_bytes(f"{asset_code}-bytes".encode("utf-8"))
     asset_id = asset_service.register_asset(
@@ -159,8 +169,38 @@ def test_composition_plan_falls_back_to_voiceover_duration(unit_of_work_factory,
 
     plan = service.get_composition_plan(recipe_id)
 
-    assert plan.duration_source == "voiceover_total_duration"
+    assert plan.duration_source == "longest_contributing_layer"
     assert plan.target_duration_sec is None
     assert plan.resolved_duration_sec == 6.0
     assert [segment.segment_type for segment in plan.segments] == ["hook", "benefit", "cta"]
     assert len(plan.decisions) == 5
+
+
+def test_composition_plan_raises_resolved_duration_to_longest_contributing_visual_layer(unit_of_work_factory, tmp_path) -> None:
+    product_id, foreground_id = _register_ready_asset(
+        unit_of_work_factory,
+        tmp_path,
+        asset_type="foreground_video",
+        asset_code="foreground_long",
+        duration_sec=12.0,
+    )
+    _, voice_id = _register_ready_asset(
+        unit_of_work_factory,
+        tmp_path,
+        asset_type="voiceover",
+        asset_code="voice_short",
+        duration_sec=4.0,
+    )
+    service = _build_factory_service(unit_of_work_factory, tmp_path / "previews")
+    recipe_id = service.create_recipe(
+        CreateRecipeCommand(product_id=product_id, recipe_code="Longest Layer", duration_sec=6.0)
+    )
+    service.assign_asset_to_recipe(AssignAssetToRecipeCommand(recipe_id=recipe_id, asset_id=foreground_id, role="fg"))
+    service.assign_asset_to_recipe(AssignAssetToRecipeCommand(recipe_id=recipe_id, asset_id=voice_id, role="voice"))
+
+    plan = service.get_composition_plan(recipe_id)
+
+    assert plan.duration_source == "longest_contributing_layer"
+    assert plan.target_duration_sec == 6.0
+    assert plan.resolved_duration_sec == 12.0
+    assert plan.segments[-1].end_sec == 12.0

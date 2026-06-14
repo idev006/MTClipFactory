@@ -388,6 +388,8 @@ def test_ffmpeg_renderer_builds_drawtext_filters_for_caption_layers(tmp_path) ->
                         max_chars_per_line=18,
                         max_width_ratio=0.78,
                         line_spacing_ratio=0.12,
+                        safe_top_ratio=0.14,
+                        safe_bottom_ratio=0.46,
                         line_spacing_px=8,
                         line_widths_px=(320,),
                         line_height_px=80,

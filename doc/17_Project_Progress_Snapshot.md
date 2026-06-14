@@ -80,6 +80,7 @@
 - The first controlled operator/UAT run has now completed end to end and produced a real final output from the current workspace.
 - A second controlled operator/UAT run has now validated runtime voice/music mixing, richer visual coverage, and a no-review-gate path on a stronger recipe.
 - The roadmap is now split into strategic and implementation layers, and the next mandatory implementation slice remains `IR-20` worker lease, heartbeat, and retry semantics.
+- A new corrective execution slice is now active for safer default caption placement bands and longest-contributing-layer duration resolution after real auto-mode preview feedback exposed layout and timeline quality gaps.
 
 ## Delivered In The Latest Loop
 
@@ -100,6 +101,9 @@
 - delivered a real desktop `Auto Factory` control surface with guided root-folder browse, batch-code override, `scan_depth`, and explicit run-mode selection
 - delivered truthful in-app reporting for discovered product folders, product create/reuse outcomes, deterministic asset intake actions, recent production orders, and stage-by-stage order results
 - delivered a UI orchestration seam that performs folder intake first and then routes materialize/preview runs through persisted `ProductionOrderService` control-plane records
+- began the next corrective SSOT slice for operator-safe caption bands plus longest-layer duration resolution based on real preview evidence from product-folder automation
+- completed the corrective caption safe-band and longest-layer duration slice so default main/sub overlays land in separated vertical bands and resolved clip duration now rises to the longest contributing layer extent when needed
+- delivered pytest coverage that locks the new defaults: separated `main`/`sub` safe bands plus duration escalation when a contributing visual layer exceeds the older requested recipe length
 
 ## Still Open
 
@@ -110,5 +114,5 @@
 
 ## Verification Baseline
 
-- `python -m pytest` in `.venv`: `204 passed, 4 warnings`
+- `python -m pytest` in `.venv`: `206 passed, 4 warnings`
 - targeted `QT_QPA_PLATFORM=offscreen` UI/theme coverage for the new `Auto Factory` window and existing app windows: passed

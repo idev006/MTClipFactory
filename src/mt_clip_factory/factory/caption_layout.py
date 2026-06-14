@@ -62,6 +62,8 @@ def resolve_caption_layout(
     padding: int,
     alignment: str,
     position: str,
+    safe_top_ratio: float,
+    safe_bottom_ratio: float,
     overflow_policy: str,
     review_required_if_overflow: bool,
 ) -> CaptionLayoutResult:
@@ -122,8 +124,11 @@ def resolve_caption_layout(
     content_height_px = (len(layout.lines) * line_height_px) + (max(0, len(layout.lines) - 1) * line_spacing_px)
     safe_width_px = _safe_max_width(frame_context.width_px, max_width_ratio=max_width_ratio)
     safe_left_px = max(0, round((frame_context.width_px - safe_width_px) / 2))
-    safe_top_px = round(frame_context.height_px * 0.12)
-    safe_bottom_px = round(frame_context.height_px * 0.86)
+    safe_top_px = round(frame_context.height_px * _bounded_ratio(safe_top_ratio))
+    safe_bottom_px = round(frame_context.height_px * _bounded_ratio(safe_bottom_ratio))
+    if safe_bottom_px <= safe_top_px:
+        safe_top_px = round(frame_context.height_px * 0.12)
+        safe_bottom_px = round(frame_context.height_px * 0.86)
     content_top_px = _resolve_content_top(
         position=position,
         frame_height_px=frame_context.height_px,
@@ -292,6 +297,10 @@ def _resolve_content_top(
 
 def _safe_max_width(frame_width_px: int, *, max_width_ratio: float) -> int:
     return max(32, round(frame_width_px * max_width_ratio))
+
+
+def _bounded_ratio(value: float) -> float:
+    return min(1.0, max(0.0, value))
 
 
 def _font_size_to_pixels(*, requested_font_size: int, font_size_unit: str, dpi: int) -> int:

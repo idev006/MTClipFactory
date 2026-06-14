@@ -29,7 +29,8 @@ class PlannedComposition:
 
 def build_default_composition(recipe: Recipe, items: list[RecipeItem], assets: dict[int, Asset]) -> PlannedComposition:
     layer_assignments = tuple(_build_layer_assignments(items, assets))
-    resolved_duration_sec, duration_source = _resolve_duration(recipe, items, assets)
+    layer_duration_extents = _layer_duration_extents(items, assets)
+    resolved_duration_sec, duration_source = _resolve_duration(recipe, items, assets, layer_duration_extents=layer_duration_extents)
     timeline_segments = _build_timeline_segments(recipe, resolved_duration_sec)
     plan = CompositionPlan(
         recipe_id=recipe.id or 0,
@@ -47,6 +48,7 @@ def build_default_composition(recipe: Recipe, items: list[RecipeItem], assets: d
                 {
                     "target_duration_sec": recipe.duration_sec,
                     "resolved_duration_sec": resolved_duration_sec,
+                    "layer_duration_extents_sec": layer_duration_extents,
                 },
                 sort_keys=True,
             ),
@@ -78,37 +80,66 @@ def _build_layer_assignments(items: list[RecipeItem], assets: dict[int, Asset]) 
     ]
 
 
-def _resolve_duration(recipe: Recipe, items: list[RecipeItem], assets: dict[int, Asset]) -> tuple[float | None, str]:
-    if recipe.duration_sec is not None and recipe.duration_sec > 0:
-        return recipe.duration_sec, "recipe_duration"
-
-    voice_durations = [
-        asset.duration_sec
-        for item in items
-        for asset in [assets.get(item.asset_id)]
-        if asset is not None and asset.asset_type == AssetType.VOICEOVER and asset.duration_sec is not None
-    ]
-    if voice_durations:
-        return round(sum(voice_durations), 3), "voiceover_total_duration"
-
-    background_durations = [
-        asset.duration_sec
-        for item in items
-        for asset in [assets.get(item.asset_id)]
-        if asset is not None and asset.asset_type == AssetType.BACKGROUND_VIDEO and asset.duration_sec is not None
-    ]
-    if background_durations:
-        return max(background_durations), "background_visual_max_duration"
-
-    fallback_durations = [
-        asset.duration_sec
-        for item in items
-        for asset in [assets.get(item.asset_id)]
-        if asset is not None and asset.duration_sec is not None
-    ]
-    if fallback_durations:
-        return max(fallback_durations), "asset_duration_fallback"
+def _resolve_duration(
+    recipe: Recipe,
+    items: list[RecipeItem],
+    assets: dict[int, Asset],
+    *,
+    layer_duration_extents: dict[str, float] | None = None,
+) -> tuple[float | None, str]:
+    layer_extents = layer_duration_extents or _layer_duration_extents(items, assets)
+    longest_layer_duration = max(layer_extents.values(), default=0.0)
+    recipe_duration = recipe.duration_sec if recipe.duration_sec is not None and recipe.duration_sec > 0 else None
+    if recipe_duration is not None and recipe_duration >= longest_layer_duration:
+        return round(recipe_duration, 3), "recipe_duration"
+    if longest_layer_duration > 0:
+        return round(longest_layer_duration, 3), "longest_contributing_layer"
+    if recipe_duration is not None:
+        return round(recipe_duration, 3), "recipe_duration"
     return None, "unresolved"
+
+
+def _layer_duration_extents(items: list[RecipeItem], assets: dict[int, Asset]) -> dict[str, float]:
+    primary_voice = _sum_durations(
+        asset.duration_sec
+        for item in items
+        for asset in [assets.get(item.asset_id)]
+        if asset is not None and asset.asset_type == AssetType.VOICEOVER
+    )
+    background_music = _sum_durations(
+        asset.duration_sec
+        for item in items
+        for asset in [assets.get(item.asset_id)]
+        if asset is not None and asset.asset_type == AssetType.BACKGROUND_MUSIC
+    )
+    background_visual = _max_duration(
+        asset.duration_sec
+        for item in items
+        for asset in [assets.get(item.asset_id)]
+        if asset is not None and asset.asset_type == AssetType.BACKGROUND_VIDEO
+    )
+    product_focus_visual = _max_duration(
+        asset.duration_sec
+        for item in items
+        for asset in [assets.get(item.asset_id)]
+        if asset is not None and asset.asset_type == AssetType.FOREGROUND_VIDEO
+    )
+    return {
+        "primary_voice": primary_voice,
+        "background_music": background_music,
+        "background_visual": background_visual,
+        "product_focus_visual": product_focus_visual,
+    }
+
+
+def _sum_durations(values) -> float:
+    durations = [float(value) for value in values if value is not None and value > 0]
+    return round(sum(durations), 3) if durations else 0.0
+
+
+def _max_duration(values) -> float:
+    durations = [float(value) for value in values if value is not None and value > 0]
+    return round(max(durations), 3) if durations else 0.0
 
 
 def _layer_decisions(recipe_id: int, layer_assignments: tuple[CompositionLayerAssignment, ...]) -> list[RenderDecision]:

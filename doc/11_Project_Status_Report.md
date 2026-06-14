@@ -75,6 +75,8 @@
 - pixel-based caption layout now measures text against the real frame in pixels, supports point-to-pixel conversion, computes per-line alignment positions, and writes per-line caption layout evidence into manifests
 - auto-mode visual selection now also uses seeded diversity ordering and seeded per-segment cycling so reruns stay deterministic while multi-recipe output feels less repetitive
 - a live `Biothentic0001` spot-check has now validated the new pixel-layout caption manifest evidence on a real `1080x1920` preview output
+- caption runtime now also supports role-specific safe vertical bands so default `main` and `sub` overlays avoid generic center-of-frame placement and behave more like title-plus-lower-third graphics
+- composition planning now resolves clip duration from the longest contributing layer extent, so longer voice sequences, music sequences, or visual source extents do not get clipped by an earlier narrow fallback
 - assets can now be safely renamed or deleted from the `Assets` screen, with repository checks that block deletion when recipe-item or artifact-job references still exist
 - the `Assets` screen now supports `Show References`, `Retire Selected`, and `Purge Media` so referenced assets can leave active use and disk without destroying audit truth
 - the `Assets` screen now also supports `Replace In Recipes...` with recipe-safe validation, recipe reset-to-candidate behavior, and approval guards that prevent stale pre-replacement outputs from being reused as evidence for changed recipes
@@ -107,7 +109,7 @@
 
 ## Verification Baseline
 
-- `python -m pytest` via `.venv`: `204 passed, 4 warnings`
+- `python -m pytest` via `.venv`: `206 passed, 4 warnings`
 - targeted `QT_QPA_PLATFORM=offscreen` UI coverage for the new `Auto Factory` window and existing themed windows: passed
 
 ## Current Focus
@@ -132,6 +134,8 @@
 - keep project documents truthful through per-milestone revision checkpoints
 - validate the same product-local auto-mode audit seam across additional products beyond `Biothentic0001`
 - validate the new pixel-based caption layout and seeded clip diversity seam on additional products beyond `Biothentic0001`
+- validate the new safe-band caption defaults on more real presenter shots and product compositions beyond the current sample
+- validate longest-layer duration resolution against more real product mixes so longer visual or music extents do not get clipped early
 
 ## Next Steps
 
