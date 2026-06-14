@@ -3,7 +3,9 @@ from __future__ import annotations
 from datetime import UTC, datetime
 from pathlib import Path
 
+from mt_clip_factory.domain.enums import JobStatus
 from mt_clip_factory.domain.decision_events import DecisionEvent
+from mt_clip_factory.domain.jobs import Job
 from mt_clip_factory.domain.job_recovery import decode_job_output_payload, recovery_metadata_from_output_json
 from collections.abc import Callable
 
@@ -11,6 +13,8 @@ from mt_clip_factory.domain.services import UnitOfWork
 from mt_clip_factory.factory.dto import OutputSummaryDTO, PreviewJobSummaryDTO
 from mt_clip_factory.factory.output_lineage import build_output_lineage_context, lineage_value, resolve_output_kind
 from mt_clip_factory.factory.product_run_store import ProductRunArtifactPaths, ProductRunArtifactStore
+from mt_clip_factory.factory.video_frame_normalization import resolve_output_dimensions
+from mt_clip_factory.library.artifacts import build_artifact_job_code, encode_job_input
 
 
 def resolve_artifact_paths(
@@ -237,3 +241,59 @@ def latest_event_timestamp(uow: UnitOfWork, *, recipe_id: int, event_type: str) 
         if event.event_type == event_type:
             return event.created_at
     return None
+
+
+def load_recipe_items_and_assets(uow: UnitOfWork, *, recipe_id: int) -> tuple[list, dict[int, object]]:
+    items = list(uow.recipes.list_items(recipe_id))
+    assets = {
+        item.asset_id: asset
+        for item in items
+        for asset in [uow.assets.get_by_id(item.asset_id)]
+        if asset is not None
+    }
+    return items, assets
+
+
+def enqueue_recipe_job(
+    *,
+    unit_of_work_factory: Callable[[], UnitOfWork],
+    recipe_id: int,
+    job_type: str,
+    code_prefix: str,
+    batch_code: str | None = None,
+    source_mode: str | None = None,
+    recipe_not_found_error=ValueError,
+) -> int:
+    with unit_of_work_factory() as uow:
+        recipe = uow.recipes.get_by_id(recipe_id)
+        if recipe is None or recipe.id is None:
+            raise recipe_not_found_error(str(recipe_id))
+        job = Job(
+            job_code=build_artifact_job_code(code_prefix),
+            job_type=job_type,
+            recipe_id=recipe_id,
+            status=JobStatus.QUEUED,
+            input_json=encode_job_input(
+                {
+                    "recipe_id": recipe_id,
+                    **({} if batch_code is None else {"batch_code": batch_code}),
+                    **({} if source_mode is None else {"source_mode": source_mode}),
+                }
+            ),
+        )
+        created = uow.jobs.add(job)
+        uow.commit()
+        if created.id is None:
+            raise RuntimeError("Recipe job identifier was not assigned.")
+        return created.id
+
+
+def resolve_caption_frame_size(*, system_settings_service, target_ratio: str | None, output_resolution_field: str) -> tuple[int, int] | None:
+    output_resolution = None
+    if system_settings_service is not None:
+        settings = system_settings_service.load()
+        output_resolution = getattr(settings, output_resolution_field, "") or None
+    return resolve_output_dimensions(
+        target_ratio=target_ratio,
+        output_resolution=output_resolution,
+    )

@@ -6,7 +6,6 @@ from mt_clip_factory.domain.job_recovery import (
     apply_job_success_metadata,
     prepare_job_output_for_retry,
 )
-from mt_clip_factory.domain.jobs import Job
 from mt_clip_factory.domain.outputs import Output
 from mt_clip_factory.domain.recipes import Recipe
 from mt_clip_factory.domain.services import UnitOfWork
@@ -31,7 +30,6 @@ from mt_clip_factory.factory.product_run_store import ProductRunArtifactStore
 from mt_clip_factory.factory.renderers import RenderedPreviewOutput
 from mt_clip_factory.factory.recipe_scoring import score_and_persist_recipe
 from mt_clip_factory.factory.review_gate import apply_review_gate, assess_review_gate, review_gate_manifest_payload, review_settings_from_provider
-from mt_clip_factory.factory.video_frame_normalization import resolve_output_dimensions
 from mt_clip_factory.factory.service_errors import (
     AssetNotReadyForRecipeError,
     FactoryJobNotFoundError,
@@ -52,16 +50,19 @@ from mt_clip_factory.factory.service_support import (
     latest_event_timestamp as _latest_event_timestamp,
     list_output_summaries as _list_output_summaries,
     list_job_summaries as _list_job_summaries,
+    load_recipe_items_and_assets as _load_recipe_items_and_assets,
     normalize_actor as _normalize_actor,
     normalize_reason as _normalize_reason,
     optional_text as _optional_text,
+    enqueue_recipe_job as _enqueue_recipe_job_helper,
     record_decision_event as _record_decision_event,
+    resolve_caption_frame_size as _resolve_caption_frame_size,
     resolve_artifact_paths as _resolve_artifact_paths,
     slugify_recipe_code as _slugify_recipe_code,
     to_preview_job_summary as _to_preview_job_summary,
     utc_now as _utc_now,
 )
-from mt_clip_factory.library.artifacts import build_artifact_job_code, decode_job_input, encode_job_input
+from mt_clip_factory.library.artifacts import build_artifact_job_code, decode_job_input
 class VideoAssemblyFactoryService:
     PREVIEW_JOB_TYPE = "render_recipe_preview"
     FINAL_JOB_TYPE = "render_recipe_final"
@@ -259,13 +260,7 @@ class VideoAssemblyFactoryService:
             recipe = uow.recipes.get_by_id(recipe_id)
             if recipe is None or recipe.id is None:
                 raise RecipeNotFoundError(str(recipe_id))
-            items = list(uow.recipes.list_items(recipe.id))
-            assets = {
-                item.asset_id: asset
-                for item in items
-                for asset in [uow.assets.get_by_id(item.asset_id)]
-                if asset is not None
-            }
+            items, assets = _load_recipe_items_and_assets(uow, recipe_id=recipe.id)
             persisted = persist_composition(uow, recipe=recipe, items=items, assets=assets)
             uow.commit()
             return to_composition_plan_dto(
@@ -372,12 +367,14 @@ class VideoAssemblyFactoryService:
             uow.commit()
 
     def enqueue_preview_job(self, recipe_id: int, *, batch_code: str | None = None, source_mode: str | None = None) -> int:
-        return self._enqueue_recipe_job(
+        return _enqueue_recipe_job_helper(
+            unit_of_work_factory=self._unit_of_work_factory,
             recipe_id=recipe_id,
             job_type=self.PREVIEW_JOB_TYPE,
             code_prefix="preview",
             batch_code=batch_code,
             source_mode=source_mode,
+            recipe_not_found_error=RecipeNotFoundError,
         )
 
     def enqueue_final_render_job(self, recipe_id: int, *, batch_code: str | None = None, source_mode: str | None = None) -> int:
@@ -387,12 +384,14 @@ class VideoAssemblyFactoryService:
                 raise RecipeNotFoundError(str(recipe_id))
             if recipe.status != RecipeStatus.APPROVED:
                 raise FinalRenderPrerequisiteError("Approve the recipe before starting final render.")
-        return self._enqueue_recipe_job(
+        return _enqueue_recipe_job_helper(
+            unit_of_work_factory=self._unit_of_work_factory,
             recipe_id=recipe_id,
             job_type=self.FINAL_JOB_TYPE,
             code_prefix="final",
             batch_code=batch_code,
             source_mode=source_mode,
+            recipe_not_found_error=RecipeNotFoundError,
         )
 
     def run_preview_job(self, job_id: int) -> None:
@@ -427,13 +426,7 @@ class VideoAssemblyFactoryService:
                 output_stem=recipe.recipe_code,
                 stage_name="preview",
             )
-            items = list(uow.recipes.list_items(recipe.id))
-            assets = {
-                item.asset_id: asset
-                for item in items
-                for asset in [uow.assets.get_by_id(item.asset_id)]
-                if asset is not None
-            }
+            items, assets = _load_recipe_items_and_assets(uow, recipe_id=recipe.id)
 
             job.status = JobStatus.PROCESSING
             job.started_at = _utc_now()
@@ -772,10 +765,10 @@ class VideoAssemblyFactoryService:
                 raise
 
     def list_preview_jobs(self, *, status: str | None = None) -> list[PreviewJobSummaryDTO]:
-        return self._list_jobs(job_type=self.PREVIEW_JOB_TYPE, status=status)
+        return _list_job_summaries(unit_of_work_factory=self._unit_of_work_factory, job_type=self.PREVIEW_JOB_TYPE, status=status)
 
     def list_final_render_jobs(self, *, status: str | None = None) -> list[PreviewJobSummaryDTO]:
-        return self._list_jobs(job_type=self.FINAL_JOB_TYPE, status=status)
+        return _list_job_summaries(unit_of_work_factory=self._unit_of_work_factory, job_type=self.FINAL_JOB_TYPE, status=status)
 
     def list_jobs(self, *, status: str | None = None) -> list[PreviewJobSummaryDTO]:
         jobs = [*self.list_preview_jobs(status=status), *self.list_final_render_jobs(status=status)]
@@ -804,49 +797,3 @@ class VideoAssemblyFactoryService:
             self.run_preview_job(job_id)
             return
         self.run_final_render_job(job_id)
-
-    def _list_jobs(self, *, job_type: str, status: str | None = None) -> list[PreviewJobSummaryDTO]:
-        return _list_job_summaries(unit_of_work_factory=self._unit_of_work_factory, job_type=job_type, status=status)
-
-    def _enqueue_recipe_job(
-        self,
-        *,
-        recipe_id: int,
-        job_type: str,
-        code_prefix: str,
-        batch_code: str | None = None,
-        source_mode: str | None = None,
-    ) -> int:
-        with self._unit_of_work_factory() as uow:
-            recipe = uow.recipes.get_by_id(recipe_id)
-            if recipe is None or recipe.id is None:
-                raise RecipeNotFoundError(str(recipe_id))
-            job = Job(
-                job_code=build_artifact_job_code(code_prefix),
-                job_type=job_type,
-                recipe_id=recipe_id,
-                status=JobStatus.QUEUED,
-                input_json=encode_job_input(
-                    {
-                        "recipe_id": recipe_id,
-                        **({} if batch_code is None else {"batch_code": batch_code}),
-                        **({} if source_mode is None else {"source_mode": source_mode}),
-                    }
-                ),
-            )
-            created = uow.jobs.add(job)
-            uow.commit()
-            if created.id is None:
-                raise RuntimeError("Recipe job identifier was not assigned.")
-            return created.id
-
-
-def _resolve_caption_frame_size(*, system_settings_service, target_ratio: str | None, output_resolution_field: str) -> tuple[int, int] | None:
-    output_resolution = None
-    if system_settings_service is not None:
-        settings = system_settings_service.load()
-        output_resolution = getattr(settings, output_resolution_field, "") or None
-    return resolve_output_dimensions(
-        target_ratio=target_ratio,
-        output_resolution=output_resolution,
-    )
