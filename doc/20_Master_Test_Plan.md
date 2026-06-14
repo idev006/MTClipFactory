@@ -210,6 +210,7 @@ It complements [07_Testing_Strategy.md](/F:/programming/python/MTClipFactory/doc
 39. Confirm `order_snapshot.toml` and `journal.toml` are created for product-local auto runs.
 40. Confirm per-asset-type fill policy is reflected in manifest evidence for voice, music, background video, and foreground video.
 41. Confirm non-loop foreground shortfall can use `freeze_last_frame` or raise review-visible shortfall instead of silently looping.
+42. Confirm a real prepared product folder can move from review-required preview output to clean rerun by correcting overly narrow `selection_tags` and non-publishable or overlong caption copy in the product-local contract files.
 
 ### C. Review And Approval Flow
 

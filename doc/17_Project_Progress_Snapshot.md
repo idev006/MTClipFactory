@@ -71,7 +71,8 @@
 - Folder-driven automation can now also read `tags.toml` metadata, create missing tags, and assign them to matching assets during intake instead of treating tag metadata as documentation only.
 - Folder-driven automation can now also sync product-level `captions.toml` into runtime metadata so the latest caption contract remains available during preview/final reruns.
 - Preview and final render can now resolve product-level caption pools into real main/sub overlays with deterministic seed behavior, workspace-font resolution, manual `\n` handling, and review-visible overflow evidence.
-- The next locked slice is product-local `runs/<batch_code>` artifacts plus per-asset-type fill policy so auto-mode becomes easier to audit and rerun safely.
+- Auto-mode now also writes product-local `runs/<batch_code>` artifacts plus per-asset-type fill policy so operators can audit reruns near the source product folder itself.
+- A live `Biothentic0001` product-folder audit has now verified the real operator loop: initial review-gate truth on narrow filters plus long captions, operator contract correction in `pipeline.toml` and `captions.toml`, clean rerun previews, and one approved final output written back into the product folder.
 - An enterprise pipeline review and architecture blueprint now exist so the project can grow into a true Video Production Factory instead of accumulating disconnected automation slices.
 - Production orders and orchestration stages are now persisted independently from recipe rows, giving the system a first real control-plane baseline for automated factory runs.
 - The `Tags` screen now provides guided group reuse plus product/status/search filtering so operators can narrow the asset list before assigning labels.
@@ -88,7 +89,10 @@
 - delivered a bulk asset tagging workflow with multi-select asset targeting, selected-set preservation, and one-primary-asset review behavior
 - delivered folder-driven tag metadata sync through `global_tags` and per-file `[file_tags]`, including rerun-safe additive assignment and truthful invalid-contract failure
 - delivered caption runtime support through product-level `captions.toml` sync, deterministic main/sub resolution, runtime font lookup, FFmpeg caption overlays, manifest evidence, and caption-overflow review signaling
-- reviewed and locked the SSOT direction for product-local run artifacts, append-only run journals, runtime pipeline cache, and product-level fill policy contract
+- delivered product-local run artifacts through `runs/<batch_code>` previews, finals, manifests, order snapshots, and append-only journal events for folder-driven automation
+- delivered runtime cache sync for `pipeline.toml` plus `context.toml` so reruns can recover product-local automation context without the original browse session
+- delivered per-asset-type fill policy parsing and renderer/runtime evidence for loop, silence-tail, freeze-last-frame, trim, and review-visible shortfall behavior
+- completed a real `Biothentic0001` live audit, including one initial review-required run, operator-level contract correction, one clean rerun with `3/3` preview success, and one approved final render stored under the product-local `runs/<batch_code>/finals/videos` path
 - delivered a real desktop `Auto Factory` control surface with guided root-folder browse, batch-code override, `scan_depth`, and explicit run-mode selection
 - delivered truthful in-app reporting for discovered product folders, product create/reuse outcomes, deterministic asset intake actions, recent production orders, and stage-by-stage order results
 - delivered a UI orchestration seam that performs folder intake first and then routes materialize/preview runs through persisted `ProductionOrderService` control-plane records
@@ -98,9 +102,9 @@
 1. run broader controlled operator use on real campaign media and capture operator notes without service-side intervention
 2. implement worker lease, heartbeat, and retry-policy semantics on top of the new control-plane baseline
 3. extend the new auto-preview factory baseline into controlled final-render automation only after operators accept the current planner, tag-aware selection rules, and review-gate truth
-4. implement and validate product-local run artifact output, journal creation, and per-asset-type fill policy on a real automation product folder
+4. repeat the new live auto-mode audit seam on more products so `Biothentic0001` does not remain the only proof point
 
 ## Verification Baseline
 
-- `python -m pytest` in `.venv`: `198 passed, 4 warnings`
+- `python -m pytest` in `.venv`: `202 passed, 4 warnings`
 - targeted `QT_QPA_PLATFORM=offscreen` UI/theme coverage for the new `Auto Factory` window and existing app windows: passed

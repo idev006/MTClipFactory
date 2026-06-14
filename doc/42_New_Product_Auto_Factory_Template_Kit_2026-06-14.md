@@ -41,6 +41,12 @@ The template kit includes:
 8. edit the matching `tags.toml` files when automation tags are needed
 9. run the batch root from the `Auto Factory` screen
 
+Operator guidance from the first live product-folder audit:
+
+- keep `selection_tags` broad enough to preserve the intended visual pool; narrow them only when repetition is acceptable on purpose
+- write `captions.toml` as publishable clip copy, not as editorial instructions to the operator
+- use a rerun after contract edits as the standard recovery loop for caption overflow or overly repetitive visual selection
+
 ## Minimum Required Files
 
 The current automation contract requires:
