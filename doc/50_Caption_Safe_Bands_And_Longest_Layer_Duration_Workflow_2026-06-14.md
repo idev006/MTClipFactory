@@ -49,6 +49,20 @@ Default operator-safe bands for the first production slice:
 
 This means the system default should behave more like a title card plus lower-third pairing than a generic screen-center subtitle.
 
+## Line Balance Rule
+
+Pixel-accurate measurement alone is not enough for professional-looking captions.
+
+When one wrapped block produces a very short last line while the previous line is still very wide, the runtime should rebalance the wrapped lines when possible.
+
+The first balancing slice should:
+
+- prefer more even line widths for multi-line auto-wrap text
+- avoid one-word or one-short-phrase orphan last lines when a balanced alternative exists
+- stay width-safe against the role `max_width_ratio`
+
+This especially matters for Thai marketing copy where phrases are often separated by spaces rather than long sentence punctuation.
+
 ## Duration Resolution Rule
 
 The master clip duration must resolve from the longest contributing layer extent.
@@ -124,4 +138,3 @@ sequenceDiagram
 - `captions.toml` can override role band ratios when needed
 - composition duration reflects the longest contributing layer extent instead of only recipe-or-voice precedence
 - shorter layer fill behavior remains manifest-visible and review-visible
-

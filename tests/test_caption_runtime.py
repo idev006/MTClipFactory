@@ -3,7 +3,9 @@ from __future__ import annotations
 from pathlib import Path
 
 from mt_clip_factory.domain.timeline_segments import TimelineSegment
+from mt_clip_factory.factory.caption_layout import _balanced_wrap_paragraph, _ensure_qt_application
 from mt_clip_factory.factory.caption_runtime import CaptionRuntimeService, ProductAutomationMetadataStore
+from PySide6.QtGui import QFont
 
 
 def _write_caption_contract(
@@ -223,6 +225,74 @@ def test_caption_runtime_supports_point_sized_fonts_and_pixel_layout(tmp_path) -
     assert role.max_text_width_px == 756
     assert role.line_left_positions_px
     assert role.line_top_positions_px
+
+
+def test_caption_runtime_centers_main_within_safe_band_not_full_frame(tmp_path) -> None:
+    media_root = tmp_path / "media_library"
+    fonts_root = tmp_path / "fonts"
+    fonts_root.mkdir(parents=True, exist_ok=True)
+    (fonts_root / "THSarabun.ttf").write_bytes(b"font")
+    product_dir = tmp_path / "product_center_band"
+    product_dir.mkdir(parents=True, exist_ok=True)
+    caption_file = product_dir / "captions.toml"
+    caption_file.write_text(
+        "\n".join(
+            [
+                "[caption_pools.hook]",
+                'main = ["one\\ntwo\\nthree"]',
+                "",
+                "[caption_properties.main]",
+                'font_family = "THSarabun"',
+                'position = "center"',
+                "font_size = 72",
+                "min_font_size = 48",
+                "max_lines = 3",
+                "safe_top_ratio = 0.14",
+                "safe_bottom_ratio = 0.46",
+            ]
+        ),
+        encoding="utf-8",
+    )
+    store = ProductAutomationMetadataStore(media_root)
+    store.sync_caption_contract(product_code="product_center_band", source_file=caption_file)
+    service = CaptionRuntimeService(metadata_store=store, fonts_root=fonts_root)
+    segments = (
+        TimelineSegment(
+            recipe_id=1,
+            segment_type="hook",
+            sequence_index=1,
+            start_sec=0.0,
+            end_sec=3.0,
+            target_duration_sec=3.0,
+        ),
+    )
+
+    resolved = service.resolve_for_segments(
+        product_code="product_center_band",
+        recipe_code="product_center_band_batch_001",
+        segments=segments,
+        frame_width_px=1080,
+        frame_height_px=1920,
+    )
+    role = resolved[0].roles[0]
+
+    assert role.position == "center"
+    assert role.box_top_px < 700
+
+
+def test_balanced_wrap_rearranges_space_separated_lines_more_evenly() -> None:
+    _ensure_qt_application()
+    font = QFont("Arial")
+    font.setPixelSize(40)
+
+    balanced = _balanced_wrap_paragraph(
+        "take care of bones and joints every active day",
+        font=font,
+        max_width_px=500,
+        target_line_count=4,
+    )
+
+    assert balanced == ("take care", "of bones and", "joints every", "active day")
 
 
 def test_metadata_store_removes_stale_caption_contract_when_source_is_missing(tmp_path) -> None:
