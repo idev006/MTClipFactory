@@ -144,6 +144,27 @@ def assess_review_gate(
                     threshold="ducking_applied",
                 )
             )
+    caption_overflow_roles = sum(
+        1
+        for clip in segment_clips
+        for role in clip.captions
+        if role.overflowed
+    )
+    caption_review_required_roles = sum(
+        1
+        for clip in segment_clips
+        for role in clip.captions
+        if role.review_required
+    )
+    if caption_review_required_roles > 0:
+        signals.append(
+            ReviewSignal(
+                code="caption_overflow_risk",
+                message="One or more resolved captions exceeded safe fit policy and require review.",
+                metric_value=caption_review_required_roles,
+                threshold=0,
+            )
+        )
     duplicate_risk = _duplicate_risk(signals)
     quality_score = round(max(0.0, 1.0 - duplicate_risk), 3)
     summary = "Review required." if signals else "No review gate triggered."
@@ -164,6 +185,8 @@ def assess_review_gate(
             "duration_unknown_audio_tracks": duration_unknown_audio_tracks,
             "voice_track_count": voice_track_count,
             "music_track_count": music_track_count,
+            "caption_overflow_roles": caption_overflow_roles,
+            "caption_review_required_roles": caption_review_required_roles,
         },
     )
 

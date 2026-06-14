@@ -6,10 +6,11 @@ from pathlib import Path
 
 from mt_clip_factory.control_center.dto import SystemSettingsDTO
 from mt_clip_factory.factory.audio_composition import PreviewAudioMixPlan, PreviewAudioTrack
+from mt_clip_factory.factory.caption_runtime import ResolvedCaptionRole
 from mt_clip_factory.factory.preview_composition import PreviewLayerClip, PreviewSegmentClip
 from mt_clip_factory.factory.renderers import FFmpegPreviewRenderer, LocalPreviewRenderer
 from mt_clip_factory.factory.visual_compositing import GreenscreenAnalysis, dominant_green_ratio
-from mt_clip_factory.ui.factory.recipe_builder_aftercare import _build_manifest_visual_lines
+from mt_clip_factory.ui.factory.recipe_builder_aftercare import _build_manifest_caption_lines, _build_manifest_visual_lines
 from mt_clip_factory.ui.factory.recipe_builder_window import _build_manifest_audio_lines, _build_manifest_review_lines
 
 
@@ -285,6 +286,78 @@ def test_ffmpeg_renderer_honors_blue_key_policy_for_non_green_backgrounds(tmp_pa
     assert any("colorkey=0x0000FF" in " ".join(command) for command in renderer.commands)
 
 
+def test_ffmpeg_renderer_builds_drawtext_filters_for_caption_layers(tmp_path) -> None:
+    settings = _settings(tmp_path)
+    renderer = InspectableFFmpegPreviewRenderer(StaticSettingsService(settings), tmp_path / "preview_root")
+    source_file = tmp_path / "visual.mp4"
+    font_file = tmp_path / "THSarabun.ttf"
+    source_file.write_bytes(b"visual")
+    font_file.write_bytes(b"font")
+
+    renderer.render_output(
+        product_code="honey",
+        output_stem="caption_preview",
+        source_files=[source_file],
+        segment_clips=(
+            PreviewSegmentClip(
+                sequence_index=1,
+                segment_type="hook",
+                layer_name="background_visual",
+                asset_id=11,
+                asset_code="visual_asset",
+                source_file=source_file,
+                start_sec=0.0,
+                end_sec=3.0,
+                target_duration_sec=3.0,
+                fill_mode="trim_to_segment",
+                captions=(
+                    ResolvedCaptionRole(
+                        role="main",
+                        source_text="พลังบวกทุกวัน",
+                        rendered_text="พลังบวกทุกวัน",
+                        segment_type="hook",
+                        sequence_index=1,
+                        seed_key="seed",
+                        selection_index=0,
+                        line_break_mode="manual",
+                        fit_strategy="manual_breaks",
+                        line_count=1,
+                        font_family="THSarabun",
+                        font_fallbacks=(),
+                        font_size=72,
+                        min_font_size=48,
+                        font_weight="bold",
+                        font_source=str(font_file),
+                        font_file=font_file,
+                        font_resolution_mode="workspace_primary",
+                        font_resolution_target="THSarabun",
+                        position="center",
+                        alignment="center",
+                        text_color="#FFFFFF",
+                        stroke_color="#000000",
+                        stroke_width=3,
+                        background_color="#000000",
+                        background_opacity=0.15,
+                        padding=20,
+                        max_lines=3,
+                        max_chars_per_line=18,
+                        max_width_ratio=0.78,
+                        overflow_policy="wrap_then_scale_then_review",
+                        enter_animation="pop_in",
+                        overflowed=False,
+                        review_required=False,
+                        truncated_for_runtime=False,
+                    ),
+                ),
+            ),
+        ),
+        target_ratio="9:16",
+    )
+
+    assert any("drawtext=" in " ".join(command) for command in renderer.commands)
+    assert any("fontfile='" in " ".join(command) for command in renderer.commands)
+
+
 def test_output_detail_helper_reads_runtime_audio_mix_from_manifest(tmp_path) -> None:
     manifest_path = tmp_path / "preview_manifest.json"
     manifest_path.write_text(
@@ -402,3 +475,42 @@ def test_output_detail_helper_reads_visual_composite_summary_from_manifest(tmp_p
     assert "- Keyed Segment Count: 2" in lines
     assert "- Segment Composite: #1 hook | mode=green_chroma_key_overlay | primary=fg_asset | background=bg_asset" in lines
     assert "- Key Policy: green | color=0x00FF00" in lines
+
+
+def test_output_detail_helper_reads_caption_summary_from_manifest(tmp_path) -> None:
+    manifest_path = tmp_path / "preview_manifest.json"
+    manifest_path.write_text(
+        json.dumps(
+            {
+                "captions": {
+                    "enabled": True,
+                    "segment_count": 1,
+                    "role_count": 2,
+                    "overflow_role_count": 1,
+                    "review_required_role_count": 1,
+                    "segments": [
+                        {
+                            "sequence_index": 1,
+                            "segment_type": "hook",
+                            "roles": [
+                                {
+                                    "role": "main",
+                                    "fit_strategy": "truncated_for_runtime",
+                                    "font_resolution_target": "THSarabun",
+                                    "review_required": True,
+                                    "rendered_text": "พลังบวก…",
+                                }
+                            ],
+                        }
+                    ],
+                }
+            }
+        ),
+        encoding="utf-8",
+    )
+
+    lines = _build_manifest_caption_lines(str(manifest_path))
+
+    assert "Runtime Captions:" in lines
+    assert "- Overflow Role Count: 1" in lines
+    assert "- Caption Role: main | fit=truncated_for_runtime | font=THSarabun | review=True" in lines

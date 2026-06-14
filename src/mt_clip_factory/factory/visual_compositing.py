@@ -44,6 +44,7 @@ def render_segmented_visual_output(
             summary = _render_segment(
                 settings=settings,
                 segment=segment,
+                temp_dir=temp_dir,
                 segment_path=segment_path,
                 include_audio=include_audio,
                 target_ratio=target_ratio,
@@ -85,6 +86,7 @@ def _render_segment(
     *,
     settings: SystemSettingsDTO,
     segment: PreviewSegmentClip,
+    temp_dir: Path,
     segment_path: Path,
     include_audio: bool,
     target_ratio: str | None,
@@ -96,6 +98,8 @@ def _render_segment(
     if background_layer is None or segment.layer_name != "product_focus_visual":
         _render_single_layer_segment(
             settings=settings,
+            segment=segment,
+            temp_dir=temp_dir,
             source_file=segment.source_file,
             target_path=segment_path,
             include_audio=include_audio,
@@ -113,6 +117,8 @@ def _render_segment(
     if not analysis.likely_greenscreen:
         _render_single_layer_segment(
             settings=settings,
+            segment=segment,
+            temp_dir=temp_dir,
             source_file=segment.source_file,
             target_path=segment_path,
             include_audio=include_audio,
@@ -126,6 +132,7 @@ def _render_segment(
         settings=settings,
         segment=segment,
         analysis=analysis,
+        temp_dir=temp_dir,
         target_path=segment_path,
         include_audio=include_audio,
         target_ratio=target_ratio,
@@ -237,6 +244,8 @@ def dominant_magenta_ratio(sample: bytes) -> float:
 def _render_single_layer_segment(
     *,
     settings: SystemSettingsDTO,
+    segment: PreviewSegmentClip,
+    temp_dir: Path,
     source_file: Path,
     target_path: Path,
     include_audio: bool,
@@ -245,6 +254,11 @@ def _render_single_layer_segment(
     target_duration_sec: float,
     run_ffmpeg,
 ) -> None:
+    visual_filter = _captioned_visual_filter(
+        base_filter=build_visual_filter(target_ratio=target_ratio, output_resolution=output_resolution),
+        temp_dir=temp_dir,
+        segment=segment,
+    )
     arguments = [
         "-y",
         "-stream_loop",
@@ -254,7 +268,7 @@ def _render_single_layer_segment(
         "-t",
         str(target_duration_sec),
         "-vf",
-        build_visual_filter(target_ratio=target_ratio, output_resolution=output_resolution),
+        visual_filter,
         "-c:v",
         "libx264",
         "-preset",
@@ -275,6 +289,7 @@ def _render_green_screen_overlay_segment(
     settings: SystemSettingsDTO,
     segment: PreviewSegmentClip,
     analysis: GreenscreenAnalysis,
+    temp_dir: Path,
     target_path: Path,
     include_audio: bool,
     target_ratio: str | None,
@@ -299,6 +314,8 @@ def _render_green_screen_overlay_segment(
         str(segment.target_duration_sec),
         "-filter_complex",
         _overlay_filter_graph(
+            temp_dir=temp_dir,
+            segment=segment,
             target_ratio=target_ratio,
             output_resolution=output_resolution,
             key_color=analysis.key_color,
@@ -323,6 +340,8 @@ def _render_green_screen_overlay_segment(
 
 def _overlay_filter_graph(
     *,
+    temp_dir: Path,
+    segment: PreviewSegmentClip,
     target_ratio: str | None,
     output_resolution: str | None,
     key_color: str,
@@ -330,11 +349,16 @@ def _overlay_filter_graph(
 ) -> str:
     base_filter = build_visual_filter(target_ratio=target_ratio, output_resolution=output_resolution)
     despill_filter = ",despill=green" if key_profile == "green" else ""
-    return (
+    caption_filters = _caption_drawtext_filters(temp_dir=temp_dir, segment=segment)
+    output_label = "[vbase]" if caption_filters else "[vout]"
+    overlay_graph = (
         f"[0:v]{base_filter}[bg];"
         f"[1:v]{base_filter},colorkey={key_color}:{_GREEN_SCREEN_SIMILARITY}:{_GREEN_SCREEN_BLEND}{despill_filter}[fg];"
-        "[bg][fg]overlay=0:0:format=auto[vout]"
+        f"[bg][fg]overlay=0:0:format=auto{output_label}"
     )
+    if not caption_filters:
+        return overlay_graph
+    return f"{overlay_graph};{_caption_overlay_chain(input_label='[vbase]', caption_filters=caption_filters)}"
 
 
 def _segment_summary(
@@ -379,3 +403,82 @@ def _composite_mode_for_profile(profile: str | None) -> str:
             return "custom_chroma_key_overlay"
         case _:
             return "chroma_key_overlay"
+
+
+def _captioned_visual_filter(*, base_filter: str, temp_dir: Path, segment: PreviewSegmentClip) -> str:
+    caption_filters = _caption_drawtext_filters(temp_dir=temp_dir, segment=segment)
+    if not caption_filters:
+        return base_filter
+    return ",".join((base_filter, *caption_filters))
+
+
+def _caption_overlay_chain(*, input_label: str, caption_filters: list[str]) -> str:
+    if not caption_filters:
+        return ""
+    chain_parts: list[str] = []
+    current_label = input_label
+    for index, filter_text in enumerate(caption_filters, start=1):
+        next_label = "[vout]" if index == len(caption_filters) else f"[vcap{index}]"
+        chain_parts.append(f"{current_label}{filter_text}{next_label}")
+        current_label = next_label
+    return ";".join(chain_parts)
+
+
+def _caption_drawtext_filters(*, temp_dir: Path, segment: PreviewSegmentClip) -> list[str]:
+    filters: list[str] = []
+    for role in segment.captions:
+        text_file = temp_dir / f"caption_{segment.sequence_index:02d}_{role.role}.txt"
+        text_file.write_text(role.rendered_text, encoding="utf-8")
+        drawtext_parts = [
+            f"textfile='{_escape_filter_path(text_file)}'",
+            f"fontcolor={role.text_color}",
+            f"fontsize={role.font_size}",
+            f"line_spacing={max(4, role.padding // 2)}",
+            f"x={_caption_x_expression(role.alignment, role.padding)}",
+            f"y={_caption_y_expression(role.position, role.padding)}",
+        ]
+        if role.font_file is not None:
+            drawtext_parts.append(f"fontfile='{_escape_filter_path(role.font_file)}'")
+        else:
+            drawtext_parts.append(f"font='{_escape_filter_text(role.font_source)}'")
+        if role.stroke_width > 0:
+            drawtext_parts.append(f"borderw={role.stroke_width}")
+            drawtext_parts.append(f"bordercolor={role.stroke_color}")
+        if role.background_color and role.background_opacity > 0:
+            drawtext_parts.append("box=1")
+            drawtext_parts.append(f"boxcolor={role.background_color}@{role.background_opacity}")
+            drawtext_parts.append(f"boxborderw={role.padding}")
+        filters.append(f"drawtext={':'.join(drawtext_parts)}")
+    return filters
+
+
+def _caption_x_expression(alignment: str, padding: int) -> str:
+    normalized = alignment.strip().casefold()
+    if normalized == "left":
+        return str(max(0, padding))
+    if normalized == "right":
+        return f"w-text_w-{max(0, padding)}"
+    return "(w-text_w)/2"
+
+
+def _caption_y_expression(position: str, padding: int) -> str:
+    normalized = position.strip().casefold()
+    if normalized == "top":
+        return f"h*0.12+{max(0, padding)}"
+    if normalized == "bottom":
+        return f"h-text_h-h*0.14-{max(0, padding)}"
+    return "(h-text_h)/2"
+
+
+def _escape_filter_path(file_path: Path) -> str:
+    return (
+        str(file_path)
+        .replace("\\", "/")
+        .replace(":", r"\:")
+        .replace(" ", r"\ ")
+        .replace("'", r"\'")
+    )
+
+
+def _escape_filter_text(value: str) -> str:
+    return value.replace(":", r"\:").replace("'", r"\'")

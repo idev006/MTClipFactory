@@ -20,6 +20,14 @@ sub = [
   "เหมาะกับการดูแลต่อเนื่องในชีวิตประจำวัน",
 ]
 
+[caption_pools.problem]
+main = [
+  "Need a stronger problem statement",
+]
+sub = [
+  "Replace this placeholder with the product's actual pain point or concern.",
+]
+
 [caption_pools.proof]
 main = [
   "อีกหนึ่งตัวช่วย\nที่หลายคนวางใจ",
@@ -39,8 +47,8 @@ sub = [
 [caption_properties.main]
 position = "center"
 alignment = "center"
-font_family = "Noto Sans Thai"
-font_fallbacks = ["Tahoma", "Arial Unicode MS"]
+font_family = "THSarabun"
+font_fallbacks = ["TH Chakra Petch", "Tahoma", "Arial Unicode MS"]
 font_size = 72
 min_font_size = 48
 font_weight = "bold"
@@ -60,8 +68,8 @@ review_required_if_overflow = true
 [caption_properties.sub]
 position = "bottom"
 alignment = "center"
-font_family = "Noto Sans Thai"
-font_fallbacks = ["Tahoma", "Arial Unicode MS"]
+font_family = "THSarabun"
+font_fallbacks = ["TH Chakra Petch", "Tahoma", "Arial Unicode MS"]
 font_size = 40
 min_font_size = 30
 font_weight = "medium"

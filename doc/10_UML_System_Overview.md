@@ -102,12 +102,27 @@ classDiagram
         +run_batch_root(batch_root, scan_depth)
         +parse product.toml + pipeline.toml
         +parse tags.toml
+        +sync captions.toml into runtime metadata cache
         +discover product folders up to scan depth
         +create missing products
         +intake deterministic asset codes
         +apply additive folder tag metadata
         +skip existing assets on rerun
         +optional preview automation after materialization
+    }
+
+    class ProductAutomationMetadataStore {
+        +sync_caption_contract(product_code, source_file)
+        +load_caption_contract(product_code)
+        +runtime metadata cache under media_root
+    }
+
+    class CaptionRuntimeService {
+        +resolve_for_segments(product_code, recipe_code, segments)
+        +deterministic main/sub selection
+        +manual newline preservation
+        +font-file resolution from workspace fonts
+        +overflow risk reporting
     }
 
     class ProductionOrderService {
@@ -156,6 +171,7 @@ classDiagram
         +runtime audio mix
         +target-frame normalization
         +layered visual compositing
+        +caption overlay rendering
         +visual composite evidence
         +operator-configured exact output resolution
         +configurable duck mode
@@ -169,6 +185,7 @@ classDiagram
     class PreviewComposition {
         +segment_clips
         +manifest_payload
+        +resolved caption evidence
     }
 
     class DashboardService {
@@ -452,6 +469,9 @@ classDiagram
     AutoFactoryFolderService --> ProductApplicationService
     AutoFactoryFolderService --> AssetIntakeService
     AutoFactoryFolderService --> AutoFactoryBatchService
+    AutoFactoryFolderService --> ProductAutomationMetadataStore
+    VideoAssemblyFactoryService --> CaptionRuntimeService
+    CaptionRuntimeService --> ProductAutomationMetadataStore
     VideoAssemblyFactoryService --> FFmpegPreviewRenderer
     FFmpegPreviewRenderer --> VideoFrameNormalization
     VideoAssemblyFactoryService --> PreviewComposition
@@ -1091,10 +1111,34 @@ sequenceDiagram
     Factory->>View: expose composition-plan segments + render-decision summary
     Factory->>Render: render with loop/trim/duck/gain policy
     Render-->>Factory: output + audio_mix_summary
-    Factory->>Factory: assess review gate from composition + runtime audio evidence
-    Factory->>Factory: refresh recipe score/risk from metadata + asset mix + runtime review evidence
-    Factory->>Audit: persist render decisions
-    Factory-->>VM: recipe score/risk summary + output summary + review signals + operator-visible decisions
+Factory->>Factory: assess review gate from composition + runtime audio evidence
+Factory->>Factory: refresh recipe score/risk from metadata + asset mix + runtime review evidence
+Factory->>Audit: persist render decisions
+Factory-->>VM: recipe score/risk summary + output summary + review signals + operator-visible decisions
+```
+
+## Caption Runtime Sequence
+
+```mermaid
+sequenceDiagram
+    actor Operator
+    participant FolderSvc as AutoFactoryFolderService
+    participant Meta as ProductAutomationMetadataStore
+    participant Factory as VideoAssemblyFactoryService
+    participant Caption as CaptionRuntimeService
+    participant Render as FFmpegPreviewRenderer
+    participant Manifest as PreviewManifestBuilder
+
+    Operator->>FolderSvc: run_batch_root(...)
+    FolderSvc->>Meta: sync captions.toml into media-root runtime cache
+    FolderSvc->>Factory: materialize/build preview
+    Factory->>Caption: resolve_for_segments(product_code, recipe_code, segments)
+    Caption->>Meta: load_caption_contract(product_code)
+    Caption->>Caption: choose main/sub with stable seed
+    Caption-->>Factory: resolved caption instructions + overflow evidence
+    Factory->>Render: render_output(..., segment_clips with captions)
+    Render->>Render: draw main/sub caption overlays
+    Factory->>Manifest: write caption selection + font/fallback + fit evidence
 ```
 
 ## Target Factory Plane Map

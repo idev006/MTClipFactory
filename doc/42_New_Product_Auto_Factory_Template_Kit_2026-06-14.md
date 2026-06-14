@@ -63,10 +63,10 @@ The template kit includes `tags.toml` files as a preparation baseline for the pl
 That means:
 
 - operators can already prepare `global_tags` and per-file `file_tags`
-- those files act as a stable contract and checklist for future implementation
+- those files act as a stable contract and checklist for current folder-driven automation plus caption-ready preview/final runtime
 - the current delivered auto-factory intake now reads `tags.toml` and applies normalized tags additively to matching assets during folder runs
 
-The template kit also includes `captions.toml` as a preparation baseline for future automated caption selection and rendering.
+The template kit also includes `captions.toml` as the current product-level contract for automated caption selection and rendering.
 
 ## Example Operator Flow
 

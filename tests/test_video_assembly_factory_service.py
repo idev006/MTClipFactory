@@ -8,6 +8,7 @@ import pytest
 from mt_clip_factory.application.dto import CreateProductCommand
 from mt_clip_factory.application.services import ProductApplicationService
 from mt_clip_factory.factory.audio_composition import PreviewAudioMixPlan
+from mt_clip_factory.factory.caption_runtime import CaptionRuntimeService, ProductAutomationMetadataStore
 from mt_clip_factory.factory.dto import AssignAssetToRecipeCommand, CreateRecipeCommand
 from mt_clip_factory.factory.preview_artifacts import PreviewManifestBuilder
 from mt_clip_factory.factory.preview_composition import PreviewSegmentClip
@@ -57,6 +58,7 @@ def _build_factory_service(
     *,
     render_ducking_applied: bool | None = None,
     render_ducking_reason: str = "fake_renderer",
+    caption_runtime_service: CaptionRuntimeService | None = None,
 ) -> VideoAssemblyFactoryService:
     class FakePreviewRenderer:
         def __init__(self) -> None:
@@ -141,6 +143,7 @@ def _build_factory_service(
         preview_manifest_builder=PreviewManifestBuilder(preview_root),
         preview_renderer=renderer,
         final_renderer=renderer,
+        caption_runtime_service=caption_runtime_service,
     )
 
 
@@ -171,6 +174,56 @@ def _register_ready_asset(
         )
     )
     return product_id, asset_id
+
+
+def _write_runtime_caption_contract(
+    *,
+    media_root: Path,
+    product_code: str,
+    main_text: str,
+    max_lines: int = 3,
+    max_chars_per_line: int = 18,
+) -> CaptionRuntimeService:
+    source_dir = media_root.parent / "product_contract"
+    source_dir.mkdir(parents=True, exist_ok=True)
+    caption_source = source_dir / "captions.toml"
+    caption_source.write_text(
+        "\n".join(
+            [
+                "[caption_selection]",
+                'mode = "random_with_seed"',
+                "",
+                "[caption_pools.hook]",
+                f'main = ["{main_text}"]',
+                'sub = ["เริ่มต้นวันใหม่"]',
+                "",
+                "[caption_properties.main]",
+                'font_family = "THSarabun"',
+                "font_size = 72",
+                "min_font_size = 48",
+                f"max_lines = {max_lines}",
+                f"max_chars_per_line = {max_chars_per_line}",
+                'overflow_policy = "wrap_then_scale_then_review"',
+                "review_required_if_overflow = true",
+                "",
+                "[caption_properties.sub]",
+                'font_family = "THSarabun"',
+                "font_size = 40",
+                "min_font_size = 30",
+                "max_lines = 2",
+                "max_chars_per_line = 24",
+                'overflow_policy = "wrap_then_truncate_or_review"',
+                "review_required_if_overflow = true",
+            ]
+        ),
+        encoding="utf-8",
+    )
+    fonts_root = media_root.parent / "fonts"
+    fonts_root.mkdir(parents=True, exist_ok=True)
+    (fonts_root / "THSarabun.ttf").write_bytes(b"font")
+    metadata_store = ProductAutomationMetadataStore(media_root)
+    metadata_store.sync_caption_contract(product_code=product_code, source_file=caption_source)
+    return CaptionRuntimeService(metadata_store=metadata_store, fonts_root=fonts_root)
 
 
 def test_factory_service_creates_and_lists_recipe(unit_of_work_factory, tmp_path) -> None:
@@ -268,6 +321,38 @@ def test_factory_service_builds_preview_output_job(unit_of_work_factory, tmp_pat
     assert all(segment["layer_name"] == "background_visual" for segment in manifest_payload["segments"])
     assert manifest_payload["review_gate"]["required"] is True
     assert manifest_payload["review_gate"]["signals"]
+
+
+def test_factory_service_writes_resolved_caption_manifest_and_review_signal(unit_of_work_factory, tmp_path) -> None:
+    media_root = tmp_path / "media_library"
+    product_id, asset_id = _register_ready_asset(unit_of_work_factory, tmp_path)
+    caption_runtime_service = _write_runtime_caption_contract(
+        media_root=media_root,
+        product_code="honey",
+        main_text="ข้อความยาวมากจนเกินขอบเขต",
+        max_lines=1,
+        max_chars_per_line=4,
+    )
+    service = _build_factory_service(
+        unit_of_work_factory,
+        tmp_path / "previews",
+        caption_runtime_service=caption_runtime_service,
+    )
+    recipe_id = service.create_recipe(CreateRecipeCommand(product_id=product_id, recipe_code="Caption Review"))
+    service.assign_asset_to_recipe(AssignAssetToRecipeCommand(recipe_id=recipe_id, asset_id=asset_id, role="hero"))
+
+    job_id = service.enqueue_preview_job(recipe_id)
+    service.run_preview_job(job_id)
+
+    output = service.list_outputs(recipe_id=recipe_id)[0]
+    recipe = service.get_recipe(recipe_id)
+    manifest_payload = json.loads(Path(output.manifest_path).read_text(encoding="utf-8"))
+
+    assert manifest_payload["captions"]["enabled"] is True
+    assert manifest_payload["captions"]["review_required_role_count"] == 1
+    assert manifest_payload["captions"]["segments"][0]["roles"][0]["font_file"].endswith("THSarabun.ttf")
+    assert recipe.status == "needs_review"
+    assert any(signal["code"] == "caption_overflow_risk" for signal in manifest_payload["review_gate"]["signals"])
 
 
 def test_factory_service_writes_runtime_audio_mix_summary_to_manifest(unit_of_work_factory, tmp_path) -> None:

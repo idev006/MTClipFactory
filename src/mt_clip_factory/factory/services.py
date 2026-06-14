@@ -17,6 +17,7 @@ from mt_clip_factory.domain.recipes import Recipe
 from mt_clip_factory.domain.services import UnitOfWork
 from mt_clip_factory.factory.composition_mapping import to_composition_plan_dto
 from mt_clip_factory.factory.composition_runtime import persist_composition
+from mt_clip_factory.factory.caption_runtime import CaptionRuntimeService
 from mt_clip_factory.factory.dto import (
     AssignAssetToRecipeCommand,
     CompositionPlanDTO,
@@ -88,12 +89,14 @@ class VideoAssemblyFactoryService:
         preview_renderer,
         final_renderer,
         system_settings_service=None,
+        caption_runtime_service: CaptionRuntimeService | None = None,
     ) -> None:
         self._unit_of_work_factory = unit_of_work_factory
         self._preview_manifest_builder = preview_manifest_builder
         self._preview_renderer = preview_renderer
         self._final_renderer = final_renderer
         self._system_settings_service = system_settings_service
+        self._caption_runtime_service = caption_runtime_service
 
     def create_recipe(self, command: CreateRecipeCommand) -> int:
         recipe_code = _slugify_recipe_code(command.recipe_code)
@@ -462,6 +465,7 @@ class VideoAssemblyFactoryService:
                     assets=assets,
                     plan=persisted.plan,
                     segments=persisted.segments,
+                    caption_runtime_service=self._caption_runtime_service,
                 )
                 if not composition.source_files:
                     raise PreviewBuildInputError(f"Recipe {recipe.recipe_code} has no renderable video assets.")
@@ -599,6 +603,7 @@ class VideoAssemblyFactoryService:
                     assets=assets,
                     plan=persisted.plan,
                     segments=persisted.segments,
+                    caption_runtime_service=self._caption_runtime_service,
                 )
                 if not composition.source_files:
                     raise FinalRenderPrerequisiteError(f"Recipe {recipe.recipe_code} has no renderable video assets.")

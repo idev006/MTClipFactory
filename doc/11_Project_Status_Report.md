@@ -67,6 +67,8 @@
 - the `Tags` screen now also follows an asset-first workflow so operators can select one asset, inspect its current tags, search existing tags, and create-and-attach new tags from one focused loop
 - the `Tags` screen now also supports bulk asset tagging so one existing or newly created tag can be applied across a selected asset set while one primary selected asset remains visible for review
 - folder-driven `Auto Factory` intake now also reads `tags.toml` metadata, creates missing tags, and assigns normalized `group:name` labels to matching assets during the same run
+- folder-driven `Auto Factory` intake now also syncs product-level `captions.toml` into runtime metadata so preview/final reruns can resolve the latest caption contract without depending on the original source folder path
+- preview and final render now support runtime caption overlays from product-level caption pools, including deterministic main/sub selection, manual `\n` line breaks, workspace-font resolution, manifest-backed caption evidence, and review-gate signaling for unsafe caption fit
 - assets can now be safely renamed or deleted from the `Assets` screen, with repository checks that block deletion when recipe-item or artifact-job references still exist
 - the `Assets` screen now supports `Show References`, `Retire Selected`, and `Purge Media` so referenced assets can leave active use and disk without destroying audit truth
 - the `Assets` screen now also supports `Replace In Recipes...` with recipe-safe validation, recipe reset-to-candidate behavior, and approval guards that prevent stale pre-replacement outputs from being reused as evidence for changed recipes
@@ -160,6 +162,7 @@
 - `IR-19` now persists production orders plus orchestration stages for `materialize`, `preview`, and `review` control-plane truth
 - `IR-25` now adds multi-select bulk asset tagging while preserving an asset-first operator review loop
 - `IR-26` now applies folder-prepared `tags.toml` metadata during auto-factory intake so planner-facing asset tags can be assigned in the same run
+- `IR-27` now applies product-level `captions.toml` during preview/final runtime so caption pools, font resolution, and caption-fit review signals become operational
 
 ## Ownership
 

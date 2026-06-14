@@ -45,6 +45,7 @@ The project now uses two roadmap layers:
 - `IR-24` Asset-first tagging workflow baseline: complete on 2026-06-13
 - `IR-25` Bulk asset tagging workflow baseline: complete on 2026-06-14
 - `IR-26` Folder tag metadata sync baseline: complete on 2026-06-14
+- `IR-27` Caption runtime metadata and render baseline: complete on 2026-06-14
 
 ## Current Execution Stream
 
@@ -806,6 +807,35 @@ Make folder-prepared `tags.toml` metadata operational during auto-factory intake
 - delivered normalized additive tag assignment through `TagManagementService` for both newly registered and skipped-existing assets
 - delivered media-file filtering that now ignores metadata files such as `desktop.ini` and `tags.toml`
 - covered folder tag metadata application, rerun safety, invalid tag labels, and end-to-end selection-tag planning with pytest
+
+## IR-27 | Caption Runtime Metadata And Render Baseline
+
+### Goal
+
+Turn product-level `captions.toml` preparation into real preview/final caption rendering with truthful manifest and review visibility.
+
+### Scope
+
+- sync `captions.toml` from the product folder into runtime metadata under the media library
+- resolve deterministic `main` and `sub` captions per segment from product-level pools
+- preserve manual `\n` line breaks and apply bounded wrap/scale/truncate fit behavior
+- resolve fonts from the workspace `fonts` folder before falling back to system-family references
+- draw caption overlays during preview/final rendering and expose caption evidence in manifests plus review-gate outcomes
+
+### Acceptance Criteria
+
+- folder-driven automation can make the current `captions.toml` available to preview/final runtime without manual copy steps after the first run
+- preview and final can render main/sub caption overlays from product-level pools
+- manifest evidence shows resolved caption text, font resolution, and caption-fit behavior
+- unsafe caption fit can trigger review instead of silently pretending the text fit was clean
+
+### Delivery Result
+
+- delivered runtime metadata sync for product-level `captions.toml` under `media_library/products/<product_code>/automation/`
+- delivered deterministic main/sub caption resolution with stable seed behavior per recipe segment
+- delivered manual `\n` preservation plus bounded runtime fit handling and review-required overflow signaling
+- delivered FFmpeg caption overlay rendering plus manifest-backed caption evidence and output-detail visibility
+- covered caption contract parsing, runtime sync, renderer command generation, manifest visibility, and review-gate behavior with pytest
 
 ## Cross-Milestone Rules
 

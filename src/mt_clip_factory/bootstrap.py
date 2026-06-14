@@ -10,6 +10,7 @@ from mt_clip_factory.control_center.dto import PathRootsDTO
 from mt_clip_factory.control_center.services import DashboardService, SystemSettingsService
 from mt_clip_factory.factory.auto_factory import AutoFactoryBatchService
 from mt_clip_factory.factory.auto_factory_folder import AutoFactoryFolderService
+from mt_clip_factory.factory.caption_runtime import CaptionRuntimeService, ProductAutomationMetadataStore
 from mt_clip_factory.factory.preview_artifacts import PreviewManifestBuilder
 from mt_clip_factory.factory.production_order_service import ProductionOrderService
 from mt_clip_factory.factory.renderers import FFmpegPreviewRenderer
@@ -97,6 +98,11 @@ def build_resource_library_module(
         unit_of_work_factory=uow_factory,
         artifact_generator=artifact_generator,
     )
+    automation_metadata_store = ProductAutomationMetadataStore(config.paths.media_root)
+    caption_runtime_service = CaptionRuntimeService(
+        metadata_store=automation_metadata_store,
+        fonts_root=workspace_root / "fonts",
+    )
     video_assembly_factory_service = VideoAssemblyFactoryService(
         unit_of_work_factory=uow_factory,
         preview_manifest_builder=PreviewManifestBuilder(config.paths.preview_root / "manifests"),
@@ -111,6 +117,7 @@ def build_resource_library_module(
             output_resolution_field="final_output_resolution",
         ),
         system_settings_service=settings_service,
+        caption_runtime_service=caption_runtime_service,
     )
     auto_factory_service = AutoFactoryBatchService(
         product_service=product_service,
@@ -123,6 +130,7 @@ def build_resource_library_module(
         asset_intake_service=asset_intake_service,
         auto_factory_service=auto_factory_service,
         tag_management_service=tag_management_service,
+        automation_metadata_store=automation_metadata_store,
     )
     production_order_service = ProductionOrderService(
         unit_of_work_factory=uow_factory,

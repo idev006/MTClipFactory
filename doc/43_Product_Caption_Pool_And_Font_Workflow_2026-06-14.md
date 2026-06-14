@@ -1,6 +1,6 @@
 # Product Caption Pool And Font Workflow 2026-06-14
 
-This document is the SSOT for product-level caption preparation intended for future automated caption rendering in MTClipFactory.
+This document is the SSOT for product-level caption preparation and the current runtime caption baseline in MTClipFactory.
 
 It complements [18_Composition_and_Timeline_Policy.md](/F:/programming/python/MTClipFactory/doc/18_Composition_and_Timeline_Policy.md), [41_Automation_Tag_Taxonomy_Guide_2026-06-14.md](/F:/programming/python/MTClipFactory/doc/41_Automation_Tag_Taxonomy_Guide_2026-06-14.md), and [42_New_Product_Auto_Factory_Template_Kit_2026-06-14.md](/F:/programming/python/MTClipFactory/doc/42_New_Product_Auto_Factory_Template_Kit_2026-06-14.md).
 
@@ -9,7 +9,7 @@ It complements [18_Composition_and_Timeline_Policy.md](/F:/programming/python/MT
 - give operators one practical structure for product-level caption authoring
 - separate `main caption` from `sub caption` so automation can preserve visual hierarchy
 - define how random caption selection should work without becoming opaque
-- define how project-approved fonts should be prepared before renderer integration
+- define how project-approved fonts should be prepared for the active renderer integration
 
 ## Core Decision
 
@@ -23,7 +23,7 @@ Product caption authoring should use:
 
 ## Caption File Location
 
-Each product automation folder should eventually support:
+Each product automation folder should support:
 
 ```text
 ProductA/
@@ -153,8 +153,8 @@ Recommended example:
 [caption_properties.main]
 position = "center"
 alignment = "center"
-font_family = "Noto Sans Thai"
-font_fallbacks = ["Tahoma", "Arial Unicode MS"]
+font_family = "THSarabun"
+font_fallbacks = ["TH Chakra Petch", "Tahoma", "Arial Unicode MS"]
 font_size = 72
 min_font_size = 48
 font_weight = "bold"
@@ -174,8 +174,8 @@ review_required_if_overflow = true
 [caption_properties.sub]
 position = "bottom"
 alignment = "center"
-font_family = "Noto Sans Thai"
-font_fallbacks = ["Tahoma", "Arial Unicode MS"]
+font_family = "THSarabun"
+font_fallbacks = ["TH Chakra Petch", "Tahoma", "Arial Unicode MS"]
 font_size = 40
 min_font_size = 30
 font_weight = "medium"
@@ -218,7 +218,7 @@ Supported operator-prepared file types:
 - `.ttf`
 - `.otf`
 
-Direction locked for future implementation:
+Current runtime baseline:
 
 1. caption properties use `font_family`
 2. renderer resolves `font_family` against project fonts first

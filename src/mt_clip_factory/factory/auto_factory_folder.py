@@ -15,6 +15,7 @@ from mt_clip_factory.factory.auto_factory_folder_dto import (
     AutoFactoryFolderProductReportDTO,
     AutoFactoryFolderRunReportDTO,
 )
+from mt_clip_factory.factory.caption_runtime import ProductAutomationMetadataStore
 from mt_clip_factory.library.dto import RegisterAssetCommand
 from mt_clip_factory.library.services import AssetIntakeService
 from mt_clip_factory.library.tag_dto import AssignTagToAssetCommand
@@ -54,11 +55,13 @@ class AutoFactoryFolderService:
         asset_intake_service: AssetIntakeService,
         auto_factory_service: AutoFactoryBatchService,
         tag_management_service: TagManagementService,
+        automation_metadata_store: ProductAutomationMetadataStore | None = None,
     ) -> None:
         self._product_service = product_service
         self._asset_intake_service = asset_intake_service
         self._auto_factory_service = auto_factory_service
         self._tag_management_service = tag_management_service
+        self._automation_metadata_store = automation_metadata_store
 
     def _apply_tag_labels_to_asset(self, *, asset_id: int, tag_labels: tuple[str, ...]) -> None:
         for label in tag_labels:
@@ -108,6 +111,11 @@ class AutoFactoryFolderService:
             else:
                 product_id = existing_product_id
                 created_product = False
+
+            self._sync_product_caption_contract(
+                product_code=product_config.product_code,
+                product_dir=product_dir,
+            )
 
             registered_asset_count, skipped_existing_asset_count, product_actions = self._intake_product_assets(
                 product_dir=product_dir,
@@ -214,6 +222,15 @@ class AutoFactoryFolderService:
                 )
 
         return registered_asset_count, skipped_existing_asset_count, actions
+
+    def _sync_product_caption_contract(self, *, product_code: str, product_dir: Path) -> None:
+        if self._automation_metadata_store is None:
+            return
+        source_file = product_dir / "captions.toml"
+        self._automation_metadata_store.sync_caption_contract(
+            product_code=product_code,
+            source_file=source_file if source_file.exists() else None,
+        )
 
 
 def _discover_product_dirs(batch_root: Path, *, scan_depth: int) -> tuple[Path, ...]:

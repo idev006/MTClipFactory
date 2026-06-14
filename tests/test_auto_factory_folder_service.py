@@ -9,6 +9,7 @@ from mt_clip_factory.application.services import ProductApplicationService
 from mt_clip_factory.factory.audio_composition import PreviewAudioMixPlan
 from mt_clip_factory.factory.auto_factory import AutoFactoryBatchService, AutoFactoryCapacityError
 from mt_clip_factory.factory.auto_factory_folder import AutoFactoryFolderContractError, AutoFactoryFolderService
+from mt_clip_factory.factory.caption_runtime import ProductAutomationMetadataStore
 from mt_clip_factory.factory.preview_composition import PreviewSegmentClip
 from mt_clip_factory.factory.preview_artifacts import PreviewManifestBuilder
 from mt_clip_factory.factory.renderers import RenderedPreviewOutput
@@ -89,11 +90,13 @@ def _build_services(unit_of_work_factory, tmp_path: Path, durations_by_name: dic
         asset_intake_service=asset_service,
         video_assembly_factory_service=factory_service,
     )
+    automation_metadata_store = ProductAutomationMetadataStore(tmp_path / "media_library")
     folder_service = AutoFactoryFolderService(
         product_service=product_service,
         asset_intake_service=asset_service,
         auto_factory_service=auto_factory_service,
         tag_management_service=tag_service,
+        automation_metadata_store=automation_metadata_store,
     )
     return product_service, asset_service, factory_service, folder_service, tag_service
 
@@ -164,6 +167,28 @@ def _write_tags_toml(folder_path: Path, *, global_tags: list[str], file_tags: di
     (folder_path / "tags.toml").write_text("\n".join(lines), encoding="utf-8")
 
 
+def _write_captions_toml(product_dir: Path, *, main_text: str = "พลังบวกทุกวัน") -> None:
+    (product_dir / "captions.toml").write_text(
+        "\n".join(
+            [
+                "[caption_selection]",
+                'mode = "random_with_seed"',
+                "",
+                "[caption_pools.hook]",
+                f'main = ["{main_text}"]',
+                'sub = ["เริ่มต้นวันใหม่"]',
+                "",
+                "[caption_properties.main]",
+                'font_family = "THSarabun"',
+                "",
+                "[caption_properties.sub]",
+                'font_family = "THSarabun"',
+            ]
+        ),
+        encoding="utf-8",
+    )
+
+
 def test_folder_service_creates_products_registers_assets_and_materializes_batch(unit_of_work_factory, tmp_path) -> None:
     _, asset_service, factory_service, folder_service, _ = _build_services(
         unit_of_work_factory,
@@ -223,6 +248,34 @@ def test_folder_service_skips_existing_assets_when_rerun(unit_of_work_factory, t
     assert second_report.product_reports[0].registered_asset_count == 0
     assert second_report.product_reports[0].skipped_existing_asset_count == 5
     assert len(asset_service.list_assets()) == 5
+
+
+def test_folder_service_syncs_caption_contract_into_runtime_metadata(unit_of_work_factory, tmp_path) -> None:
+    _, _, _, folder_service, _ = _build_services(
+        unit_of_work_factory,
+        tmp_path,
+        {"voice_a.mp3": 15.0},
+    )
+    batch_root = tmp_path / "batch_root"
+    product_dir = _write_product_folder(
+        batch_root,
+        folder_name="ProductA",
+        product_code="product_a",
+        product_name="Product A",
+        requested_output_count=1,
+    )
+    _write_captions_toml(product_dir, main_text="ข้อความชุดแรก")
+
+    folder_service.run_batch_root(batch_root, materialize=False)
+    runtime_caption_path = tmp_path / "media_library" / "products" / "product_a" / "automation" / "captions.toml"
+
+    assert runtime_caption_path.exists()
+    assert "ข้อความชุดแรก" in runtime_caption_path.read_text(encoding="utf-8")
+
+    (product_dir / "captions.toml").unlink()
+    folder_service.run_batch_root(batch_root, materialize=False)
+
+    assert not runtime_caption_path.exists()
 
 
 def test_folder_service_propagates_capacity_shortfall(unit_of_work_factory, tmp_path) -> None:

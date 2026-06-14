@@ -154,6 +154,7 @@ def build_output_detail_lines(
     lines.extend(_build_manifest_review_lines(output.manifest_path))
     lines.extend(_build_manifest_audio_lines(output.manifest_path))
     lines.extend(_build_manifest_visual_lines(output.manifest_path))
+    lines.extend(_build_manifest_caption_lines(output.manifest_path))
     return lines
 
 
@@ -250,6 +251,46 @@ def _build_manifest_visual_lines(manifest_path: str | None) -> list[str]:
                 )
         if len(segments) > 5:
             lines.append(f"- More Segment Composites: {len(segments) - 5}")
+    return lines
+
+
+def _build_manifest_caption_lines(manifest_path: str | None) -> list[str]:
+    payload = _read_manifest_payload(manifest_path)
+    captions = payload.get("captions")
+    if not isinstance(captions, dict) or not captions.get("enabled"):
+        return []
+    lines = [
+        "",
+        "Runtime Captions:",
+        f"- Segment Count: {captions.get('segment_count', '-')}",
+        f"- Role Count: {captions.get('role_count', '-')}",
+        f"- Overflow Role Count: {captions.get('overflow_role_count', '-')}",
+        f"- Review Required Role Count: {captions.get('review_required_role_count', '-')}",
+    ]
+    segments = captions.get("segments")
+    if isinstance(segments, list):
+        for segment in segments[:5]:
+            if not isinstance(segment, dict):
+                continue
+            segment_prefix = (
+                f"- Caption Segment: #{segment.get('sequence_index', '-')} "
+                f"{segment.get('segment_type', '-')}"
+            )
+            lines.append(segment_prefix)
+            roles = segment.get("roles")
+            if not isinstance(roles, list):
+                continue
+            for role in roles[:2]:
+                if not isinstance(role, dict):
+                    continue
+                lines.append(
+                    f"- Caption Role: {role.get('role', '-')} | fit={role.get('fit_strategy', '-')} "
+                    f"| font={role.get('font_resolution_target', role.get('font_family', '-'))} "
+                    f"| review={role.get('review_required', '-')}"
+                )
+                lines.append(f"- Caption Text: {role.get('rendered_text', '-')}")
+        if len(segments) > 5:
+            lines.append(f"- More Caption Segments: {len(segments) - 5}")
     return lines
 
 

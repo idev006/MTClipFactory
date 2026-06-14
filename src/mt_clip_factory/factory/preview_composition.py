@@ -9,6 +9,7 @@ from mt_clip_factory.domain.composition_plans import CompositionPlan
 from mt_clip_factory.domain.recipes import Recipe, RecipeItem
 from mt_clip_factory.domain.timeline_segments import TimelineSegment
 from mt_clip_factory.factory.audio_composition import PreviewAudioMixPlan, build_audio_mix_plan
+from mt_clip_factory.factory.caption_runtime import CaptionRuntimeService, ResolvedCaptionRole, ResolvedSegmentCaptions
 
 
 VISUAL_LAYER_FALLBACK = ("product_focus_visual", "background_visual")
@@ -39,6 +40,7 @@ class PreviewSegmentClip:
     text_rule: str | None = None
     audio_policy: str | None = None
     background_layer: PreviewLayerClip | None = None
+    captions: tuple[ResolvedCaptionRole, ...] = ()
 
 
 @dataclass(slots=True, frozen=True)
@@ -57,9 +59,16 @@ def build_segmented_preview_composition(
     assets: dict[int, Asset],
     plan: CompositionPlan,
     segments: Sequence[TimelineSegment],
+    caption_runtime_service: CaptionRuntimeService | None = None,
 ) -> PreviewComposition:
     visual_assets_by_layer = _build_visual_assets_by_layer(plan, assets)
     audio_mix_plan = build_audio_mix_plan(plan, assets)
+    resolved_captions = _resolve_segment_captions(
+        caption_runtime_service=caption_runtime_service,
+        product_code=product_code,
+        recipe_code=recipe.recipe_code,
+        segments=segments,
+    )
     if not visual_assets_by_layer:
         return PreviewComposition(
             manifest_payload=_build_manifest_payload(
@@ -68,6 +77,7 @@ def build_segmented_preview_composition(
                 items=items,
                 plan=plan,
                 segments=(),
+                resolved_captions=resolved_captions,
             ),
             source_files=(),
             segment_clips=(),
@@ -75,7 +85,11 @@ def build_segmented_preview_composition(
         )
 
     segment_clips = tuple(
-        _build_segment_clip(segment, visual_assets_by_layer)
+        _build_segment_clip(
+            segment,
+            visual_assets_by_layer,
+            captions_by_sequence=resolved_captions,
+        )
         for segment in segments
     )
     if not segment_clips:
@@ -87,6 +101,7 @@ def build_segmented_preview_composition(
                 items=items,
                 plan=plan,
                 segments=(),
+                resolved_captions=resolved_captions,
             ),
             source_files=source_files,
             segment_clips=(),
@@ -99,6 +114,7 @@ def build_segmented_preview_composition(
             items=items,
             plan=plan,
             segments=segment_clips,
+            resolved_captions=resolved_captions,
         ),
         source_files=tuple(clip.source_file for clip in segment_clips),
         segment_clips=segment_clips,
@@ -125,6 +141,8 @@ def _build_visual_assets_by_layer(plan: CompositionPlan, assets: dict[int, Asset
 def _build_segment_clip(
     segment: TimelineSegment,
     visual_assets_by_layer: dict[str, tuple[Asset, ...]],
+    *,
+    captions_by_sequence: dict[int, ResolvedSegmentCaptions],
 ) -> PreviewSegmentClip:
     background_layer = _build_optional_layer_clip(
         segment,
@@ -159,6 +177,11 @@ def _build_segment_clip(
         text_rule=segment.text_rule,
         audio_policy=segment.audio_policy,
         background_layer=background_layer if foreground_layer is not None else None,
+        captions=(
+            captions_by_sequence[segment.sequence_index].roles
+            if segment.sequence_index in captions_by_sequence
+            else ()
+        ),
     )
 
 
@@ -219,6 +242,7 @@ def _build_manifest_payload(
     items: Sequence[RecipeItem],
     plan: CompositionPlan,
     segments: Sequence[PreviewSegmentClip],
+    resolved_captions: dict[int, ResolvedSegmentCaptions],
 ) -> dict:
     return {
         "composition_plan": {
@@ -266,6 +290,7 @@ def _build_manifest_payload(
             }
             for segment in segments
         ],
+        "captions": _build_caption_manifest_payload(resolved_captions),
         "status": recipe.status.value,
         "target_platform": recipe.target_platform,
         "target_ratio": recipe.target_ratio,
@@ -281,3 +306,75 @@ def _dedupe_files(file_paths: Sequence[str]) -> list[Path]:
         seen.add(file_path)
         ordered.append(Path(file_path))
     return ordered
+
+
+def _resolve_segment_captions(
+    *,
+    caption_runtime_service: CaptionRuntimeService | None,
+    product_code: str,
+    recipe_code: str,
+    segments: Sequence[TimelineSegment],
+) -> dict[int, ResolvedSegmentCaptions]:
+    if caption_runtime_service is None:
+        return {}
+    resolved_segments = caption_runtime_service.resolve_for_segments(
+        product_code=product_code,
+        recipe_code=recipe_code,
+        segments=tuple(segments),
+    )
+    return {segment.sequence_index: segment for segment in resolved_segments}
+
+
+def _build_caption_manifest_payload(resolved_captions: dict[int, ResolvedSegmentCaptions]) -> dict:
+    caption_segments = [resolved_captions[index] for index in sorted(resolved_captions)]
+    all_roles = [role for segment in caption_segments for role in segment.roles]
+    return {
+        "enabled": bool(caption_segments),
+        "segment_count": len(caption_segments),
+        "role_count": len(all_roles),
+        "overflow_role_count": sum(1 for role in all_roles if role.overflowed),
+        "review_required_role_count": sum(1 for role in all_roles if role.review_required),
+        "segments": [
+            {
+                "sequence_index": segment.sequence_index,
+                "segment_type": segment.segment_type,
+                "roles": [
+                    {
+                        "role": role.role,
+                        "source_text": role.source_text,
+                        "rendered_text": role.rendered_text,
+                        "seed_key": role.seed_key,
+                        "selection_index": role.selection_index,
+                        "line_break_mode": role.line_break_mode,
+                        "fit_strategy": role.fit_strategy,
+                        "line_count": role.line_count,
+                        "font_family": role.font_family,
+                        "font_source": role.font_source,
+                        "font_resolution_mode": role.font_resolution_mode,
+                        "font_resolution_target": role.font_resolution_target,
+                        "font_file": None if role.font_file is None else str(role.font_file),
+                        "font_size": role.font_size,
+                        "min_font_size": role.min_font_size,
+                        "position": role.position,
+                        "alignment": role.alignment,
+                        "text_color": role.text_color,
+                        "stroke_color": role.stroke_color,
+                        "stroke_width": role.stroke_width,
+                        "background_color": role.background_color,
+                        "background_opacity": role.background_opacity,
+                        "padding": role.padding,
+                        "max_lines": role.max_lines,
+                        "max_chars_per_line": role.max_chars_per_line,
+                        "max_width_ratio": role.max_width_ratio,
+                        "overflow_policy": role.overflow_policy,
+                        "enter_animation": role.enter_animation,
+                        "overflowed": role.overflowed,
+                        "review_required": role.review_required,
+                        "truncated_for_runtime": role.truncated_for_runtime,
+                    }
+                    for role in segment.roles
+                ],
+            }
+            for segment in caption_segments
+        ],
+    }
