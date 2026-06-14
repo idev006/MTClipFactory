@@ -11,6 +11,7 @@ from mt_clip_factory.domain.timeline_segments import TimelineSegment
 from mt_clip_factory.factory.audio_composition import PreviewAudioMixPlan, build_audio_mix_plan
 from mt_clip_factory.factory.automation_policy import ProductAutomationPolicyService, default_fill_policies
 from mt_clip_factory.factory.caption_runtime import CaptionRuntimeService, ResolvedCaptionRole, ResolvedSegmentCaptions
+from mt_clip_factory.factory.visual_selection import seeded_cycled_choice
 
 
 VISUAL_LAYER_FALLBACK = ("product_focus_visual", "background_visual")
@@ -62,6 +63,7 @@ def build_segmented_preview_composition(
     segments: Sequence[TimelineSegment],
     caption_runtime_service: CaptionRuntimeService | None = None,
     automation_policy_service: ProductAutomationPolicyService | None = None,
+    caption_frame_size: tuple[int, int] | None = None,
 ) -> PreviewComposition:
     fill_policies = (
         default_fill_policies()
@@ -75,6 +77,7 @@ def build_segmented_preview_composition(
         product_code=product_code,
         recipe_code=recipe.recipe_code,
         segments=segments,
+        frame_size=caption_frame_size,
     )
     if not visual_assets_by_layer:
         return PreviewComposition(
@@ -96,6 +99,7 @@ def build_segmented_preview_composition(
         _build_segment_clip(
             segment,
             visual_assets_by_layer,
+            recipe_code=recipe.recipe_code,
             captions_by_sequence=resolved_captions,
             fill_policies=fill_policies,
         )
@@ -153,18 +157,21 @@ def _build_segment_clip(
     segment: TimelineSegment,
     visual_assets_by_layer: dict[str, tuple[Asset, ...]],
     *,
+    recipe_code: str,
     captions_by_sequence: dict[int, ResolvedSegmentCaptions],
     fill_policies,
 ) -> PreviewSegmentClip:
     background_layer = _build_optional_layer_clip(
         segment,
         visual_assets_by_layer,
+        recipe_code=recipe_code,
         layer_name="background_visual",
         fill_policy=fill_policies.background_video,
     )
     foreground_layer = _build_optional_layer_clip(
         segment,
         visual_assets_by_layer,
+        recipe_code=recipe_code,
         layer_name="product_focus_visual",
         fill_policy=fill_policies.foreground_video,
     )
@@ -173,7 +180,12 @@ def _build_segment_clip(
         layer_name, candidate_assets = _resolve_candidate_assets(segment, visual_assets_by_layer)
         primary_layer = _build_layer_clip(
             layer_name=layer_name,
-            asset=candidate_assets[(segment.sequence_index - 1) % len(candidate_assets)],
+            asset=_select_visual_asset(
+                candidate_assets,
+                recipe_code=recipe_code,
+                segment=segment,
+                layer_name=layer_name,
+            ),
             target_duration_sec=segment.target_duration_sec,
             fill_policy=(
                 fill_policies.background_video
@@ -208,13 +220,19 @@ def _build_optional_layer_clip(
     segment: TimelineSegment,
     visual_assets_by_layer: dict[str, tuple[Asset, ...]],
     *,
+    recipe_code: str,
     layer_name: str,
     fill_policy=None,
 ) -> PreviewLayerClip | None:
     candidate_assets = visual_assets_by_layer.get(layer_name)
     if not candidate_assets:
         return None
-    asset = candidate_assets[(segment.sequence_index - 1) % len(candidate_assets)]
+    asset = _select_visual_asset(
+        candidate_assets,
+        recipe_code=recipe_code,
+        segment=segment,
+        layer_name=layer_name,
+    )
     return _build_layer_clip(
         layer_name=layer_name,
         asset=asset,
@@ -339,15 +357,38 @@ def _resolve_segment_captions(
     product_code: str,
     recipe_code: str,
     segments: Sequence[TimelineSegment],
+    frame_size: tuple[int, int] | None,
 ) -> dict[int, ResolvedSegmentCaptions]:
     if caption_runtime_service is None:
         return {}
+    frame_width_px, frame_height_px = (None, None) if frame_size is None else frame_size
     resolved_segments = caption_runtime_service.resolve_for_segments(
         product_code=product_code,
         recipe_code=recipe_code,
         segments=tuple(segments),
+        frame_width_px=frame_width_px,
+        frame_height_px=frame_height_px,
     )
     return {segment.sequence_index: segment for segment in resolved_segments}
+
+
+def _select_visual_asset(
+    candidate_assets: tuple[Asset, ...],
+    *,
+    recipe_code: str,
+    segment: TimelineSegment,
+    layer_name: str,
+) -> Asset:
+    return seeded_cycled_choice(
+        candidate_assets,
+        seed_key="|".join(
+            (
+                recipe_code,
+                layer_name,
+            )
+        ),
+        position=segment.sequence_index - 1,
+    )
 
 
 def _build_caption_manifest_payload(resolved_captions: dict[int, ResolvedSegmentCaptions]) -> dict:
@@ -368,6 +409,7 @@ def _build_caption_manifest_payload(resolved_captions: dict[int, ResolvedSegment
                         "role": role.role,
                         "source_text": role.source_text,
                         "rendered_text": role.rendered_text,
+                        "rendered_lines": list(role.rendered_lines),
                         "seed_key": role.seed_key,
                         "selection_index": role.selection_index,
                         "line_break_mode": role.line_break_mode,
@@ -379,6 +421,8 @@ def _build_caption_manifest_payload(resolved_captions: dict[int, ResolvedSegment
                         "font_resolution_target": role.font_resolution_target,
                         "font_file": None if role.font_file is None else str(role.font_file),
                         "font_size": role.font_size,
+                        "requested_font_size": role.requested_font_size,
+                        "font_size_unit": role.font_size_unit,
                         "min_font_size": role.min_font_size,
                         "position": role.position,
                         "alignment": role.alignment,
@@ -391,6 +435,21 @@ def _build_caption_manifest_payload(resolved_captions: dict[int, ResolvedSegment
                         "max_lines": role.max_lines,
                         "max_chars_per_line": role.max_chars_per_line,
                         "max_width_ratio": role.max_width_ratio,
+                        "line_spacing_ratio": role.line_spacing_ratio,
+                        "line_spacing_px": role.line_spacing_px,
+                        "line_widths_px": list(role.line_widths_px),
+                        "line_height_px": role.line_height_px,
+                        "text_block_width_px": role.text_block_width_px,
+                        "text_block_height_px": role.text_block_height_px,
+                        "max_text_width_px": role.max_text_width_px,
+                        "line_left_positions_px": list(role.line_left_positions_px),
+                        "line_top_positions_px": list(role.line_top_positions_px),
+                        "box_left_px": role.box_left_px,
+                        "box_top_px": role.box_top_px,
+                        "box_width_px": role.box_width_px,
+                        "box_height_px": role.box_height_px,
+                        "frame_width_px": role.frame_width_px,
+                        "frame_height_px": role.frame_height_px,
                         "overflow_policy": role.overflow_policy,
                         "enter_animation": role.enter_animation,
                         "overflowed": role.overflowed,

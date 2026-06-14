@@ -24,6 +24,7 @@ from mt_clip_factory.factory.dto import (
     PreviewJobSummaryDTO,
 )
 from mt_clip_factory.factory.services import VideoAssemblyFactoryService
+from mt_clip_factory.factory.visual_selection import seeded_order
 from mt_clip_factory.library.dto import AssetSummaryDTO
 from mt_clip_factory.library.services import AssetIntakeService
 
@@ -207,6 +208,26 @@ class AutoFactoryBatchService:
         music_assets = _filter_assets_by_required_tags(
             all_music_assets,
             product_request.music_required_tag_labels,
+        )
+        foreground_assets = seeded_order(
+            foreground_assets,
+            seed_key=f"{batch_code}|{product.product_code}|foreground",
+            item_key=lambda asset: asset.asset_code or str(asset.asset_id),
+        )
+        background_assets = seeded_order(
+            background_assets,
+            seed_key=f"{batch_code}|{product.product_code}|background",
+            item_key=lambda asset: asset.asset_code or str(asset.asset_id),
+        )
+        voice_assets = seeded_order(
+            voice_assets,
+            seed_key=f"{batch_code}|{product.product_code}|voice",
+            item_key=lambda asset: asset.asset_code or str(asset.asset_id),
+        )
+        music_assets = seeded_order(
+            music_assets,
+            seed_key=f"{batch_code}|{product.product_code}|music",
+            item_key=lambda asset: asset.asset_code or str(asset.asset_id),
         )
 
         if not foreground_assets and not background_assets:

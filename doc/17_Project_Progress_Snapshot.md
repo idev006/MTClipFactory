@@ -73,6 +73,7 @@
 - Preview and final render can now resolve product-level caption pools into real main/sub overlays with deterministic seed behavior, workspace-font resolution, manual `\n` handling, and review-visible overflow evidence.
 - Auto-mode now also writes product-local `runs/<batch_code>` artifacts plus per-asset-type fill policy so operators can audit reruns near the source product folder itself.
 - A live `Biothentic0001` product-folder audit has now verified the real operator loop: initial review-gate truth on narrow filters plus long captions, operator contract correction in `pipeline.toml` and `captions.toml`, clean rerun previews, and one approved final output written back into the product folder.
+- Caption runtime now uses pixel-based measurement plus per-line placement, and auto-mode visual selection now applies seeded diversity so outputs stay deterministic without feeling as repetitive.
 - An enterprise pipeline review and architecture blueprint now exist so the project can grow into a true Video Production Factory instead of accumulating disconnected automation slices.
 - Production orders and orchestration stages are now persisted independently from recipe rows, giving the system a first real control-plane baseline for automated factory runs.
 - The `Tags` screen now provides guided group reuse plus product/status/search filtering so operators can narrow the asset list before assigning labels.
@@ -93,6 +94,9 @@
 - delivered runtime cache sync for `pipeline.toml` plus `context.toml` so reruns can recover product-local automation context without the original browse session
 - delivered per-asset-type fill policy parsing and renderer/runtime evidence for loop, silence-tail, freeze-last-frame, trim, and review-visible shortfall behavior
 - completed a real `Biothentic0001` live audit, including one initial review-required run, operator-level contract correction, one clean rerun with `3/3` preview success, and one approved final render stored under the product-local `runs/<batch_code>/finals/videos` path
+- delivered a pixel-based caption layout engine with point-to-pixel sizing, per-line width measurement, per-line alignment coordinates, box geometry, and manifest-visible layout evidence
+- delivered seeded diversity ordering plus seeded visual cycling so foreground/background choices vary more across recipes while staying rerun-safe
+- completed a live `Biothentic0001` spot-check on the new caption layout engine and verified manifest-visible pixel layout fields on a real `1080x1920` preview output
 - delivered a real desktop `Auto Factory` control surface with guided root-folder browse, batch-code override, `scan_depth`, and explicit run-mode selection
 - delivered truthful in-app reporting for discovered product folders, product create/reuse outcomes, deterministic asset intake actions, recent production orders, and stage-by-stage order results
 - delivered a UI orchestration seam that performs folder intake first and then routes materialize/preview runs through persisted `ProductionOrderService` control-plane records
@@ -106,5 +110,5 @@
 
 ## Verification Baseline
 
-- `python -m pytest` in `.venv`: `202 passed, 4 warnings`
+- `python -m pytest` in `.venv`: `204 passed, 4 warnings`
 - targeted `QT_QPA_PLATFORM=offscreen` UI/theme coverage for the new `Auto Factory` window and existing app windows: passed

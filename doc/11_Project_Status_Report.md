@@ -72,6 +72,9 @@
 - product-local auto-mode run artifacts now write preview/final outputs, manifests, order snapshots, and append-only journal events under `runs/<batch_code>` inside the source product folder when auto-mode knows that source folder
 - auto-mode now also reads product-level per-asset-type fill policy from `pipeline.toml`, including loop, silence-tail, freeze-last-frame, and review-visible shortfall behavior by asset type
 - a real `Biothentic0001` live auto-mode audit has now validated product-local preview/final artifact paths, journal creation, manifest evidence, caption runtime behavior, and operator-facing contract tuning on an external product folder
+- pixel-based caption layout now measures text against the real frame in pixels, supports point-to-pixel conversion, computes per-line alignment positions, and writes per-line caption layout evidence into manifests
+- auto-mode visual selection now also uses seeded diversity ordering and seeded per-segment cycling so reruns stay deterministic while multi-recipe output feels less repetitive
+- a live `Biothentic0001` spot-check has now validated the new pixel-layout caption manifest evidence on a real `1080x1920` preview output
 - assets can now be safely renamed or deleted from the `Assets` screen, with repository checks that block deletion when recipe-item or artifact-job references still exist
 - the `Assets` screen now supports `Show References`, `Retire Selected`, and `Purge Media` so referenced assets can leave active use and disk without destroying audit truth
 - the `Assets` screen now also supports `Replace In Recipes...` with recipe-safe validation, recipe reset-to-candidate behavior, and approval guards that prevent stale pre-replacement outputs from being reused as evidence for changed recipes
@@ -104,7 +107,7 @@
 
 ## Verification Baseline
 
-- `python -m pytest` via `.venv`: `202 passed, 4 warnings`
+- `python -m pytest` via `.venv`: `204 passed, 4 warnings`
 - targeted `QT_QPA_PLATFORM=offscreen` UI coverage for the new `Auto Factory` window and existing themed windows: passed
 
 ## Current Focus
@@ -128,6 +131,7 @@
 - validate whether the new production-order orchestration model remains stable enough to carry future lease and multi-worker execution semantics
 - keep project documents truthful through per-milestone revision checkpoints
 - validate the same product-local auto-mode audit seam across additional products beyond `Biothentic0001`
+- validate the new pixel-based caption layout and seeded clip diversity seam on additional products beyond `Biothentic0001`
 
 ## Next Steps
 

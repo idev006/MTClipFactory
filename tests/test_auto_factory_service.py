@@ -200,6 +200,43 @@ def test_auto_factory_plans_batch_unique_variants(unit_of_work_factory, tmp_path
     ]
 
 
+def test_auto_factory_keeps_seeded_visual_order_deterministic_per_batch(unit_of_work_factory, tmp_path) -> None:
+    product_service = ProductApplicationService(unit_of_work_factory=unit_of_work_factory)
+    product_id = product_service.create_product(CreateProductCommand(product_code="seeded", product_name="Seeded"))
+    asset_service = _build_asset_service(unit_of_work_factory, tmp_path / "media_library", {"voice_01.mp3": 12.0})
+    _register_asset(asset_service, product_id=product_id, tmp_path=tmp_path, asset_type="foreground_video", asset_code="fg_01", file_name="fg01.mp4")
+    _register_asset(asset_service, product_id=product_id, tmp_path=tmp_path, asset_type="foreground_video", asset_code="fg_02", file_name="fg02.mp4")
+    _register_asset(asset_service, product_id=product_id, tmp_path=tmp_path, asset_type="foreground_video", asset_code="fg_03", file_name="fg03.mp4")
+    _register_asset(asset_service, product_id=product_id, tmp_path=tmp_path, asset_type="background_video", asset_code="bg_01", file_name="bg01.mp4")
+    service = _build_auto_factory_service(unit_of_work_factory, tmp_path, {"voice_01.mp3": 12.0})
+
+    first = service.plan_batch(
+        AutoFactoryBatchOrderDTO(
+            batch_code="seed_batch",
+            product_requests=(AutoFactoryProductRequestDTO(product_code="seeded", requested_output_count=2),),
+        )
+    )
+    second = service.plan_batch(
+        AutoFactoryBatchOrderDTO(
+            batch_code="seed_batch",
+            product_requests=(AutoFactoryProductRequestDTO(product_code="seeded", requested_output_count=2),),
+        )
+    )
+    third = service.plan_batch(
+        AutoFactoryBatchOrderDTO(
+            batch_code="other_batch",
+            product_requests=(AutoFactoryProductRequestDTO(product_code="seeded", requested_output_count=2),),
+        )
+    )
+
+    first_hook_codes = [assignment.asset_code for assignment in first.planned_recipes[0].assignments if assignment.role == "hook"]
+    second_hook_codes = [assignment.asset_code for assignment in second.planned_recipes[0].assignments if assignment.role == "hook"]
+    third_hook_codes = [assignment.asset_code for assignment in third.planned_recipes[0].assignments if assignment.role == "hook"]
+
+    assert first_hook_codes == second_hook_codes
+    assert first.planned_recipes[0].fingerprint != third.planned_recipes[0].fingerprint
+
+
 def test_auto_factory_reports_shortfall_and_blocks_strict_materialization(unit_of_work_factory, tmp_path) -> None:
     product_service = ProductApplicationService(unit_of_work_factory=unit_of_work_factory)
     product_id = product_service.create_product(CreateProductCommand(product_code="tea", product_name="Tea"))

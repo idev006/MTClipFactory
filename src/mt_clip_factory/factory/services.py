@@ -31,6 +31,7 @@ from mt_clip_factory.factory.product_run_store import ProductRunArtifactStore
 from mt_clip_factory.factory.renderers import RenderedPreviewOutput
 from mt_clip_factory.factory.recipe_scoring import score_and_persist_recipe
 from mt_clip_factory.factory.review_gate import apply_review_gate, assess_review_gate, review_gate_manifest_payload, review_settings_from_provider
+from mt_clip_factory.factory.video_frame_normalization import resolve_output_dimensions
 from mt_clip_factory.factory.service_errors import (
     AssetNotReadyForRecipeError,
     FactoryJobNotFoundError,
@@ -454,6 +455,11 @@ class VideoAssemblyFactoryService:
                     segments=persisted.segments,
                     caption_runtime_service=self._caption_runtime_service,
                     automation_policy_service=self._automation_policy_service,
+                    caption_frame_size=_resolve_caption_frame_size(
+                        system_settings_service=self._system_settings_service,
+                        target_ratio=recipe.target_ratio,
+                        output_resolution_field="preview_output_resolution",
+                    ),
                 )
                 if not composition.source_files:
                     raise PreviewBuildInputError(f"Recipe {recipe.recipe_code} has no renderable video assets.")
@@ -637,6 +643,11 @@ class VideoAssemblyFactoryService:
                     segments=persisted.segments,
                     caption_runtime_service=self._caption_runtime_service,
                     automation_policy_service=self._automation_policy_service,
+                    caption_frame_size=_resolve_caption_frame_size(
+                        system_settings_service=self._system_settings_service,
+                        target_ratio=recipe.target_ratio,
+                        output_resolution_field="final_output_resolution",
+                    ),
                 )
                 if not composition.source_files:
                     raise FinalRenderPrerequisiteError(f"Recipe {recipe.recipe_code} has no renderable video assets.")
@@ -828,3 +839,14 @@ class VideoAssemblyFactoryService:
             if created.id is None:
                 raise RuntimeError("Recipe job identifier was not assigned.")
             return created.id
+
+
+def _resolve_caption_frame_size(*, system_settings_service, target_ratio: str | None, output_resolution_field: str) -> tuple[int, int] | None:
+    output_resolution = None
+    if system_settings_service is not None:
+        settings = system_settings_service.load()
+        output_resolution = getattr(settings, output_resolution_field, "") or None
+    return resolve_output_dimensions(
+        target_ratio=target_ratio,
+        output_resolution=output_resolution,
+    )

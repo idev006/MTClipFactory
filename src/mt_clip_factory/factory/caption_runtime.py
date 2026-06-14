@@ -4,10 +4,10 @@ from dataclasses import dataclass
 import hashlib
 from pathlib import Path
 import shutil
-import textwrap
 import tomllib
 
 from mt_clip_factory.domain.timeline_segments import TimelineSegment
+from mt_clip_factory.factory.caption_layout import CaptionFrameContext, resolve_caption_layout
 
 
 class CaptionContractError(ValueError):
@@ -33,6 +33,7 @@ class CaptionRoleStyle:
     font_family: str
     font_fallbacks: tuple[str, ...]
     font_size: int
+    font_size_unit: str
     min_font_size: int
     font_weight: str
     text_color: str
@@ -44,6 +45,7 @@ class CaptionRoleStyle:
     max_lines: int
     max_chars_per_line: int
     max_width_ratio: float
+    line_spacing_ratio: float
     overflow_policy: str
     enter_animation: str | None
     review_required_if_overflow: bool
@@ -62,6 +64,7 @@ class ResolvedCaptionRole:
     role: str
     source_text: str
     rendered_text: str
+    rendered_lines: tuple[str, ...]
     segment_type: str
     sequence_index: int
     seed_key: str
@@ -72,6 +75,8 @@ class ResolvedCaptionRole:
     font_family: str
     font_fallbacks: tuple[str, ...]
     font_size: int
+    requested_font_size: int
+    font_size_unit: str
     min_font_size: int
     font_weight: str
     font_source: str
@@ -89,6 +94,21 @@ class ResolvedCaptionRole:
     max_lines: int
     max_chars_per_line: int
     max_width_ratio: float
+    line_spacing_ratio: float
+    line_spacing_px: int
+    line_widths_px: tuple[int, ...]
+    line_height_px: int
+    text_block_width_px: int
+    text_block_height_px: int
+    max_text_width_px: int
+    line_left_positions_px: tuple[int, ...]
+    line_top_positions_px: tuple[int, ...]
+    box_left_px: int
+    box_top_px: int
+    box_width_px: int
+    box_height_px: int
+    frame_width_px: int
+    frame_height_px: int
     overflow_policy: str
     enter_animation: str | None
     overflowed: bool
@@ -205,10 +225,17 @@ class CaptionRuntimeService:
         product_code: str,
         recipe_code: str,
         segments: tuple[TimelineSegment, ...],
+        frame_width_px: int | None = None,
+        frame_height_px: int | None = None,
     ) -> tuple[ResolvedSegmentCaptions, ...]:
         contract = self._load_contract(product_code)
         if contract is None:
             return ()
+        frame = (
+            None
+            if frame_width_px is None or frame_height_px is None
+            else CaptionFrameContext(width_px=frame_width_px, height_px=frame_height_px)
+        )
         resolved_segments: list[ResolvedSegmentCaptions] = []
         for segment in segments:
             pool = contract.pools.get(segment.segment_type)
@@ -225,6 +252,7 @@ class CaptionRuntimeService:
                         options=pool.main,
                         style=contract.main_style,
                         selection=contract.selection,
+                        frame=frame,
                     )
                 )
             if pool.sub:
@@ -237,6 +265,7 @@ class CaptionRuntimeService:
                         options=pool.sub,
                         style=contract.sub_style,
                         selection=contract.selection,
+                        frame=frame,
                     )
                 )
             if roles:
@@ -289,6 +318,7 @@ class CaptionRuntimeService:
         options: tuple[str, ...],
         style: CaptionRoleStyle,
         selection: CaptionSelectionPolicy,
+        frame: CaptionFrameContext | None,
     ) -> ResolvedCaptionRole:
         selection_index, seed_key = _select_index(
             option_count=len(options),
@@ -299,27 +329,47 @@ class CaptionRuntimeService:
             seed_scope=selection.seed_scope,
         )
         source_text = options[selection_index]
-        fitted = _fit_caption_text(source_text, style=style)
         font_file, resolved_font_name, resolution_mode = _resolve_font(
             fonts_root=self._fonts_root,
             font_family=style.font_family,
             fallbacks=style.font_fallbacks,
         )
+        layout = resolve_caption_layout(
+            source_text=source_text,
+            frame=frame,
+            font_family=style.font_family,
+            font_file=font_file,
+            requested_font_size=style.font_size,
+            font_size_unit=style.font_size_unit,
+            min_font_size=style.min_font_size,
+            max_lines=style.max_lines,
+            max_chars_per_line=style.max_chars_per_line,
+            max_width_ratio=style.max_width_ratio,
+            line_spacing_ratio=style.line_spacing_ratio,
+            padding=style.padding,
+            alignment=style.alignment,
+            position=style.position,
+            overflow_policy=style.overflow_policy,
+            review_required_if_overflow=style.review_required_if_overflow,
+        )
         font_source = str(font_file) if font_file is not None else resolved_font_name
         return ResolvedCaptionRole(
             role=role,
             source_text=source_text,
-            rendered_text=fitted["rendered_text"],
+            rendered_text=layout.rendered_text,
+            rendered_lines=layout.rendered_lines,
             segment_type=segment.segment_type,
             sequence_index=segment.sequence_index,
             seed_key=seed_key,
             selection_index=selection_index,
-            line_break_mode=fitted["line_break_mode"],
-            fit_strategy=fitted["fit_strategy"],
-            line_count=fitted["line_count"],
+            line_break_mode=layout.line_break_mode,
+            fit_strategy=layout.fit_strategy,
+            line_count=len(layout.rendered_lines),
             font_family=style.font_family,
             font_fallbacks=style.font_fallbacks,
-            font_size=fitted["font_size"],
+            font_size=layout.font_size_px,
+            requested_font_size=style.font_size,
+            font_size_unit=style.font_size_unit,
             min_font_size=style.min_font_size,
             font_weight=style.font_weight,
             font_source=font_source,
@@ -337,11 +387,26 @@ class CaptionRuntimeService:
             max_lines=style.max_lines,
             max_chars_per_line=style.max_chars_per_line,
             max_width_ratio=style.max_width_ratio,
+            line_spacing_ratio=style.line_spacing_ratio,
+            line_spacing_px=layout.line_spacing_px,
+            line_widths_px=layout.line_widths_px,
+            line_height_px=layout.line_height_px,
+            text_block_width_px=layout.text_block_width_px,
+            text_block_height_px=layout.text_block_height_px,
+            max_text_width_px=layout.max_text_width_px,
+            line_left_positions_px=layout.line_left_positions_px,
+            line_top_positions_px=layout.line_top_positions_px,
+            box_left_px=layout.box_left_px,
+            box_top_px=layout.box_top_px,
+            box_width_px=layout.box_width_px,
+            box_height_px=layout.box_height_px,
+            frame_width_px=layout.frame_width_px,
+            frame_height_px=layout.frame_height_px,
             overflow_policy=style.overflow_policy,
             enter_animation=style.enter_animation,
-            overflowed=fitted["overflowed"],
-            review_required=fitted["review_required"],
-            truncated_for_runtime=fitted["truncated_for_runtime"],
+            overflowed=layout.overflowed,
+            review_required=layout.review_required,
+            truncated_for_runtime=layout.truncated_for_runtime,
         )
 
 
@@ -372,6 +437,7 @@ def _parse_role_style(value, *, role: str) -> CaptionRoleStyle:
         font_family=_optional_text(section.get("font_family")) or "Arial",
         font_fallbacks=_text_list(section.get("font_fallbacks"), context=f"[caption_properties.{role}].font_fallbacks"),
         font_size=_positive_int(section.get("font_size"), default=default_font_size, context=f"[caption_properties.{role}].font_size"),
+        font_size_unit=_optional_text(section.get("font_size_unit")) or "px",
         min_font_size=_positive_int(
             section.get("min_font_size"),
             default=default_min_font_size,
@@ -407,6 +473,13 @@ def _parse_role_style(value, *, role: str) -> CaptionRoleStyle:
             maximum=1.0,
             context=f"[caption_properties.{role}].max_width_ratio",
         ),
+        line_spacing_ratio=_bounded_float(
+            section.get("line_spacing_ratio"),
+            default=0.12 if role == "main" else 0.16,
+            minimum=0.0,
+            maximum=1.0,
+            context=f"[caption_properties.{role}].line_spacing_ratio",
+        ),
         overflow_policy=_optional_text(section.get("overflow_policy")) or default_overflow_policy,
         enter_animation=_optional_text(section.get("enter_animation")) or default_animation,
         review_required_if_overflow=_boolean(
@@ -441,70 +514,6 @@ def _select_index(
     digest = hashlib.sha256(seed_key.encode("utf-8")).digest()
     selection_index = int.from_bytes(digest[:8], "big") % option_count
     return selection_index, seed_key
-
-
-def _fit_caption_text(source_text: str, *, style: CaptionRoleStyle) -> dict[str, object]:
-    manual_breaks = "\\n" in source_text or "\n" in source_text
-    normalized_text = source_text.replace("\\n", "\n")
-    base_font_size = max(style.font_size, 1)
-    font_size = base_font_size
-    capacity = max(style.max_chars_per_line, 1)
-    lines = _build_lines(normalized_text, capacity=capacity, manual_breaks=manual_breaks)
-    fit_strategy = "manual_breaks" if manual_breaks else "wrapped"
-    overflowed = _lines_overflow(lines, capacity=capacity, max_lines=style.max_lines)
-    while overflowed and "scale" in style.overflow_policy and font_size > style.min_font_size:
-        next_font_size = max(style.min_font_size, font_size - max(2, (font_size - style.min_font_size) // 2 or 1))
-        if next_font_size == font_size:
-            break
-        font_size = next_font_size
-        capacity = max(style.max_chars_per_line, round(style.max_chars_per_line * (base_font_size / font_size)))
-        lines = _build_lines(normalized_text, capacity=capacity, manual_breaks=manual_breaks)
-        overflowed = _lines_overflow(lines, capacity=capacity, max_lines=style.max_lines)
-        fit_strategy = "scaled_to_fit"
-    truncated_for_runtime = False
-    if overflowed:
-        truncated_for_runtime = "truncate" in style.overflow_policy or True
-        lines = _truncate_lines(lines, capacity=capacity, max_lines=style.max_lines)
-        fit_strategy = "truncated_for_runtime" if truncated_for_runtime else "clamped_for_runtime"
-    return {
-        "rendered_text": "\n".join(lines),
-        "font_size": font_size,
-        "overflowed": overflowed,
-        "review_required": overflowed and style.review_required_if_overflow,
-        "truncated_for_runtime": truncated_for_runtime and overflowed,
-        "fit_strategy": fit_strategy,
-        "line_count": len(lines),
-        "line_break_mode": "manual" if manual_breaks else "auto_wrap",
-    }
-
-
-def _build_lines(text: str, *, capacity: int, manual_breaks: bool) -> list[str]:
-    if manual_breaks:
-        return [line for line in text.splitlines() or [""]]
-    lines: list[str] = []
-    for paragraph in text.splitlines() or [""]:
-        wrapped = textwrap.wrap(
-            paragraph,
-            width=max(capacity, 1),
-            break_long_words=True,
-            break_on_hyphens=False,
-        )
-        lines.extend(wrapped or [""])
-    return lines
-
-
-def _lines_overflow(lines: list[str], *, capacity: int, max_lines: int) -> bool:
-    return len(lines) > max_lines or any(len(line) > capacity for line in lines)
-
-
-def _truncate_lines(lines: list[str], *, capacity: int, max_lines: int) -> list[str]:
-    safe_lines = [line[:capacity] for line in lines[:max_lines]]
-    if not safe_lines:
-        return [""]
-    if len(lines) > max_lines or any(len(line) > capacity for line in lines):
-        last_line = safe_lines[-1][: max(0, capacity - 1)]
-        safe_lines[-1] = f"{last_line}…"
-    return safe_lines
 
 
 def _resolve_font(

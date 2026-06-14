@@ -448,47 +448,40 @@ def _caption_overlay_chain(*, input_label: str, caption_filters: list[str]) -> s
 def _caption_drawtext_filters(*, temp_dir: Path, segment: PreviewSegmentClip) -> list[str]:
     filters: list[str] = []
     for role in segment.captions:
-        text_file = temp_dir / f"caption_{segment.sequence_index:02d}_{role.role}.txt"
-        text_file.write_text(role.rendered_text, encoding="utf-8")
-        drawtext_parts = [
-            f"textfile='{_escape_filter_path(text_file)}'",
-            f"fontcolor={role.text_color}",
-            f"fontsize={role.font_size}",
-            f"line_spacing={max(4, role.padding // 2)}",
-            f"x={_caption_x_expression(role.alignment, role.padding)}",
-            f"y={_caption_y_expression(role.position, role.padding)}",
-        ]
-        if role.font_file is not None:
-            drawtext_parts.append(f"fontfile='{_escape_filter_path(role.font_file)}'")
-        else:
-            drawtext_parts.append(f"font='{_escape_filter_text(role.font_source)}'")
-        if role.stroke_width > 0:
-            drawtext_parts.append(f"borderw={role.stroke_width}")
-            drawtext_parts.append(f"bordercolor={role.stroke_color}")
-        if role.background_color and role.background_opacity > 0:
-            drawtext_parts.append("box=1")
-            drawtext_parts.append(f"boxcolor={role.background_color}@{role.background_opacity}")
-            drawtext_parts.append(f"boxborderw={role.padding}")
-        filters.append(f"drawtext={':'.join(drawtext_parts)}")
+        if role.background_color and role.background_opacity > 0 and role.box_width_px > 0 and role.box_height_px > 0:
+            filters.append(
+                "drawbox="
+                + ":".join(
+                    (
+                        f"x={role.box_left_px}",
+                        f"y={role.box_top_px}",
+                        f"w={role.box_width_px}",
+                        f"h={role.box_height_px}",
+                        f"color={role.background_color}@{role.background_opacity}",
+                        "t=fill",
+                    )
+                )
+            )
+        for line_index, line_text in enumerate(role.rendered_lines, start=1):
+            text_file = temp_dir / f"caption_{segment.sequence_index:02d}_{role.role}_{line_index:02d}.txt"
+            text_file.write_text(line_text, encoding="utf-8")
+            drawtext_parts = [
+                f"textfile='{_escape_filter_path(text_file)}'",
+                f"fontcolor={role.text_color}",
+                f"fontsize={role.font_size}",
+                f"x={role.line_left_positions_px[line_index - 1]}",
+                f"y={role.line_top_positions_px[line_index - 1]}",
+                "fix_bounds=1",
+            ]
+            if role.font_file is not None:
+                drawtext_parts.append(f"fontfile='{_escape_filter_path(role.font_file)}'")
+            else:
+                drawtext_parts.append(f"font='{_escape_filter_text(role.font_source)}'")
+            if role.stroke_width > 0:
+                drawtext_parts.append(f"borderw={role.stroke_width}")
+                drawtext_parts.append(f"bordercolor={role.stroke_color}")
+            filters.append(f"drawtext={':'.join(drawtext_parts)}")
     return filters
-
-
-def _caption_x_expression(alignment: str, padding: int) -> str:
-    normalized = alignment.strip().casefold()
-    if normalized == "left":
-        return str(max(0, padding))
-    if normalized == "right":
-        return f"w-text_w-{max(0, padding)}"
-    return "(w-text_w)/2"
-
-
-def _caption_y_expression(position: str, padding: int) -> str:
-    normalized = position.strip().casefold()
-    if normalized == "top":
-        return f"h*0.12+{max(0, padding)}"
-    if normalized == "bottom":
-        return f"h-text_h-h*0.14-{max(0, padding)}"
-    return "(h-text_h)/2"
 
 
 def _escape_filter_path(file_path: Path) -> str:

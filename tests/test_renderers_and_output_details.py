@@ -361,12 +361,15 @@ def test_ffmpeg_renderer_builds_drawtext_filters_for_caption_layers(tmp_path) ->
                         sequence_index=1,
                         seed_key="seed",
                         selection_index=0,
+                        rendered_lines=("caption",),
                         line_break_mode="manual",
                         fit_strategy="manual_breaks",
                         line_count=1,
                         font_family="THSarabun",
                         font_fallbacks=(),
                         font_size=72,
+                        requested_font_size=72,
+                        font_size_unit="px",
                         min_font_size=48,
                         font_weight="bold",
                         font_source=str(font_file),
@@ -384,6 +387,21 @@ def test_ffmpeg_renderer_builds_drawtext_filters_for_caption_layers(tmp_path) ->
                         max_lines=3,
                         max_chars_per_line=18,
                         max_width_ratio=0.78,
+                        line_spacing_ratio=0.12,
+                        line_spacing_px=8,
+                        line_widths_px=(320,),
+                        line_height_px=80,
+                        text_block_width_px=320,
+                        text_block_height_px=80,
+                        max_text_width_px=560,
+                        line_left_positions_px=(200,),
+                        line_top_positions_px=(600,),
+                        box_left_px=180,
+                        box_top_px=580,
+                        box_width_px=360,
+                        box_height_px=120,
+                        frame_width_px=720,
+                        frame_height_px=1280,
                         overflow_policy="wrap_then_scale_then_review",
                         enter_animation="pop_in",
                         overflowed=False,
@@ -397,6 +415,7 @@ def test_ffmpeg_renderer_builds_drawtext_filters_for_caption_layers(tmp_path) ->
     )
 
     assert any("drawtext=" in " ".join(command) for command in renderer.commands)
+    assert any("drawbox=" in " ".join(command) for command in renderer.commands)
     assert any("fontfile='" in " ".join(command) for command in renderer.commands)
 
 

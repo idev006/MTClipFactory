@@ -23,6 +23,19 @@ def build_visual_filter(
     )
 
 
+def resolve_output_dimensions(
+    *,
+    target_ratio: str | None,
+    output_resolution: str | None = None,
+    max_dimension: int = 1280,
+) -> tuple[int, int] | None:
+    return _resolve_output_dimensions(
+        target_ratio=target_ratio,
+        output_resolution=output_resolution,
+        max_dimension=max_dimension,
+    )
+
+
 def _resolve_output_dimensions(
     *,
     target_ratio: str | None,
