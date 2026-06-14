@@ -103,6 +103,14 @@ class ResolvedSegmentCaptions:
     roles: tuple[ResolvedCaptionRole, ...]
 
 
+@dataclass(slots=True, frozen=True)
+class ProductAutomationRuntimeContext:
+    product_code: str
+    source_product_dir: Path
+    last_batch_code: str | None = None
+    last_synced_at: str | None = None
+
+
 class ProductAutomationMetadataStore:
     def __init__(self, media_root: Path) -> None:
         self._media_root = Path(media_root)
@@ -119,11 +127,71 @@ class ProductAutomationMetadataStore:
     def caption_contract_path(self, product_code: str) -> Path:
         return self._media_root / "products" / product_code / "automation" / "captions.toml"
 
+    def sync_pipeline_contract(self, *, product_code: str, source_file: Path | None) -> Path | None:
+        target_path = self.pipeline_contract_path(product_code)
+        if source_file is None or not source_file.exists():
+            target_path.unlink(missing_ok=True)
+            return None
+        target_path.parent.mkdir(parents=True, exist_ok=True)
+        shutil.copy2(source_file, target_path)
+        return target_path
+
+    def pipeline_contract_path(self, product_code: str) -> Path:
+        return self._media_root / "products" / product_code / "automation" / "pipeline.toml"
+
     def load_caption_contract_text(self, product_code: str) -> str | None:
         target_path = self.caption_contract_path(product_code)
         if not target_path.exists():
             return None
         return target_path.read_text(encoding="utf-8")
+
+    def load_pipeline_contract_text(self, product_code: str) -> str | None:
+        target_path = self.pipeline_contract_path(product_code)
+        if not target_path.exists():
+            return None
+        return target_path.read_text(encoding="utf-8")
+
+    def sync_runtime_context(
+        self,
+        *,
+        product_code: str,
+        source_product_dir: Path,
+        batch_code: str | None = None,
+        synced_at: str | None = None,
+    ) -> Path:
+        target_path = self.runtime_context_path(product_code)
+        target_path.parent.mkdir(parents=True, exist_ok=True)
+        lines = [
+            f'product_code = "{_escape_toml_string(product_code)}"',
+            f'source_product_dir = "{_escape_toml_string(str(Path(source_product_dir).resolve()))}"',
+        ]
+        if batch_code:
+            lines.append(f'last_batch_code = "{_escape_toml_string(batch_code)}"')
+        if synced_at:
+            lines.append(f'last_synced_at = "{_escape_toml_string(synced_at)}"')
+        target_path.write_text("\n".join(lines) + "\n", encoding="utf-8")
+        return target_path
+
+    def runtime_context_path(self, product_code: str) -> Path:
+        return self._media_root / "products" / product_code / "automation" / "context.toml"
+
+    def load_runtime_context(self, product_code: str) -> ProductAutomationRuntimeContext | None:
+        target_path = self.runtime_context_path(product_code)
+        if not target_path.exists():
+            return None
+        with target_path.open("rb") as file_handle:
+            data = tomllib.load(file_handle)
+        if not isinstance(data, dict):
+            return None
+        source_product_dir = _optional_text(data.get("source_product_dir"))
+        if source_product_dir is None:
+            return None
+        return ProductAutomationRuntimeContext(
+            product_code=_optional_text(data.get("product_code")) or product_code,
+            source_product_dir=Path(source_product_dir),
+            last_batch_code=_optional_text(data.get("last_batch_code")),
+            last_synced_at=_optional_text(data.get("last_synced_at")),
+        )
 
 
 class CaptionRuntimeService:
@@ -542,3 +610,7 @@ def _boolean(value, *, default: bool, context: str) -> bool:
     if isinstance(value, bool):
         return value
     raise CaptionContractError(f"Expected boolean for {context}.")
+
+
+def _escape_toml_string(value: str) -> str:
+    return value.replace("\\", "\\\\").replace('"', '\\"')

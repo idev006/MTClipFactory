@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+from datetime import UTC, datetime
 import re
 import tomllib
 from pathlib import Path
@@ -7,6 +8,7 @@ from pathlib import Path
 from mt_clip_factory.application.dto import CreateProductCommand
 from mt_clip_factory.application.services import ProductApplicationService
 from mt_clip_factory.factory.auto_factory import AutoFactoryBatchService
+from mt_clip_factory.factory.automation_policy import ProductAutomationPolicyError, parse_fill_policies_from_pipeline_data
 from mt_clip_factory.factory.auto_factory_dto import AutoFactoryBatchOrderDTO, AutoFactoryProductRequestDTO
 from mt_clip_factory.factory.auto_factory_folder_dto import (
     AutoFactoryFolderAssetActionDTO,
@@ -16,6 +18,7 @@ from mt_clip_factory.factory.auto_factory_folder_dto import (
     AutoFactoryFolderRunReportDTO,
 )
 from mt_clip_factory.factory.caption_runtime import ProductAutomationMetadataStore
+from mt_clip_factory.factory.product_run_store import ProductRunArtifactStore
 from mt_clip_factory.library.dto import RegisterAssetCommand
 from mt_clip_factory.library.services import AssetIntakeService
 from mt_clip_factory.library.tag_dto import AssignTagToAssetCommand
@@ -56,12 +59,14 @@ class AutoFactoryFolderService:
         auto_factory_service: AutoFactoryBatchService,
         tag_management_service: TagManagementService,
         automation_metadata_store: ProductAutomationMetadataStore | None = None,
+        run_artifact_store: ProductRunArtifactStore | None = None,
     ) -> None:
         self._product_service = product_service
         self._asset_intake_service = asset_intake_service
         self._auto_factory_service = auto_factory_service
         self._tag_management_service = tag_management_service
         self._automation_metadata_store = automation_metadata_store
+        self._run_artifact_store = run_artifact_store
 
     def _apply_tag_labels_to_asset(self, *, asset_id: int, tag_labels: tuple[str, ...]) -> None:
         for label in tag_labels:
@@ -87,6 +92,7 @@ class AutoFactoryFolderService:
         product_dirs = _discover_product_dirs(root_path, scan_depth=scan_depth)
         product_configs = {product_dir: _load_product_config(product_dir) for product_dir in product_dirs}
         pipeline_configs = {product_dir: _load_pipeline_config(product_dir) for product_dir in product_dirs}
+        effective_batch_code = _slugify(batch_code or root_path.name or "auto_factory_batch")
 
         existing_product_ids = {product.product_code: product.product_id for product in self._product_service.list_products()}
         product_reports: list[AutoFactoryFolderProductReportDTO] = []
@@ -112,9 +118,10 @@ class AutoFactoryFolderService:
                 product_id = existing_product_id
                 created_product = False
 
-            self._sync_product_caption_contract(
+            self._sync_product_runtime_contracts(
                 product_code=product_config.product_code,
                 product_dir=product_dir,
+                batch_code=effective_batch_code,
             )
 
             registered_asset_count, skipped_existing_asset_count, product_actions = self._intake_product_assets(
@@ -133,7 +140,6 @@ class AutoFactoryFolderService:
                 )
             )
 
-        effective_batch_code = _slugify(batch_code or root_path.name or "auto_factory_batch")
         order = AutoFactoryBatchOrderDTO(
             batch_code=effective_batch_code,
             product_requests=tuple(
@@ -141,6 +147,21 @@ class AutoFactoryFolderService:
                 for product_dir in product_dirs
             ),
         )
+        for product_dir in product_dirs:
+            self._write_product_run_snapshot(
+                batch_code=effective_batch_code,
+                scan_depth=scan_depth,
+                materialize=materialize,
+                build_previews=build_previews,
+                product_dir=product_dir,
+                product_config=product_configs[product_dir],
+                pipeline_config=pipeline_configs[product_dir],
+                product_report=next(
+                    report
+                    for report in product_reports
+                    if report.product_code == product_configs[product_dir].product_code
+                ),
+            )
         materialization = None
         preview_production = None
         if materialize and build_previews:
@@ -223,13 +244,72 @@ class AutoFactoryFolderService:
 
         return registered_asset_count, skipped_existing_asset_count, actions
 
-    def _sync_product_caption_contract(self, *, product_code: str, product_dir: Path) -> None:
+    def _sync_product_runtime_contracts(self, *, product_code: str, product_dir: Path, batch_code: str | None) -> None:
         if self._automation_metadata_store is None:
             return
+        synced_at = datetime.now(UTC).replace(microsecond=0).isoformat().replace("+00:00", "Z")
         source_file = product_dir / "captions.toml"
         self._automation_metadata_store.sync_caption_contract(
             product_code=product_code,
             source_file=source_file if source_file.exists() else None,
+        )
+        pipeline_file = product_dir / "pipeline.toml"
+        self._automation_metadata_store.sync_pipeline_contract(
+            product_code=product_code,
+            source_file=pipeline_file if pipeline_file.exists() else None,
+        )
+        self._automation_metadata_store.sync_runtime_context(
+            product_code=product_code,
+            source_product_dir=product_dir,
+            batch_code=batch_code,
+            synced_at=synced_at,
+        )
+
+    def _write_product_run_snapshot(
+        self,
+        *,
+        batch_code: str,
+        scan_depth: int,
+        materialize: bool,
+        build_previews: bool,
+        product_dir: Path,
+        product_config: AutoFactoryFolderProductConfigDTO,
+        pipeline_config: AutoFactoryFolderPipelineConfigDTO,
+        product_report: AutoFactoryFolderProductReportDTO,
+    ) -> None:
+        del product_dir
+        if self._run_artifact_store is None:
+            return
+        snapshot_path = self._run_artifact_store.write_order_snapshot(
+            product_code=product_config.product_code,
+            batch_code=batch_code,
+            payload={
+                "scan_depth": scan_depth,
+                "materialize_requested": materialize,
+                "build_previews_requested": build_previews,
+                "requested_output_count": pipeline_config.requested_output_count,
+                "target_platform": pipeline_config.target_platform,
+                "target_ratio": pipeline_config.target_ratio,
+                "uniqueness_scope": pipeline_config.uniqueness_scope,
+                "duration_mode": pipeline_config.duration_mode,
+                "min_duration_sec": pipeline_config.min_duration_sec,
+                "max_duration_sec": pipeline_config.max_duration_sec,
+                "created_product": product_report.created_product,
+                "registered_asset_count": product_report.registered_asset_count,
+                "skipped_existing_asset_count": product_report.skipped_existing_asset_count,
+            },
+        )
+        self._run_artifact_store.append_journal_event(
+            product_code=product_config.product_code,
+            batch_code=batch_code,
+            event_type="intake_completed",
+            status="succeeded",
+            fields={
+                "recorded_at": datetime.now(UTC).replace(microsecond=0).isoformat().replace("+00:00", "Z"),
+                "order_snapshot_path": None if snapshot_path is None else str(snapshot_path),
+                "registered_asset_count": product_report.registered_asset_count,
+                "skipped_existing_asset_count": product_report.skipped_existing_asset_count,
+            },
         )
 
 
@@ -288,6 +368,10 @@ def _load_product_config(product_dir: Path) -> AutoFactoryFolderProductConfigDTO
 
 def _load_pipeline_config(product_dir: Path) -> AutoFactoryFolderPipelineConfigDTO:
     data = _load_toml(product_dir / "pipeline.toml")
+    try:
+        parse_fill_policies_from_pipeline_data(data, source_name=str(product_dir / "pipeline.toml"))
+    except ProductAutomationPolicyError as exc:
+        raise AutoFactoryFolderContractError(str(exc)) from exc
     section = data.get("request")
     if not isinstance(section, dict):
         raise AutoFactoryFolderContractError(f"Missing [request] section in {product_dir / 'pipeline.toml'}")

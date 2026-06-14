@@ -5,6 +5,7 @@ from pathlib import Path
 
 from mt_clip_factory.domain.assets import Asset
 from mt_clip_factory.domain.composition_plans import CompositionPlan
+from mt_clip_factory.factory.automation_policy import ProductAutomationFillPolicies, default_fill_policies
 
 
 @dataclass(slots=True, frozen=True)
@@ -27,15 +28,21 @@ class PreviewAudioMixPlan:
     music_tracks: tuple[PreviewAudioTrack, ...]
 
 
-def build_audio_mix_plan(plan: CompositionPlan, assets: dict[int, Asset]) -> PreviewAudioMixPlan | None:
+def build_audio_mix_plan(
+    plan: CompositionPlan,
+    assets: dict[int, Asset],
+    *,
+    fill_policies: ProductAutomationFillPolicies | None = None,
+) -> PreviewAudioMixPlan | None:
     target_duration_sec = round(plan.resolved_duration_sec or 0.0, 3)
     if target_duration_sec <= 0:
         return None
+    policies = fill_policies or default_fill_policies()
     voice_tracks = _build_tracks(
         _resolve_assignment_assets(plan, assets, layer_name="primary_voice"),
         layer_name="primary_voice",
         target_duration_sec=target_duration_sec,
-        no_loop_fill_mode="no_loop",
+        no_loop_fill_mode=policies.voiceover.shortfall_mode if policies.voiceover.shortfall_mode == "review_if_short" else "no_loop",
     )
     music_tracks = _build_tracks(
         _resolve_assignment_assets(plan, assets, layer_name="background_music"),

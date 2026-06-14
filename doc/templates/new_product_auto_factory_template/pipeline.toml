@@ -13,3 +13,19 @@ foreground = []
 background = []
 music = []
 voice = []
+
+[fill_policy.voiceover]
+loop_enabled = false
+shortfall_mode = "silence_tail"
+
+[fill_policy.background_music]
+loop_enabled = true
+shortfall_mode = "loop_to_timeline"
+
+[fill_policy.background_video]
+loop_enabled = true
+shortfall_mode = "loop_to_segment"
+
+[fill_policy.foreground_video]
+loop_enabled = false
+shortfall_mode = "freeze_last_frame"

@@ -1,20 +1,16 @@
 from __future__ import annotations
 from collections.abc import Callable
-from datetime import UTC, datetime
-from pathlib import Path
-from mt_clip_factory.domain.decision_events import DecisionEvent
 from mt_clip_factory.domain.enums import JobStatus, RecipeStatus
 from mt_clip_factory.domain.job_recovery import (
     apply_job_failure_metadata,
     apply_job_success_metadata,
-    decode_job_output_payload,
     prepare_job_output_for_retry,
-    recovery_metadata_from_output_json,
 )
 from mt_clip_factory.domain.jobs import Job
 from mt_clip_factory.domain.outputs import Output
 from mt_clip_factory.domain.recipes import Recipe
 from mt_clip_factory.domain.services import UnitOfWork
+from mt_clip_factory.factory.automation_policy import ProductAutomationPolicyService
 from mt_clip_factory.factory.composition_mapping import to_composition_plan_dto
 from mt_clip_factory.factory.composition_runtime import persist_composition
 from mt_clip_factory.factory.caption_runtime import CaptionRuntimeService
@@ -29,45 +25,42 @@ from mt_clip_factory.factory.dto import (
     RecipeItemDTO,
     RecipeSummaryDTO,
 )
-from mt_clip_factory.factory.output_lineage import build_output_lineage_context, lineage_value, resolve_output_kind
 from mt_clip_factory.factory.preview_artifacts import PreviewManifestBuilder
 from mt_clip_factory.factory.preview_composition import build_segmented_preview_composition
+from mt_clip_factory.factory.product_run_store import ProductRunArtifactStore
 from mt_clip_factory.factory.renderers import RenderedPreviewOutput
 from mt_clip_factory.factory.recipe_scoring import score_and_persist_recipe
 from mt_clip_factory.factory.review_gate import apply_review_gate, assess_review_gate, review_gate_manifest_payload, review_settings_from_provider
+from mt_clip_factory.factory.service_errors import (
+    AssetNotReadyForRecipeError,
+    FactoryJobNotFoundError,
+    FinalRenderPrerequisiteError,
+    OutputApprovalError,
+    OutputNotFoundError,
+    PreviewBuildInputError,
+    RecipeAlreadyExistsError,
+    RecipeApprovalError,
+    RecipeAssetMismatchError,
+    RecipeItemAlreadyExistsError,
+    RecipeNotFoundError,
+)
+from mt_clip_factory.factory.service_support import (
+    append_run_journal_event as _append_run_journal_event,
+    format_optional_timestamp as _format_optional_timestamp,
+    format_timestamp as _format_timestamp,
+    latest_event_timestamp as _latest_event_timestamp,
+    list_output_summaries as _list_output_summaries,
+    list_job_summaries as _list_job_summaries,
+    normalize_actor as _normalize_actor,
+    normalize_reason as _normalize_reason,
+    optional_text as _optional_text,
+    record_decision_event as _record_decision_event,
+    resolve_artifact_paths as _resolve_artifact_paths,
+    slugify_recipe_code as _slugify_recipe_code,
+    to_preview_job_summary as _to_preview_job_summary,
+    utc_now as _utc_now,
+)
 from mt_clip_factory.library.artifacts import build_artifact_job_code, decode_job_input, encode_job_input
-class RecipeAlreadyExistsError(ValueError):
-    """Raised when a recipe code already exists."""
-
-class RecipeNotFoundError(ValueError):
-    """Raised when a recipe does not exist."""
-
-class RecipeAssetMismatchError(ValueError):
-    """Raised when an asset belongs to a different product than the recipe."""
-
-class AssetNotReadyForRecipeError(ValueError):
-    """Raised when an asset is not ready to be used in a recipe."""
-
-class RecipeItemAlreadyExistsError(ValueError):
-    """Raised when the same asset role is already present in a recipe."""
-
-class PreviewBuildInputError(ValueError):
-    """Raised when a preview job cannot be built from current recipe state."""
-
-class OutputNotFoundError(ValueError):
-    """Raised when an output cannot be found."""
-
-class OutputApprovalError(ValueError):
-    """Raised when an output cannot be approved for the current recipe state."""
-
-class RecipeApprovalError(ValueError):
-    """Raised when a recipe approval decision is invalid."""
-
-class FinalRenderPrerequisiteError(ValueError):
-    """Raised when final render requirements are not satisfied."""
-
-class FactoryJobNotFoundError(ValueError):
-    """Raised when a factory job cannot be found."""
 class VideoAssemblyFactoryService:
     PREVIEW_JOB_TYPE = "render_recipe_preview"
     FINAL_JOB_TYPE = "render_recipe_final"
@@ -90,6 +83,8 @@ class VideoAssemblyFactoryService:
         final_renderer,
         system_settings_service=None,
         caption_runtime_service: CaptionRuntimeService | None = None,
+        automation_policy_service: ProductAutomationPolicyService | None = None,
+        run_artifact_store: ProductRunArtifactStore | None = None,
     ) -> None:
         self._unit_of_work_factory = unit_of_work_factory
         self._preview_manifest_builder = preview_manifest_builder
@@ -97,6 +92,8 @@ class VideoAssemblyFactoryService:
         self._final_renderer = final_renderer
         self._system_settings_service = system_settings_service
         self._caption_runtime_service = caption_runtime_service
+        self._automation_policy_service = automation_policy_service
+        self._run_artifact_store = run_artifact_store
 
     def create_recipe(self, command: CreateRecipeCommand) -> int:
         recipe_code = _slugify_recipe_code(command.recipe_code)
@@ -227,53 +224,15 @@ class VideoAssemblyFactoryService:
         recipe_id: int | None = None,
         approved: bool | None = None,
     ) -> list[OutputSummaryDTO]:
-        with self._unit_of_work_factory() as uow:
-            requested_outputs = list(uow.outputs.list_summaries(recipe_id=recipe_id, approved=approved))
-            lineage_context = build_output_lineage_context(
-                requested_outputs=requested_outputs,
-                all_outputs=list(uow.outputs.list_summaries(recipe_id=recipe_id)),
-                preview_jobs=[
-                    job
-                    for job in (
-                        uow.jobs.get_by_id(summary.job_id)
-                        for summary in uow.jobs.list_summaries(job_type=self.PREVIEW_JOB_TYPE)
-                    )
-                    if job is not None
-                ],
-                final_jobs=[
-                    job
-                    for job in (
-                        uow.jobs.get_by_id(summary.job_id)
-                        for summary in uow.jobs.list_summaries(job_type=self.FINAL_JOB_TYPE)
-                    )
-                    if job is not None
-                ],
-            )
-            return [
-                OutputSummaryDTO(
-                    output_id=summary.output_id,
-                    recipe_id=summary.recipe_id,
-                    recipe_code=summary.recipe_code,
-                    output_code=summary.output_code,
-                    file_path=summary.file_path,
-                    platform=summary.platform,
-                    ratio=summary.ratio,
-                    approved=summary.approved,
-                    created_at=_format_timestamp(summary.created_at),
-                    approved_by=summary.approved_by,
-                    approved_at=_format_optional_timestamp(summary.approved_at),
-                    approval_reason=summary.approval_reason,
-                    output_kind=resolve_output_kind(summary.output_code, lineage_context.get(summary.output_id), preview_job_type=self.PREVIEW_JOB_TYPE, final_job_type=self.FINAL_JOB_TYPE),
-                    rendering_job_code=lineage_value(summary.output_id, lineage_context, "job_code"),
-                    manifest_path=lineage_value(summary.output_id, lineage_context, "preview_manifest_path"),
-                    source_output_id=lineage_value(summary.output_id, lineage_context, "source_output_id"),
-                    source_output_code=lineage_value(summary.output_id, lineage_context, "source_output_code"),
-                    source_output_path=lineage_value(summary.output_id, lineage_context, "source_output_path"),
-                    quality_score=summary.quality_score,
-                    duplicate_risk=summary.duplicate_risk,
-                )
-                for summary in requested_outputs
-            ]
+        return _list_output_summaries(
+            unit_of_work_factory=self._unit_of_work_factory,
+            recipe_id=recipe_id,
+            approved=approved,
+            preview_job_type=self.PREVIEW_JOB_TYPE,
+            final_job_type=self.FINAL_JOB_TYPE,
+            format_timestamp=_format_timestamp,
+            format_optional_timestamp=_format_optional_timestamp,
+        )
 
     def list_decision_events(self, recipe_id: int) -> list[DecisionEventDTO]:
         with self._unit_of_work_factory() as uow:
@@ -411,17 +370,29 @@ class VideoAssemblyFactoryService:
             )
             uow.commit()
 
-    def enqueue_preview_job(self, recipe_id: int) -> int:
-        return self._enqueue_recipe_job(recipe_id=recipe_id, job_type=self.PREVIEW_JOB_TYPE, code_prefix="preview")
+    def enqueue_preview_job(self, recipe_id: int, *, batch_code: str | None = None, source_mode: str | None = None) -> int:
+        return self._enqueue_recipe_job(
+            recipe_id=recipe_id,
+            job_type=self.PREVIEW_JOB_TYPE,
+            code_prefix="preview",
+            batch_code=batch_code,
+            source_mode=source_mode,
+        )
 
-    def enqueue_final_render_job(self, recipe_id: int) -> int:
+    def enqueue_final_render_job(self, recipe_id: int, *, batch_code: str | None = None, source_mode: str | None = None) -> int:
         with self._unit_of_work_factory() as uow:
             recipe = uow.recipes.get_by_id(recipe_id)
             if recipe is None or recipe.id is None:
                 raise RecipeNotFoundError(str(recipe_id))
             if recipe.status != RecipeStatus.APPROVED:
                 raise FinalRenderPrerequisiteError("Approve the recipe before starting final render.")
-        return self._enqueue_recipe_job(recipe_id=recipe_id, job_type=self.FINAL_JOB_TYPE, code_prefix="final")
+        return self._enqueue_recipe_job(
+            recipe_id=recipe_id,
+            job_type=self.FINAL_JOB_TYPE,
+            code_prefix="final",
+            batch_code=batch_code,
+            source_mode=source_mode,
+        )
 
     def run_preview_job(self, job_id: int) -> None:
         with self._unit_of_work_factory() as uow:
@@ -433,12 +404,28 @@ class VideoAssemblyFactoryService:
 
             payload = decode_job_input(job.input_json)
             recipe_id = int(payload.get("recipe_id") or job.recipe_id or 0)
+            batch_code = _optional_text(payload.get("batch_code"))
             recipe = uow.recipes.get_by_id(recipe_id)
             if recipe is None or recipe.id is None:
                 raise RecipeNotFoundError(str(recipe_id))
             product = uow.products.get_by_id(recipe.product_id)
             if product is None:
                 raise ValueError(str(recipe.product_id))
+            fill_policies = (
+                None
+                if self._automation_policy_service is None
+                else self._automation_policy_service.load_fill_policies(product.product_code)
+            )
+            artifact_paths = _resolve_artifact_paths(
+                run_artifact_store=self._run_artifact_store,
+                preview_renderer=self._preview_renderer,
+                final_renderer=self._final_renderer,
+                preview_manifest_builder=self._preview_manifest_builder,
+                product_code=product.product_code,
+                batch_code=batch_code,
+                output_stem=recipe.recipe_code,
+                stage_name="preview",
+            )
             items = list(uow.recipes.list_items(recipe.id))
             assets = {
                 item.asset_id: asset
@@ -466,6 +453,7 @@ class VideoAssemblyFactoryService:
                     plan=persisted.plan,
                     segments=persisted.segments,
                     caption_runtime_service=self._caption_runtime_service,
+                    automation_policy_service=self._automation_policy_service,
                 )
                 if not composition.source_files:
                     raise PreviewBuildInputError(f"Recipe {recipe.recipe_code} has no renderable video assets.")
@@ -476,6 +464,8 @@ class VideoAssemblyFactoryService:
                     segment_clips=composition.segment_clips,
                     audio_mix_plan=composition.audio_mix_plan,
                     target_ratio=recipe.target_ratio,
+                    target_path=artifact_paths.video_path,
+                    fill_policies=fill_policies,
                 )
                 review_assessment = assess_review_gate(
                     plan=persisted.plan,
@@ -493,6 +483,7 @@ class VideoAssemblyFactoryService:
                     product_code=product.product_code,
                     recipe_code=recipe.recipe_code,
                     payload=manifest_payload,
+                    target_path=artifact_paths.manifest_path,
                 )
                 output = uow.outputs.add(
                     Output(
@@ -540,6 +531,19 @@ class VideoAssemblyFactoryService:
                 job.finished_at = finished_at
                 uow.jobs.update(job)
                 uow.commit()
+                _append_run_journal_event(
+                    run_artifact_store=self._run_artifact_store,
+                    product_code=product.product_code,
+                    batch_code=batch_code,
+                    event_type="preview_rendered",
+                    status="review_required" if review_assessment.required else "succeeded",
+                    fields={
+                        "recorded_at": _format_timestamp(finished_at),
+                        "recipe_code": recipe.recipe_code,
+                        "output_path": str(rendered_output.file_path),
+                        "manifest_path": str(manifest_path),
+                    },
+                )
             except Exception as exc:
                 job.status = JobStatus.FAILED
                 job.progress = 0.0
@@ -553,6 +557,18 @@ class VideoAssemblyFactoryService:
                 )
                 uow.jobs.update(job)
                 uow.commit()
+                _append_run_journal_event(
+                    run_artifact_store=self._run_artifact_store,
+                    product_code=product.product_code,
+                    batch_code=batch_code,
+                    event_type="preview_rendered",
+                    status="failed",
+                    fields={
+                        "recorded_at": _format_timestamp(finished_at),
+                        "recipe_code": recipe.recipe_code,
+                        "error_message": str(exc),
+                    },
+                )
                 raise
 
     def run_final_render_job(self, job_id: int) -> None:
@@ -565,6 +581,7 @@ class VideoAssemblyFactoryService:
 
             payload = decode_job_input(job.input_json)
             recipe_id = int(payload.get("recipe_id") or job.recipe_id or 0)
+            batch_code = _optional_text(payload.get("batch_code"))
             recipe = uow.recipes.get_by_id(recipe_id)
             if recipe is None or recipe.id is None:
                 raise RecipeNotFoundError(str(recipe_id))
@@ -573,6 +590,21 @@ class VideoAssemblyFactoryService:
             product = uow.products.get_by_id(recipe.product_id)
             if product is None:
                 raise ValueError(str(recipe.product_id))
+            fill_policies = (
+                None
+                if self._automation_policy_service is None
+                else self._automation_policy_service.load_fill_policies(product.product_code)
+            )
+            artifact_paths = _resolve_artifact_paths(
+                run_artifact_store=self._run_artifact_store,
+                preview_renderer=self._preview_renderer,
+                final_renderer=self._final_renderer,
+                preview_manifest_builder=self._preview_manifest_builder,
+                product_code=product.product_code,
+                batch_code=batch_code,
+                output_stem=f"{recipe.recipe_code}_final",
+                stage_name="final",
+            )
             items = list(uow.recipes.list_items(recipe.id))
             assets = {
                 item.asset_id: asset
@@ -604,6 +636,7 @@ class VideoAssemblyFactoryService:
                     plan=persisted.plan,
                     segments=persisted.segments,
                     caption_runtime_service=self._caption_runtime_service,
+                    automation_policy_service=self._automation_policy_service,
                 )
                 if not composition.source_files:
                     raise FinalRenderPrerequisiteError(f"Recipe {recipe.recipe_code} has no renderable video assets.")
@@ -614,6 +647,8 @@ class VideoAssemblyFactoryService:
                     segment_clips=composition.segment_clips,
                     audio_mix_plan=composition.audio_mix_plan,
                     target_ratio=recipe.target_ratio,
+                    target_path=artifact_paths.video_path,
+                    fill_policies=fill_policies,
                 )
                 review_assessment = assess_review_gate(
                     plan=persisted.plan,
@@ -631,6 +666,7 @@ class VideoAssemblyFactoryService:
                     product_code=product.product_code,
                     recipe_code=f"{recipe.recipe_code}_final",
                     payload=manifest_payload,
+                    target_path=artifact_paths.manifest_path,
                 )
                 approved_at = _utc_now()
                 output = uow.outputs.add(
@@ -684,6 +720,19 @@ class VideoAssemblyFactoryService:
                 job.finished_at = finished_at
                 uow.jobs.update(job)
                 uow.commit()
+                _append_run_journal_event(
+                    run_artifact_store=self._run_artifact_store,
+                    product_code=product.product_code,
+                    batch_code=batch_code,
+                    event_type="final_rendered",
+                    status="succeeded",
+                    fields={
+                        "recorded_at": _format_timestamp(finished_at),
+                        "recipe_code": recipe.recipe_code,
+                        "output_path": str(rendered_output.file_path),
+                        "manifest_path": str(manifest_path),
+                    },
+                )
             except Exception as exc:
                 job.status = JobStatus.FAILED
                 job.progress = 0.0
@@ -697,6 +746,18 @@ class VideoAssemblyFactoryService:
                 )
                 uow.jobs.update(job)
                 uow.commit()
+                _append_run_journal_event(
+                    run_artifact_store=self._run_artifact_store,
+                    product_code=product.product_code,
+                    batch_code=batch_code,
+                    event_type="final_rendered",
+                    status="failed",
+                    fields={
+                        "recorded_at": _format_timestamp(finished_at),
+                        "recipe_code": recipe.recipe_code,
+                        "error_message": str(exc),
+                    },
+                )
                 raise
 
     def list_preview_jobs(self, *, status: str | None = None) -> list[PreviewJobSummaryDTO]:
@@ -706,10 +767,7 @@ class VideoAssemblyFactoryService:
         return self._list_jobs(job_type=self.FINAL_JOB_TYPE, status=status)
 
     def list_jobs(self, *, status: str | None = None) -> list[PreviewJobSummaryDTO]:
-        jobs = [
-            *self.list_preview_jobs(status=status),
-            *self.list_final_render_jobs(status=status),
-        ]
+        jobs = [*self.list_preview_jobs(status=status), *self.list_final_render_jobs(status=status)]
         return sorted(jobs, key=lambda job: job.job_id, reverse=True)
 
     def retry_job(self, job_id: int) -> None:
@@ -737,22 +795,17 @@ class VideoAssemblyFactoryService:
         self.run_final_render_job(job_id)
 
     def _list_jobs(self, *, job_type: str, status: str | None = None) -> list[PreviewJobSummaryDTO]:
-        with self._unit_of_work_factory() as uow:
-            jobs = uow.jobs.list_summaries(status=status, job_type=job_type)
-            output_map = {
-                job.id: job.output_json
-                for job in (
-                    uow.jobs.get_by_id(summary.job_id)
-                    for summary in jobs
-                )
-                if job is not None and job.id is not None
-            }
-            return [
-                _to_preview_job_summary(summary=summary, output_json=output_map.get(summary.job_id))
-                for summary in jobs
-            ]
+        return _list_job_summaries(unit_of_work_factory=self._unit_of_work_factory, job_type=job_type, status=status)
 
-    def _enqueue_recipe_job(self, *, recipe_id: int, job_type: str, code_prefix: str) -> int:
+    def _enqueue_recipe_job(
+        self,
+        *,
+        recipe_id: int,
+        job_type: str,
+        code_prefix: str,
+        batch_code: str | None = None,
+        source_mode: str | None = None,
+    ) -> int:
         with self._unit_of_work_factory() as uow:
             recipe = uow.recipes.get_by_id(recipe_id)
             if recipe is None or recipe.id is None:
@@ -762,77 +815,16 @@ class VideoAssemblyFactoryService:
                 job_type=job_type,
                 recipe_id=recipe_id,
                 status=JobStatus.QUEUED,
-                input_json=encode_job_input({"recipe_id": recipe_id}),
+                input_json=encode_job_input(
+                    {
+                        "recipe_id": recipe_id,
+                        **({} if batch_code is None else {"batch_code": batch_code}),
+                        **({} if source_mode is None else {"source_mode": source_mode}),
+                    }
+                ),
             )
             created = uow.jobs.add(job)
             uow.commit()
             if created.id is None:
                 raise RuntimeError("Recipe job identifier was not assigned.")
             return created.id
-def _slugify_recipe_code(value: str) -> str:
-    normalized = "".join(character if character.isalnum() else "_" for character in value.strip().lower())
-    return normalized.strip("_")
-def _extract_output_path(output_json: str | None) -> str | None:
-    payload = decode_job_output_payload(output_json)
-    return payload.get("final_output_path") or payload.get("preview_output_path") or payload.get("preview_manifest_path")
-def _to_preview_job_summary(summary, *, output_json: str | None) -> PreviewJobSummaryDTO:
-    recovery = recovery_metadata_from_output_json(output_json)
-    return PreviewJobSummaryDTO(
-        job_id=summary.job_id,
-        job_code=summary.job_code,
-        recipe_id=summary.recipe_id,
-        job_type=summary.job_type,
-        status=summary.status.value,
-        progress=summary.progress,
-        output_path=_extract_output_path(output_json),
-        error_message=summary.error_message,
-        recovery_attempt_count=recovery.retry_count,
-        consecutive_failure_count=recovery.consecutive_failure_count,
-        last_recovery_attempt_at=recovery.last_retry_at,
-        last_failure_at=recovery.last_failure_at,
-    )
-def _utc_now() -> datetime:
-    return datetime.now(UTC).replace(tzinfo=None)
-def _format_timestamp(value: datetime) -> str:
-    return value.strftime("%Y-%m-%d %H:%M:%S")
-def _format_optional_timestamp(value: datetime | None) -> str | None:
-    if value is None:
-        return None
-    return _format_timestamp(value)
-def _normalize_actor(value: str) -> str:
-    actor = value.strip()
-    if not actor:
-        raise ValueError("Decision actor is required.")
-    return actor
-def _normalize_reason(value: str | None) -> str | None:
-    if value is None:
-        return None
-    reason = value.strip()
-    return reason or None
-def _record_decision_event(
-    uow: UnitOfWork,
-    *,
-    recipe_id: int,
-    event_type: str,
-    actor: str,
-    created_at: datetime,
-    output_id: int | None = None,
-    reason: str | None = None,
-) -> None:
-    uow.decision_events.add(
-        DecisionEvent(
-            recipe_id=recipe_id,
-            output_id=output_id,
-            event_type=event_type,
-            actor=actor,
-            reason=reason,
-            created_at=created_at,
-        )
-    )
-
-
-def _latest_event_timestamp(uow: UnitOfWork, *, recipe_id: int, event_type: str) -> datetime | None:
-    for event in uow.decision_events.list_by_recipe(recipe_id):
-        if event.event_type == event_type:
-            return event.created_at
-    return None

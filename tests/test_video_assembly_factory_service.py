@@ -8,10 +8,12 @@ import pytest
 from mt_clip_factory.application.dto import CreateProductCommand
 from mt_clip_factory.application.services import ProductApplicationService
 from mt_clip_factory.factory.audio_composition import PreviewAudioMixPlan
+from mt_clip_factory.factory.automation_policy import ProductAutomationPolicyService
 from mt_clip_factory.factory.caption_runtime import CaptionRuntimeService, ProductAutomationMetadataStore
 from mt_clip_factory.factory.dto import AssignAssetToRecipeCommand, CreateRecipeCommand
 from mt_clip_factory.factory.preview_artifacts import PreviewManifestBuilder
 from mt_clip_factory.factory.preview_composition import PreviewSegmentClip
+from mt_clip_factory.factory.product_run_store import ProductRunArtifactStore
 from mt_clip_factory.factory.renderers import RenderedPreviewOutput
 from mt_clip_factory.factory.services import (
     FactoryJobNotFoundError,
@@ -73,10 +75,12 @@ def _build_factory_service(
             segment_clips: tuple[PreviewSegmentClip, ...] = (),
             audio_mix_plan: PreviewAudioMixPlan | None = None,
             target_ratio: str | None = None,
+            target_path: Path | None = None,
+            fill_policies=None,
         ) -> RenderedPreviewOutput:
-            output_dir = preview_root / product_code / "videos"
-            output_dir.mkdir(parents=True, exist_ok=True)
-            target_path = output_dir / f"{output_stem}.mp4"
+            del fill_policies
+            resolved_target_path = target_path or (preview_root / product_code / "videos" / f"{output_stem}.mp4")
+            resolved_target_path.parent.mkdir(parents=True, exist_ok=True)
             self.calls.append(
                 {
                     "output_stem": output_stem,
@@ -85,10 +89,11 @@ def _build_factory_service(
                     "source_files": source_files,
                     "audio_mix_plan": audio_mix_plan,
                     "target_ratio": target_ratio,
+                    "target_path": resolved_target_path,
                 }
             )
             payload = b"".join(segment.source_file.read_bytes() for segment in segment_clips) if segment_clips else source_files[0].read_bytes()
-            target_path.write_bytes(payload)
+            resolved_target_path.write_bytes(payload)
             duration_sec = round(sum(segment.target_duration_sec for segment in segment_clips), 3) if segment_clips else 3.0
             audio_mix_summary = None
             if audio_mix_plan is not None:
@@ -131,19 +136,22 @@ def _build_factory_service(
                     ],
                 }
             return RenderedPreviewOutput(
-                file_path=target_path,
+                file_path=resolved_target_path,
                 duration_sec=duration_sec,
                 audio_mix_summary=audio_mix_summary,
                 visual_composite_summary=visual_composite_summary,
             )
 
     renderer = FakePreviewRenderer()
+    metadata_store = ProductAutomationMetadataStore(preview_root.parent / "media_library")
     return VideoAssemblyFactoryService(
         unit_of_work_factory=unit_of_work_factory,
         preview_manifest_builder=PreviewManifestBuilder(preview_root),
         preview_renderer=renderer,
         final_renderer=renderer,
         caption_runtime_service=caption_runtime_service,
+        automation_policy_service=ProductAutomationPolicyService(metadata_store=metadata_store),
+        run_artifact_store=ProductRunArtifactStore(metadata_store=metadata_store),
     )
 
 
@@ -388,6 +396,30 @@ def test_factory_service_writes_runtime_audio_mix_summary_to_manifest(unit_of_wo
     assert manifest_payload["audio_mix"]["music_track_count"] == 1
     assert manifest_payload["audio_mix"]["mix_balance"]["music_mix_gain_db"] == -4
     assert manifest_payload["audio_mix"]["ducking"]["applied"] is True
+
+
+def test_factory_service_writes_product_local_preview_artifacts_for_batch_context(unit_of_work_factory, tmp_path) -> None:
+    product_id, asset_id = _register_ready_asset(unit_of_work_factory, tmp_path)
+    product_root = tmp_path / "product_folder"
+    product_root.mkdir(parents=True, exist_ok=True)
+    ProductAutomationMetadataStore(tmp_path / "media_library").sync_runtime_context(
+        product_code="honey",
+        source_product_dir=product_root,
+        batch_code="batch_local",
+    )
+    service = _build_factory_service(unit_of_work_factory, tmp_path / "previews")
+    recipe_id = service.create_recipe(CreateRecipeCommand(product_id=product_id, recipe_code="Honey Launch"))
+    service.assign_asset_to_recipe(AssignAssetToRecipeCommand(recipe_id=recipe_id, asset_id=asset_id, role="hero"))
+
+    job_id = service.enqueue_preview_job(recipe_id, batch_code="batch_local", source_mode="auto_factory_folder")
+    service.run_preview_job(job_id)
+
+    outputs = service.list_outputs(recipe_id=recipe_id)
+    assert len(outputs) == 1
+    assert "product_folder" in outputs[0].file_path
+    assert "runs" in outputs[0].file_path
+    assert (product_root / "runs" / "batch_local" / "journal.toml").exists()
+    assert (product_root / "runs" / "batch_local" / "manifests" / "honey_launch.json").exists()
 
 
 def test_factory_service_builds_layered_visual_stack_when_background_and_foreground_exist(unit_of_work_factory, tmp_path) -> None:

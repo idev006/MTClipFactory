@@ -103,6 +103,7 @@ classDiagram
         +parse product.toml + pipeline.toml
         +parse tags.toml
         +sync captions.toml into runtime metadata cache
+        +sync pipeline.toml + context.toml into runtime metadata cache
         +discover product folders up to scan depth
         +create missing products
         +intake deterministic asset codes
@@ -113,8 +114,24 @@ classDiagram
 
     class ProductAutomationMetadataStore {
         +sync_caption_contract(product_code, source_file)
+        +sync_pipeline_contract(product_code, source_file)
+        +sync_runtime_context(product_code, source_product_dir, batch_code)
         +load_caption_contract(product_code)
+        +load_pipeline_contract(product_code)
+        +load_runtime_context(product_code)
         +runtime metadata cache under media_root
+    }
+
+    class ProductRunArtifactStore {
+        +write_order_snapshot(product_code, batch_code, payload)
+        +append_journal_event(product_code, batch_code, ...)
+        +resolve_render_artifact_paths(product_code, batch_code, ...)
+        +product-local runs/<batch_code> artifact layout
+    }
+
+    class ProductAutomationPolicyService {
+        +load_fill_policy(product_code)
+        +per-asset-type fill policy from pipeline.toml
     }
 
     class CaptionRuntimeService {
@@ -167,7 +184,7 @@ classDiagram
 
     class FFmpegPreviewRenderer {
         +render_preview(..., target_ratio)
-        +render_output(..., segment_clips, target_ratio)
+        +render_output(..., segment_clips, target_ratio, output_path)
         +runtime audio mix
         +target-frame normalization
         +layered visual compositing
@@ -176,6 +193,7 @@ classDiagram
         +operator-configured exact output resolution
         +configurable duck mode
         +configurable gain staging
+        +per-asset-type fill policy
     }
 
     class VideoFrameNormalization {
@@ -186,6 +204,7 @@ classDiagram
         +segment_clips
         +manifest_payload
         +resolved caption evidence
+        +resolved fill-policy evidence
     }
 
     class DashboardService {

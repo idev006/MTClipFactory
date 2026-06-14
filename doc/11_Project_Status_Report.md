@@ -69,6 +69,7 @@
 - folder-driven `Auto Factory` intake now also reads `tags.toml` metadata, creates missing tags, and assigns normalized `group:name` labels to matching assets during the same run
 - folder-driven `Auto Factory` intake now also syncs product-level `captions.toml` into runtime metadata so preview/final reruns can resolve the latest caption contract without depending on the original source folder path
 - preview and final render now support runtime caption overlays from product-level caption pools, including deterministic main/sub selection, manual `\n` line breaks, workspace-font resolution, manifest-backed caption evidence, and review-gate signaling for unsafe caption fit
+- product-local auto-mode run artifacts and per-asset-type fill policy are now locked as the next implementation seam so operators can audit reruns from the product folder itself
 - assets can now be safely renamed or deleted from the `Assets` screen, with repository checks that block deletion when recipe-item or artifact-job references still exist
 - the `Assets` screen now supports `Show References`, `Retire Selected`, and `Purge Media` so referenced assets can leave active use and disk without destroying audit truth
 - the `Assets` screen now also supports `Replace In Recipes...` with recipe-safe validation, recipe reset-to-candidate behavior, and approval guards that prevent stale pre-replacement outputs from being reused as evidence for changed recipes
@@ -101,7 +102,7 @@
 
 ## Verification Baseline
 
-- `python -m pytest` via `.venv`: `190 passed, 4 warnings`
+- `python -m pytest` via `.venv`: `198 passed, 4 warnings`
 - targeted `QT_QPA_PLATFORM=offscreen` UI coverage for the new `Auto Factory` window and existing themed windows: passed
 
 ## Current Focus
@@ -124,6 +125,7 @@
 - validate whether the new folder-driven additive tag sync is sufficient before implementing tag-removal sync behavior
 - validate whether the new production-order orchestration model remains stable enough to carry future lease and multi-worker execution semantics
 - keep project documents truthful through per-milestone revision checkpoints
+- implement and validate the new product-local run artifact seam and per-asset-type fill policy in code
 
 ## Next Steps
 
@@ -132,6 +134,7 @@
 3. Extend the auto-factory baseline from automated preview production into controlled final-render automation only after operators accept the current planner, tag-aware selection flow, control-surface flow, and review-gate truth.
 4. Decide whether production-order orchestration should surface on the dashboard before multi-node execution begins.
 5. Clean the Alembic `path_separator=os` warning in a maintenance pass.
+6. Validate whether product-local `runs/<batch_code>` artifacts become the preferred operator audit seam for auto-mode.
 
 ## Direction Locked In This Documentation Revision
 
@@ -163,6 +166,7 @@
 - `IR-25` now adds multi-select bulk asset tagging while preserving an asset-first operator review loop
 - `IR-26` now applies folder-prepared `tags.toml` metadata during auto-factory intake so planner-facing asset tags can be assigned in the same run
 - `IR-27` now applies product-level `captions.toml` during preview/final runtime so caption pools, font resolution, and caption-fit review signals become operational
+- `IR-28` is now defined as product-local run artifacts plus per-asset-type fill policy for safer auto-mode reruns and traceability
 
 ## Ownership
 

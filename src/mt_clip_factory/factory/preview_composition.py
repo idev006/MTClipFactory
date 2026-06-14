@@ -9,6 +9,7 @@ from mt_clip_factory.domain.composition_plans import CompositionPlan
 from mt_clip_factory.domain.recipes import Recipe, RecipeItem
 from mt_clip_factory.domain.timeline_segments import TimelineSegment
 from mt_clip_factory.factory.audio_composition import PreviewAudioMixPlan, build_audio_mix_plan
+from mt_clip_factory.factory.automation_policy import ProductAutomationPolicyService, default_fill_policies
 from mt_clip_factory.factory.caption_runtime import CaptionRuntimeService, ResolvedCaptionRole, ResolvedSegmentCaptions
 
 
@@ -60,9 +61,15 @@ def build_segmented_preview_composition(
     plan: CompositionPlan,
     segments: Sequence[TimelineSegment],
     caption_runtime_service: CaptionRuntimeService | None = None,
+    automation_policy_service: ProductAutomationPolicyService | None = None,
 ) -> PreviewComposition:
+    fill_policies = (
+        default_fill_policies()
+        if automation_policy_service is None
+        else automation_policy_service.load_fill_policies(product_code)
+    )
     visual_assets_by_layer = _build_visual_assets_by_layer(plan, assets)
-    audio_mix_plan = build_audio_mix_plan(plan, assets)
+    audio_mix_plan = build_audio_mix_plan(plan, assets, fill_policies=fill_policies)
     resolved_captions = _resolve_segment_captions(
         caption_runtime_service=caption_runtime_service,
         product_code=product_code,
@@ -78,6 +85,7 @@ def build_segmented_preview_composition(
                 plan=plan,
                 segments=(),
                 resolved_captions=resolved_captions,
+                fill_policies=fill_policies.to_manifest_dict(),
             ),
             source_files=(),
             segment_clips=(),
@@ -89,6 +97,7 @@ def build_segmented_preview_composition(
             segment,
             visual_assets_by_layer,
             captions_by_sequence=resolved_captions,
+            fill_policies=fill_policies,
         )
         for segment in segments
     )
@@ -102,6 +111,7 @@ def build_segmented_preview_composition(
                 plan=plan,
                 segments=(),
                 resolved_captions=resolved_captions,
+                fill_policies=fill_policies.to_manifest_dict(),
             ),
             source_files=source_files,
             segment_clips=(),
@@ -115,6 +125,7 @@ def build_segmented_preview_composition(
             plan=plan,
             segments=segment_clips,
             resolved_captions=resolved_captions,
+            fill_policies=fill_policies.to_manifest_dict(),
         ),
         source_files=tuple(clip.source_file for clip in segment_clips),
         segment_clips=segment_clips,
@@ -143,16 +154,19 @@ def _build_segment_clip(
     visual_assets_by_layer: dict[str, tuple[Asset, ...]],
     *,
     captions_by_sequence: dict[int, ResolvedSegmentCaptions],
+    fill_policies,
 ) -> PreviewSegmentClip:
     background_layer = _build_optional_layer_clip(
         segment,
         visual_assets_by_layer,
         layer_name="background_visual",
+        fill_policy=fill_policies.background_video,
     )
     foreground_layer = _build_optional_layer_clip(
         segment,
         visual_assets_by_layer,
         layer_name="product_focus_visual",
+        fill_policy=fill_policies.foreground_video,
     )
     primary_layer = foreground_layer or background_layer
     if primary_layer is None:
@@ -161,6 +175,11 @@ def _build_segment_clip(
             layer_name=layer_name,
             asset=candidate_assets[(segment.sequence_index - 1) % len(candidate_assets)],
             target_duration_sec=segment.target_duration_sec,
+            fill_policy=(
+                fill_policies.background_video
+                if layer_name == "background_visual"
+                else fill_policies.foreground_video
+            ),
         )
     return PreviewSegmentClip(
         sequence_index=segment.sequence_index,
@@ -190,6 +209,7 @@ def _build_optional_layer_clip(
     visual_assets_by_layer: dict[str, tuple[Asset, ...]],
     *,
     layer_name: str,
+    fill_policy=None,
 ) -> PreviewLayerClip | None:
     candidate_assets = visual_assets_by_layer.get(layer_name)
     if not candidate_assets:
@@ -199,16 +219,17 @@ def _build_optional_layer_clip(
         layer_name=layer_name,
         asset=asset,
         target_duration_sec=segment.target_duration_sec,
+        fill_policy=fill_policy,
     )
 
 
-def _build_layer_clip(*, layer_name: str, asset: Asset, target_duration_sec: float) -> PreviewLayerClip:
+def _build_layer_clip(*, layer_name: str, asset: Asset, target_duration_sec: float, fill_policy=None) -> PreviewLayerClip:
     return PreviewLayerClip(
         layer_name=layer_name,
         asset_id=asset.id or 0,
         asset_code=asset.asset_code,
         source_file=Path(asset.file_path),
-        fill_mode=_resolve_fill_mode(asset.duration_sec, target_duration_sec),
+        fill_mode=_resolve_fill_mode(asset.duration_sec, target_duration_sec, fill_policy=fill_policy),
     )
 
 
@@ -227,12 +248,14 @@ def _resolve_candidate_assets(
     raise ValueError(f"Segment {segment.segment_type} has no renderable visual assets.")
 
 
-def _resolve_fill_mode(source_duration_sec: float | None, target_duration_sec: float) -> str:
+def _resolve_fill_mode(source_duration_sec: float | None, target_duration_sec: float, *, fill_policy=None) -> str:
     if source_duration_sec is None or source_duration_sec <= 0:
         return "duration_unknown"
     if source_duration_sec >= target_duration_sec:
         return "trim_to_segment"
-    return "loop_to_segment"
+    if fill_policy is None:
+        return "loop_to_segment"
+    return fill_policy.shortfall_mode
 
 
 def _build_manifest_payload(
@@ -243,6 +266,7 @@ def _build_manifest_payload(
     plan: CompositionPlan,
     segments: Sequence[PreviewSegmentClip],
     resolved_captions: dict[int, ResolvedSegmentCaptions],
+    fill_policies: dict[str, dict[str, object]],
 ) -> dict:
     return {
         "composition_plan": {
@@ -250,6 +274,7 @@ def _build_manifest_payload(
             "resolved_duration_sec": plan.resolved_duration_sec,
             "target_duration_sec": plan.target_duration_sec,
         },
+        "fill_policy": fill_policies,
         "items": [
             {
                 "asset_code": item.asset_code,

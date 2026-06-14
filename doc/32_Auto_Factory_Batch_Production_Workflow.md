@@ -76,7 +76,7 @@ ProductA/
   music/
   voice/
   archive/
-  outputs/
+  runs/
 ```
 
 Folder meaning:
@@ -89,6 +89,11 @@ Folder meaning:
 `product.toml` should define product identity.
 
 `pipeline.toml` should define production policy.
+
+Current extended baseline:
+
+- `pipeline.toml` also acts as the product-level fill-policy contract for auto-mode preview/final runtime
+- `runs/` is the preferred operator-visible destination for product-local auto-mode artifacts
 
 ### Baseline TOML Examples
 

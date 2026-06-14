@@ -131,7 +131,11 @@ class AutoFactoryBatchService:
     ) -> AutoFactoryBatchPreviewProductionDTO:
         recipe_results: list[AutoFactoryPreviewRecipeResultDTO] = []
         for created_recipe in materialization.created_recipes:
-            preview_job_id = self._video_assembly_factory_service.enqueue_preview_job(created_recipe.recipe_id)
+            preview_job_id = self._video_assembly_factory_service.enqueue_preview_job(
+                created_recipe.recipe_id,
+                batch_code=materialization.batch_code,
+                source_mode="auto_factory_folder",
+            )
             error_message: str | None = None
             try:
                 self._video_assembly_factory_service.run_preview_job(preview_job_id)

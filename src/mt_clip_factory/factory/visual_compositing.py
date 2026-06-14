@@ -254,15 +254,17 @@ def _render_single_layer_segment(
     target_duration_sec: float,
     run_ffmpeg,
 ) -> None:
-    visual_filter = _captioned_visual_filter(
-        base_filter=build_visual_filter(target_ratio=target_ratio, output_resolution=output_resolution),
-        temp_dir=temp_dir,
-        segment=segment,
+    visual_filter = _layer_fill_filter(
+        fill_mode=segment.fill_mode,
+        base_filter=_captioned_visual_filter(
+            base_filter=build_visual_filter(target_ratio=target_ratio, output_resolution=output_resolution),
+            temp_dir=temp_dir,
+            segment=segment,
+        ),
     )
     arguments = [
         "-y",
-        "-stream_loop",
-        "-1",
+        *_looping_input_arguments(fill_mode=segment.fill_mode),
         "-i",
         str(source_file),
         "-t",
@@ -302,12 +304,10 @@ def _render_green_screen_overlay_segment(
         raise ValueError("Resolved key color is required for chroma-key overlay rendering.")
     arguments = [
         "-y",
-        "-stream_loop",
-        "-1",
+        *_looping_input_arguments(fill_mode=segment.background_layer.fill_mode),
         "-i",
         str(segment.background_layer.source_file),
-        "-stream_loop",
-        "-1",
+        *_looping_input_arguments(fill_mode=segment.fill_mode),
         "-i",
         str(segment.source_file),
         "-t",
@@ -347,13 +347,20 @@ def _overlay_filter_graph(
     key_color: str,
     key_profile: str | None,
 ) -> str:
-    base_filter = build_visual_filter(target_ratio=target_ratio, output_resolution=output_resolution)
+    background_filter = _layer_fill_filter(
+        fill_mode=segment.background_layer.fill_mode if segment.background_layer is not None else "trim_to_segment",
+        base_filter=build_visual_filter(target_ratio=target_ratio, output_resolution=output_resolution),
+    )
+    foreground_filter = _layer_fill_filter(
+        fill_mode=segment.fill_mode,
+        base_filter=build_visual_filter(target_ratio=target_ratio, output_resolution=output_resolution),
+    )
     despill_filter = ",despill=green" if key_profile == "green" else ""
     caption_filters = _caption_drawtext_filters(temp_dir=temp_dir, segment=segment)
     output_label = "[vbase]" if caption_filters else "[vout]"
     overlay_graph = (
-        f"[0:v]{base_filter}[bg];"
-        f"[1:v]{base_filter},colorkey={key_color}:{_GREEN_SCREEN_SIMILARITY}:{_GREEN_SCREEN_BLEND}{despill_filter}[fg];"
+        f"[0:v]{background_filter}[bg];"
+        f"[1:v]{foreground_filter},colorkey={key_color}:{_GREEN_SCREEN_SIMILARITY}:{_GREEN_SCREEN_BLEND}{despill_filter}[fg];"
         f"[bg][fg]overlay=0:0:format=auto{output_label}"
     )
     if not caption_filters:
@@ -372,7 +379,9 @@ def _segment_summary(
         "sequence_index": segment.sequence_index,
         "primary_asset_code": segment.asset_code,
         "primary_layer_name": segment.layer_name,
+        "primary_fill_mode": segment.fill_mode,
         "background_asset_code": None if segment.background_layer is None else segment.background_layer.asset_code,
+        "background_fill_mode": None if segment.background_layer is None else segment.background_layer.fill_mode,
         "composite_mode": composite_mode,
         "dominant_key_ratio": None if analysis is None else analysis.dominant_color_ratio,
         "likely_keyed_foreground": None if analysis is None else analysis.likely_greenscreen,
@@ -410,6 +419,18 @@ def _captioned_visual_filter(*, base_filter: str, temp_dir: Path, segment: Previ
     if not caption_filters:
         return base_filter
     return ",".join((base_filter, *caption_filters))
+
+
+def _looping_input_arguments(*, fill_mode: str) -> list[str]:
+    if fill_mode == "loop_to_segment":
+        return ["-stream_loop", "-1"]
+    return []
+
+
+def _layer_fill_filter(*, fill_mode: str, base_filter: str) -> str:
+    if fill_mode in {"freeze_last_frame", "review_if_short"}:
+        return ",".join((base_filter, "tpad=stop_mode=clone:stop_duration=3600"))
+    return base_filter
 
 
 def _caption_overlay_chain(*, input_label: str, caption_filters: list[str]) -> str:

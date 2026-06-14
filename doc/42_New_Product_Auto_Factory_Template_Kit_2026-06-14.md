@@ -35,10 +35,11 @@ The template kit includes:
 2. rename the copied folder to the new product folder name
 3. update `product.toml`
 4. update `pipeline.toml`
-5. update `captions.toml` when captioned automation is needed
-6. place media files into `foreground`, `background`, `music`, and `voice`
-7. edit the matching `tags.toml` files when automation tags are needed
-8. run the batch root from the `Auto Factory` screen
+5. review or adjust fill-policy defaults in `pipeline.toml`
+6. update `captions.toml` when captioned automation is needed
+7. place media files into `foreground`, `background`, `music`, and `voice`
+8. edit the matching `tags.toml` files when automation tags are needed
+9. run the batch root from the `Auto Factory` screen
 
 ## Minimum Required Files
 
@@ -65,8 +66,13 @@ That means:
 - operators can already prepare `global_tags` and per-file `file_tags`
 - those files act as a stable contract and checklist for current folder-driven automation plus caption-ready preview/final runtime
 - the current delivered auto-factory intake now reads `tags.toml` and applies normalized tags additively to matching assets during folder runs
+- `pipeline.toml` is also the contract location for per-asset-type fill policy in auto-mode
 
 The template kit also includes `captions.toml` as the current product-level contract for automated caption selection and rendering.
+
+Runtime-created operator artifact folder:
+
+- `runs/` is created by automation and stores product-local batch outputs, manifests, and journal files
 
 ## Example Operator Flow
 

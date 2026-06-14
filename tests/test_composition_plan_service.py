@@ -48,12 +48,14 @@ def _build_factory_service(unit_of_work_factory, preview_root: Path) -> VideoAss
             source_files: list[Path],
             segment_clips=(),
             audio_mix_plan=None,
+            target_path: Path | None = None,
+            fill_policies=None,
         ) -> RenderedPreviewOutput:
-            output_dir = preview_root / product_code / "videos"
-            output_dir.mkdir(parents=True, exist_ok=True)
-            target_path = output_dir / f"{output_stem}.mp4"
-            target_path.write_bytes(source_files[0].read_bytes())
-            return RenderedPreviewOutput(file_path=target_path, duration_sec=3.0)
+            del fill_policies
+            resolved_target_path = target_path or (preview_root / product_code / "videos" / f"{output_stem}.mp4")
+            resolved_target_path.parent.mkdir(parents=True, exist_ok=True)
+            resolved_target_path.write_bytes(source_files[0].read_bytes())
+            return RenderedPreviewOutput(file_path=resolved_target_path, duration_sec=3.0)
 
     return VideoAssemblyFactoryService(
         unit_of_work_factory=unit_of_work_factory,

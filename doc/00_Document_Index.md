@@ -52,6 +52,7 @@ When code changes, the related Markdown documents in this folder must be updated
 44. [44_Biothentic0001_Auto_Factory_Test_And_Audit_Plan_2026-06-14.md](/F:/programming/python/MTClipFactory/doc/44_Biothentic0001_Auto_Factory_Test_And_Audit_Plan_2026-06-14.md)
 45. [45_Folder_Tag_Metadata_Sync_Workflow_2026-06-14.md](/F:/programming/python/MTClipFactory/doc/45_Folder_Tag_Metadata_Sync_Workflow_2026-06-14.md)
 46. [46_Caption_Runtime_Metadata_And_Render_Workflow_2026-06-14.md](/F:/programming/python/MTClipFactory/doc/46_Caption_Runtime_Metadata_And_Render_Workflow_2026-06-14.md)
+47. [47_Product_Local_Run_Artifacts_And_Fill_Policy_Workflow_2026-06-14.md](/F:/programming/python/MTClipFactory/doc/47_Product_Local_Run_Artifacts_And_Fill_Policy_Workflow_2026-06-14.md)
 
 ## Governance
 

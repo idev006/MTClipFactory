@@ -10,8 +10,10 @@ from mt_clip_factory.control_center.dto import PathRootsDTO
 from mt_clip_factory.control_center.services import DashboardService, SystemSettingsService
 from mt_clip_factory.factory.auto_factory import AutoFactoryBatchService
 from mt_clip_factory.factory.auto_factory_folder import AutoFactoryFolderService
+from mt_clip_factory.factory.automation_policy import ProductAutomationPolicyService
 from mt_clip_factory.factory.caption_runtime import CaptionRuntimeService, ProductAutomationMetadataStore
 from mt_clip_factory.factory.preview_artifacts import PreviewManifestBuilder
+from mt_clip_factory.factory.product_run_store import ProductRunArtifactStore
 from mt_clip_factory.factory.production_order_service import ProductionOrderService
 from mt_clip_factory.factory.renderers import FFmpegPreviewRenderer
 from mt_clip_factory.factory.services import VideoAssemblyFactoryService
@@ -99,6 +101,8 @@ def build_resource_library_module(
         artifact_generator=artifact_generator,
     )
     automation_metadata_store = ProductAutomationMetadataStore(config.paths.media_root)
+    automation_policy_service = ProductAutomationPolicyService(metadata_store=automation_metadata_store)
+    run_artifact_store = ProductRunArtifactStore(metadata_store=automation_metadata_store)
     caption_runtime_service = CaptionRuntimeService(
         metadata_store=automation_metadata_store,
         fonts_root=workspace_root / "fonts",
@@ -118,6 +122,8 @@ def build_resource_library_module(
         ),
         system_settings_service=settings_service,
         caption_runtime_service=caption_runtime_service,
+        automation_policy_service=automation_policy_service,
+        run_artifact_store=run_artifact_store,
     )
     auto_factory_service = AutoFactoryBatchService(
         product_service=product_service,
@@ -131,6 +137,7 @@ def build_resource_library_module(
         auto_factory_service=auto_factory_service,
         tag_management_service=tag_management_service,
         automation_metadata_store=automation_metadata_store,
+        run_artifact_store=run_artifact_store,
     )
     production_order_service = ProductionOrderService(
         unit_of_work_factory=uow_factory,

@@ -12,6 +12,7 @@ from mt_clip_factory.factory.auto_factory_folder import AutoFactoryFolderContrac
 from mt_clip_factory.factory.caption_runtime import ProductAutomationMetadataStore
 from mt_clip_factory.factory.preview_composition import PreviewSegmentClip
 from mt_clip_factory.factory.preview_artifacts import PreviewManifestBuilder
+from mt_clip_factory.factory.product_run_store import ProductRunArtifactStore
 from mt_clip_factory.factory.renderers import RenderedPreviewOutput
 from mt_clip_factory.factory.services import VideoAssemblyFactoryService
 from mt_clip_factory.library.contracts import AnalyzedMediaMetadata
@@ -59,20 +60,21 @@ def _build_services(unit_of_work_factory, tmp_path: Path, durations_by_name: dic
             segment_clips: tuple[PreviewSegmentClip, ...] = (),
             audio_mix_plan: PreviewAudioMixPlan | None = None,
             target_ratio: str | None = None,
+            target_path: Path | None = None,
+            fill_policies=None,
         ) -> RenderedPreviewOutput:
-            del audio_mix_plan, target_ratio
-            output_dir = tmp_path / "previews" / product_code / "videos"
-            output_dir.mkdir(parents=True, exist_ok=True)
-            target_path = output_dir / f"{output_stem}.mp4"
+            del audio_mix_plan, target_ratio, fill_policies
+            resolved_target_path = target_path or (tmp_path / "previews" / product_code / "videos" / f"{output_stem}.mp4")
+            resolved_target_path.parent.mkdir(parents=True, exist_ok=True)
             payload = (
                 b"".join(segment.source_file.read_bytes() for segment in segment_clips)
                 if segment_clips
                 else source_files[0].read_bytes()
             )
-            target_path.write_bytes(payload)
+            resolved_target_path.write_bytes(payload)
             duration_sec = round(sum(segment.target_duration_sec for segment in segment_clips), 3) if segment_clips else 3.0
             return RenderedPreviewOutput(
-                file_path=target_path,
+                file_path=resolved_target_path,
                 duration_sec=duration_sec,
                 audio_mix_summary=None,
                 visual_composite_summary=None,
@@ -97,6 +99,7 @@ def _build_services(unit_of_work_factory, tmp_path: Path, durations_by_name: dic
         auto_factory_service=auto_factory_service,
         tag_management_service=tag_service,
         automation_metadata_store=automation_metadata_store,
+        run_artifact_store=ProductRunArtifactStore(metadata_store=automation_metadata_store),
     )
     return product_service, asset_service, factory_service, folder_service, tag_service
 
@@ -276,6 +279,33 @@ def test_folder_service_syncs_caption_contract_into_runtime_metadata(unit_of_wor
     folder_service.run_batch_root(batch_root, materialize=False)
 
     assert not runtime_caption_path.exists()
+
+
+def test_folder_service_syncs_pipeline_context_and_writes_run_snapshot(unit_of_work_factory, tmp_path) -> None:
+    _, _, _, folder_service, _ = _build_services(unit_of_work_factory, tmp_path, {})
+    batch_root = tmp_path / "batch_root"
+    product_dir = _write_product_folder(
+        batch_root,
+        folder_name="ProductA",
+        product_code="product_a",
+        product_name="Product A",
+        requested_output_count=2,
+    )
+
+    folder_service.run_batch_root(batch_root, batch_code="product_a_batch", materialize=False)
+
+    cached_pipeline_path = tmp_path / "media_library" / "products" / "product_a" / "automation" / "pipeline.toml"
+    cached_context_path = tmp_path / "media_library" / "products" / "product_a" / "automation" / "context.toml"
+    order_snapshot_path = product_dir / "runs" / "product_a_batch" / "order_snapshot.toml"
+    journal_path = product_dir / "runs" / "product_a_batch" / "journal.toml"
+
+    assert cached_pipeline_path.exists()
+    assert cached_context_path.exists()
+    assert order_snapshot_path.exists()
+    assert journal_path.exists()
+    assert 'source_product_dir = "' in cached_context_path.read_text(encoding="utf-8")
+    assert "requested_output_count = 2" in order_snapshot_path.read_text(encoding="utf-8")
+    assert 'event_type = "intake_completed"' in journal_path.read_text(encoding="utf-8")
 
 
 def test_folder_service_propagates_capacity_shortfall(unit_of_work_factory, tmp_path) -> None:
@@ -586,6 +616,26 @@ def test_folder_service_rejects_invalid_tags_toml_labels(unit_of_work_factory, t
     )
 
     with pytest.raises(AutoFactoryFolderContractError, match="group:name"):
+        folder_service.run_batch_root(batch_root, materialize=False)
+
+
+def test_folder_service_rejects_invalid_fill_policy_contract(unit_of_work_factory, tmp_path) -> None:
+    _, _, _, folder_service, _ = _build_services(unit_of_work_factory, tmp_path, {})
+    batch_root = tmp_path / "batch_root"
+    product_dir = _write_product_folder(
+        batch_root,
+        folder_name="ProductA",
+        product_code="product_a",
+        product_name="Product A",
+        requested_output_count=1,
+    )
+    (product_dir / "pipeline.toml").write_text(
+        (product_dir / "pipeline.toml").read_text(encoding="utf-8")
+        + '\n[fill_policy.background_music]\nloop_enabled = false\nshortfall_mode = "loop_to_timeline"\n',
+        encoding="utf-8",
+    )
+
+    with pytest.raises(AutoFactoryFolderContractError):
         folder_service.run_batch_root(batch_root, materialize=False)
 
 

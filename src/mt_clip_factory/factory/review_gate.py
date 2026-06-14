@@ -156,12 +156,36 @@ def assess_review_gate(
         for role in clip.captions
         if role.review_required
     )
+    visual_fill_review_segments = sum(
+        1
+        for clip in segment_clips
+        if clip.fill_mode == "review_if_short"
+        or (clip.background_layer is not None and clip.background_layer.fill_mode == "review_if_short")
+    )
+    audio_fill_review_layers = sum(
+        1
+        for summary in (
+            None if audio_mix_summary is None else audio_mix_summary.get("voice_mix"),
+            None if audio_mix_summary is None else audio_mix_summary.get("music_mix"),
+        )
+        if isinstance(summary, dict) and bool(summary.get("review_required"))
+    )
     if caption_review_required_roles > 0:
         signals.append(
             ReviewSignal(
                 code="caption_overflow_risk",
                 message="One or more resolved captions exceeded safe fit policy and require review.",
                 metric_value=caption_review_required_roles,
+                threshold=0,
+            )
+        )
+    fill_policy_review_count = visual_fill_review_segments + audio_fill_review_layers
+    if fill_policy_review_count > 0:
+        signals.append(
+            ReviewSignal(
+                code="fill_policy_review_required",
+                message="One or more layers remained short under non-loop fill policy and require review.",
+                metric_value=fill_policy_review_count,
                 threshold=0,
             )
         )
@@ -187,6 +211,8 @@ def assess_review_gate(
             "music_track_count": music_track_count,
             "caption_overflow_roles": caption_overflow_roles,
             "caption_review_required_roles": caption_review_required_roles,
+            "visual_fill_review_segments": visual_fill_review_segments,
+            "audio_fill_review_layers": audio_fill_review_layers,
         },
     )
 

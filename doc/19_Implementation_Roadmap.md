@@ -46,6 +46,7 @@ The project now uses two roadmap layers:
 - `IR-25` Bulk asset tagging workflow baseline: complete on 2026-06-14
 - `IR-26` Folder tag metadata sync baseline: complete on 2026-06-14
 - `IR-27` Caption runtime metadata and render baseline: complete on 2026-06-14
+- `IR-28` Product-local run artifacts and fill-policy baseline: in progress on 2026-06-14
 
 ## Current Execution Stream
 

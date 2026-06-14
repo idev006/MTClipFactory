@@ -9,6 +9,7 @@ from tempfile import TemporaryDirectory
 from mt_clip_factory.control_center.dto import SystemSettingsDTO
 from mt_clip_factory.control_center.services import SystemSettingsService
 from mt_clip_factory.factory.audio_composition import PreviewAudioMixPlan, PreviewAudioTrack
+from mt_clip_factory.factory.automation_policy import ProductAutomationFillPolicies, default_fill_policies
 from mt_clip_factory.factory.audio_ducking import (
     build_sidechain_duck_filter_graph,
     build_windowed_duck_filter_graph,
@@ -51,32 +52,35 @@ class FFmpegPreviewRenderer:
         segment_clips: tuple[PreviewSegmentClip, ...] = (),
         audio_mix_plan: PreviewAudioMixPlan | None = None,
         target_ratio: str | None = None,
+        target_path: Path | None = None,
+        fill_policies: ProductAutomationFillPolicies | None = None,
     ) -> RenderedPreviewOutput:
         if not source_files:
             raise ValueError("At least one source file is required for preview rendering.")
 
         settings = self._settings_service.load()
-        output_dir = self._preview_root / product_code / "videos"
-        output_dir.mkdir(parents=True, exist_ok=True)
-        target_path = output_dir / f"{output_stem}.mp4"
+        resolved_target_path = target_path or (self._preview_root / product_code / "videos" / f"{output_stem}.mp4")
+        resolved_target_path.parent.mkdir(parents=True, exist_ok=True)
+        resolved_fill_policies = fill_policies or default_fill_policies()
         if audio_mix_plan is not None:
             audio_mix_summary, visual_composite_summary = self._render_output_with_audio_mix(
                 settings=settings,
-                target_path=target_path,
+                target_path=resolved_target_path,
                 source_files=source_files,
                 segment_clips=segment_clips,
                 audio_mix_plan=audio_mix_plan,
                 target_ratio=target_ratio,
+                fill_policies=resolved_fill_policies,
             )
             return RenderedPreviewOutput(
-                file_path=target_path,
+                file_path=resolved_target_path,
                 duration_sec=audio_mix_plan.target_duration_sec,
                 audio_mix_summary=audio_mix_summary,
                 visual_composite_summary=visual_composite_summary,
             )
         visual_composite_summary = self._render_visual_output(
             settings=settings,
-            target_path=target_path,
+            target_path=resolved_target_path,
             source_files=source_files,
             segment_clips=segment_clips,
             include_audio=True,
@@ -84,11 +88,11 @@ class FFmpegPreviewRenderer:
         )
         if segment_clips:
             return RenderedPreviewOutput(
-                file_path=target_path,
+                file_path=resolved_target_path,
                 duration_sec=round(sum(segment.target_duration_sec for segment in segment_clips), 3),
                 visual_composite_summary=visual_composite_summary,
             )
-        return RenderedPreviewOutput(file_path=target_path, visual_composite_summary=visual_composite_summary)
+        return RenderedPreviewOutput(file_path=resolved_target_path, visual_composite_summary=visual_composite_summary)
 
     def render_preview(
         self,
@@ -99,6 +103,8 @@ class FFmpegPreviewRenderer:
         segment_clips: tuple[PreviewSegmentClip, ...] = (),
         audio_mix_plan: PreviewAudioMixPlan | None = None,
         target_ratio: str | None = None,
+        target_path: Path | None = None,
+        fill_policies: ProductAutomationFillPolicies | None = None,
     ) -> RenderedPreviewOutput:
         return self.render_output(
             product_code=product_code,
@@ -107,6 +113,8 @@ class FFmpegPreviewRenderer:
             segment_clips=segment_clips,
             audio_mix_plan=audio_mix_plan,
             target_ratio=target_ratio,
+            target_path=target_path,
+            fill_policies=fill_policies,
         )
 
     def _render_output_with_audio_mix(
@@ -118,6 +126,7 @@ class FFmpegPreviewRenderer:
         segment_clips: tuple[PreviewSegmentClip, ...],
         audio_mix_plan: PreviewAudioMixPlan,
         target_ratio: str | None,
+        fill_policies: ProductAutomationFillPolicies,
     ) -> tuple[dict, dict | None]:
         with TemporaryDirectory(prefix="mtclipfactory_preview_audio_mix_") as temp_dir_name:
             temp_dir = Path(temp_dir_name)
@@ -136,7 +145,8 @@ class FFmpegPreviewRenderer:
                 prefix="voice",
                 tracks=audio_mix_plan.voice_tracks,
                 target_duration_sec=audio_mix_plan.target_duration_sec,
-                allow_loop=False,
+                allow_loop=fill_policies.voiceover.loop_enabled,
+                shortfall_mode=fill_policies.voiceover.shortfall_mode,
             )
             voice_track_path, voice_gain_summary = self._apply_gain_stage(
                 settings=settings,
@@ -152,7 +162,8 @@ class FFmpegPreviewRenderer:
                 prefix="music",
                 tracks=audio_mix_plan.music_tracks,
                 target_duration_sec=audio_mix_plan.target_duration_sec,
-                allow_loop=settings.background_music_loop_enabled,
+                allow_loop=fill_policies.background_music.loop_enabled,
+                shortfall_mode=fill_policies.background_music.shortfall_mode,
             )
             music_track_path, music_gain_summary = self._apply_gain_stage(
                 settings=settings,
@@ -205,7 +216,8 @@ class FFmpegPreviewRenderer:
             "voice_loop_requested": settings.voice_loop_enabled,
             "voice_loop_applied": False,
             "voice_loop_policy_note": "primary_voice_never_auto_loops",
-            "background_music_loop_enabled": settings.background_music_loop_enabled,
+            "background_music_loop_enabled": fill_policies.background_music.loop_enabled,
+            "fill_policy": fill_policies.to_manifest_dict(),
             "voice_tracks": _track_summary(audio_mix_plan.voice_tracks),
             "music_tracks": _track_summary(audio_mix_plan.music_tracks),
             "mix_balance": {
@@ -356,6 +368,7 @@ class FFmpegPreviewRenderer:
         tracks: tuple[PreviewAudioTrack, ...],
         target_duration_sec: float,
         allow_loop: bool,
+        shortfall_mode: str,
     ) -> tuple[Path | None, dict]:
         if not tracks:
             return None, {"track_count": 0, "applied_fill_mode": "none", "total_duration_sec": 0.0}
@@ -401,7 +414,7 @@ class FFmpegPreviewRenderer:
                     str(base_path),
                 ],
             )
-        if allow_loop and total_duration_sec > 0 and total_duration_sec < target_duration_sec:
+        if allow_loop and shortfall_mode == "loop_to_timeline" and total_duration_sec > 0 and total_duration_sec < target_duration_sec:
             looped_path = temp_dir / f"{prefix}_looped.m4a"
             self._run_ffmpeg(
                 settings=settings,
@@ -422,6 +435,8 @@ class FFmpegPreviewRenderer:
             return looped_path, {
                 "track_count": len(tracks),
                 "applied_fill_mode": "loop_to_timeline",
+                "policy_shortfall_mode": shortfall_mode,
+                "review_required": False,
                 "base_duration_sec": total_duration_sec,
                 "output_duration_sec": target_duration_sec,
             }
@@ -444,6 +459,8 @@ class FFmpegPreviewRenderer:
             return trimmed_path, {
                 "track_count": len(tracks),
                 "applied_fill_mode": "trim_to_timeline",
+                "policy_shortfall_mode": shortfall_mode,
+                "review_required": False,
                 "base_duration_sec": total_duration_sec,
                 "output_duration_sec": target_duration_sec,
             }
@@ -468,6 +485,8 @@ class FFmpegPreviewRenderer:
             return padded_path, {
                 "track_count": len(tracks),
                 "applied_fill_mode": "silence_tail",
+                "policy_shortfall_mode": shortfall_mode,
+                "review_required": shortfall_mode == "review_if_short",
                 "base_duration_sec": total_duration_sec,
                 "output_duration_sec": target_duration_sec,
             }
@@ -475,6 +494,8 @@ class FFmpegPreviewRenderer:
         return base_path, {
             "track_count": len(tracks),
             "applied_fill_mode": applied_fill_mode,
+            "policy_shortfall_mode": shortfall_mode,
+            "review_required": False,
             "base_duration_sec": total_duration_sec,
             "output_duration_sec": total_duration_sec,
         }
@@ -691,27 +712,29 @@ class LocalPreviewRenderer:
         segment_clips: tuple[PreviewSegmentClip, ...] = (),
         audio_mix_plan: PreviewAudioMixPlan | None = None,
         target_ratio: str | None = None,
+        target_path: Path | None = None,
+        fill_policies: ProductAutomationFillPolicies | None = None,
     ) -> RenderedPreviewOutput:
         if not source_files:
             raise ValueError("At least one source file is required for preview rendering.")
-        output_dir = self._preview_root / product_code / "videos"
-        output_dir.mkdir(parents=True, exist_ok=True)
         suffix = source_files[0].suffix or ".bin"
-        target_path = output_dir / f"{output_stem}{suffix}"
+        resolved_target_path = target_path or (self._preview_root / product_code / "videos" / f"{output_stem}{suffix}")
+        resolved_target_path.parent.mkdir(parents=True, exist_ok=True)
+        del fill_policies
         if segment_clips:
             payload = b"".join(segment.source_file.read_bytes() for segment in segment_clips)
-            target_path.write_bytes(payload)
+            resolved_target_path.write_bytes(payload)
             audio_mix_summary = None if audio_mix_plan is None else _build_local_audio_mix_summary(audio_mix_plan)
             return RenderedPreviewOutput(
-                file_path=target_path,
+                file_path=resolved_target_path,
                 duration_sec=round(sum(segment.target_duration_sec for segment in segment_clips), 3),
                 audio_mix_summary=audio_mix_summary,
                 visual_composite_summary=_build_local_visual_composite_summary(segment_clips),
             )
-        shutil.copy2(source_files[0], target_path)
+        shutil.copy2(source_files[0], resolved_target_path)
         audio_mix_summary = None if audio_mix_plan is None else _build_local_audio_mix_summary(audio_mix_plan)
         return RenderedPreviewOutput(
-            file_path=target_path,
+            file_path=resolved_target_path,
             audio_mix_summary=audio_mix_summary,
             visual_composite_summary=None,
         )
@@ -725,6 +748,8 @@ class LocalPreviewRenderer:
         segment_clips: tuple[PreviewSegmentClip, ...] = (),
         audio_mix_plan: PreviewAudioMixPlan | None = None,
         target_ratio: str | None = None,
+        target_path: Path | None = None,
+        fill_policies: ProductAutomationFillPolicies | None = None,
     ) -> RenderedPreviewOutput:
         return self.render_output(
             product_code=product_code,
@@ -733,6 +758,8 @@ class LocalPreviewRenderer:
             segment_clips=segment_clips,
             audio_mix_plan=audio_mix_plan,
             target_ratio=target_ratio,
+            target_path=target_path,
+            fill_policies=fill_policies,
         )
 
 

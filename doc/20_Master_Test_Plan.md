@@ -43,6 +43,8 @@ It complements [07_Testing_Strategy.md](/F:/programming/python/MTClipFactory/doc
 - bulk asset tagging workflow for multi-select assignment and primary selected-asset review
 - folder-driven tag metadata sync from `tags.toml`
 - caption runtime sync and render behavior from product-level `captions.toml`
+- product-local run artifact layout, order snapshot, and run journal behavior
+- per-asset-type fill policy from product-level `pipeline.toml`
 - preview job flow
 - final render flow
 - target-ratio visual normalization across mixed source sizes
@@ -202,6 +204,12 @@ It complements [07_Testing_Strategy.md](/F:/programming/python/MTClipFactory/doc
 33. Confirm folder-driven automation syncs `captions.toml` into runtime metadata under the media library.
 34. Confirm preview/final manifests record resolved caption text, font resolution, and caption-fit evidence when caption metadata exists.
 35. Confirm unsafe caption fit raises a review signal instead of silently treating the render as clean.
+36. Confirm folder-driven automation syncs `pipeline.toml` and source product context into runtime metadata.
+37. Confirm auto-mode preview artifacts can be written into `Product/runs/<batch_code>/previews/videos`.
+38. Confirm auto-mode final artifacts can be written into `Product/runs/<batch_code>/finals/videos`.
+39. Confirm `order_snapshot.toml` and `journal.toml` are created for product-local auto runs.
+40. Confirm per-asset-type fill policy is reflected in manifest evidence for voice, music, background video, and foreground video.
+41. Confirm non-loop foreground shortfall can use `freeze_last_frame` or raise review-visible shortfall instead of silently looping.
 
 ### C. Review And Approval Flow
 

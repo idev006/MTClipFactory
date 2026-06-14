@@ -400,6 +400,38 @@ def test_ffmpeg_renderer_builds_drawtext_filters_for_caption_layers(tmp_path) ->
     assert any("fontfile='" in " ".join(command) for command in renderer.commands)
 
 
+def test_ffmpeg_renderer_uses_freeze_last_frame_for_short_visual_segments(tmp_path) -> None:
+    settings = _settings(tmp_path)
+    renderer = InspectableFFmpegPreviewRenderer(StaticSettingsService(settings), tmp_path / "preview_root")
+    source_file = tmp_path / "visual.mp4"
+    source_file.write_bytes(b"visual")
+
+    renderer.render_output(
+        product_code="honey",
+        output_stem="freeze_frame_preview",
+        source_files=[source_file],
+        segment_clips=(
+            PreviewSegmentClip(
+                sequence_index=1,
+                segment_type="hook",
+                layer_name="background_visual",
+                asset_id=11,
+                asset_code="visual_asset",
+                source_file=source_file,
+                start_sec=0.0,
+                end_sec=5.0,
+                target_duration_sec=5.0,
+                fill_mode="freeze_last_frame",
+            ),
+        ),
+        target_ratio="9:16",
+    )
+
+    command_text = "\n".join(" ".join(command) for command in renderer.commands)
+    assert "tpad=stop_mode=clone" in command_text
+    assert "-stream_loop -1" not in command_text
+
+
 def test_output_detail_helper_reads_runtime_audio_mix_from_manifest(tmp_path) -> None:
     manifest_path = tmp_path / "preview_manifest.json"
     manifest_path.write_text(

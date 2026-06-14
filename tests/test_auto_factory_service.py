@@ -75,7 +75,10 @@ def _build_factory_service(
             segment_clips: tuple[PreviewSegmentClip, ...] = (),
             audio_mix_plan: PreviewAudioMixPlan | None = None,
             target_ratio: str | None = None,
+            target_path: Path | None = None,
+            fill_policies=None,
         ) -> RenderedPreviewOutput:
+            del fill_policies
             self.calls.append(
                 {
                     "product_code": product_code,
@@ -89,18 +92,17 @@ def _build_factory_service(
             if fail_preview_stems and output_stem in fail_preview_stems:
                 raise RuntimeError(f"synthetic preview failure for {output_stem}")
 
-            output_dir = preview_root / product_code / "videos"
-            output_dir.mkdir(parents=True, exist_ok=True)
-            target_path = output_dir / f"{output_stem}.mp4"
+            resolved_target_path = target_path or (preview_root / product_code / "videos" / f"{output_stem}.mp4")
+            resolved_target_path.parent.mkdir(parents=True, exist_ok=True)
             payload = (
                 b"".join(segment.source_file.read_bytes() for segment in segment_clips)
                 if segment_clips
                 else source_files[0].read_bytes()
             )
-            target_path.write_bytes(payload)
+            resolved_target_path.write_bytes(payload)
             duration_sec = round(sum(segment.target_duration_sec for segment in segment_clips), 3) if segment_clips else 3.0
             return RenderedPreviewOutput(
-                file_path=target_path,
+                file_path=resolved_target_path,
                 duration_sec=duration_sec,
                 audio_mix_summary=None,
                 visual_composite_summary=None,
