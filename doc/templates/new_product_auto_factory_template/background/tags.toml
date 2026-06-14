@@ -1,0 +1,10 @@
+global_tags = [
+    "role:background",
+]
+
+[file_tags]
+"replace_me_background_clip.mp4" = [
+    "scene:space",
+    "object:stars",
+    "visual_theme:space",
+]

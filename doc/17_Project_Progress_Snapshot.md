@@ -68,6 +68,7 @@
 - The `Tags` screen now exposes `Asset Type` filtering and visible current asset tag labels, making automation-oriented tagging easier to verify before a batch run.
 - The `Tags` screen can now operate in an asset-first loop where one selected asset becomes the main focus for inspecting current tags, attaching existing tags, or creating-and-attaching a new tag immediately.
 - The `Tags` screen can now also bulk-apply one existing or newly created tag across a selected asset set while still showing one primary selected asset for review.
+- Folder-driven automation can now also read `tags.toml` metadata, create missing tags, and assign them to matching assets during intake instead of treating tag metadata as documentation only.
 - An enterprise pipeline review and architecture blueprint now exist so the project can grow into a true Video Production Factory instead of accumulating disconnected automation slices.
 - Production orders and orchestration stages are now persisted independently from recipe rows, giving the system a first real control-plane baseline for automated factory runs.
 - The `Tags` screen now provides guided group reuse plus product/status/search filtering so operators can narrow the asset list before assigning labels.
@@ -82,6 +83,7 @@
 - delivered `Tags` screen hardening with `Asset Type` filtering, visible asset tag labels, and operator guidance that automation can consume those normalized labels
 - delivered an asset-first tagging workflow with selected-asset state, tag search/group narrowing, and `Create And Attach` for the current asset
 - delivered a bulk asset tagging workflow with multi-select asset targeting, selected-set preservation, and one-primary-asset review behavior
+- delivered folder-driven tag metadata sync through `global_tags` and per-file `[file_tags]`, including rerun-safe additive assignment and truthful invalid-contract failure
 - delivered a real desktop `Auto Factory` control surface with guided root-folder browse, batch-code override, `scan_depth`, and explicit run-mode selection
 - delivered truthful in-app reporting for discovered product folders, product create/reuse outcomes, deterministic asset intake actions, recent production orders, and stage-by-stage order results
 - delivered a UI orchestration seam that performs folder intake first and then routes materialize/preview runs through persisted `ProductionOrderService` control-plane records
@@ -94,5 +96,5 @@
 
 ## Verification Baseline
 
-- `python -m pytest` in `.venv`: `186 passed, 4 warnings`
+- `python -m pytest` in `.venv`: `190 passed, 4 warnings`
 - targeted `QT_QPA_PLATFORM=offscreen` UI/theme coverage for the new `Auto Factory` window and existing app windows: passed

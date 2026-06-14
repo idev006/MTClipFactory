@@ -81,6 +81,14 @@ The composition engine should treat these as separate layers:
 - `subtitle`
 - `sfx` in a later phase
 
+Caption-system direction locked on 2026-06-14:
+
+- `text_overlay` should evolve into a first-class `main caption` layer role
+- `subtitle` should evolve into a first-class `sub caption` or spoken-subtitle role
+- product-level caption pools should live outside the renderer as metadata instead of hardcoded strings
+- caption authoring should support manual line breaks with `\n`
+- caption rendering should prefer project-approved fonts from the workspace `fonts` folder before falling back to system fonts
+
 Priority rule:
 
 1. `primary_voice`

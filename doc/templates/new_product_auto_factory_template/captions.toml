@@ -1,0 +1,79 @@
+[caption_selection]
+mode = "random_with_seed"
+seed_scope = "batch"
+
+[caption_pools.hook]
+main = [
+  "กลับมาแจก\nความสดใส\nและพลังบวกได้เต็มที่",
+  "เติมพลังใจ\nให้ทุกวันสดใส",
+]
+sub = [
+  "เริ่มต้นวันใหม่ด้วยพลังที่ใช่",
+  "ช่วยเสริมอารมณ์บวกและความน่าจดจำ",
+]
+
+[caption_pools.benefit]
+main = [
+  "ดูแลกระดูก\nและฟันในทุกวัน",
+]
+sub = [
+  "เหมาะกับการดูแลต่อเนื่องในชีวิตประจำวัน",
+]
+
+[caption_pools.proof]
+main = [
+  "อีกหนึ่งตัวช่วย\nที่หลายคนวางใจ",
+]
+sub = [
+  "ใช้เป็นข้อความ supporting ในช่วง proof ได้",
+]
+
+[caption_pools.cta]
+main = [
+  "พร้อมดูแลตัวเอง\nเริ่มได้วันนี้",
+]
+sub = [
+  "เลือกข้อความ CTA ให้สอดคล้องกับ platform และสินค้า",
+]
+
+[caption_properties.main]
+position = "center"
+alignment = "center"
+font_family = "Noto Sans Thai"
+font_fallbacks = ["Tahoma", "Arial Unicode MS"]
+font_size = 72
+min_font_size = 48
+font_weight = "bold"
+text_color = "#FFFFFF"
+stroke_color = "#000000"
+stroke_width = 3
+background_color = "#000000"
+background_opacity = 0.15
+padding = 20
+max_lines = 3
+max_chars_per_line = 18
+max_width_ratio = 0.78
+overflow_policy = "wrap_then_scale_then_review"
+enter_animation = "pop_in"
+review_required_if_overflow = true
+
+[caption_properties.sub]
+position = "bottom"
+alignment = "center"
+font_family = "Noto Sans Thai"
+font_fallbacks = ["Tahoma", "Arial Unicode MS"]
+font_size = 40
+min_font_size = 30
+font_weight = "medium"
+text_color = "#FFFFFF"
+stroke_color = "#000000"
+stroke_width = 2
+background_color = "#000000"
+background_opacity = 0.30
+padding = 16
+max_lines = 3
+max_chars_per_line = 28
+max_width_ratio = 0.82
+overflow_policy = "wrap_then_truncate_or_review"
+enter_animation = "fade_in"
+review_required_if_overflow = true

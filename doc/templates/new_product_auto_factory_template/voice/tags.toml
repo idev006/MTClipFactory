@@ -1,0 +1,9 @@
+global_tags = [
+    "role:voice",
+]
+
+[file_tags]
+"replace_me_voice_track.mp3" = [
+    "language:th",
+    "voice_tone:energetic",
+]

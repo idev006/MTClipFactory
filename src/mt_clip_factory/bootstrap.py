@@ -117,16 +117,17 @@ def build_resource_library_module(
         asset_intake_service=asset_intake_service,
         video_assembly_factory_service=video_assembly_factory_service,
     )
+    tag_management_service = TagManagementService(unit_of_work_factory=uow_factory)
     auto_factory_folder_service = AutoFactoryFolderService(
         product_service=product_service,
         asset_intake_service=asset_intake_service,
         auto_factory_service=auto_factory_service,
+        tag_management_service=tag_management_service,
     )
     production_order_service = ProductionOrderService(
         unit_of_work_factory=uow_factory,
         auto_factory_service=auto_factory_service,
     )
-    tag_management_service = TagManagementService(unit_of_work_factory=uow_factory)
     dashboard_service = DashboardService(
         config=config,
         product_service=product_service,

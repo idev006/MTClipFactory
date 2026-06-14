@@ -1,0 +1,7 @@
+[product]
+product_code = "replace_me_product_code"
+product_name = "Replace Me Product Name"
+category = "replace_me_category"
+brand_name = "replace_me_brand"
+description = "Short operator-facing product description."
+default_platform = "tiktok"

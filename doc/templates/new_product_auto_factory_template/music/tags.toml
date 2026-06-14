@@ -1,0 +1,9 @@
+global_tags = [
+    "role:music",
+]
+
+[file_tags]
+"replace_me_music_track.mp3" = [
+    "music_feel:uplifting",
+    "mood:exciting",
+]

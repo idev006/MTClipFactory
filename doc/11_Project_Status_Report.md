@@ -66,6 +66,7 @@
 - the `Tags` screen now shows current asset tag labels and supports `Asset Type` filtering so operators can prepare automation-relevant tags more safely
 - the `Tags` screen now also follows an asset-first workflow so operators can select one asset, inspect its current tags, search existing tags, and create-and-attach new tags from one focused loop
 - the `Tags` screen now also supports bulk asset tagging so one existing or newly created tag can be applied across a selected asset set while one primary selected asset remains visible for review
+- folder-driven `Auto Factory` intake now also reads `tags.toml` metadata, creates missing tags, and assigns normalized `group:name` labels to matching assets during the same run
 - assets can now be safely renamed or deleted from the `Assets` screen, with repository checks that block deletion when recipe-item or artifact-job references still exist
 - the `Assets` screen now supports `Show References`, `Retire Selected`, and `Purge Media` so referenced assets can leave active use and disk without destroying audit truth
 - the `Assets` screen now also supports `Replace In Recipes...` with recipe-safe validation, recipe reset-to-candidate behavior, and approval guards that prevent stale pre-replacement outputs from being reused as evidence for changed recipes
@@ -98,7 +99,7 @@
 
 ## Verification Baseline
 
-- `python -m pytest` via `.venv`: `186 passed, 4 warnings`
+- `python -m pytest` via `.venv`: `190 passed, 4 warnings`
 - targeted `QT_QPA_PLATFORM=offscreen` UI coverage for the new `Auto Factory` window and existing themed windows: passed
 
 ## Current Focus
@@ -118,6 +119,7 @@
 - validate whether the new `Auto Factory` desktop control surface is clear enough for operators without engineering assistance
 - validate whether the new tag-aware planner rules are expressive enough before adding richer weighted or role-specific selection logic
 - validate whether the new bulk asset tagging flow reduces repetitive operator work without causing accidental over-tagging
+- validate whether the new folder-driven additive tag sync is sufficient before implementing tag-removal sync behavior
 - validate whether the new production-order orchestration model remains stable enough to carry future lease and multi-worker execution semantics
 - keep project documents truthful through per-milestone revision checkpoints
 
@@ -157,6 +159,7 @@
 - `IR-18` now locks the enterprise factory pipeline review plus architecture blueprint before scalable orchestration implementation begins
 - `IR-19` now persists production orders plus orchestration stages for `materialize`, `preview`, and `review` control-plane truth
 - `IR-25` now adds multi-select bulk asset tagging while preserving an asset-first operator review loop
+- `IR-26` now applies folder-prepared `tags.toml` metadata during auto-factory intake so planner-facing asset tags can be assigned in the same run
 
 ## Ownership
 

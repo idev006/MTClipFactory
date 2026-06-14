@@ -101,9 +101,11 @@ classDiagram
         +run_batch_root(batch_root)
         +run_batch_root(batch_root, scan_depth)
         +parse product.toml + pipeline.toml
+        +parse tags.toml
         +discover product folders up to scan depth
         +create missing products
         +intake deterministic asset codes
+        +apply additive folder tag metadata
         +skip existing assets on rerun
         +optional preview automation after materialization
     }
@@ -714,6 +716,31 @@ sequenceDiagram
     Planner->>Planner: filter pools by required tag labels
     Planner->>Planner: estimate feasible capacity
     Planner-->>FolderSvc: filtered plan or truthful shortfall
+```
+
+## Folder Tag Metadata Sync Sequence
+
+```mermaid
+sequenceDiagram
+    actor Operator
+    participant FolderSvc as AutoFactoryFolderService
+    participant TagSvc as TagManagementService
+    participant AssetSvc as AssetIntakeService
+
+    Operator->>FolderSvc: run_batch_root(root)
+    loop each asset folder
+        FolderSvc->>FolderSvc: read tags.toml
+        FolderSvc->>FolderSvc: merge global_tags + file_tags[file]
+        alt new media file
+            FolderSvc->>AssetSvc: register asset
+        else existing media file
+            FolderSvc->>FolderSvc: resolve existing asset
+        end
+        loop each normalized tag
+            FolderSvc->>TagSvc: ensure_tag(...)
+            FolderSvc->>TagSvc: assign_tag_to_asset(...)
+        end
+    end
 ```
 
 ## Recipe Replacement Aftercare Sequence

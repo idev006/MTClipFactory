@@ -1,0 +1,15 @@
+[request]
+requested_output_count = 3
+target_platform = "tiktok"
+target_ratio = "9:16"
+uniqueness_scope = "batch"
+duration_mode = "voice_with_bounds"
+fixed_duration_sec = 18.0
+min_duration_sec = 12.0
+max_duration_sec = 30.0
+
+[selection_tags]
+foreground = []
+background = []
+music = []
+voice = []

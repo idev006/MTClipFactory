@@ -44,6 +44,7 @@ The project now uses two roadmap layers:
 - `IR-23` Tag-aware auto-factory selection baseline: complete on 2026-06-13
 - `IR-24` Asset-first tagging workflow baseline: complete on 2026-06-13
 - `IR-25` Bulk asset tagging workflow baseline: complete on 2026-06-14
+- `IR-26` Folder tag metadata sync baseline: complete on 2026-06-14
 
 ## Current Execution Stream
 
@@ -777,6 +778,34 @@ Reduce repetitive operator work by letting one tag assignment action target mult
 - delivered selected-asset-set state and bulk tag assignment helpers in `TagDictionaryViewModel`
 - delivered multi-select tagging controls in the `Tag Dictionary` desktop screen while preserving one primary selected-asset detail panel
 - covered the new workflow with pytest for both the view model and offscreen window contract
+
+## IR-26 | Folder Tag Metadata Sync Baseline
+
+### Goal
+
+Make folder-prepared `tags.toml` metadata operational during auto-factory intake so tag-aware planner selection can work end to end in the same run.
+
+### Scope
+
+- allow `global_tags` plus per-file `[file_tags]` inside each asset folder
+- normalize and deduplicate `group:name` labels during intake
+- create missing tags automatically and assign them to matching assets
+- apply the same metadata to newly registered and already-existing assets on rerun
+- ignore non-media metadata files during asset intake
+
+### Acceptance Criteria
+
+- `tags.toml` can influence asset tag labels without manual tag-screen work
+- rerunning `Intake Only` does not duplicate asset-tag links
+- current `pipeline.toml [selection_tags]` rules can consume tags assigned from folder metadata in the same run
+- invalid tag metadata fails truthfully
+
+### Delivery Result
+
+- delivered `tags.toml` parsing for `global_tags` and `[file_tags]` in folder-driven intake
+- delivered normalized additive tag assignment through `TagManagementService` for both newly registered and skipped-existing assets
+- delivered media-file filtering that now ignores metadata files such as `desktop.ini` and `tags.toml`
+- covered folder tag metadata application, rerun safety, invalid tag labels, and end-to-end selection-tag planning with pytest
 
 ## Cross-Milestone Rules
 

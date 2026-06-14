@@ -46,6 +46,11 @@ When code changes, the related Markdown documents in this folder must be updated
 38. [38_Tag_Aware_Auto_Factory_Selection_Workflow_2026-06-13.md](/F:/programming/python/MTClipFactory/doc/38_Tag_Aware_Auto_Factory_Selection_Workflow_2026-06-13.md)
 39. [39_Asset_First_Tagging_Workflow_2026-06-13.md](/F:/programming/python/MTClipFactory/doc/39_Asset_First_Tagging_Workflow_2026-06-13.md)
 40. [40_Bulk_Asset_Tagging_Workflow_2026-06-14.md](/F:/programming/python/MTClipFactory/doc/40_Bulk_Asset_Tagging_Workflow_2026-06-14.md)
+41. [41_Automation_Tag_Taxonomy_Guide_2026-06-14.md](/F:/programming/python/MTClipFactory/doc/41_Automation_Tag_Taxonomy_Guide_2026-06-14.md)
+42. [42_New_Product_Auto_Factory_Template_Kit_2026-06-14.md](/F:/programming/python/MTClipFactory/doc/42_New_Product_Auto_Factory_Template_Kit_2026-06-14.md)
+43. [43_Product_Caption_Pool_And_Font_Workflow_2026-06-14.md](/F:/programming/python/MTClipFactory/doc/43_Product_Caption_Pool_And_Font_Workflow_2026-06-14.md)
+44. [44_Biothentic0001_Auto_Factory_Test_And_Audit_Plan_2026-06-14.md](/F:/programming/python/MTClipFactory/doc/44_Biothentic0001_Auto_Factory_Test_And_Audit_Plan_2026-06-14.md)
+45. [45_Folder_Tag_Metadata_Sync_Workflow_2026-06-14.md](/F:/programming/python/MTClipFactory/doc/45_Folder_Tag_Metadata_Sync_Workflow_2026-06-14.md)
 
 ## Governance
 

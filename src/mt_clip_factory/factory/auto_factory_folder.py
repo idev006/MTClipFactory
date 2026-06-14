@@ -17,12 +17,21 @@ from mt_clip_factory.factory.auto_factory_folder_dto import (
 )
 from mt_clip_factory.library.dto import RegisterAssetCommand
 from mt_clip_factory.library.services import AssetIntakeService
+from mt_clip_factory.library.tag_dto import AssignTagToAssetCommand
+from mt_clip_factory.library.tag_services import TagManagementService
 
 _ASSET_FOLDER_TYPES = {
     "foreground": "foreground_video",
     "background": "background_video",
     "music": "background_music",
     "voice": "voiceover",
+}
+
+_MEDIA_SUFFIXES_BY_ASSET_TYPE = {
+    "foreground_video": {".mp4", ".mov", ".mkv", ".avi", ".webm"},
+    "background_video": {".mp4", ".mov", ".mkv", ".avi", ".webm"},
+    "background_music": {".mp3", ".wav", ".m4a", ".aac", ".flac", ".ogg"},
+    "voiceover": {".mp3", ".wav", ".m4a", ".aac", ".flac", ".ogg"},
 }
 
 _ASSET_TYPE_CODE_PREFIX = {
@@ -44,10 +53,20 @@ class AutoFactoryFolderService:
         product_service: ProductApplicationService,
         asset_intake_service: AssetIntakeService,
         auto_factory_service: AutoFactoryBatchService,
+        tag_management_service: TagManagementService,
     ) -> None:
         self._product_service = product_service
         self._asset_intake_service = asset_intake_service
         self._auto_factory_service = auto_factory_service
+        self._tag_management_service = tag_management_service
+
+    def _apply_tag_labels_to_asset(self, *, asset_id: int, tag_labels: tuple[str, ...]) -> None:
+        for label in tag_labels:
+            tag_group, tag_name = label.split(":", maxsplit=1)
+            tag_id = self._tag_management_service.ensure_tag(tag_group=tag_group, tag_name=tag_name)
+            self._tag_management_service.assign_tag_to_asset(
+                AssignTagToAssetCommand(asset_id=asset_id, tag_id=tag_id)
+            )
 
     def run_batch_root(
         self,
@@ -152,9 +171,16 @@ class AutoFactoryFolderService:
             source_dir = product_dir / folder_name
             if not source_dir.exists():
                 continue
-            for source_file in sorted(path for path in source_dir.iterdir() if path.is_file()):
+            tag_config = _load_folder_tag_config(source_dir)
+            for source_file in sorted(
+                path for path in source_dir.iterdir() if _is_ingestible_asset_file(path, asset_type=asset_type)
+            ):
                 asset_code = _build_asset_code(product_code=product_code, asset_type=asset_type, file_stem=source_file.stem)
+                tag_labels = _resolve_tag_labels_for_file(tag_config, source_file.name)
                 if asset_code in existing_assets:
+                    existing_asset = self._asset_intake_service.find_asset_by_code(asset_code)
+                    if existing_asset is not None:
+                        self._apply_tag_labels_to_asset(asset_id=existing_asset.asset_id, tag_labels=tag_labels)
                     skipped_existing_asset_count += 1
                     actions.append(
                         AutoFactoryFolderAssetActionDTO(
@@ -166,7 +192,7 @@ class AutoFactoryFolderService:
                         )
                     )
                     continue
-                self._asset_intake_service.register_asset(
+                asset_id = self._asset_intake_service.register_asset(
                     RegisterAssetCommand(
                         product_id=product_id,
                         asset_type=asset_type,
@@ -174,6 +200,7 @@ class AutoFactoryFolderService:
                         asset_code=asset_code,
                     )
                 )
+                self._apply_tag_labels_to_asset(asset_id=asset_id, tag_labels=tag_labels)
                 existing_assets.add(asset_code)
                 registered_asset_count += 1
                 actions.append(
@@ -282,6 +309,46 @@ def _load_toml(file_path: Path) -> dict:
     return data
 
 
+def _load_folder_tag_config(folder_path: Path) -> dict[str, object]:
+    tag_file = folder_path / "tags.toml"
+    if not tag_file.exists():
+        return {"global_tags": (), "file_tags": {}}
+
+    data = _load_toml(tag_file)
+    global_tags = _normalize_tag_label_list(data.get("global_tags"), file_path=tag_file)
+    file_tags_section = data.get("file_tags")
+    if file_tags_section is None:
+        file_tags_section = {}
+    if not isinstance(file_tags_section, dict):
+        raise AutoFactoryFolderContractError(f"Expected [file_tags] table in {tag_file}")
+
+    normalized_file_tags: dict[str, tuple[str, ...]] = {}
+    for file_name, tag_values in file_tags_section.items():
+        normalized_file_name = _optional_text(file_name)
+        if normalized_file_name is None:
+            continue
+        normalized_file_tags[normalized_file_name] = _normalize_tag_label_list(tag_values, file_path=tag_file)
+
+    return {
+        "global_tags": global_tags,
+        "file_tags": normalized_file_tags,
+    }
+
+
+def _resolve_tag_labels_for_file(tag_config: dict[str, object], file_name: str) -> tuple[str, ...]:
+    global_tags = tuple(tag_config.get("global_tags", ()))
+    file_tags = dict(tag_config.get("file_tags", {}))
+    resolved: list[str] = []
+    seen: set[str] = set()
+    for label in (*global_tags, *tuple(file_tags.get(file_name, ()))):
+        normalized = label.casefold()
+        if normalized in seen:
+            continue
+        seen.add(normalized)
+        resolved.append(normalized)
+    return tuple(resolved)
+
+
 def _to_product_request(
     product_config: AutoFactoryFolderProductConfigDTO,
     pipeline_config: AutoFactoryFolderPipelineConfigDTO,
@@ -309,6 +376,13 @@ def _build_asset_code(*, product_code: str, asset_type: str, file_stem: str) -> 
     if not slug:
         raise AutoFactoryFolderContractError("Asset file stem must contain at least one slugifiable character.")
     return f"{product_code}_{type_prefix}_{slug}"
+
+
+def _is_ingestible_asset_file(file_path: Path, *, asset_type: str) -> bool:
+    if not file_path.is_file():
+        return False
+    suffix = file_path.suffix.lower()
+    return suffix in _MEDIA_SUFFIXES_BY_ASSET_TYPE.get(asset_type, set())
 
 
 def _slugify(value: str) -> str:
@@ -344,3 +418,37 @@ def _optional_text_list(value) -> tuple[str, ...]:
             continue
         normalized_values.append(text.casefold())
     return tuple(normalized_values)
+
+
+def _normalize_tag_label_list(value, *, file_path: Path) -> tuple[str, ...]:
+    if value is None:
+        return ()
+    if not isinstance(value, list):
+        raise AutoFactoryFolderContractError(f"Expected list of tag labels in {file_path} but got {value!r}")
+
+    normalized_values: list[str] = []
+    seen: set[str] = set()
+    for item in value:
+        label = _normalize_tag_label(item, file_path=file_path)
+        if label in seen:
+            continue
+        seen.add(label)
+        normalized_values.append(label)
+    return tuple(normalized_values)
+
+
+def _normalize_tag_label(value, *, file_path: Path) -> str:
+    text = _optional_text(value)
+    if text is None:
+        raise AutoFactoryFolderContractError(f"Tag labels must be non-empty in {file_path}")
+    normalized = text.casefold()
+    if normalized.count(":") != 1:
+        raise AutoFactoryFolderContractError(
+            f"Tag labels must use exactly one group:name separator in {file_path}: {text!r}"
+        )
+    tag_group, tag_name = normalized.split(":", maxsplit=1)
+    tag_group = tag_group.strip()
+    tag_name = tag_name.strip()
+    if not tag_group or not tag_name:
+        raise AutoFactoryFolderContractError(f"Tag labels must have non-empty group and name in {file_path}: {text!r}")
+    return f"{tag_group}:{tag_name}"

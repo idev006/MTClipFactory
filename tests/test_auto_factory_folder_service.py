@@ -17,6 +17,7 @@ from mt_clip_factory.library.contracts import AnalyzedMediaMetadata
 from mt_clip_factory.library.readiness import AssetReadinessEvaluator
 from mt_clip_factory.library.services import AssetIntakeService
 from mt_clip_factory.library.storage import LocalAssetStorage
+from mt_clip_factory.library.tag_services import TagManagementService
 
 
 class FolderMetadataAnalyzer:
@@ -46,6 +47,7 @@ def _build_services(unit_of_work_factory, tmp_path: Path, durations_by_name: dic
         metadata_analyzer=FolderMetadataAnalyzer(durations_by_name),
         readiness_evaluator=AssetReadinessEvaluator(),
     )
+    tag_service = TagManagementService(unit_of_work_factory=unit_of_work_factory)
     class FakePreviewRenderer:
         def render_output(
             self,
@@ -91,8 +93,9 @@ def _build_services(unit_of_work_factory, tmp_path: Path, durations_by_name: dic
         product_service=product_service,
         asset_intake_service=asset_service,
         auto_factory_service=auto_factory_service,
+        tag_management_service=tag_service,
     )
-    return product_service, asset_service, factory_service, folder_service
+    return product_service, asset_service, factory_service, folder_service, tag_service
 
 
 def _write_product_folder(
@@ -149,8 +152,20 @@ def _write_product_folder(
     return product_dir
 
 
+def _write_tags_toml(folder_path: Path, *, global_tags: list[str], file_tags: dict[str, list[str]]) -> None:
+    lines: list[str] = ["global_tags = ["]
+    lines.extend(f'  "{tag}",' for tag in global_tags)
+    lines.append("]")
+    lines.append("")
+    lines.append("[file_tags]")
+    for file_name, tags in file_tags.items():
+        rendered_tags = ", ".join(f'"{tag}"' for tag in tags)
+        lines.append(f'"{file_name}" = [{rendered_tags}]')
+    (folder_path / "tags.toml").write_text("\n".join(lines), encoding="utf-8")
+
+
 def test_folder_service_creates_products_registers_assets_and_materializes_batch(unit_of_work_factory, tmp_path) -> None:
-    _, asset_service, factory_service, folder_service = _build_services(
+    _, asset_service, factory_service, folder_service, _ = _build_services(
         unit_of_work_factory,
         tmp_path,
         {"voice_a.mp3": 17.4},
@@ -187,7 +202,7 @@ def test_folder_service_creates_products_registers_assets_and_materializes_batch
 
 
 def test_folder_service_skips_existing_assets_when_rerun(unit_of_work_factory, tmp_path) -> None:
-    _, asset_service, _, folder_service = _build_services(
+    _, asset_service, _, folder_service, _ = _build_services(
         unit_of_work_factory,
         tmp_path,
         {"voice_a.mp3": 15.0},
@@ -211,7 +226,7 @@ def test_folder_service_skips_existing_assets_when_rerun(unit_of_work_factory, t
 
 
 def test_folder_service_propagates_capacity_shortfall(unit_of_work_factory, tmp_path) -> None:
-    _, _, _, folder_service = _build_services(
+    _, _, _, folder_service, _ = _build_services(
         unit_of_work_factory,
         tmp_path,
         {"voice_a.mp3": 15.0},
@@ -233,7 +248,7 @@ def test_folder_service_propagates_capacity_shortfall(unit_of_work_factory, tmp_
 
 
 def test_folder_service_builds_one_batch_order_from_multiple_product_dirs(unit_of_work_factory, tmp_path) -> None:
-    product_service, _, factory_service, folder_service = _build_services(
+    product_service, _, factory_service, folder_service, _ = _build_services(
         unit_of_work_factory,
         tmp_path,
         {"voice_a.mp3": 15.0, "voice_b.mp3": 19.0},
@@ -265,7 +280,7 @@ def test_folder_service_builds_one_batch_order_from_multiple_product_dirs(unit_o
 
 
 def test_folder_service_can_materialize_and_build_previews(unit_of_work_factory, tmp_path) -> None:
-    _, _, _, folder_service = _build_services(
+    _, _, _, folder_service, _ = _build_services(
         unit_of_work_factory,
         tmp_path,
         {"voice_a.mp3": 17.2},
@@ -290,7 +305,7 @@ def test_folder_service_can_materialize_and_build_previews(unit_of_work_factory,
 
 
 def test_folder_service_rejects_preview_request_without_materialization(unit_of_work_factory, tmp_path) -> None:
-    _, _, _, folder_service = _build_services(unit_of_work_factory, tmp_path, {})
+    _, _, _, folder_service, _ = _build_services(unit_of_work_factory, tmp_path, {})
     batch_root = tmp_path / "batch_root"
     _write_product_folder(
         batch_root,
@@ -305,7 +320,7 @@ def test_folder_service_rejects_preview_request_without_materialization(unit_of_
 
 
 def test_folder_service_rejects_missing_request_section(unit_of_work_factory, tmp_path) -> None:
-    _, _, _, folder_service = _build_services(unit_of_work_factory, tmp_path, {})
+    _, _, _, folder_service, _ = _build_services(unit_of_work_factory, tmp_path, {})
     batch_root = tmp_path / "batch_root"
     product_dir = batch_root / "BrokenProduct"
     product_dir.mkdir(parents=True)
@@ -326,7 +341,7 @@ def test_folder_service_rejects_missing_request_section(unit_of_work_factory, tm
 
 
 def test_folder_service_can_discover_root_level_product_folder_at_depth_zero(unit_of_work_factory, tmp_path) -> None:
-    product_service, asset_service, _, folder_service = _build_services(
+    product_service, asset_service, _, folder_service, _ = _build_services(
         unit_of_work_factory,
         tmp_path,
         {"voice_a.mp3": 12.0},
@@ -355,7 +370,7 @@ def test_folder_service_can_discover_root_level_product_folder_at_depth_zero(uni
 
 
 def test_folder_service_can_discover_nested_product_folders_up_to_requested_depth(unit_of_work_factory, tmp_path) -> None:
-    product_service, _, _, folder_service = _build_services(
+    product_service, _, _, folder_service, _ = _build_services(
         unit_of_work_factory,
         tmp_path,
         {"voice_a.mp3": 12.0},
@@ -380,7 +395,7 @@ def test_folder_service_can_discover_nested_product_folders_up_to_requested_dept
 
 
 def test_folder_service_rejects_negative_scan_depth(unit_of_work_factory, tmp_path) -> None:
-    _, _, _, folder_service = _build_services(unit_of_work_factory, tmp_path, {})
+    _, _, _, folder_service, _ = _build_services(unit_of_work_factory, tmp_path, {})
     batch_root = tmp_path / "batch_root"
     batch_root.mkdir(parents=True)
 
@@ -389,7 +404,7 @@ def test_folder_service_rejects_negative_scan_depth(unit_of_work_factory, tmp_pa
 
 
 def test_folder_service_reads_optional_selection_tags_into_order(unit_of_work_factory, tmp_path) -> None:
-    _, _, _, folder_service = _build_services(unit_of_work_factory, tmp_path, {})
+    _, _, _, folder_service, _ = _build_services(unit_of_work_factory, tmp_path, {})
     batch_root = tmp_path / "batch_root"
     product_dir = _write_product_folder(
         batch_root,
@@ -427,3 +442,152 @@ def test_folder_service_reads_optional_selection_tags_into_order(unit_of_work_fa
     assert product_request.background_required_tag_labels == ("scene:studio",)
     assert product_request.music_required_tag_labels == ("mood:warm",)
     assert product_request.voice_required_tag_labels == ("language:th",)
+
+
+def test_folder_service_applies_folder_tag_metadata_to_registered_assets(unit_of_work_factory, tmp_path) -> None:
+    _, asset_service, _, folder_service, _ = _build_services(
+        unit_of_work_factory,
+        tmp_path,
+        {"voice_a.mp3": 15.0},
+    )
+    batch_root = tmp_path / "batch_root"
+    product_dir = _write_product_folder(
+        batch_root,
+        folder_name="ProductA",
+        product_code="product_a",
+        product_name="Product A",
+        requested_output_count=1,
+    )
+    _write_tags_toml(
+        product_dir / "foreground",
+        global_tags=["role:foreground", "product:product_a"],
+        file_tags={"hook_a.mp4": ["message:hook", "mood:exciting"]},
+    )
+
+    folder_service.run_batch_root(batch_root, materialize=False)
+
+    assets_by_code = {asset.asset_code: asset for asset in asset_service.list_assets()}
+    assert assets_by_code["product_a_fg_hook_a"].tag_labels == (
+        "message:hook",
+        "mood:exciting",
+        "product:product_a",
+        "role:foreground",
+    )
+    assert assets_by_code["product_a_fg_hook_b"].tag_labels == (
+        "product:product_a",
+        "role:foreground",
+    )
+
+
+def test_folder_service_applies_folder_tag_metadata_to_existing_assets_on_rerun(unit_of_work_factory, tmp_path) -> None:
+    _, asset_service, _, folder_service, _ = _build_services(
+        unit_of_work_factory,
+        tmp_path,
+        {"voice_a.mp3": 15.0},
+    )
+    batch_root = tmp_path / "batch_root"
+    product_dir = _write_product_folder(
+        batch_root,
+        folder_name="ProductA",
+        product_code="product_a",
+        product_name="Product A",
+        requested_output_count=1,
+    )
+
+    folder_service.run_batch_root(batch_root, materialize=False)
+    _write_tags_toml(
+        product_dir / "foreground",
+        global_tags=["role:foreground"],
+        file_tags={"hook_a.mp4": ["message:hook", "message:hook"]},
+    )
+    second_report = folder_service.run_batch_root(batch_root, materialize=False)
+
+    assets_by_code = {asset.asset_code: asset for asset in asset_service.list_assets()}
+    assert second_report.product_reports[0].registered_asset_count == 0
+    assert second_report.product_reports[0].skipped_existing_asset_count == 5
+    assert assets_by_code["product_a_fg_hook_a"].tag_labels == (
+        "message:hook",
+        "role:foreground",
+    )
+
+
+def test_folder_service_rejects_invalid_tags_toml_labels(unit_of_work_factory, tmp_path) -> None:
+    _, _, _, folder_service, _ = _build_services(unit_of_work_factory, tmp_path, {})
+    batch_root = tmp_path / "batch_root"
+    product_dir = _write_product_folder(
+        batch_root,
+        folder_name="ProductA",
+        product_code="product_a",
+        product_name="Product A",
+        requested_output_count=1,
+    )
+    (product_dir / "foreground" / "tags.toml").write_text(
+        '\n'.join(
+            [
+                "global_tags = [",
+                '  "missing_separator",',
+                "]",
+            ]
+        ),
+        encoding="utf-8",
+    )
+
+    with pytest.raises(AutoFactoryFolderContractError, match="group:name"):
+        folder_service.run_batch_root(batch_root, materialize=False)
+
+
+def test_folder_service_supports_selection_tags_from_folder_tag_metadata(unit_of_work_factory, tmp_path) -> None:
+    _, _, factory_service, folder_service, _ = _build_services(
+        unit_of_work_factory,
+        tmp_path,
+        {"voice_a.mp3": 15.0},
+    )
+    batch_root = tmp_path / "batch_root"
+    product_dir = _write_product_folder(
+        batch_root,
+        folder_name="ProductA",
+        product_code="product_a",
+        product_name="Product A",
+        requested_output_count=1,
+    )
+    (product_dir / "pipeline.toml").write_text(
+        "\n".join(
+            [
+                "[request]",
+                "requested_output_count = 1",
+                'target_platform = "shopee"',
+                'target_ratio = "9:16"',
+                'uniqueness_scope = "batch"',
+                'duration_mode = "voice_with_bounds"',
+                "min_duration_sec = 12.0",
+                "max_duration_sec = 30.0",
+                "",
+                "[selection_tags]",
+                'foreground = ["message:hook"]',
+                'background = ["scene:studio"]',
+                'voice = ["language:th"]',
+            ]
+        ),
+        encoding="utf-8",
+    )
+    _write_tags_toml(
+        product_dir / "foreground",
+        global_tags=["role:foreground"],
+        file_tags={"hook_a.mp4": ["message:hook"]},
+    )
+    _write_tags_toml(
+        product_dir / "background",
+        global_tags=["scene:studio"],
+        file_tags={},
+    )
+    _write_tags_toml(
+        product_dir / "voice",
+        global_tags=["language:th"],
+        file_tags={},
+    )
+
+    report = folder_service.run_batch_root(batch_root)
+
+    assert report.materialization is not None
+    recipes = sorted(factory_service.list_recipes(), key=lambda recipe: recipe.recipe_code)
+    assert [recipe.recipe_code for recipe in recipes] == ["product_a_batch_root_001"]

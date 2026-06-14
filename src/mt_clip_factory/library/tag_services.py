@@ -63,6 +63,27 @@ class TagManagementService:
                 for summary in uow.tags.list_summaries(tag_group=tag_group)
             ]
 
+    def ensure_tag(self, *, tag_group: str, tag_name: str, description: str | None = None) -> int:
+        normalized_tag_name = _normalize_tag_value(tag_name, "Tag name")
+        normalized_tag_group = _normalize_tag_value(tag_group, "Tag group")
+
+        with self._unit_of_work_factory() as uow:
+            existing = uow.tags.get_by_name_and_group(normalized_tag_name, normalized_tag_group)
+            if existing is not None and existing.id is not None:
+                return existing.id
+
+            created = uow.tags.add(
+                Tag(
+                    tag_name=normalized_tag_name,
+                    tag_group=normalized_tag_group,
+                    description=description.strip() if description else None,
+                )
+            )
+            uow.commit()
+            if created.id is None:
+                raise RuntimeError("Tag identifier was not assigned.")
+            return created.id
+
     def assign_tag_to_asset(self, command: AssignTagToAssetCommand) -> None:
         with self._unit_of_work_factory() as uow:
             asset = uow.assets.get_by_id(command.asset_id)

@@ -173,6 +173,32 @@ class AssetIntakeService:
                 )
             ]
 
+    def find_asset_by_code(self, asset_code: str) -> AssetSummaryDTO | None:
+        normalized_code = _slugify_asset_code(asset_code)
+        if not normalized_code:
+            raise ValueError("Asset code is required.")
+
+        with self._unit_of_work_factory() as uow:
+            asset_summaries = list(uow.assets.list_summaries())
+            summary = next((item for item in asset_summaries if item.asset_code == normalized_code), None)
+            if summary is None:
+                return None
+            return AssetSummaryDTO(
+                asset_id=summary.asset_id,
+                product_id=summary.product_id,
+                product_code=summary.product_code,
+                asset_code=summary.asset_code,
+                asset_type=summary.asset_type.value,
+                file_name=summary.file_name,
+                status=summary.status,
+                ratio=summary.ratio,
+                duration_sec=summary.duration_sec,
+                file_size_mb=summary.file_size_mb,
+                tag_labels=summary.tag_labels,
+                thumbnail_path=summary.thumbnail_path,
+                proxy_path=summary.proxy_path,
+            )
+
     def list_replacement_candidates(self, asset_id: int) -> list[AssetSummaryDTO]:
         with self._unit_of_work_factory() as uow:
             source_asset = _require_asset(uow, asset_id)

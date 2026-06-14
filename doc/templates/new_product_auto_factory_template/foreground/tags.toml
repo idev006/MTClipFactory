@@ -1,0 +1,10 @@
+global_tags = [
+    "role:foreground",
+]
+
+[file_tags]
+"replace_me_foreground_clip.mp4" = [
+    "message:hook",
+    "mood:exciting",
+    "style:wow",
+]

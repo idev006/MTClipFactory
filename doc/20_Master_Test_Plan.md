@@ -41,6 +41,7 @@ It complements [07_Testing_Strategy.md](/F:/programming/python/MTClipFactory/doc
 - tag-aware auto-factory asset-pool filtering from normalized asset labels
 - asset-first tagging workflow for selected-asset details, tag search, and create-and-attach behavior
 - bulk asset tagging workflow for multi-select assignment and primary selected-asset review
+- folder-driven tag metadata sync from `tags.toml`
 - preview job flow
 - final render flow
 - target-ratio visual normalization across mixed source sizes
@@ -194,6 +195,9 @@ It complements [07_Testing_Strategy.md](/F:/programming/python/MTClipFactory/doc
 27. Confirm the `Tags` screen keeps a selected asset in focus and allows `Create And Attach` plus existing-tag attach from the same workflow.
 28. Confirm the `Tags` screen can multi-select assets and attach one existing tag across the selected asset set.
 29. Confirm `Create And Attach` can create one tag and apply it across the selected asset set while preserving one primary selected-asset detail panel.
+30. Confirm folder-driven intake can read `tags.toml` global and per-file tag metadata, create missing tags, and assign them to matching assets.
+31. Confirm rerunning folder-driven intake does not duplicate tag assignment links for existing assets.
+32. Confirm invalid `tags.toml` labels fail truthfully.
 
 ### C. Review And Approval Flow
 
