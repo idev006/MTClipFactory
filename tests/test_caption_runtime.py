@@ -1071,6 +1071,11 @@ def test_caption_runtime_scales_manual_break_lines_independently_to_fit_width(tm
     assert role.fit_strategy == "per_line_scaled_to_fit"
     assert len(role.line_font_sizes_px) == 3
     assert len(set(role.line_font_sizes_px)) > 1
+    assert len(set(role.line_heights_px)) == 1
+    assert len(set(
+        role.line_top_positions_px[index + 1] - role.line_top_positions_px[index]
+        for index in range(len(role.line_top_positions_px) - 1)
+    )) == 1
     assert min(role.line_font_sizes_px) == role.min_font_size
     assert role.overflowed is True
 

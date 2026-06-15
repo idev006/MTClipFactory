@@ -155,6 +155,7 @@ def resolve_caption_layout(
         max_lines=max_lines,
         overflow_policy=overflow_policy,
         manual_breaks=manual_breaks,
+        textbox_mode=textbox_mode,
         padding=padding,
         textbox_height_mode=textbox_height_mode,
         textbox_height_ratio=textbox_height_ratio,
@@ -253,6 +254,7 @@ def _solve_best_fit_layout(
     max_lines: int,
     overflow_policy: str,
     manual_breaks: bool,
+    textbox_mode: str,
     padding: int,
     textbox_height_mode: str,
     textbox_height_ratio: float,
@@ -287,6 +289,7 @@ def _solve_best_fit_layout(
             max_lines=max_lines,
             overflow_policy=overflow_policy,
             manual_breaks=manual_breaks,
+            textbox_mode=textbox_mode,
             padding=padding,
             textbox_height_mode=textbox_height_mode,
             textbox_height_ratio=textbox_height_ratio,
@@ -350,6 +353,7 @@ def _evaluate_layout_candidate(
     max_lines: int,
     overflow_policy: str,
     manual_breaks: bool,
+    textbox_mode: str,
     padding: int,
     textbox_height_mode: str,
     textbox_height_ratio: float,
@@ -357,6 +361,7 @@ def _evaluate_layout_candidate(
     band_height_px: int,
     line_spacing_ratio: float,
 ) -> _LayoutCandidate:
+    use_uniform_line_height = manual_breaks and textbox_mode.strip().casefold() != "per_line"
     raw_layout = _layout_text(
         text=text,
         font=_build_qfont(
@@ -379,6 +384,10 @@ def _evaluate_layout_candidate(
         max_width_px=max_width_px,
         stroke_width=stroke_width,
         allow_per_line_scale=manual_breaks,
+    )
+    line_heights_px = _normalize_line_heights(
+        line_heights_px=line_heights_px,
+        use_uniform_line_height=use_uniform_line_height,
     )
     line_spacing_px = _resolve_line_spacing_px(
         base_font_size_px=candidate_font_size_px,
@@ -421,6 +430,7 @@ def _evaluate_layout_candidate(
             content_height_capacity_px=content_height_capacity_px,
             stroke_width=stroke_width,
             line_spacing_ratio=line_spacing_ratio,
+            use_uniform_line_height=use_uniform_line_height,
         )
     text_block_width_px = max(line_widths_px, default=0)
     text_block_height_px = sum(line_heights_px) + (max(0, len(raw_layout.lines) - 1) * line_spacing_px)
@@ -472,6 +482,17 @@ def _evaluate_layout_candidate(
         ),
         any_line_grown=any_line_grown,
     )
+
+
+def _normalize_line_heights(
+    *,
+    line_heights_px: tuple[int, ...],
+    use_uniform_line_height: bool,
+) -> tuple[int, ...]:
+    if not line_heights_px or not use_uniform_line_height:
+        return line_heights_px
+    uniform_height_px = max(line_heights_px)
+    return tuple(uniform_height_px for _ in line_heights_px)
 
 def _resolve_fit_strategy(
     *,
@@ -595,6 +616,7 @@ def _grow_manual_line_sizes_to_fill_textbox(
     content_height_capacity_px: int,
     stroke_width: int,
     line_spacing_ratio: float,
+    use_uniform_line_height: bool,
 ) -> tuple[tuple[int, ...], tuple[int, ...], tuple[int, ...], int, bool]:
     line_sizes = list(current_line_font_sizes_px)
     any_line_grown = False
@@ -608,13 +630,17 @@ def _grow_manual_line_sizes_to_fill_textbox(
             font = _build_qfont(font_family=font_family, font_file=font_file, pixel_size=size)
             widths.append(_measure_line_width(line, font=font, stroke_width=stroke_width))
             heights.append(_measure_line_height(font=font, stroke_width=stroke_width))
+        normalized_heights = _normalize_line_heights(
+            line_heights_px=tuple(heights),
+            use_uniform_line_height=use_uniform_line_height,
+        )
         spacing = _resolve_line_spacing_px(
             base_font_size_px=max(sizes, default=0),
-            line_heights_px=tuple(heights),
+            line_heights_px=normalized_heights,
             line_spacing_ratio=line_spacing_ratio,
         )
-        total_height = sum(heights) + (max(0, len(heights) - 1) * spacing)
-        return tuple(widths), tuple(heights), spacing, total_height
+        total_height = sum(normalized_heights) + (max(0, len(normalized_heights) - 1) * spacing)
+        return tuple(widths), normalized_heights, spacing, total_height
 
     while True:
         progress = False

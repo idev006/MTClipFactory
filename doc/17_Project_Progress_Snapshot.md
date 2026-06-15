@@ -109,6 +109,7 @@
 - delivered pytest coverage that locks the new defaults: separated `main`/`sub` safe bands plus duration escalation when a contributing visual layer exceeds the older requested recipe length
 - delivered a corrective runtime slice so each recipe now keeps one deterministic selected visual asset per visual layer across all segments, with fill policy extending that asset instead of per-segment reselection
 - delivered per-line manual-caption font fitting so operator-authored `\n` lines can shrink independently by pixel width while still surfacing overflow for review when `min_font_size` is not enough
+- delivered steadier grouped-caption vertical spacing so per-line best-fit sizing does not leave promo cards looking uneven between lines
 - delivered a textbox-first caption layout slice so resolved caption boxes now hold stable geometry while text alignment remains controllable inside the box
 - delivered a caption-card height-policy slice with explicit `textbox_height_mode`, making grouped promo cards default to `content_hug` while preserving deliberate tall cards through `fixed`
 - delivered manifest-visible textbox height policy truth plus pytest coverage for compact-card and fixed-height caption behavior

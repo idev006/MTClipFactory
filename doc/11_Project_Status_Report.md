@@ -82,6 +82,7 @@
 - composition planning now resolves clip duration from the longest contributing layer extent, so longer voice sequences, music sequences, or visual source extents do not get clipped by an earlier narrow fallback
 - preview composition now keeps one deterministic selected visual asset per recipe-layer and lets fill policy extend that chosen asset across all segments instead of reselection per segment
 - manual multi-line captions can now shrink font size per line against real pixel width while preserving operator-authored `\n` grouping and overflow review truth
+- grouped manual-break captions now also normalize vertical line advance so mixed best-fit font sizes do not create visibly uneven promo-card spacing
 - caption runtime now also resolves textbox-first geometry so background box width can stay stable while text alignment remains independently controllable inside the box
 - caption runtime now also exposes `textbox_height_mode` so grouped cards can default to compact `content_hug` behavior while `fixed` remains available for deliberate tall-card layouts
 - caption runtime now also supports built-in role-aware `style_preset` values so operators can start from `sale_blast`, `clean_cta`, or `benefit_stack` and still override individual fields per product
