@@ -73,8 +73,9 @@ Example:
 Rule:
 
 1. if `\n` is present, the renderer must respect that manual line break intent first
-2. if `\n` is absent, normal auto-wrap policy may apply
+2. if `\n` is absent, the runtime must keep the caption as one rendered line and solve `font_size` against the textbox instead of auto-wrapping
 3. if the manual line count exceeds policy, the item should be reviewable instead of silently reshaped beyond recognition
+4. if a single-line caption still cannot fit at the allowed minimum size, the output should remain reviewable instead of being force-broken into extra lines
 
 ## Random Selection Rule
 
@@ -143,6 +144,9 @@ Recommended fields:
 - `stroke_width`
 - `background_color`
 - `background_opacity`
+- `box_border_color`
+- `box_border_opacity`
+- `box_border_width`
 - `padding`
 - `max_lines`
 - `max_chars_per_line`
@@ -229,7 +233,7 @@ Recommended baseline rules:
 This means:
 
 1. respect manual `\n` first
-2. wrap only if needed
+2. if `\n` is absent, keep one rendered line and use best-fit sizing inside the textbox
 3. reduce size only within approved bounds
 4. if still unsafe, route to review instead of silently producing unreadable text
 
@@ -284,6 +288,7 @@ sequenceDiagram
     Caption->>Caption: choose random main + sub with seed
     Caption->>Font: resolve font family + fallbacks
     Font-->>Caption: font file paths
+    Caption->>Caption: preserve explicit lines or solve single-line best fit
     Caption-->>Render: resolved text + role properties + font paths
     Render->>Render: draw main/sub caption layers
 ```

@@ -32,6 +32,7 @@ That is too much manual design work for routine automation. It also leads to inc
 4. Explicit role fields in `captions.toml` always override preset defaults.
 5. Presets are only convenience defaults, not locked templates.
 6. Manifest payloads must expose the resolved `style_preset` so the output can be audited later.
+7. Presets may also carry textbox border defaults so ad-card emphasis stays consistent without per-product retuning.
 
 ## Contract Rule
 

@@ -47,6 +47,9 @@ class CaptionRoleStyle:
     stroke_width: int
     background_color: str | None
     background_opacity: float
+    box_border_color: str | None
+    box_border_opacity: float
+    box_border_width: int
     padding: int
     max_lines: int
     max_chars_per_line: int
@@ -104,6 +107,9 @@ class ResolvedCaptionRole:
     stroke_width: int
     background_color: str | None
     background_opacity: float
+    box_border_color: str | None
+    box_border_opacity: float
+    box_border_width: int
     padding: int
     max_lines: int
     max_chars_per_line: int
@@ -420,6 +426,9 @@ class CaptionRuntimeService:
             stroke_width=style.stroke_width,
             background_color=style.background_color,
             background_opacity=style.background_opacity,
+            box_border_color=style.box_border_color,
+            box_border_opacity=style.box_border_opacity,
+            box_border_width=style.box_border_width,
             padding=style.padding,
             max_lines=style.max_lines,
             max_chars_per_line=style.max_chars_per_line,
@@ -544,6 +553,19 @@ def _parse_role_style(value, *, role: str) -> CaptionRoleStyle:
             minimum=0.0,
             maximum=1.0,
             context=f"[caption_properties.{role}].background_opacity",
+        ),
+        box_border_color=_optional_text(value_for("box_border_color")),
+        box_border_opacity=_bounded_float(
+            value_for("box_border_opacity"),
+            default=0.0,
+            minimum=0.0,
+            maximum=1.0,
+            context=f"[caption_properties.{role}].box_border_opacity",
+        ),
+        box_border_width=_non_negative_int(
+            value_for("box_border_width"),
+            default=0,
+            context=f"[caption_properties.{role}].box_border_width",
         ),
         padding=_non_negative_int(value_for("padding"), default=default_padding, context=f"[caption_properties.{role}].padding"),
         max_lines=_positive_int(value_for("max_lines"), default=default_max_lines, context=f"[caption_properties.{role}].max_lines"),

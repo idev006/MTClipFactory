@@ -6,6 +6,7 @@ from datetime import datetime
 from pathlib import Path
 
 from mt_clip_factory.factory.dto import CompositionPlanDTO, DecisionEventDTO, OutputSummaryDTO
+from mt_clip_factory.factory.manifest_envelope import read_manifest_section
 
 _TIMESTAMP_FORMAT = "%Y-%m-%d %H:%M:%S"
 
@@ -160,8 +161,8 @@ def build_output_detail_lines(
 
 def _build_manifest_review_lines(manifest_path: str | None) -> list[str]:
     payload = _read_manifest_payload(manifest_path)
-    review_gate = payload.get("review_gate")
-    if not isinstance(review_gate, dict):
+    review_gate = read_manifest_section(payload, section_name="quality", legacy_key="review_gate")
+    if not review_gate:
         return []
     lines = [
         "",
@@ -188,8 +189,8 @@ def _build_manifest_review_lines(manifest_path: str | None) -> list[str]:
 
 def _build_manifest_audio_lines(manifest_path: str | None) -> list[str]:
     payload = _read_manifest_payload(manifest_path)
-    audio_mix = payload.get("audio_mix")
-    if not isinstance(audio_mix, dict):
+    audio_mix = read_manifest_section(payload, section_name="render", legacy_key="audio_mix")
+    if not audio_mix:
         return []
     lines = [
         "",
@@ -224,8 +225,8 @@ def _build_manifest_audio_lines(manifest_path: str | None) -> list[str]:
 
 def _build_manifest_visual_lines(manifest_path: str | None) -> list[str]:
     payload = _read_manifest_payload(manifest_path)
-    visual_composite = payload.get("visual_composite")
-    if not isinstance(visual_composite, dict):
+    visual_composite = read_manifest_section(payload, section_name="render", legacy_key="visual_composite")
+    if not visual_composite:
         return []
     lines = [
         "",
@@ -256,8 +257,8 @@ def _build_manifest_visual_lines(manifest_path: str | None) -> list[str]:
 
 def _build_manifest_caption_lines(manifest_path: str | None) -> list[str]:
     payload = _read_manifest_payload(manifest_path)
-    captions = payload.get("captions")
-    if not isinstance(captions, dict) or not captions.get("enabled"):
+    captions = read_manifest_section(payload, section_name="composition", legacy_key="captions")
+    if not captions or not captions.get("enabled"):
         return []
     lines = [
         "",

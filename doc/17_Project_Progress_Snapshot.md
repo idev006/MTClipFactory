@@ -111,6 +111,12 @@
 - delivered manifest-visible textbox height policy truth plus pytest coverage for compact-card and fixed-height caption behavior
 - delivered built-in caption style presets with role-aware defaults for `sale_blast`, `clean_cta`, and `benefit_stack`, plus per-field override behavior in `captions.toml`
 - updated the new-product caption template and SSOT so operators can start from presets instead of tuning every style field manually
+- delivered caption box-border styling with manifest-visible `box_border_*` fields plus grouped/per-line FFmpeg drawbox coverage
+- locked caption composition to `explicit \n only` multi-line behavior so captions without authored breaks now stay single-line and use box-aware best-fit sizing instead of runtime auto-wrap
+- strengthened single-line caption scoring so short hooks grow more aggressively toward textbox width while long hooks shrink deterministically and remain reviewable when minimum size is still unsafe
+- delivered a versioned manifest envelope with stable `manifest_meta`, `artifact`, `run`, `composition`, `render`, and `quality` sections while keeping manifest readers backward-safe for older flat payloads
+- delivered a backward-compatible product-folder `v2` layout with `contracts/` plus `assets/` resolution, truthful ambiguity failure when old/new paths overlap, and pytest coverage for both legacy and `v2` discovery
+- updated the new-product auto-factory template kit to ship in the preferred `v2` layout, including `contracts/prod_detail.txt` for operator-facing product context capture
 
 ## Still Open
 
@@ -120,8 +126,9 @@
 4. repeat the new live auto-mode audit seam on more products so `Biothentic0001` does not remain the only proof point
 5. rerun a live `Biothentic0001` preview/final audit after the new persistent-layer looping and per-line manual-caption sizing slice
 6. rerun a live `Biothentic0001` preview/final audit after the new textbox-first, content-hug, and style-preset caption slices
+7. run one live folder-intake audit against a real product folder arranged in the new `contracts/` plus `assets/` layout
 
 ## Verification Baseline
 
-- `python -m pytest` in `.venv`: `212 passed, 4 warnings`
+- `python -m pytest` in `.venv`: `232 passed, 4 warnings`
 - targeted `QT_QPA_PLATFORM=offscreen` UI/theme coverage for the new `Auto Factory` window and existing app windows: passed

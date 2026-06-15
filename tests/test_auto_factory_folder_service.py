@@ -114,10 +114,15 @@ def _write_product_folder(
     with_background: bool = True,
     with_music: bool = True,
     with_voice: bool = True,
+    use_v2_layout: bool = False,
 ) -> Path:
     product_dir = batch_root / folder_name
     product_dir.mkdir(parents=True, exist_ok=True)
-    (product_dir / "product.toml").write_text(
+    contracts_dir = product_dir / "contracts" if use_v2_layout else product_dir
+    assets_root_dir = product_dir / "assets" if use_v2_layout else product_dir
+    contracts_dir.mkdir(parents=True, exist_ok=True)
+    assets_root_dir.mkdir(parents=True, exist_ok=True)
+    (contracts_dir / "product.toml").write_text(
         "\n".join(
             [
                 "[product]",
@@ -128,7 +133,7 @@ def _write_product_folder(
         ),
         encoding="utf-8",
     )
-    (product_dir / "pipeline.toml").write_text(
+    (contracts_dir / "pipeline.toml").write_text(
         "\n".join(
             [
                 "[request]",
@@ -143,18 +148,18 @@ def _write_product_folder(
         ),
         encoding="utf-8",
     )
-    (product_dir / "foreground").mkdir(exist_ok=True)
-    (product_dir / "foreground" / "hook_a.mp4").write_bytes(b"fg1")
-    (product_dir / "foreground" / "hook_b.mp4").write_bytes(b"fg2")
+    (assets_root_dir / "foreground").mkdir(parents=True, exist_ok=True)
+    (assets_root_dir / "foreground" / "hook_a.mp4").write_bytes(b"fg1")
+    (assets_root_dir / "foreground" / "hook_b.mp4").write_bytes(b"fg2")
     if with_background:
-        (product_dir / "background").mkdir(exist_ok=True)
-        (product_dir / "background" / "bg_a.mp4").write_bytes(b"bg1")
+        (assets_root_dir / "background").mkdir(parents=True, exist_ok=True)
+        (assets_root_dir / "background" / "bg_a.mp4").write_bytes(b"bg1")
     if with_music:
-        (product_dir / "music").mkdir(exist_ok=True)
-        (product_dir / "music" / "music_a.mp3").write_bytes(b"music1")
+        (assets_root_dir / "music").mkdir(parents=True, exist_ok=True)
+        (assets_root_dir / "music" / "music_a.mp3").write_bytes(b"music1")
     if with_voice:
-        (product_dir / "voice").mkdir(exist_ok=True)
-        (product_dir / "voice" / "voice_a.mp3").write_bytes(b"voice1")
+        (assets_root_dir / "voice").mkdir(parents=True, exist_ok=True)
+        (assets_root_dir / "voice" / "voice_a.mp3").write_bytes(b"voice1")
     return product_dir
 
 
@@ -171,7 +176,8 @@ def _write_tags_toml(folder_path: Path, *, global_tags: list[str], file_tags: di
 
 
 def _write_captions_toml(product_dir: Path, *, main_text: str = "พลังบวกทุกวัน") -> None:
-    (product_dir / "captions.toml").write_text(
+    contracts_dir = product_dir / "contracts" if (product_dir / "contracts").exists() else product_dir
+    (contracts_dir / "captions.toml").write_text(
         "\n".join(
             [
                 "[caption_selection]",
@@ -450,6 +456,77 @@ def test_folder_service_can_discover_root_level_product_folder_at_depth_zero(uni
         "root_product_music_music_a",
         "root_product_voice_voice_a",
     ]
+
+
+def test_folder_service_can_discover_v2_contracts_and_assets(unit_of_work_factory, tmp_path) -> None:
+    product_service, asset_service, _, folder_service, _ = _build_services(
+        unit_of_work_factory,
+        tmp_path,
+        {"voice_a.mp3": 12.0},
+    )
+    batch_root = tmp_path / "v2_batch_root"
+    product_dir = _write_product_folder(
+        batch_root,
+        folder_name="ProductV2",
+        product_code="product_v2",
+        product_name="Product V2",
+        requested_output_count=1,
+        use_v2_layout=True,
+    )
+    _write_captions_toml(product_dir, main_text="ข้อความ v2")
+
+    report = folder_service.run_batch_root(batch_root, materialize=False)
+
+    runtime_caption_path = tmp_path / "media_library" / "products" / "product_v2" / "automation" / "captions.toml"
+    assert report.discovered_product_dirs == (str(batch_root / "ProductV2"),)
+    assert [product.product_code for product in product_service.list_products()] == ["product_v2"]
+    assert sorted(asset.asset_code for asset in asset_service.list_assets()) == [
+        "product_v2_bg_bg_a",
+        "product_v2_fg_hook_a",
+        "product_v2_fg_hook_b",
+        "product_v2_music_music_a",
+        "product_v2_voice_voice_a",
+    ]
+    assert runtime_caption_path.exists()
+    assert "ข้อความ v2" in runtime_caption_path.read_text(encoding="utf-8")
+
+
+def test_folder_service_rejects_ambiguous_contract_layout(unit_of_work_factory, tmp_path) -> None:
+    _, _, _, folder_service, _ = _build_services(unit_of_work_factory, tmp_path, {"voice_a.mp3": 12.0})
+    batch_root = tmp_path / "ambiguous_contract_batch"
+    product_dir = _write_product_folder(
+        batch_root,
+        folder_name="ProductAmbiguous",
+        product_code="product_ambiguous",
+        product_name="Product Ambiguous",
+        requested_output_count=1,
+        use_v2_layout=True,
+    )
+    (product_dir / "product.toml").write_text(
+        (product_dir / "contracts" / "product.toml").read_text(encoding="utf-8"),
+        encoding="utf-8",
+    )
+
+    with pytest.raises(AutoFactoryFolderContractError, match="Ambiguous product folder layout"):
+        folder_service.run_batch_root(batch_root, materialize=False)
+
+
+def test_folder_service_rejects_ambiguous_asset_layout(unit_of_work_factory, tmp_path) -> None:
+    _, _, _, folder_service, _ = _build_services(unit_of_work_factory, tmp_path, {"voice_a.mp3": 12.0})
+    batch_root = tmp_path / "ambiguous_asset_batch"
+    product_dir = _write_product_folder(
+        batch_root,
+        folder_name="ProductAmbiguous",
+        product_code="product_ambiguous",
+        product_name="Product Ambiguous",
+        requested_output_count=1,
+        use_v2_layout=True,
+    )
+    (product_dir / "foreground").mkdir(exist_ok=True)
+    (product_dir / "foreground" / "duplicate.mp4").write_bytes(b"dup")
+
+    with pytest.raises(AutoFactoryFolderContractError, match="Ambiguous product folder layout"):
+        folder_service.run_batch_root(batch_root, materialize=False)
 
 
 def test_folder_service_can_discover_nested_product_folders_up_to_requested_depth(unit_of_work_factory, tmp_path) -> None:

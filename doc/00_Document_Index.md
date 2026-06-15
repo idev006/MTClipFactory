@@ -61,6 +61,10 @@ When code changes, the related Markdown documents in this folder must be updated
 53. [53_Per_Line_Textbox_Caption_Workflow_2026-06-15.md](/F:/programming/python/MTClipFactory/doc/53_Per_Line_Textbox_Caption_Workflow_2026-06-15.md)
 54. [54_Textbox_Height_Mode_And_Promo_Card_Workflow_2026-06-15.md](/F:/programming/python/MTClipFactory/doc/54_Textbox_Height_Mode_And_Promo_Card_Workflow_2026-06-15.md)
 55. [55_Caption_Style_Preset_Workflow_2026-06-15.md](/F:/programming/python/MTClipFactory/doc/55_Caption_Style_Preset_Workflow_2026-06-15.md)
+56. [56_Caption_Box_Border_Workflow_2026-06-15.md](/F:/programming/python/MTClipFactory/doc/56_Caption_Box_Border_Workflow_2026-06-15.md)
+57. [57_Explicit_Line_Break_And_Box_Aware_Caption_Composition_Workflow_2026-06-15.md](/F:/programming/python/MTClipFactory/doc/57_Explicit_Line_Break_And_Box_Aware_Caption_Composition_Workflow_2026-06-15.md)
+58. [58_Versioned_Manifest_Envelope_Workflow_2026-06-15.md](/F:/programming/python/MTClipFactory/doc/58_Versioned_Manifest_Envelope_Workflow_2026-06-15.md)
+59. [59_Product_Folder_V2_Backward_Compatible_Layout_Workflow_2026-06-15.md](/F:/programming/python/MTClipFactory/doc/59_Product_Folder_V2_Backward_Compatible_Layout_Workflow_2026-06-15.md)
 
 ## Governance
 

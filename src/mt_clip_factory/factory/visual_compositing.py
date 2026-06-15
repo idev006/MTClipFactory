@@ -473,8 +473,6 @@ def _caption_drawtext_filters(*, temp_dir: Path, segment: PreviewSegmentClip) ->
 
 
 def _caption_drawbox_filters(role) -> list[str]:
-    if not role.background_color or role.background_opacity <= 0:
-        return []
     if role.textbox_mode == "per_line":
         drawboxes: list[str] = []
         for box_left_px, box_top_px, box_width_px, box_height_px in zip(
@@ -486,35 +484,77 @@ def _caption_drawbox_filters(role) -> list[str]:
         ):
             if box_width_px <= 0 or box_height_px <= 0:
                 continue
-            drawboxes.append(
-                "drawbox="
-                + ":".join(
-                    (
-                        f"x={box_left_px}",
-                        f"y={box_top_px}",
-                        f"w={box_width_px}",
-                        f"h={box_height_px}",
-                        f"color={role.background_color}@{role.background_opacity}",
-                        "t=fill",
-                    )
+            drawboxes.extend(
+                _build_box_filters(
+                    left_px=box_left_px,
+                    top_px=box_top_px,
+                    width_px=box_width_px,
+                    height_px=box_height_px,
+                    background_color=role.background_color,
+                    background_opacity=role.background_opacity,
+                    box_border_color=role.box_border_color,
+                    box_border_opacity=role.box_border_opacity,
+                    box_border_width=role.box_border_width,
                 )
             )
         return drawboxes
     if role.box_width_px <= 0 or role.box_height_px <= 0:
         return []
-    return [
-        "drawbox="
-        + ":".join(
-            (
-                f"x={role.box_left_px}",
-                f"y={role.box_top_px}",
-                f"w={role.box_width_px}",
-                f"h={role.box_height_px}",
-                f"color={role.background_color}@{role.background_opacity}",
-                "t=fill",
+    return _build_box_filters(
+        left_px=role.box_left_px,
+        top_px=role.box_top_px,
+        width_px=role.box_width_px,
+        height_px=role.box_height_px,
+        background_color=role.background_color,
+        background_opacity=role.background_opacity,
+        box_border_color=role.box_border_color,
+        box_border_opacity=role.box_border_opacity,
+        box_border_width=role.box_border_width,
+    )
+
+
+def _build_box_filters(
+    *,
+    left_px: int,
+    top_px: int,
+    width_px: int,
+    height_px: int,
+    background_color: str | None,
+    background_opacity: float,
+    box_border_color: str | None,
+    box_border_opacity: float,
+    box_border_width: int,
+) -> list[str]:
+    filters: list[str] = []
+    if background_color and background_opacity > 0:
+        filters.append(
+            "drawbox="
+            + ":".join(
+                (
+                    f"x={left_px}",
+                    f"y={top_px}",
+                    f"w={width_px}",
+                    f"h={height_px}",
+                    f"color={background_color}@{background_opacity}",
+                    "t=fill",
+                )
             )
         )
-    ]
+    if box_border_color and box_border_opacity > 0 and box_border_width > 0:
+        filters.append(
+            "drawbox="
+            + ":".join(
+                (
+                    f"x={left_px}",
+                    f"y={top_px}",
+                    f"w={width_px}",
+                    f"h={height_px}",
+                    f"color={box_border_color}@{box_border_opacity}",
+                    f"t={box_border_width}",
+                )
+            )
+        )
+    return filters
 
 
 def _escape_filter_path(file_path: Path) -> str:

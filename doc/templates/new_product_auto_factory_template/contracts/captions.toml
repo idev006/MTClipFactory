@@ -2,6 +2,9 @@
 mode = "random_with_seed"
 seed_scope = "batch"
 
+# Use \n only when you intentionally want multiple rendered lines.
+# If no \n exists, the runtime keeps one rendered line and solves font size against the textbox.
+
 [caption_pools.hook]
 main = [
   "กลับมาแจก\nความสดใส\nและพลังบวกได้เต็มที่",
@@ -61,6 +64,10 @@ stroke_color = "#000000"
 stroke_width = 3
 background_color = "#000000"
 background_opacity = 0.15
+# Optional border override fields when you want to override the preset card edge.
+# box_border_color = "#FFD447"
+# box_border_opacity = 0.96
+# box_border_width = 4
 padding = 20
 max_lines = 3
 max_chars_per_line = 18
@@ -87,6 +94,10 @@ stroke_color = "#000000"
 stroke_width = 2
 background_color = "#000000"
 background_opacity = 0.30
+# Optional border override fields when you want to override the preset card edge.
+# box_border_color = "#F8FAFC"
+# box_border_opacity = 0.94
+# box_border_width = 3
 padding = 16
 max_lines = 3
 max_chars_per_line = 28

@@ -32,9 +32,10 @@ That model was not strong enough for production quality because it could still:
 1. Caption fitting must evaluate multiple font-size candidates, not only one live attempt.
 2. The solver must score candidates using both hard-fit rules and soft layout quality signals.
 3. Hard-fit validation must include width overflow, line-count overflow, and height overflow inside the textbox content area.
-4. Manual `\n` remains operator intent, but each authored line may still scale independently when policy allows it.
+4. Manual `\n` remains operator intent, and only explicit breaks may create multiple rendered lines.
 5. Requested font size is a preferred starting point, not a hard ceiling.
-6. The selected candidate should maximize safe textbox occupancy, then prefer the most balanced layout among near-equivalent candidates.
+6. When no explicit break exists, the solver must keep a single rendered line and search for the strongest safe textbox fill instead of auto-wrapping.
+7. The selected candidate should maximize safe textbox occupancy, then prefer the most balanced layout among near-equivalent candidates.
 
 ## Solver Inputs
 
@@ -52,13 +53,13 @@ The best-fit solver must consider:
 - safe-band height limits
 - max lines
 - overflow policy
-- manual-break mode versus auto-wrap mode
+- explicit-break mode versus single-line best-fit mode
 
 ## Hard-Fit Rules
 
 A candidate is not considered clean when any of these are true:
 
-- wrapped or authored line count exceeds `max_lines`
+- authored line count exceeds `max_lines`
 - any rendered line still exceeds textbox content width
 - text block height exceeds textbox content height
 - runtime truncation was required
@@ -82,7 +83,7 @@ flowchart LR
     A["Resolve caption contract"] --> B["Resolve textbox width and safe-band height"]
     B --> C["Derive candidate font ceiling from width and content-height capacity"]
     C --> D["Enumerate font-size candidates from ceiling down to minimum"]
-    D --> E["Wrap or preserve manual lines"]
+    D --> E["Preserve explicit lines or keep one rendered line"]
     E --> F["Measure every line in pixels"]
     F --> G["Apply per-line scaling for manual-break captions when needed"]
     G --> H["Compute textbox occupancy and content-height usage"]
@@ -109,7 +110,7 @@ sequenceDiagram
     Layout->>Solver: solve_best_fit_layout(...)
     Solver->>Solver: derive candidate font ceiling
     loop each font-size candidate
-        Solver->>Metrics: measure wrapped/manual lines
+        Solver->>Metrics: measure explicit-break or single-line layout
         Metrics-->>Solver: line widths and heights
         Solver->>Solver: evaluate width + line-count + height fit
         Solver->>Solver: evaluate textbox fill ratio
@@ -127,7 +128,7 @@ sequenceDiagram
 - the runtime may grow above the requested font size when the textbox would otherwise be visibly underfilled
 - fixed-height textboxes can trigger height-aware downscaling
 - manual line-break captions may keep different font sizes per line when needed to fit
-- auto-wrap captions select the cleanest highest-occupancy block instead of stopping at the requested size
+- captions without `\n` stay single-line and use best-fit sizing instead of automatic wrapping
 - the chosen layout improves width occupancy and balance over naive fit-only behavior
 - pytest coverage verifies both width-fit and height-fit behavior
 

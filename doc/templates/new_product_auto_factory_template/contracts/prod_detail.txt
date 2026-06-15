@@ -1,0 +1,31 @@
+Product name:
+Brand:
+Category:
+
+Core promise:
+- Replace me
+
+Key ingredients or components:
+- Replace me
+
+Main benefits:
+- Replace me
+
+Target audience:
+- Replace me
+
+Pain points to address:
+- Replace me
+
+Proof points:
+- Replace me
+
+CTA ideas:
+- Replace me
+
+Caption notes:
+- Keep short hook lines punchy.
+- Use \\n only when you intentionally want explicit multi-line main captions.
+
+Operator notes:
+- Replace me

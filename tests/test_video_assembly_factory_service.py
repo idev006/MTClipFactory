@@ -324,6 +324,11 @@ def test_factory_service_builds_preview_output_job(unit_of_work_factory, tmp_pat
     assert service._preview_renderer.calls[0]["target_ratio"] == "9:16"
 
     manifest_payload = json.loads(Path(outputs[0].manifest_path).read_text(encoding="utf-8"))
+    assert manifest_payload["manifest_meta"]["schema_name"] == "mtclipfactory_manifest"
+    assert manifest_payload["manifest_meta"]["schema_version"] == "2.0"
+    assert manifest_payload["artifact"]["stage_name"] == "preview"
+    assert manifest_payload["composition"]["plan"]["resolved_duration_sec"] == 3.0
+    assert manifest_payload["quality"]["review_gate"]["required"] is True
     assert manifest_payload["composition_plan"]["resolved_duration_sec"] == 3.0
     assert [segment["segment_type"] for segment in manifest_payload["segments"]] == ["hook", "benefit", "cta"]
     assert all(segment["layer_name"] == "background_visual" for segment in manifest_payload["segments"])
@@ -356,6 +361,8 @@ def test_factory_service_writes_resolved_caption_manifest_and_review_signal(unit
     recipe = service.get_recipe(recipe_id)
     manifest_payload = json.loads(Path(output.manifest_path).read_text(encoding="utf-8"))
 
+    assert manifest_payload["composition"]["captions"]["enabled"] is True
+    assert manifest_payload["quality"]["review_gate"]["required"] is True
     assert manifest_payload["captions"]["enabled"] is True
     assert manifest_payload["captions"]["review_required_role_count"] == 1
     assert manifest_payload["captions"]["segments"][0]["roles"][0]["font_file"].endswith("THSarabun.ttf")
@@ -391,6 +398,7 @@ def test_factory_service_writes_runtime_audio_mix_summary_to_manifest(unit_of_wo
     output = service.list_outputs(recipe_id=recipe_id)[0]
     manifest_payload = json.loads(Path(output.manifest_path).read_text(encoding="utf-8"))
 
+    assert manifest_payload["render"]["audio_mix"]["mode"] == "fake_audio_mix"
     assert manifest_payload["audio_mix"]["mode"] == "fake_audio_mix"
     assert manifest_payload["audio_mix"]["voice_track_count"] == 1
     assert manifest_payload["audio_mix"]["music_track_count"] == 1
@@ -453,6 +461,7 @@ def test_factory_service_builds_layered_visual_stack_when_background_and_foregro
     assert all(segment.layer_name == "product_focus_visual" for segment in segment_clips)
     assert all(segment.background_layer is not None for segment in segment_clips)
     assert recipe.status == "candidate"
+    assert manifest_payload["render"]["visual_composite"]["background_segment_count"] == 3
     assert manifest_payload["visual_composite"]["background_segment_count"] == 3
     assert manifest_payload["segments"][0]["background_layer"]["asset_code"] == "bg_asset"
 

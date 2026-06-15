@@ -20,24 +20,24 @@ Use this folder as the starting point for new products:
 
 The template kit includes:
 
-- `product.toml`
-- `pipeline.toml`
-- `captions.toml`
-- `foreground/tags.toml`
-- `background/tags.toml`
-- `music/tags.toml`
-- `voice/tags.toml`
+- `contracts/product.toml`
+- `contracts/pipeline.toml`
+- `contracts/captions.toml`
+- `assets/foreground/tags.toml`
+- `assets/background/tags.toml`
+- `assets/music/tags.toml`
+- `assets/voice/tags.toml`
 - `README.md`
 
 ## How Operators Should Use It
 
 1. copy the whole template folder
 2. rename the copied folder to the new product folder name
-3. update `product.toml`
-4. update `pipeline.toml`
+3. update `contracts/product.toml`
+4. update `contracts/pipeline.toml`
 5. review or adjust fill-policy defaults in `pipeline.toml`
-6. update `captions.toml` when captioned automation is needed
-7. place media files into `foreground`, `background`, `music`, and `voice`
+6. update `contracts/captions.toml` when captioned automation is needed
+7. place media files into `assets/foreground`, `assets/background`, `assets/music`, and `assets/voice`
 8. edit the matching `tags.toml` files when automation tags are needed
 9. run the batch root from the `Auto Factory` screen
 
@@ -45,6 +45,7 @@ Operator guidance from the first live product-folder audit:
 
 - keep `selection_tags` broad enough to preserve the intended visual pool; narrow them only when repetition is acceptable on purpose
 - write `captions.toml` as publishable clip copy, not as editorial instructions to the operator
+- use `\n` only when you intentionally want multiple caption lines; otherwise keep one strong line and let the runtime best-fit the font size inside the textbox
 - think of caption layout as a textbox first: use `textbox_alignment` for the box and `alignment` for the text inside it
 - use a rerun after contract edits as the standard recovery loop for caption overflow or overly repetitive visual selection
 
@@ -52,17 +53,23 @@ Operator guidance from the first live product-folder audit:
 
 The current automation contract requires:
 
-- `product.toml`
-- `pipeline.toml`
+- `contracts/product.toml`
+- `contracts/pipeline.toml`
 
 The asset subfolders are the expected operator baseline:
 
-- `foreground/`
-- `background/`
-- `music/`
-- `voice/`
+- `assets/foreground/`
+- `assets/background/`
+- `assets/music/`
+- `assets/voice/`
 
 Current service behavior can tolerate a missing asset-type folder, but the template kit keeps all four folders so operators do not need to remember which names are valid.
+
+Backward-compatibility rule:
+
+- runtime still accepts legacy root-level `product.toml`, `pipeline.toml`, `captions.toml`, and root asset folders for older products
+- new template work should prefer the v2 `contracts/` plus `assets/` layout
+- if a product folder contains both old and new paths for the same logical contract or asset folder, the runtime should fail truthfully instead of guessing
 
 ## Tag Metadata Direction
 
@@ -75,7 +82,7 @@ That means:
 - the current delivered auto-factory intake now reads `tags.toml` and applies normalized tags additively to matching assets during folder runs
 - `pipeline.toml` is also the contract location for per-asset-type fill policy in auto-mode
 
-The template kit also includes `captions.toml` as the current product-level contract for automated caption selection and rendering.
+The template kit also includes `contracts/captions.toml` as the current product-level contract for automated caption selection and rendering.
 
 Runtime-created operator artifact folder:
 

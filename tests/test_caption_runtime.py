@@ -164,9 +164,9 @@ def test_caption_runtime_flags_overflow_for_review(tmp_path) -> None:
     assert role.overflowed is True
     assert role.review_required is True
     assert role.truncated_for_runtime is False
-    assert role.fit_strategy in {"scaled_to_fit", "manual_breaks", "wrapped"}
+    assert role.fit_strategy in {"scaled_to_fit", "manual_breaks", "single_line", "single_line_best_fit"}
     assert role.line_widths_px
-    assert role.box_width_px >= role.text_block_width_px
+    assert role.text_block_width_px > role.max_text_width_px
 
 
 def test_caption_runtime_supports_point_sized_fonts_and_pixel_layout(tmp_path) -> None:
@@ -509,9 +509,12 @@ def test_caption_runtime_applies_sale_blast_style_preset_defaults(tmp_path) -> N
     assert main_role.style_preset == "sale_blast"
     assert main_role.textbox_height_mode == "content_hug"
     assert main_role.background_color == "#D61F3A"
+    assert main_role.box_border_color == "#FFD447"
+    assert main_role.box_border_width == 4
     assert main_role.textbox_width_ratio == 0.78
     assert sub_role.style_preset == "sale_blast"
     assert sub_role.background_color == "#111827"
+    assert sub_role.box_border_color == "#F8FAFC"
     assert sub_role.position == "bottom"
 
 
@@ -566,6 +569,8 @@ def test_caption_runtime_allows_explicit_override_over_style_preset(tmp_path) ->
     assert role.alignment == "right"
     assert role.textbox_mode == "grouped"
     assert role.background_color == "#222222"
+    assert role.box_border_color == "#CCFBF1"
+    assert role.box_border_width == 3
     assert role.padding == 12
 
 
@@ -690,7 +695,7 @@ def test_caption_runtime_bestfits_long_line_within_narrow_textbox(tmp_path) -> N
         "\n".join(
             [
                 "[caption_pools.hook]",
-                'main = ["This line should shrink to fit the box width"]',
+                'main = ["Shrink this line to fit"]',
                 "",
                 "[caption_properties.main]",
                 'font_family = "THSarabun"',
@@ -698,7 +703,7 @@ def test_caption_runtime_bestfits_long_line_within_narrow_textbox(tmp_path) -> N
                 "textbox_width_ratio = 0.35",
                 "padding = 20",
                 "font_size = 72",
-                "min_font_size = 24",
+                "min_font_size = 8",
                 "max_lines = 4",
                 'overflow_policy = "wrap_then_scale_then_review"',
             ]
@@ -730,6 +735,8 @@ def test_caption_runtime_bestfits_long_line_within_narrow_textbox(tmp_path) -> N
 
     assert role.box_width_px == 378
     assert role.max_text_width_px == 338
+    assert role.line_break_mode == "single_line"
+    assert len(role.rendered_lines) == 1
     assert all(width <= role.max_text_width_px for width in role.line_widths_px)
     assert role.font_size <= role.requested_font_size
     assert role.overflowed is False
@@ -784,10 +791,69 @@ def test_caption_runtime_upscales_short_single_line_to_better_fill_textbox_width
     )
     role = resolved[0].roles[0]
 
+    assert role.line_break_mode == "single_line"
+    assert role.fit_strategy == "single_line_best_fit"
     assert role.font_size > role.requested_font_size
-    assert role.line_widths_px[0] >= round(role.max_text_width_px * 0.9)
+    assert role.line_widths_px[0] >= round(role.max_text_width_px * 0.96)
     assert role.line_widths_px[0] <= role.max_text_width_px
     assert role.overflowed is False
+
+
+def test_caption_runtime_requires_explicit_breaks_before_rendering_multiple_lines(tmp_path) -> None:
+    media_root = tmp_path / "media_library"
+    fonts_root = tmp_path / "fonts"
+    fonts_root.mkdir(parents=True, exist_ok=True)
+    (fonts_root / "THSarabun.ttf").write_bytes(b"font")
+    product_dir = tmp_path / "product_explicit_breaks_only"
+    product_dir.mkdir(parents=True, exist_ok=True)
+    caption_file = product_dir / "captions.toml"
+    caption_file.write_text(
+        "\n".join(
+            [
+                "[caption_pools.hook]",
+                'main = ["Keep one line only without explicit breaks"]',
+                "",
+                "[caption_properties.main]",
+                'font_family = "THSarabun"',
+                'alignment = "center"',
+                "textbox_width_ratio = 0.45",
+                "padding = 20",
+                "font_size = 72",
+                "min_font_size = 8",
+                "max_lines = 4",
+                'overflow_policy = "wrap_then_scale_then_review"',
+            ]
+        ),
+        encoding="utf-8",
+    )
+    store = ProductAutomationMetadataStore(media_root)
+    store.sync_caption_contract(product_code="product_explicit_breaks_only", source_file=caption_file)
+    service = CaptionRuntimeService(metadata_store=store, fonts_root=fonts_root)
+    segments = (
+        TimelineSegment(
+            recipe_id=1,
+            segment_type="hook",
+            sequence_index=1,
+            start_sec=0.0,
+            end_sec=3.0,
+            target_duration_sec=3.0,
+        ),
+    )
+
+    resolved = service.resolve_for_segments(
+        product_code="product_explicit_breaks_only",
+        recipe_code="product_explicit_breaks_only_batch_001",
+        segments=segments,
+        frame_width_px=1080,
+        frame_height_px=1920,
+    )
+    role = resolved[0].roles[0]
+
+    assert role.line_break_mode == "single_line"
+    assert role.fit_strategy == "scaled_to_fit"
+    assert len(role.rendered_lines) == 1
+    assert "\n" not in role.rendered_text
+    assert role.line_widths_px[0] <= role.max_text_width_px
 
 
 def test_caption_runtime_scales_to_fit_fixed_textbox_height(tmp_path) -> None:

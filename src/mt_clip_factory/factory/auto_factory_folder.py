@@ -30,6 +30,8 @@ _ASSET_FOLDER_TYPES = {
     "music": "background_music",
     "voice": "voiceover",
 }
+_CONTRACTS_DIR_NAME = "contracts"
+_ASSETS_DIR_NAME = "assets"
 
 _MEDIA_SUFFIXES_BY_ASSET_TYPE = {
     "foreground_video": {".mp4", ".mov", ".mkv", ".avi", ".webm"},
@@ -197,8 +199,8 @@ class AutoFactoryFolderService:
         actions: list[AutoFactoryFolderAssetActionDTO] = []
 
         for folder_name, asset_type in _ASSET_FOLDER_TYPES.items():
-            source_dir = product_dir / folder_name
-            if not source_dir.exists():
+            source_dir = _resolve_asset_folder(product_dir, folder_name)
+            if source_dir is None:
                 continue
             tag_config = _load_folder_tag_config(source_dir)
             for source_file in sorted(
@@ -248,15 +250,15 @@ class AutoFactoryFolderService:
         if self._automation_metadata_store is None:
             return
         synced_at = datetime.now(UTC).replace(microsecond=0).isoformat().replace("+00:00", "Z")
-        source_file = product_dir / "captions.toml"
+        source_file = _resolve_contract_file(product_dir, "captions.toml", required=False)
         self._automation_metadata_store.sync_caption_contract(
             product_code=product_code,
-            source_file=source_file if source_file.exists() else None,
+            source_file=source_file,
         )
-        pipeline_file = product_dir / "pipeline.toml"
+        pipeline_file = _resolve_contract_file(product_dir, "pipeline.toml", required=False)
         self._automation_metadata_store.sync_pipeline_contract(
             product_code=product_code,
-            source_file=pipeline_file if pipeline_file.exists() else None,
+            source_file=pipeline_file,
         )
         self._automation_metadata_store.sync_runtime_context(
             product_code=product_code,
@@ -334,27 +336,29 @@ def _discover_product_dirs(batch_root: Path, *, scan_depth: int) -> tuple[Path, 
     walk(batch_root, 0)
     if not product_dirs:
         raise AutoFactoryFolderContractError(
-            f"No product folders were found under {batch_root}. Expected directories containing product.toml and pipeline.toml."
+            f"No product folders were found under {batch_root}. Expected directories containing "
+            "product.toml and pipeline.toml, either at the product root or under contracts/."
         )
     return tuple(product_dirs)
 
 
 def _is_product_contract_dir(path: Path) -> bool:
-    return path.is_dir() and (path / "product.toml").exists() and (path / "pipeline.toml").exists()
+    return path.is_dir() and _has_contract_file(path, "product.toml") and _has_contract_file(path, "pipeline.toml")
 
 
 def _load_product_config(product_dir: Path) -> AutoFactoryFolderProductConfigDTO:
-    data = _load_toml(product_dir / "product.toml")
+    product_file = _resolve_contract_file(product_dir, "product.toml")
+    data = _load_toml(product_file)
     section = data.get("product")
     if not isinstance(section, dict):
-        raise AutoFactoryFolderContractError(f"Missing [product] section in {product_dir / 'product.toml'}")
+        raise AutoFactoryFolderContractError(f"Missing [product] section in {product_file}")
 
     product_code = _slugify(str(section.get("product_code", "")))
     product_name = str(section.get("product_name", "")).strip()
     if not product_code:
-        raise AutoFactoryFolderContractError(f"product_code is required in {product_dir / 'product.toml'}")
+        raise AutoFactoryFolderContractError(f"product_code is required in {product_file}")
     if not product_name:
-        raise AutoFactoryFolderContractError(f"product_name is required in {product_dir / 'product.toml'}")
+        raise AutoFactoryFolderContractError(f"product_name is required in {product_file}")
 
     return AutoFactoryFolderProductConfigDTO(
         product_code=product_code,
@@ -367,24 +371,25 @@ def _load_product_config(product_dir: Path) -> AutoFactoryFolderProductConfigDTO
 
 
 def _load_pipeline_config(product_dir: Path) -> AutoFactoryFolderPipelineConfigDTO:
-    data = _load_toml(product_dir / "pipeline.toml")
+    pipeline_file = _resolve_contract_file(product_dir, "pipeline.toml")
+    data = _load_toml(pipeline_file)
     try:
-        parse_fill_policies_from_pipeline_data(data, source_name=str(product_dir / "pipeline.toml"))
+        parse_fill_policies_from_pipeline_data(data, source_name=str(pipeline_file))
     except ProductAutomationPolicyError as exc:
         raise AutoFactoryFolderContractError(str(exc)) from exc
     section = data.get("request")
     if not isinstance(section, dict):
-        raise AutoFactoryFolderContractError(f"Missing [request] section in {product_dir / 'pipeline.toml'}")
+        raise AutoFactoryFolderContractError(f"Missing [request] section in {pipeline_file}")
     selection_tags_section = data.get("selection_tags")
     if selection_tags_section is None:
         selection_tags_section = {}
     if not isinstance(selection_tags_section, dict):
-        raise AutoFactoryFolderContractError(f"Invalid [selection_tags] section in {product_dir / 'pipeline.toml'}")
+        raise AutoFactoryFolderContractError(f"Invalid [selection_tags] section in {pipeline_file}")
 
     requested_output_count = section.get("requested_output_count")
     if not isinstance(requested_output_count, int) or requested_output_count <= 0:
         raise AutoFactoryFolderContractError(
-            f"requested_output_count must be a positive integer in {product_dir / 'pipeline.toml'}"
+            f"requested_output_count must be a positive integer in {pipeline_file}"
         )
     return AutoFactoryFolderPipelineConfigDTO(
         requested_output_count=requested_output_count,
@@ -408,6 +413,64 @@ def _load_toml(file_path: Path) -> dict:
     if not isinstance(data, dict):
         raise AutoFactoryFolderContractError(f"Invalid TOML object in {file_path}")
     return data
+
+
+def _has_contract_file(product_dir: Path, file_name: str) -> bool:
+    legacy_file, versioned_file = _contract_file_candidates(product_dir, file_name)
+    return legacy_file.exists() or versioned_file.exists()
+
+
+def _resolve_contract_file(product_dir: Path, file_name: str, *, required: bool = True) -> Path | None:
+    legacy_file, versioned_file = _contract_file_candidates(product_dir, file_name)
+    return _resolve_layout_path(
+        product_dir=product_dir,
+        legacy_path=legacy_file,
+        versioned_path=versioned_file,
+        logical_name=file_name,
+        required=required,
+    )
+
+
+def _contract_file_candidates(product_dir: Path, file_name: str) -> tuple[Path, Path]:
+    return product_dir / file_name, product_dir / _CONTRACTS_DIR_NAME / file_name
+
+
+def _resolve_asset_folder(product_dir: Path, folder_name: str) -> Path | None:
+    return _resolve_layout_path(
+        product_dir=product_dir,
+        legacy_path=product_dir / folder_name,
+        versioned_path=product_dir / _ASSETS_DIR_NAME / folder_name,
+        logical_name=f"{folder_name}/",
+        required=False,
+    )
+
+
+def _resolve_layout_path(
+    *,
+    product_dir: Path,
+    legacy_path: Path,
+    versioned_path: Path,
+    logical_name: str,
+    required: bool,
+) -> Path | None:
+    legacy_exists = legacy_path.exists()
+    versioned_exists = versioned_path.exists()
+    if legacy_exists and versioned_exists:
+        raise AutoFactoryFolderContractError(
+            f"Ambiguous product folder layout for {logical_name} under {product_dir}. "
+            f"Found both legacy path {legacy_path} and versioned path {versioned_path}. "
+            "Keep only one layout for each logical location."
+        )
+    if versioned_exists:
+        return versioned_path
+    if legacy_exists:
+        return legacy_path
+    if required:
+        raise AutoFactoryFolderContractError(
+            f"Missing required {logical_name} under {product_dir}. "
+            f"Expected either {legacy_path} or {versioned_path}."
+        )
+    return None
 
 
 def _load_folder_tag_config(folder_path: Path) -> dict[str, object]:

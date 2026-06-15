@@ -24,6 +24,7 @@ from mt_clip_factory.factory.dto import (
     RecipeItemDTO,
     RecipeSummaryDTO,
 )
+from mt_clip_factory.factory.manifest_envelope import build_manifest_envelope
 from mt_clip_factory.factory.preview_artifacts import PreviewManifestBuilder
 from mt_clip_factory.factory.preview_composition import build_segmented_preview_composition
 from mt_clip_factory.factory.product_run_store import ProductRunArtifactStore
@@ -478,6 +479,21 @@ class VideoAssemblyFactoryService:
                     manifest_payload["audio_mix"] = rendered_output.audio_mix_summary
                 if rendered_output.visual_composite_summary is not None:
                     manifest_payload["visual_composite"] = rendered_output.visual_composite_summary
+                manifest_payload = build_manifest_envelope(
+                    product_code=product.product_code,
+                    recipe_code=recipe.recipe_code,
+                    stage_name="preview",
+                    target_platform=recipe.target_platform,
+                    target_ratio=recipe.target_ratio,
+                    output_path=rendered_output.file_path,
+                    manifest_path=artifact_paths.manifest_path,
+                    batch_code=batch_code,
+                    run_root=artifact_paths.run_root,
+                    journal_path=artifact_paths.journal_path,
+                    order_snapshot_path=artifact_paths.order_snapshot_path,
+                    product_local=artifact_paths.product_local,
+                    payload=manifest_payload,
+                )
                 manifest_path = self._preview_manifest_builder.write_manifest(
                     product_code=product.product_code,
                     recipe_code=recipe.recipe_code,
@@ -666,6 +682,21 @@ class VideoAssemblyFactoryService:
                     manifest_payload["audio_mix"] = rendered_output.audio_mix_summary
                 if rendered_output.visual_composite_summary is not None:
                     manifest_payload["visual_composite"] = rendered_output.visual_composite_summary
+                manifest_payload = build_manifest_envelope(
+                    product_code=product.product_code,
+                    recipe_code=f"{recipe.recipe_code}_final",
+                    stage_name="final",
+                    target_platform=recipe.target_platform,
+                    target_ratio=recipe.target_ratio,
+                    output_path=rendered_output.file_path,
+                    manifest_path=artifact_paths.manifest_path,
+                    batch_code=batch_code,
+                    run_root=artifact_paths.run_root,
+                    journal_path=artifact_paths.journal_path,
+                    order_snapshot_path=artifact_paths.order_snapshot_path,
+                    product_local=artifact_paths.product_local,
+                    payload=manifest_payload,
+                )
                 manifest_path = self._preview_manifest_builder.write_manifest(
                     product_code=product.product_code,
                     recipe_code=f"{recipe.recipe_code}_final",

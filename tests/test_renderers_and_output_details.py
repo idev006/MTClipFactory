@@ -63,6 +63,9 @@ def _build_caption_role(
     textbox_mode: str = "grouped",
     textbox_height_mode: str = "content_hug",
     style_preset: str | None = None,
+    box_border_color: str | None = None,
+    box_border_opacity: float = 0.0,
+    box_border_width: int = 0,
 ) -> ResolvedCaptionRole:
     return ResolvedCaptionRole(
         role="main",
@@ -99,6 +102,9 @@ def _build_caption_role(
         stroke_width=3,
         background_color="#000000",
         background_opacity=0.15,
+        box_border_color=box_border_color,
+        box_border_opacity=box_border_opacity,
+        box_border_width=box_border_width,
         padding=padding,
         max_lines=3,
         max_chars_per_line=18,
@@ -491,6 +497,9 @@ def test_ffmpeg_renderer_builds_drawtext_filters_for_caption_layers(tmp_path) ->
                         stroke_width=3,
                         background_color="#000000",
                         background_opacity=0.15,
+                        box_border_color="#FFD447",
+                        box_border_opacity=0.96,
+                        box_border_width=4,
                         padding=20,
                         max_lines=3,
                         max_chars_per_line=18,
@@ -598,6 +607,67 @@ def test_ffmpeg_renderer_can_target_textbox_only_caption_geometry_without_full_p
     assert "fontsize=56:x=132:y=600" in command_text
 
 
+def test_ffmpeg_renderer_can_draw_grouped_textbox_border(tmp_path) -> None:
+    settings = _settings(tmp_path)
+    renderer = InspectableFFmpegPreviewRenderer(StaticSettingsService(settings), tmp_path / "preview_root")
+    source_file = tmp_path / "visual.mp4"
+    font_file = tmp_path / "THSarabun.ttf"
+    source_file.write_bytes(b"visual")
+    font_file.write_bytes(b"font")
+
+    renderer.render_output(
+        product_code="honey",
+        output_stem="textbox_border_preview",
+        source_files=[source_file],
+        segment_clips=(
+            PreviewSegmentClip(
+                sequence_index=1,
+                segment_type="hook",
+                layer_name="background_visual",
+                asset_id=11,
+                asset_code="visual_asset",
+                source_file=source_file,
+                start_sec=0.0,
+                end_sec=1.0,
+                target_duration_sec=1.0,
+                fill_mode="trim_to_segment",
+                captions=(
+                    _build_caption_role(
+                        font_file=font_file,
+                        rendered_lines=("limited offer",),
+                        alignment="center",
+                        textbox_alignment="center",
+                        line_left_positions_px=(180,),
+                        line_top_positions_px=(420,),
+                        line_font_sizes_px=(72,),
+                        line_widths_px=(320,),
+                        line_height_px=80,
+                        line_heights_px=(80,),
+                        text_block_width_px=320,
+                        text_block_height_px=80,
+                        max_text_width_px=816,
+                        box_left_px=108,
+                        box_top_px=396,
+                        box_width_px=864,
+                        box_height_px=160,
+                        padding=24,
+                        textbox_width_ratio=0.8,
+                        box_border_color="#FFD447",
+                        box_border_opacity=0.96,
+                        box_border_width=4,
+                    ),
+                ),
+            ),
+        ),
+        target_ratio="9:16",
+    )
+
+    command_text = "\n".join(" ".join(command) for command in renderer.commands)
+
+    assert "drawbox=x=108:y=396:w=864:h=160:color=#000000@0.15:t=fill" in command_text
+    assert "drawbox=x=108:y=396:w=864:h=160:color=#FFD447@0.96:t=4" in command_text
+
+
 def test_ffmpeg_renderer_can_draw_one_textbox_per_caption_line(tmp_path) -> None:
     settings = _settings(tmp_path)
     renderer = InspectableFFmpegPreviewRenderer(StaticSettingsService(settings), tmp_path / "preview_root")
@@ -661,6 +731,73 @@ def test_ffmpeg_renderer_can_draw_one_textbox_per_caption_line(tmp_path) -> None
     assert "drawbox=x=276:y=396:w=168:h=126:color=#000000@0.15:t=fill" in command_text
     assert "drawbox=x=196:y=486:w=328:h=126:color=#000000@0.15:t=fill" in command_text
     assert "drawbox=x=236:y=576:w=228:h=126:color=#000000@0.15:t=fill" in command_text
+
+
+def test_ffmpeg_renderer_can_draw_one_textbox_border_per_caption_line(tmp_path) -> None:
+    settings = _settings(tmp_path)
+    renderer = InspectableFFmpegPreviewRenderer(StaticSettingsService(settings), tmp_path / "preview_root")
+    source_file = tmp_path / "visual.mp4"
+    font_file = tmp_path / "THSarabun.ttf"
+    source_file.write_bytes(b"visual")
+    font_file.write_bytes(b"font")
+
+    renderer.render_output(
+        product_code="honey",
+        output_stem="per_line_textbox_border_preview",
+        source_files=[source_file],
+        segment_clips=(
+            PreviewSegmentClip(
+                sequence_index=1,
+                segment_type="hook",
+                layer_name="background_visual",
+                asset_id=11,
+                asset_code="visual_asset",
+                source_file=source_file,
+                start_sec=0.0,
+                end_sec=1.0,
+                target_duration_sec=1.0,
+                fill_mode="trim_to_segment",
+                captions=(
+                    _build_caption_role(
+                        font_file=font_file,
+                        rendered_lines=("wow", "amazing offer", "buy now"),
+                        alignment="center",
+                        textbox_alignment="center",
+                        line_left_positions_px=(300, 220, 260),
+                        line_top_positions_px=(420, 510, 600),
+                        line_font_sizes_px=(72, 72, 72),
+                        line_widths_px=(120, 280, 180),
+                        line_height_px=78,
+                        line_heights_px=(78, 78, 78),
+                        text_block_width_px=280,
+                        text_block_height_px=270,
+                        max_text_width_px=716,
+                        box_left_px=182,
+                        box_top_px=396,
+                        box_width_px=716,
+                        box_height_px=320,
+                        padding=24,
+                        textbox_width_ratio=0.66,
+                        textbox_mode="per_line",
+                        line_box_left_positions_px=(276, 196, 236),
+                        line_box_top_positions_px=(396, 486, 576),
+                        line_box_widths_px=(168, 328, 228),
+                        line_box_heights_px=(126, 126, 126),
+                        box_border_color="#FFFFFF",
+                        box_border_opacity=0.90,
+                        box_border_width=3,
+                    ),
+                ),
+            ),
+        ),
+        target_ratio="9:16",
+    )
+
+    command_text = "\n".join(" ".join(command) for command in renderer.commands)
+
+    assert "drawbox=x=276:y=396:w=168:h=126:color=#FFFFFF@0.9:t=3" in command_text
+    assert "drawbox=x=196:y=486:w=328:h=126:color=#FFFFFF@0.9:t=3" in command_text
+    assert "drawbox=x=236:y=576:w=228:h=126:color=#FFFFFF@0.9:t=3" in command_text
 
 
 def test_ffmpeg_renderer_uses_freeze_last_frame_for_short_visual_segments(tmp_path) -> None:
@@ -733,6 +870,88 @@ def test_output_detail_helper_reads_runtime_audio_mix_from_manifest(tmp_path) ->
     assert "- Duck Threshold (dB): -24" in lines
     assert "- Duck Ratio: 8.0" in lines
     assert "- Music Track Count: 1" in lines
+
+
+def test_output_detail_helper_reads_versioned_manifest_sections(tmp_path) -> None:
+    manifest_path = tmp_path / "preview_manifest.json"
+    manifest_path.write_text(
+        json.dumps(
+            {
+                "manifest_meta": {
+                    "schema_name": "mtclipfactory_manifest",
+                    "schema_version": "2.0",
+                    "manifest_kind": "preview_render",
+                },
+                "composition": {
+                    "captions": {
+                        "enabled": True,
+                        "segment_count": 1,
+                        "role_count": 1,
+                        "overflow_role_count": 0,
+                        "review_required_role_count": 0,
+                        "segments": [
+                            {
+                                "sequence_index": 1,
+                                "segment_type": "hook",
+                                "roles": [
+                                    {
+                                        "role": "main",
+                                        "fit_strategy": "single_line_best_fit",
+                                        "font_resolution_target": "TH Chakra Petch",
+                                        "review_required": False,
+                                        "rendered_text": "SALE TODAY",
+                                    }
+                                ],
+                            }
+                        ],
+                    }
+                },
+                "render": {
+                    "audio_mix": {
+                        "mode": "runtime_audio_mix",
+                        "audio_present": True,
+                        "voice_loop_applied": False,
+                        "voice_tracks": [{"asset_code": "voice_asset"}],
+                        "music_tracks": [{"asset_code": "music_asset"}],
+                    },
+                    "visual_composite": {
+                        "mode": "layered_visual_stack",
+                        "background_segment_count": 1,
+                        "keyed_segment_count": 0,
+                        "segments": [
+                            {
+                                "sequence_index": 1,
+                                "segment_type": "hook",
+                                "composite_mode": "single_layer",
+                                "primary_asset_code": "fg_asset",
+                                "background_asset_code": "bg_asset",
+                            }
+                        ],
+                    },
+                },
+                "quality": {
+                    "review_gate": {
+                        "required": False,
+                        "duplicate_risk": 0.1,
+                        "quality_score": 0.9,
+                        "summary": "Looks clean.",
+                        "signals": [],
+                    }
+                },
+            }
+        ),
+        encoding="utf-8",
+    )
+
+    review_lines = _build_manifest_review_lines(str(manifest_path))
+    audio_lines = _build_manifest_audio_lines(str(manifest_path))
+    visual_lines = _build_manifest_visual_lines(str(manifest_path))
+    caption_lines = _build_manifest_caption_lines(str(manifest_path))
+
+    assert "- Required: False" in review_lines
+    assert "- Mode: runtime_audio_mix" in audio_lines
+    assert "- Mode: layered_visual_stack" in visual_lines
+    assert "- Caption Role: main | fit=single_line_best_fit | font=TH Chakra Petch | review=False" in caption_lines
 
 
 def test_output_detail_helper_reads_review_metrics_from_manifest(tmp_path) -> None:

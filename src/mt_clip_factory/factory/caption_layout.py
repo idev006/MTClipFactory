@@ -217,7 +217,7 @@ def resolve_caption_layout(
         review_required=candidate.overflowed and review_required_if_overflow,
         truncated_for_runtime=candidate.truncated_for_runtime,
         fit_strategy=candidate.fit_strategy,
-        line_break_mode="manual" if manual_breaks else "auto_wrap",
+        line_break_mode="manual" if manual_breaks else "single_line",
         line_widths_px=candidate.line_widths_px,
         line_height_px=candidate.line_height_px,
         line_heights_px=candidate.line_heights_px,
@@ -454,7 +454,7 @@ def _evaluate_layout_candidate(
         overflowed=overflowed,
         truncated_for_runtime=raw_layout.truncated_for_runtime,
         fit_strategy=fit_strategy,
-        line_break_mode="manual" if manual_breaks else "auto_wrap",
+        line_break_mode="manual" if manual_breaks else "single_line",
         score=_score_layout_candidate(
             lines=raw_layout.lines,
             line_widths_px=line_widths_px,
@@ -492,9 +492,11 @@ def _resolve_fit_strategy(
         if resolved_font_size_px < requested_font_size_px:
             return "scaled_to_fit"
         return "manual_breaks"
+    if resolved_font_size_px > requested_font_size_px:
+        return "single_line_best_fit"
     if resolved_font_size_px < requested_font_size_px:
         return "scaled_to_fit"
-    return "wrapped"
+    return "single_line"
 
 
 def _candidate_sort_key(candidate: _LayoutCandidate) -> tuple[float, ...]:
@@ -522,13 +524,14 @@ def _score_layout_candidate(
     height_overflowed: bool,
     truncated_for_runtime: bool,
 ) -> float:
-    target_fill_ratio = 0.94 if len(line_widths_px) <= 1 else 0.84
+    single_line = len(line_widths_px) <= 1
+    target_fill_ratio = 0.985 if single_line else 0.84
     target_width_px = max_width_px * target_fill_ratio
     width_balance_penalty = _line_balance_score(list(line_widths_px), target_width_px=target_width_px)
     width_underfill_penalty = sum(
         max(0.0, (target_width_px - width)) ** 2 / max(1.0, target_width_px)
         for width in line_widths_px
-    )
+    ) * (1.8 if single_line else 1.0)
     width_overfill_soft_penalty = sum(
         max(0.0, (width - max_width_px * 0.985)) * 2.0
         for width in line_widths_px
@@ -539,8 +542,12 @@ def _score_layout_candidate(
         else (max(line_font_sizes_px) - min(line_font_sizes_px)) * 2.0
     )
     whitespace_penalty = max(0.0, (content_height_capacity_px - text_block_height_px) * 0.02)
-    size_distance_penalty = abs(requested_font_size_px - font_size_px) * 1.5
-    occupancy_reward = sum(min(width / max(1, max_width_px), 1.0) for width in line_widths_px) * -260.0
+    if font_size_px >= requested_font_size_px:
+        size_distance_penalty = (font_size_px - requested_font_size_px) * 0.35
+    else:
+        size_distance_penalty = (requested_font_size_px - font_size_px) * 1.5
+    occupancy_reward_factor = -340.0 if single_line else -260.0
+    occupancy_reward = sum(min(width / max(1, max_width_px), 1.0) for width in line_widths_px) * occupancy_reward_factor
     overflow_penalty = 0.0
     if overflowed:
         overflow_penalty += 1_000_000.0

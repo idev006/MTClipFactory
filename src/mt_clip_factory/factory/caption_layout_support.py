@@ -139,20 +139,27 @@ def _layout_text(
             line_count_exceeded=line_count_exceeded,
             width_overflowed=width_overflowed,
         )
-    wrapped_lines = _wrap_text_to_width(text, font=font, max_width_px=max_width_px)
-    line_widths_px = tuple(_measure_line_width(line, font=font, stroke_width=stroke_width) for line in wrapped_lines)
-    line_count_exceeded = len(wrapped_lines) > max_lines
+    single_line = _single_line_text(text)
+    rendered_lines = (single_line,)
+    line_widths_px = tuple(_measure_line_width(line, font=font, stroke_width=stroke_width) for line in rendered_lines)
+    line_count_exceeded = len(rendered_lines) > max_lines
     width_overflowed = any(width > max_width_px for width in line_widths_px)
     overflowed = line_count_exceeded or width_overflowed
     truncated_for_runtime = False
     if overflowed and "truncate" in overflow_policy:
-        wrapped_lines = _truncate_lines(wrapped_lines, font=font, max_width_px=max_width_px, max_lines=max_lines, stroke_width=stroke_width)
-        line_widths_px = tuple(_measure_line_width(line, font=font, stroke_width=stroke_width) for line in wrapped_lines)
+        rendered_lines = _truncate_lines(
+            rendered_lines,
+            font=font,
+            max_width_px=max_width_px,
+            max_lines=max_lines,
+            stroke_width=stroke_width,
+        )
+        line_widths_px = tuple(_measure_line_width(line, font=font, stroke_width=stroke_width) for line in rendered_lines)
         truncated_for_runtime = True
         line_count_exceeded = False
         width_overflowed = any(width > max_width_px for width in line_widths_px)
     return _RawLayout(
-        lines=wrapped_lines,
+        lines=rendered_lines,
         line_widths_px=line_widths_px,
         line_height_px=_measure_line_height(font=font, stroke_width=stroke_width),
         overflowed=overflowed,
@@ -160,6 +167,11 @@ def _layout_text(
         line_count_exceeded=line_count_exceeded,
         width_overflowed=width_overflowed,
     )
+
+
+def _single_line_text(text: str) -> str:
+    collapsed = " ".join(part.strip() for part in text.splitlines() if part.strip())
+    return collapsed or text.strip() or ""
 
 
 def _wrap_text_to_width(text: str, *, font: QFont, max_width_px: int) -> tuple[str, ...]:
