@@ -96,7 +96,7 @@ def parse_fill_policies_from_pipeline_data(
         voiceover=_parse_policy(
             fill_policy_table.get("voiceover"),
             default=defaults.voiceover,
-            allowed_shortfall_modes={"silence_tail", "review_if_short"},
+            allowed_shortfall_modes={"silence_tail", "review_if_short", "loop_to_timeline"},
             source_name=source_name,
         ),
         background_music=_parse_policy(

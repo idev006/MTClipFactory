@@ -1188,6 +1188,35 @@ sequenceDiagram
     Script-->>Operator: status, counts, and actionable issues
 ```
 
+## Policy-Aware Loop And Caption Sequence
+
+```mermaid
+sequenceDiagram
+    actor Operator
+    participant FolderSvc as AutoFactoryFolderService
+    participant Meta as ProductAutomationMetadataStore
+    participant Policy as ProductAutomationPolicyService
+    participant Factory as VideoAssemblyFactoryService
+    participant Plan as Composition Planner
+    participant Caption as CaptionRuntimeService
+    participant Render as FFmpegPreviewRenderer
+    participant Manifest as PreviewManifestBuilder
+
+    Operator->>FolderSvc: run_batch_root(product_root, build_previews=true)
+    FolderSvc->>Meta: sync pipeline.toml + captions.toml
+    FolderSvc->>Factory: run preview for product recipe
+    Factory->>Policy: load_fill_policies(product_code)
+    Policy-->>Factory: voice/music/background/foreground fill rules
+    Factory->>Plan: persist_composition(..., fill_policies)
+    Plan->>Plan: ignore loopable background music as timeline authority
+    Plan-->>Factory: resolved duration + layer assignments
+    Factory->>Caption: resolve_for_segments(product_code, recipe_code, segments)
+    Caption-->>Factory: style-preset-aware main/sub caption layout
+    Factory->>Render: render_output(..., audio_mix_plan, fill_policies)
+    Render->>Render: loop voice/foreground/music only when product policy allows
+    Factory->>Manifest: write duration source + loop evidence + caption geometry
+```
+
 ## Target Factory Plane Map
 
 ```mermaid

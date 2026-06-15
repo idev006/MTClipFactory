@@ -71,6 +71,9 @@
 - preview and final render now support runtime caption overlays from product-level caption pools, including deterministic main/sub selection, manual `\n` line breaks, workspace-font resolution, manifest-backed caption evidence, and review-gate signaling for unsafe caption fit
 - product-local auto-mode run artifacts now write preview/final outputs, manifests, order snapshots, and append-only journal events under `runs/<batch_code>` inside the source product folder when auto-mode knows that source folder
 - auto-mode now also reads product-level per-asset-type fill policy from `pipeline.toml`, including loop, silence-tail, freeze-last-frame, and review-visible shortfall behavior by asset type
+- auto-mode composition planning now treats loop-enabled background music as a filler layer instead of a master-duration authority, so long music tracks no longer stretch short-form ad previews unintentionally
+- auto-mode voiceover can now also loop intentionally when the product-level `pipeline.toml` policy explicitly sets `loop_enabled = true` and `shortfall_mode = "loop_to_timeline"`
+- product-level caption contracts can now use stronger promo-card style presets and wider box-aware sizing so `main` and `sub` overlays read more like ad creative than subtitle leftovers
 - a real `Biothentic0001` live auto-mode audit has now validated product-local preview/final artifact paths, journal creation, manifest evidence, caption runtime behavior, and operator-facing contract tuning on an external product folder
 - pixel-based caption layout now measures text against the real frame in pixels, supports point-to-pixel conversion, computes per-line alignment positions, and writes per-line caption layout evidence into manifests
 - auto-mode visual selection now also uses seeded diversity ordering and seeded per-segment cycling so reruns stay deterministic while multi-recipe output feels less repetitive
@@ -121,7 +124,7 @@
 
 ## Verification Baseline
 
-- `python -m pytest` via `.venv`: `236 passed, 4 warnings`
+- `python -m pytest` via `.venv`: `241 passed, 4 warnings`
 - targeted `QT_QPA_PLATFORM=offscreen` UI coverage for the new `Auto Factory` window and existing themed windows: passed
 
 ## Current Focus
@@ -151,6 +154,8 @@
 - validate the new persistent visual-layer selection and per-line manual caption sizing on more live product folders beyond the current sample
 - validate the new textbox-first caption geometry on more live product folders, especially cases that need centered boxes with left-aligned text or stable lower-third card widths
 - validate the new explicit-break-only caption policy on more Thai/English product copy so operators know when to author `\n` versus when to keep one strong headline line
+- validate whether the new product-policy voice looping option remains acceptable for real ad use or needs guardrails such as max repetition count or per-product warnings
+- validate whether the stronger promo-card caption presets are sufficient for live products or whether segment-specific preset selection should become explicit in `captions.toml`
 - validate whether the new versioned manifest envelope is sufficient for future audit tooling or whether a compact operator summary/index file should be added beside per-output manifests
 - validate whether the new backward-compatible product-folder `v2` layout is clear enough for operators and whether migration guidance is needed for existing legacy product folders
 - validate whether operators prefer the new scriptable preflight seam before every live auto-mode run or only for onboarding/debugging cases
@@ -164,17 +169,16 @@
 4. Decide whether production-order orchestration should surface on the dashboard before multi-node execution begins.
 5. Clean the Alembic `path_separator=os` warning in a maintenance pass.
 6. Validate whether product-local `runs/<batch_code>` artifacts remain sufficient across multiple products and whether journal detail is enough for recovery-facing operator use.
-7. Run another live end-to-end preview/final audit on `Biothentic0001` after the new persistent visual-loop and per-line manual-caption sizing slice.
-8. Run another live end-to-end preview/final audit on `Biothentic0001` after the textbox-first caption layout slice.
-9. Run another live caption-focused audit on `Biothentic0001` after the new box-border and explicit-break-only composition slices.
-10. Run another live `Biothentic0001` audit on the versioned manifest envelope and verify that output-detail surfaces remain readable from the new sectioned contract.
-11. Run a live folder-intake audit on one real product folder arranged in the new `contracts/` plus `assets/` layout and verify that ambiguity failures are understandable to operators.
-12. Validate the new `Audit Only` control-surface mode with operators and decide whether issue grouping/export needs to be added.
+7. Run another live end-to-end preview/final audit on `Biothentic0001` after the new policy-aware voice-loop, loop-authority, and promo-caption contract slice.
+8. Validate whether product-level voice looping should surface an operator-facing repetition warning or max-repeat policy after more live runs.
+9. Run another live `Biothentic0001` audit on the versioned manifest envelope and verify that output-detail surfaces remain readable from the new sectioned contract.
+10. Run a live folder-intake audit on one real product folder arranged in the new `contracts/` plus `assets/` layout and verify that ambiguity failures are understandable to operators.
+11. Validate the new `Audit Only` control-surface mode with operators and decide whether issue grouping/export needs to be added.
 
 ## Direction Locked In This Documentation Revision
 
 - future composition is timeline-driven, not simple file stitching
-- narration must not auto-loop
+- narration looping is product-policy gated and must be explicit, reviewable, and manifest-visible
 - background music may loop and must duck under narration
 - loop/trim/freeze/duck decisions must become operator-visible and persistable
 - the roadmap is now split into strategic and implementation layers

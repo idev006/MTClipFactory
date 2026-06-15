@@ -157,12 +157,14 @@ Supported shortfall modes:
 
 - `silence_tail`
 - `review_if_short`
+- `loop_to_timeline`
 
 Rules:
 
-- voice must never auto-loop in current automation policy
+- voice may loop only when the product contract explicitly sets `loop_enabled = true` with `shortfall_mode = "loop_to_timeline"`
 - `silence_tail` pads with silence until the timeline target is met
 - `review_if_short` leaves the shortfall visible to review logic
+- `loop_to_timeline` repeats the selected voice asset until the resolved timeline is met and must remain manifest-visible
 
 ### Background Music
 

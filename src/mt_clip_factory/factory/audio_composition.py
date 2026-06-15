@@ -42,7 +42,11 @@ def build_audio_mix_plan(
         _resolve_assignment_assets(plan, assets, layer_name="primary_voice"),
         layer_name="primary_voice",
         target_duration_sec=target_duration_sec,
-        no_loop_fill_mode=policies.voiceover.shortfall_mode if policies.voiceover.shortfall_mode == "review_if_short" else "no_loop",
+        no_loop_fill_mode=(
+            policies.voiceover.shortfall_mode
+            if policies.voiceover.shortfall_mode in {"review_if_short", "loop_to_timeline"}
+            else "no_loop"
+        ),
     )
     music_tracks = _build_tracks(
         _resolve_assignment_assets(plan, assets, layer_name="background_music"),

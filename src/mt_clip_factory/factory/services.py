@@ -261,8 +261,16 @@ class VideoAssemblyFactoryService:
             recipe = uow.recipes.get_by_id(recipe_id)
             if recipe is None or recipe.id is None:
                 raise RecipeNotFoundError(str(recipe_id))
+            product = uow.products.get_by_id(recipe.product_id)
+            if product is None:
+                raise ValueError(str(recipe.product_id))
             items, assets = _load_recipe_items_and_assets(uow, recipe_id=recipe.id)
-            persisted = persist_composition(uow, recipe=recipe, items=items, assets=assets)
+            fill_policies = (
+                None
+                if self._automation_policy_service is None
+                else self._automation_policy_service.load_fill_policies(product.product_code)
+            )
+            persisted = persist_composition(uow, recipe=recipe, items=items, assets=assets, fill_policies=fill_policies)
             uow.commit()
             return to_composition_plan_dto(
                 persisted.plan,
@@ -439,7 +447,13 @@ class VideoAssemblyFactoryService:
                 if not items:
                     raise PreviewBuildInputError(f"Recipe {recipe.recipe_code} has no items.")
 
-                persisted = persist_composition(uow, recipe=recipe, items=items, assets=assets)
+                persisted = persist_composition(
+                    uow,
+                    recipe=recipe,
+                    items=items,
+                    assets=assets,
+                    fill_policies=fill_policies,
+                )
                 composition = build_segmented_preview_composition(
                     recipe=recipe,
                     product_code=product.product_code,
@@ -642,7 +656,13 @@ class VideoAssemblyFactoryService:
                     raise FinalRenderPrerequisiteError(f"Recipe {recipe.recipe_code} has no items.")
 
                 source_output = approved_outputs[0]
-                persisted = persist_composition(uow, recipe=recipe, items=items, assets=assets)
+                persisted = persist_composition(
+                    uow,
+                    recipe=recipe,
+                    items=items,
+                    assets=assets,
+                    fill_policies=fill_policies,
+                )
                 composition = build_segmented_preview_composition(
                     recipe=recipe,
                     product_code=product.product_code,

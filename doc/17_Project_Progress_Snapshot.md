@@ -72,6 +72,9 @@
 - Folder-driven automation can now also sync product-level `captions.toml` into runtime metadata so the latest caption contract remains available during preview/final reruns.
 - Preview and final render can now resolve product-level caption pools into real main/sub overlays with deterministic seed behavior, workspace-font resolution, manual `\n` handling, and review-visible overflow evidence.
 - Auto-mode now also writes product-local `runs/<batch_code>` artifacts plus per-asset-type fill policy so operators can audit reruns near the source product folder itself.
+- Auto-mode now also treats loop-enabled background music as a fill layer instead of a clip-length authority, keeping short-form previews aligned to the intended ad duration even when music assets are much longer.
+- Auto-mode voiceover can now also loop intentionally when product policy allows it, and renderer manifests now report that request/applied truth from the product contract rather than stale global settings.
+- Product-local caption contracts can now lean on stronger promo-card presets plus wider textbox sizing so `main` and `sub` overlays land closer to ad creative and further from subtitle-like defaults.
 - A live `Biothentic0001` product-folder audit has now verified the real operator loop: initial review-gate truth on narrow filters plus long captions, operator contract correction in `pipeline.toml` and `captions.toml`, clean rerun previews, and one approved final output written back into the product folder.
 - Caption runtime now uses pixel-based measurement plus per-line placement, and auto-mode visual selection now applies seeded diversity so outputs stay deterministic without feeling as repetitive.
 - An enterprise pipeline review and architecture blueprint now exist so the project can grow into a true Video Production Factory instead of accumulating disconnected automation slices.
@@ -119,6 +122,9 @@
 - updated the new-product auto-factory template kit to ship in the preferred `v2` layout, including `contracts/prod_detail.txt` for operator-facing product context capture
 - delivered a read-only product-folder preflight audit seam plus CLI script so operators can validate contracts, assets, tags, and `selection_tags` viability before a real automation run
 - delivered `Audit Only` inside the desktop `Auto Factory` screen so the same preflight seam is available through guided UI controls and dedicated audit result tables
+- delivered a policy-aware duration fix so loopable background music no longer stretches auto-mode previews past the intended ad timeline while non-loop music can still remain duration-authoritative when explicitly configured
+- delivered product-policy voice-loop support all the way through parser, composition persistence, renderer application, and manifest truth
+- tuned the live `Biothentic0001` contract toward promo-card captions with stronger `main`/`sub` sizing and explicit loop behavior for voice and foreground assets
 
 ## Still Open
 
@@ -126,12 +132,12 @@
 2. implement worker lease, heartbeat, and retry-policy semantics on top of the new control-plane baseline
 3. extend the new auto-preview factory baseline into controlled final-render automation only after operators accept the current planner, tag-aware selection rules, and review-gate truth
 4. repeat the new live auto-mode audit seam on more products so `Biothentic0001` does not remain the only proof point
-5. rerun a live `Biothentic0001` preview/final audit after the new persistent-layer looping and per-line manual-caption sizing slice
-6. rerun a live `Biothentic0001` preview/final audit after the new textbox-first, content-hug, and style-preset caption slices
+5. rerun a live `Biothentic0001` preview/final audit after the new policy-aware voice-loop and music-duration-authority slice
+6. rerun a live `Biothentic0001` preview/final audit after the stronger promo-card caption contract tuning
 7. run one live folder-intake audit against a real product folder arranged in the new `contracts/` plus `assets/` layout
 8. validate whether the new `Audit Only` UI mode needs issue export, filtering, or grouping after broader operator use
 
 ## Verification Baseline
 
-- `python -m pytest` in `.venv`: `236 passed, 4 warnings`
+- `python -m pytest` in `.venv`: `241 passed, 4 warnings`
 - targeted `QT_QPA_PLATFORM=offscreen` UI/theme coverage for the new `Auto Factory` window and existing app windows: passed

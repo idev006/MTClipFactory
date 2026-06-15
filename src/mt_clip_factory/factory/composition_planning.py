@@ -9,6 +9,7 @@ from mt_clip_factory.domain.enums import AssetType
 from mt_clip_factory.domain.recipes import Recipe, RecipeItem
 from mt_clip_factory.domain.render_decisions import RenderDecision
 from mt_clip_factory.domain.timeline_segments import TimelineSegment, validate_timeline_segments
+from mt_clip_factory.factory.automation_policy import ProductAutomationFillPolicies, default_fill_policies
 
 
 LAYER_ORDER = (
@@ -27,9 +28,16 @@ class PlannedComposition:
     decisions: tuple[RenderDecision, ...]
 
 
-def build_default_composition(recipe: Recipe, items: list[RecipeItem], assets: dict[int, Asset]) -> PlannedComposition:
+def build_default_composition(
+    recipe: Recipe,
+    items: list[RecipeItem],
+    assets: dict[int, Asset],
+    *,
+    fill_policies: ProductAutomationFillPolicies | None = None,
+) -> PlannedComposition:
+    effective_fill_policies = fill_policies or default_fill_policies()
     layer_assignments = tuple(_build_layer_assignments(items, assets))
-    layer_duration_extents = _layer_duration_extents(items, assets)
+    layer_duration_extents = _layer_duration_extents(items, assets, fill_policies=effective_fill_policies)
     resolved_duration_sec, duration_source = _resolve_duration(recipe, items, assets, layer_duration_extents=layer_duration_extents)
     timeline_segments = _build_timeline_segments(recipe, resolved_duration_sec)
     plan = CompositionPlan(
@@ -99,18 +107,28 @@ def _resolve_duration(
     return None, "unresolved"
 
 
-def _layer_duration_extents(items: list[RecipeItem], assets: dict[int, Asset]) -> dict[str, float]:
+def _layer_duration_extents(
+    items: list[RecipeItem],
+    assets: dict[int, Asset],
+    *,
+    fill_policies: ProductAutomationFillPolicies | None = None,
+) -> dict[str, float]:
+    effective_fill_policies = fill_policies or default_fill_policies()
     primary_voice = _sum_durations(
         asset.duration_sec
         for item in items
         for asset in [assets.get(item.asset_id)]
         if asset is not None and asset.asset_type == AssetType.VOICEOVER
     )
-    background_music = _sum_durations(
-        asset.duration_sec
-        for item in items
-        for asset in [assets.get(item.asset_id)]
-        if asset is not None and asset.asset_type == AssetType.BACKGROUND_MUSIC
+    background_music = (
+        0.0
+        if effective_fill_policies.background_music.loop_enabled
+        else _sum_durations(
+            asset.duration_sec
+            for item in items
+            for asset in [assets.get(item.asset_id)]
+            if asset is not None and asset.asset_type == AssetType.BACKGROUND_MUSIC
+        )
     )
     background_visual = _max_duration(
         asset.duration_sec

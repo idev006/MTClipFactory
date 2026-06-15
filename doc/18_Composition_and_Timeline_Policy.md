@@ -102,14 +102,15 @@ Priority rule:
 
 ### Voice-Over Rule
 
-- product narration or review speech must not loop automatically
+- product narration or review speech must not loop by default
 - voice is treated as the foreground message layer
-- if voice duration is shorter than the master timeline, the system may leave silence or background-only sections according to policy
+- if voice duration is shorter than the master timeline, the system may leave silence, route review, or intentionally loop according to explicit product policy
 - if voice duration exceeds the target duration, the system must trim according to policy or route the job to review
 
 ### Music Rule
 
 - background music may loop to fill the master timeline
+- loop-enabled background music must not automatically become the authority for master duration when the product is targeting short-form ad output
 - background music must duck under `primary_voice`
 - music should recover smoothly after voice sections end
 - fade in and fade out should be available as default polish behavior

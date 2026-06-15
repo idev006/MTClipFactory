@@ -213,9 +213,13 @@ class FFmpegPreviewRenderer:
         return {
             "mode": "runtime_audio_mix",
             "target_duration_sec": audio_mix_plan.target_duration_sec,
-            "voice_loop_requested": settings.voice_loop_enabled,
-            "voice_loop_applied": False,
-            "voice_loop_policy_note": "primary_voice_never_auto_loops",
+            "voice_loop_requested": fill_policies.voiceover.loop_enabled,
+            "voice_loop_applied": voice_summary.get("applied_fill_mode") == "loop_to_timeline",
+            "voice_loop_policy_note": (
+                "voiceover_loop_enabled_by_product_policy"
+                if fill_policies.voiceover.loop_enabled
+                else "voiceover_loop_disabled_by_product_policy"
+            ),
             "background_music_loop_enabled": fill_policies.background_music.loop_enabled,
             "fill_policy": fill_policies.to_manifest_dict(),
             "voice_tracks": _track_summary(audio_mix_plan.voice_tracks),

@@ -85,7 +85,7 @@ The master clip duration must resolve from the longest contributing layer extent
 Layer extent rules:
 
 - `primary_voice`: sum sequential voice tracks because they are intended to play in order
-- `background_music`: sum sequential music tracks before loop policy is considered
+- `background_music`: sum sequential music tracks only when music looping is disabled; otherwise treat music as a fill layer, not a duration authority
 - `background_visual`: use the maximum source duration from the candidate visual assets
 - `product_focus_visual`: use the maximum source duration from the candidate visual assets
 - other non-timeline-driving layers may contribute `0`
@@ -103,7 +103,7 @@ After the master duration is resolved:
 
 - shorter visual layers continue by their configured fill policy such as `loop_to_segment`, `freeze_last_frame`, or `review_if_short`
 - shorter music layers continue by their configured audio fill policy such as `loop_to_timeline`
-- narration must remain non-looping unless the product policy is intentionally changed in a future approved design
+- narration stays non-looping by default but may also continue by explicit product-level `loop_to_timeline` policy when the operator intentionally accepts repeated voice use
 
 ## Persistent Visual Layer Rule
 
