@@ -221,7 +221,7 @@ def test_caption_runtime_supports_point_sized_fonts_and_pixel_layout(tmp_path) -
     role = resolved[0].roles[0]
 
     assert role.font_size_unit == "pt"
-    assert role.font_size == 24
+    assert role.font_size >= 24
     assert role.box_width_px == 756
     assert role.max_text_width_px == 716
     assert role.line_left_positions_px
@@ -395,10 +395,10 @@ def test_caption_runtime_supports_vertical_alignment_inside_tall_textbox(tmp_pat
 
     assert role.vertical_alignment == "middle"
     assert role.box_height_px == 384
-    assert role.line_top_positions_px[0] > role.box_top_px + role.padding
+    assert role.line_top_positions_px[0] >= role.box_top_px + role.padding
     content_area_bottom = role.box_top_px + role.box_height_px - role.padding
     last_line_bottom = role.line_top_positions_px[-1] + role.line_heights_px[-1]
-    assert last_line_bottom < content_area_bottom
+    assert last_line_bottom <= content_area_bottom
 
 
 def test_caption_runtime_can_resolve_per_line_textboxes(tmp_path) -> None:
@@ -458,9 +458,10 @@ def test_caption_runtime_can_resolve_per_line_textboxes(tmp_path) -> None:
     assert role.textbox_mode == "per_line"
     assert len(role.line_box_left_positions_px) == 3
     assert len(role.line_box_widths_px) == 3
-    assert role.line_box_widths_px[1] > role.line_box_widths_px[0]
-    assert role.line_box_widths_px[1] > role.line_box_widths_px[2]
+    assert role.line_box_widths_px[0] < role.line_box_widths_px[1]
+    assert role.line_box_widths_px[0] < role.line_box_widths_px[2]
     assert role.line_box_left_positions_px[1] < role.line_box_left_positions_px[0]
+    assert role.line_box_left_positions_px[2] < role.line_box_left_positions_px[0]
     assert role.line_box_top_positions_px[1] > role.line_box_top_positions_px[0]
 
 
@@ -518,6 +519,61 @@ def test_caption_runtime_bestfits_long_line_within_narrow_textbox(tmp_path) -> N
     assert role.max_text_width_px == 338
     assert all(width <= role.max_text_width_px for width in role.line_widths_px)
     assert role.font_size <= role.requested_font_size
+    assert role.overflowed is False
+
+
+def test_caption_runtime_upscales_short_single_line_to_better_fill_textbox_width(tmp_path) -> None:
+    media_root = tmp_path / "media_library"
+    fonts_root = tmp_path / "fonts"
+    fonts_root.mkdir(parents=True, exist_ok=True)
+    product_dir = tmp_path / "product_single_line_fill"
+    product_dir.mkdir(parents=True, exist_ok=True)
+    caption_file = product_dir / "captions.toml"
+    caption_file.write_text(
+        "\n".join(
+            [
+                "[caption_pools.hook]",
+                'main = ["SALE"]',
+                "",
+                "[caption_properties.main]",
+                'font_family = "Arial"',
+                'alignment = "center"',
+                "textbox_width_ratio = 0.8",
+                "padding = 24",
+                "font_size = 72",
+                "min_font_size = 36",
+                "max_lines = 1",
+                'overflow_policy = "wrap_then_scale_then_review"',
+            ]
+        ),
+        encoding="utf-8",
+    )
+    store = ProductAutomationMetadataStore(media_root)
+    store.sync_caption_contract(product_code="product_single_line_fill", source_file=caption_file)
+    service = CaptionRuntimeService(metadata_store=store, fonts_root=fonts_root)
+    segments = (
+        TimelineSegment(
+            recipe_id=1,
+            segment_type="hook",
+            sequence_index=1,
+            start_sec=0.0,
+            end_sec=3.0,
+            target_duration_sec=3.0,
+        ),
+    )
+
+    resolved = service.resolve_for_segments(
+        product_code="product_single_line_fill",
+        recipe_code="product_single_line_fill_batch_001",
+        segments=segments,
+        frame_width_px=1080,
+        frame_height_px=1920,
+    )
+    role = resolved[0].roles[0]
+
+    assert role.font_size > role.requested_font_size
+    assert role.line_widths_px[0] >= round(role.max_text_width_px * 0.9)
+    assert role.line_widths_px[0] <= role.max_text_width_px
     assert role.overflowed is False
 
 

@@ -8,6 +8,7 @@ It complements [43_Product_Caption_Pool_And_Font_Workflow_2026-06-14.md](/F:/pro
 
 - replace heuristic caption shrink behavior with a candidate-based best-fit solver
 - make font-size selection consider textbox width, textbox height, line count, and line balance together
+- let the solver grow captions above the requested font size when that is needed to achieve a stronger textbox fill ratio without overflow
 - improve professional quality for main/sub captions without forcing operators into manual pixel editing
 - preserve review truth when the text still cannot fit safely
 
@@ -32,7 +33,8 @@ That model was not strong enough for production quality because it could still:
 2. The solver must score candidates using both hard-fit rules and soft layout quality signals.
 3. Hard-fit validation must include width overflow, line-count overflow, and height overflow inside the textbox content area.
 4. Manual `\n` remains operator intent, but each authored line may still scale independently when policy allows it.
-5. The selected candidate should prefer the largest safe font size first, then the best balanced layout among candidates at that level.
+5. Requested font size is a preferred starting point, not a hard ceiling.
+6. The selected candidate should maximize safe textbox occupancy, then prefer the most balanced layout among near-equivalent candidates.
 
 ## Solver Inputs
 
@@ -41,6 +43,7 @@ The best-fit solver must consider:
 - source text
 - resolved font file or family
 - requested font size
+- candidate font ceiling derived from textbox width and safe content height
 - minimum font size
 - textbox content width
 - textbox height policy
@@ -66,26 +69,27 @@ When a candidate is not clean, the review gate must still see that truth.
 
 Among candidates that are clean, the solver should prefer:
 
-1. larger font size
-2. stronger width occupancy inside the textbox
-3. better multi-line balance
-4. lower unnecessary whitespace
-5. lower per-line font variance unless the variance was needed to fit authored manual lines
+1. stronger width occupancy inside the textbox
+2. better multi-line balance
+3. lower unnecessary whitespace
+4. lower per-line font variance unless the variance was needed to fit authored manual lines
+5. less unnecessary distance from the requested operator size when visual quality is otherwise similar
 
 ## Solver Workflow
 
 ```mermaid
 flowchart LR
     A["Resolve caption contract"] --> B["Resolve textbox width and safe-band height"]
-    B --> C["Enumerate font-size candidates from requested down to minimum"]
-    C --> D["Wrap or preserve manual lines"]
-    D --> E["Measure every line in pixels"]
-    E --> F["Apply per-line scaling for manual-break captions when needed"]
-    F --> G["Compute textbox content height usage"]
-    G --> H["Score candidate for fit and visual quality"]
-    H --> I["Select best candidate"]
-    I --> J["Place lines inside textbox with horalign and veralign"]
-    J --> K["Expose render-ready geometry to FFmpeg and manifest"]
+    B --> C["Derive candidate font ceiling from width and content-height capacity"]
+    C --> D["Enumerate font-size candidates from ceiling down to minimum"]
+    D --> E["Wrap or preserve manual lines"]
+    E --> F["Measure every line in pixels"]
+    F --> G["Apply per-line scaling for manual-break captions when needed"]
+    G --> H["Compute textbox occupancy and content-height usage"]
+    H --> I["Score candidate for fit and visual quality"]
+    I --> J["Select best candidate by clean fit plus fill ratio"]
+    J --> K["Place lines inside textbox with horalign and veralign"]
+    K --> L["Expose render-ready geometry to FFmpeg and manifest"]
 ```
 
 ## Sequence Diagram
@@ -103,10 +107,12 @@ sequenceDiagram
     Operator->>Runtime: run preview/final with captions
     Runtime->>Layout: resolve_caption_layout(...)
     Layout->>Solver: solve_best_fit_layout(...)
+    Solver->>Solver: derive candidate font ceiling
     loop each font-size candidate
         Solver->>Metrics: measure wrapped/manual lines
         Metrics-->>Solver: line widths and heights
         Solver->>Solver: evaluate width + line-count + height fit
+        Solver->>Solver: evaluate textbox fill ratio
         Solver->>Solver: score layout quality
     end
     Solver-->>Layout: best render-ready candidate
@@ -118,9 +124,10 @@ sequenceDiagram
 ## Acceptance Criteria
 
 - the runtime chooses from multiple candidate font sizes instead of one-pass shrink logic
+- the runtime may grow above the requested font size when the textbox would otherwise be visibly underfilled
 - fixed-height textboxes can trigger height-aware downscaling
 - manual line-break captions may keep different font sizes per line when needed to fit
-- auto-wrap captions select the largest clean block before smaller fallback candidates
+- auto-wrap captions select the cleanest highest-occupancy block instead of stopping at the requested size
 - the chosen layout improves width occupancy and balance over naive fit-only behavior
 - pytest coverage verifies both width-fit and height-fit behavior
 
