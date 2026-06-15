@@ -491,6 +491,131 @@ def test_folder_service_can_discover_v2_contracts_and_assets(unit_of_work_factor
     assert "ข้อความ v2" in runtime_caption_path.read_text(encoding="utf-8")
 
 
+def test_folder_preflight_reports_ready_v2_layout_with_matching_selection_tags(unit_of_work_factory, tmp_path) -> None:
+    _, _, _, folder_service, _ = _build_services(unit_of_work_factory, tmp_path, {"voice_a.mp3": 12.0})
+    batch_root = tmp_path / "v2_batch_root"
+    product_dir = _write_product_folder(
+        batch_root,
+        folder_name="ProductV2",
+        product_code="product_v2",
+        product_name="Product V2",
+        requested_output_count=1,
+        use_v2_layout=True,
+    )
+    contracts_dir = product_dir / "contracts"
+    assets_dir = product_dir / "assets"
+    _write_captions_toml(product_dir, main_text="ข้อความ v2")
+    (contracts_dir / "prod_detail.txt").write_text("Useful operator detail", encoding="utf-8")
+    (contracts_dir / "pipeline.toml").write_text(
+        "\n".join(
+            [
+                "[request]",
+                "requested_output_count = 1",
+                'target_platform = "shopee"',
+                'target_ratio = "9:16"',
+                'uniqueness_scope = "batch"',
+                'duration_mode = "voice_with_bounds"',
+                "min_duration_sec = 12.0",
+                "max_duration_sec = 30.0",
+                "",
+                "[selection_tags]",
+                'foreground = ["message:hook"]',
+                'voice = ["language:th"]',
+            ]
+        ),
+        encoding="utf-8",
+    )
+    _write_tags_toml(
+        assets_dir / "foreground",
+        global_tags=["role:foreground"],
+        file_tags={"hook_a.mp4": ["message:hook"]},
+    )
+    _write_tags_toml(assets_dir / "background", global_tags=["role:background"], file_tags={})
+    _write_tags_toml(assets_dir / "music", global_tags=["role:music"], file_tags={"music_a.mp3": ["mood:warm"]})
+    _write_tags_toml(assets_dir / "voice", global_tags=["language:th"], file_tags={})
+
+    report = folder_service.audit_batch_root(batch_root)
+
+    assert report.status == "ready"
+    assert report.error_count == 0
+    assert report.warning_count == 0
+    assert report.discovered_product_dirs == (str(batch_root / "ProductV2"),)
+    product_report = report.product_reports[0]
+    assert product_report.layout_mode == "v2"
+    assert product_report.ready_for_automation is True
+    assert product_report.product_code == "product_v2"
+    assert product_report.requested_output_count == 1
+    assert product_report.ingestible_asset_count == 5
+    foreground_audit = next(audit for audit in product_report.asset_folders if audit.folder_name == "foreground")
+    assert foreground_audit.matching_required_file_count == 1
+    voice_audit = next(audit for audit in product_report.asset_folders if audit.folder_name == "voice")
+    assert voice_audit.matching_required_file_count == 1
+
+
+def test_folder_preflight_warns_on_missing_optional_contracts(unit_of_work_factory, tmp_path) -> None:
+    _, _, _, folder_service, _ = _build_services(unit_of_work_factory, tmp_path, {"voice_a.mp3": 12.0})
+    batch_root = tmp_path / "legacy_batch_root"
+    _write_product_folder(
+        batch_root,
+        folder_name="ProductA",
+        product_code="product_a",
+        product_name="Product A",
+        requested_output_count=1,
+        with_music=False,
+    )
+
+    report = folder_service.audit_batch_root(batch_root)
+
+    assert report.status == "warning"
+    assert report.error_count == 0
+    assert report.warning_count > 0
+    issue_codes = {issue.code for issue in report.product_reports[0].issues}
+    assert "missing_optional_contract" in issue_codes
+    assert "missing_tags_toml" in issue_codes
+
+
+def test_folder_preflight_errors_when_selection_tags_have_no_matching_assets(unit_of_work_factory, tmp_path) -> None:
+    _, _, _, folder_service, _ = _build_services(unit_of_work_factory, tmp_path, {"voice_a.mp3": 12.0})
+    batch_root = tmp_path / "batch_root"
+    product_dir = _write_product_folder(
+        batch_root,
+        folder_name="ProductA",
+        product_code="product_a",
+        product_name="Product A",
+        requested_output_count=1,
+    )
+    (product_dir / "pipeline.toml").write_text(
+        "\n".join(
+            [
+                "[request]",
+                "requested_output_count = 1",
+                'target_platform = "shopee"',
+                'target_ratio = "9:16"',
+                'uniqueness_scope = "batch"',
+                'duration_mode = "voice_with_bounds"',
+                "min_duration_sec = 12.0",
+                "max_duration_sec = 30.0",
+                "",
+                "[selection_tags]",
+                'foreground = ["message:hook"]',
+            ]
+        ),
+        encoding="utf-8",
+    )
+    _write_tags_toml(
+        product_dir / "foreground",
+        global_tags=["role:foreground"],
+        file_tags={"hook_a.mp4": ["message:benefit"]},
+    )
+
+    report = folder_service.audit_batch_root(batch_root)
+
+    assert report.status == "error"
+    assert report.error_count > 0
+    issue_codes = {issue.code for issue in report.product_reports[0].issues}
+    assert "selection_tags_no_matching_assets" in issue_codes
+
+
 def test_folder_service_rejects_ambiguous_contract_layout(unit_of_work_factory, tmp_path) -> None:
     _, _, _, folder_service, _ = _build_services(unit_of_work_factory, tmp_path, {"voice_a.mp3": 12.0})
     batch_root = tmp_path / "ambiguous_contract_batch"

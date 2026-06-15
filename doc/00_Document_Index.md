@@ -65,6 +65,7 @@ When code changes, the related Markdown documents in this folder must be updated
 57. [57_Explicit_Line_Break_And_Box_Aware_Caption_Composition_Workflow_2026-06-15.md](/F:/programming/python/MTClipFactory/doc/57_Explicit_Line_Break_And_Box_Aware_Caption_Composition_Workflow_2026-06-15.md)
 58. [58_Versioned_Manifest_Envelope_Workflow_2026-06-15.md](/F:/programming/python/MTClipFactory/doc/58_Versioned_Manifest_Envelope_Workflow_2026-06-15.md)
 59. [59_Product_Folder_V2_Backward_Compatible_Layout_Workflow_2026-06-15.md](/F:/programming/python/MTClipFactory/doc/59_Product_Folder_V2_Backward_Compatible_Layout_Workflow_2026-06-15.md)
+60. [60_Product_Folder_Preflight_Audit_Workflow_2026-06-15.md](/F:/programming/python/MTClipFactory/doc/60_Product_Folder_Preflight_Audit_Workflow_2026-06-15.md)
 
 ## Governance
 

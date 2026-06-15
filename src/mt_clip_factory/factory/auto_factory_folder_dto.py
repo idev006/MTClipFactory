@@ -63,3 +63,63 @@ class AutoFactoryFolderRunReportDTO:
     asset_actions: tuple[AutoFactoryFolderAssetActionDTO, ...]
     materialization: AutoFactoryBatchMaterializationDTO | None = None
     preview_production: AutoFactoryBatchPreviewProductionDTO | None = None
+
+
+@dataclass(slots=True, frozen=True)
+class AutoFactoryFolderPreflightIssueDTO:
+    severity: str
+    code: str
+    message: str
+    location: str | None = None
+
+
+@dataclass(slots=True, frozen=True)
+class AutoFactoryFolderContractAuditDTO:
+    contract_name: str
+    resolved_path: str | None
+    layout_mode: str | None
+    required: bool
+    present: bool
+
+
+@dataclass(slots=True, frozen=True)
+class AutoFactoryFolderAssetFolderAuditDTO:
+    folder_name: str
+    asset_type: str
+    resolved_path: str | None
+    layout_mode: str | None
+    ingestible_file_count: int
+    ingestible_files: tuple[str, ...]
+    tag_file_present: bool
+    global_tag_count: int
+    file_tag_entry_count: int
+    tagged_file_count: int
+    required_tag_labels: tuple[str, ...] = ()
+    matching_required_file_count: int = 0
+    issues: tuple[AutoFactoryFolderPreflightIssueDTO, ...] = ()
+
+
+@dataclass(slots=True, frozen=True)
+class AutoFactoryFolderPreflightProductReportDTO:
+    product_dir: str
+    layout_mode: str
+    status: str
+    product_code: str | None
+    product_name: str | None
+    requested_output_count: int | None
+    ready_for_automation: bool
+    contracts: tuple[AutoFactoryFolderContractAuditDTO, ...]
+    asset_folders: tuple[AutoFactoryFolderAssetFolderAuditDTO, ...]
+    issues: tuple[AutoFactoryFolderPreflightIssueDTO, ...]
+    ingestible_asset_count: int
+
+
+@dataclass(slots=True, frozen=True)
+class AutoFactoryFolderPreflightReportDTO:
+    root_folder: str
+    scan_depth: int
+    discovered_product_dirs: tuple[str, ...]
+    status: str
+    error_count: int
+    warning_count: int
+    product_reports: tuple[AutoFactoryFolderPreflightProductReportDTO, ...]

@@ -87,6 +87,7 @@
 - preview and final render now also write a versioned manifest envelope with stable `manifest_meta`, `artifact`, `run`, `composition`, `render`, and `quality` sections while preserving backward-safe reader behavior for older manifests
 - folder-driven auto-factory now also supports a preferred product-folder `v2` layout with `contracts/` plus `assets/` paths, while staying backward compatible with legacy root-level contracts and typed media folders
 - the new-product template kit now ships in the preferred `v2` layout, including `contracts/prod_detail.txt`, while runtime rejects ambiguous mixed old/new paths truthfully instead of guessing
+- folder-driven auto-factory now also exposes a read-only product-folder preflight audit seam that validates contracts, assets, tags, and `selection_tags` viability before a real automation run
 - assets can now be safely renamed or deleted from the `Assets` screen, with repository checks that block deletion when recipe-item or artifact-job references still exist
 - the `Assets` screen now supports `Show References`, `Retire Selected`, and `Purge Media` so referenced assets can leave active use and disk without destroying audit truth
 - the `Assets` screen now also supports `Replace In Recipes...` with recipe-safe validation, recipe reset-to-candidate behavior, and approval guards that prevent stale pre-replacement outputs from being reused as evidence for changed recipes
@@ -119,7 +120,7 @@
 
 ## Verification Baseline
 
-- `python -m pytest` via `.venv`: `232 passed, 4 warnings`
+- `python -m pytest` via `.venv`: `235 passed, 4 warnings`
 - targeted `QT_QPA_PLATFORM=offscreen` UI coverage for the new `Auto Factory` window and existing themed windows: passed
 
 ## Current Focus
@@ -151,6 +152,7 @@
 - validate the new explicit-break-only caption policy on more Thai/English product copy so operators know when to author `\n` versus when to keep one strong headline line
 - validate whether the new versioned manifest envelope is sufficient for future audit tooling or whether a compact operator summary/index file should be added beside per-output manifests
 - validate whether the new backward-compatible product-folder `v2` layout is clear enough for operators and whether migration guidance is needed for existing legacy product folders
+- validate whether operators prefer the new scriptable preflight seam before every live auto-mode run or only for onboarding/debugging cases
 
 ## Next Steps
 
@@ -165,6 +167,7 @@
 9. Run another live caption-focused audit on `Biothentic0001` after the new box-border and explicit-break-only composition slices.
 10. Run another live `Biothentic0001` audit on the versioned manifest envelope and verify that output-detail surfaces remain readable from the new sectioned contract.
 11. Run a live folder-intake audit on one real product folder arranged in the new `contracts/` plus `assets/` layout and verify that ambiguity failures are understandable to operators.
+12. Decide whether the new product-folder preflight seam should also surface inside the desktop `Auto Factory` window as a dedicated `Audit Only` action.
 
 ## Direction Locked In This Documentation Revision
 

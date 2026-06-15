@@ -100,8 +100,10 @@ classDiagram
     class AutoFactoryFolderService {
         +run_batch_root(batch_root)
         +run_batch_root(batch_root, scan_depth)
+        +audit_batch_root(batch_root, scan_depth)
         +parse product.toml + pipeline.toml
         +parse tags.toml
+        +preflight contracts/assets before automation
         +sync captions.toml into runtime metadata cache
         +sync pipeline.toml + context.toml into runtime metadata cache
         +discover product folders up to scan depth
@@ -1158,6 +1160,26 @@ sequenceDiagram
     Factory->>Render: render_output(..., segment_clips with captions)
     Render->>Render: draw main/sub caption overlays
     Factory->>Manifest: write caption selection + font/fallback + fit evidence
+```
+
+## Product Folder Preflight Sequence
+
+```mermaid
+sequenceDiagram
+    actor Operator
+    participant Script as product_folder_preflight.py
+    participant FolderSvc as AutoFactoryFolderService
+    participant Resolver as Folder Layout Resolver
+    participant Parser as Contract + Tag Parsers
+
+    Operator->>Script: run preflight(root_folder, scan_depth)
+    Script->>FolderSvc: audit_batch_root(root_folder, scan_depth)
+    FolderSvc->>Resolver: discover product folders and resolve old/v2 paths
+    Resolver-->>FolderSvc: product dirs + resolved logical paths
+    FolderSvc->>Parser: validate product/pipeline/captions/tags contracts
+    Parser-->>FolderSvc: parsed data + issues/warnings
+    FolderSvc-->>Script: preflight report DTO
+    Script-->>Operator: status, counts, and actionable issues
 ```
 
 ## Target Factory Plane Map

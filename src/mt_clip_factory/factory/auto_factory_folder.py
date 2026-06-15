@@ -11,8 +11,13 @@ from mt_clip_factory.factory.auto_factory import AutoFactoryBatchService
 from mt_clip_factory.factory.automation_policy import ProductAutomationPolicyError, parse_fill_policies_from_pipeline_data
 from mt_clip_factory.factory.auto_factory_dto import AutoFactoryBatchOrderDTO, AutoFactoryProductRequestDTO
 from mt_clip_factory.factory.auto_factory_folder_dto import (
+    AutoFactoryFolderAssetFolderAuditDTO,
     AutoFactoryFolderAssetActionDTO,
+    AutoFactoryFolderContractAuditDTO,
     AutoFactoryFolderPipelineConfigDTO,
+    AutoFactoryFolderPreflightIssueDTO,
+    AutoFactoryFolderPreflightProductReportDTO,
+    AutoFactoryFolderPreflightReportDTO,
     AutoFactoryFolderProductConfigDTO,
     AutoFactoryFolderProductReportDTO,
     AutoFactoryFolderRunReportDTO,
@@ -46,6 +51,15 @@ _ASSET_TYPE_CODE_PREFIX = {
     "background_music": "music",
     "voiceover": "voice",
 }
+_REQUIRED_CONTRACT_FILES = ("product.toml", "pipeline.toml")
+_OPTIONAL_CONTRACT_FILES = ("captions.toml", "prod_detail.txt")
+_PIPELINE_SELECTION_TAG_FIELDS = {
+    "foreground": "foreground_required_tag_labels",
+    "background": "background_required_tag_labels",
+    "music": "music_required_tag_labels",
+    "voice": "voice_required_tag_labels",
+}
+_REQUIRED_ASSET_FOLDERS = {"foreground"}
 
 
 class AutoFactoryFolderContractError(ValueError):
@@ -183,6 +197,37 @@ class AutoFactoryFolderService:
             preview_production=preview_production,
         )
 
+    def audit_batch_root(
+        self,
+        batch_root: Path,
+        *,
+        scan_depth: int = 1,
+    ) -> AutoFactoryFolderPreflightReportDTO:
+        root_path = Path(batch_root)
+        product_dirs = _discover_product_dirs(root_path, scan_depth=scan_depth)
+        product_reports = tuple(_audit_product_dir(product_dir) for product_dir in product_dirs)
+        error_count = sum(
+            1
+            for report in product_reports
+            for issue in report.issues
+            if issue.severity == "error"
+        )
+        warning_count = sum(
+            1
+            for report in product_reports
+            for issue in report.issues
+            if issue.severity == "warning"
+        )
+        return AutoFactoryFolderPreflightReportDTO(
+            root_folder=str(root_path),
+            scan_depth=scan_depth,
+            discovered_product_dirs=tuple(str(product_dir) for product_dir in product_dirs),
+            status=_status_from_issue_counts(error_count=error_count, warning_count=warning_count),
+            error_count=error_count,
+            warning_count=warning_count,
+            product_reports=product_reports,
+        )
+
     def _intake_product_assets(
         self,
         *,
@@ -313,6 +358,308 @@ class AutoFactoryFolderService:
                 "skipped_existing_asset_count": product_report.skipped_existing_asset_count,
             },
         )
+
+
+def _audit_product_dir(product_dir: Path) -> AutoFactoryFolderPreflightProductReportDTO:
+    issues: list[AutoFactoryFolderPreflightIssueDTO] = []
+    contract_audits: list[AutoFactoryFolderContractAuditDTO] = []
+    asset_audits: list[AutoFactoryFolderAssetFolderAuditDTO] = []
+    layout_modes: list[str] = []
+    product_config: AutoFactoryFolderProductConfigDTO | None = None
+    pipeline_config: AutoFactoryFolderPipelineConfigDTO | None = None
+
+    for contract_name in (*_REQUIRED_CONTRACT_FILES, *_OPTIONAL_CONTRACT_FILES):
+        required = contract_name in _REQUIRED_CONTRACT_FILES
+        contract_audit, contract_issues = _audit_contract_file(product_dir, contract_name, required=required)
+        contract_audits.append(contract_audit)
+        issues.extend(contract_issues)
+        if contract_audit.layout_mode is not None:
+            layout_modes.append(contract_audit.layout_mode)
+
+    try:
+        product_config = _load_product_config(product_dir)
+    except AutoFactoryFolderContractError as exc:
+        issues.append(
+            _preflight_issue(
+                "error",
+                "invalid_product_contract",
+                str(exc),
+                location=str(product_dir),
+            )
+        )
+
+    try:
+        pipeline_config = _load_pipeline_config(product_dir)
+    except AutoFactoryFolderContractError as exc:
+        issues.append(
+            _preflight_issue(
+                "error",
+                "invalid_pipeline_contract",
+                str(exc),
+                location=str(product_dir),
+            )
+        )
+
+    contract_paths = {
+        audit.contract_name: None if audit.resolved_path is None else Path(audit.resolved_path)
+        for audit in contract_audits
+    }
+
+    captions_file = contract_paths["captions.toml"]
+    if captions_file is not None:
+        try:
+            _load_toml(captions_file)
+        except AutoFactoryFolderContractError as exc:
+            issues.append(
+                _preflight_issue(
+                    "error",
+                    "invalid_captions_contract",
+                    str(exc),
+                    location=str(captions_file),
+                )
+            )
+
+    prod_detail_file = contract_paths["prod_detail.txt"]
+    if prod_detail_file is not None:
+        if not prod_detail_file.read_text(encoding="utf-8").strip():
+            issues.append(
+                _preflight_issue(
+                    "warning",
+                    "empty_prod_detail",
+                    "prod_detail.txt exists but is empty.",
+                    location=str(prod_detail_file),
+                )
+            )
+
+    ingestible_asset_count = 0
+    for folder_name, asset_type in _ASSET_FOLDER_TYPES.items():
+        required_tag_labels = ()
+        if pipeline_config is not None:
+            required_tag_labels = tuple(getattr(pipeline_config, _PIPELINE_SELECTION_TAG_FIELDS[folder_name]))
+        asset_audit = _audit_asset_folder(
+            product_dir,
+            folder_name=folder_name,
+            asset_type=asset_type,
+            required_tag_labels=required_tag_labels,
+        )
+        asset_audits.append(asset_audit)
+        issues.extend(asset_audit.issues)
+        ingestible_asset_count += asset_audit.ingestible_file_count
+        if asset_audit.layout_mode is not None:
+            layout_modes.append(asset_audit.layout_mode)
+
+    status = _status_from_issues(tuple(issues))
+    return AutoFactoryFolderPreflightProductReportDTO(
+        product_dir=str(product_dir),
+        layout_mode=_combine_layout_modes(layout_modes),
+        status=status,
+        product_code=None if product_config is None else product_config.product_code,
+        product_name=None if product_config is None else product_config.product_name,
+        requested_output_count=None if pipeline_config is None else pipeline_config.requested_output_count,
+        ready_for_automation=status != "error",
+        contracts=tuple(contract_audits),
+        asset_folders=tuple(asset_audits),
+        issues=tuple(issues),
+        ingestible_asset_count=ingestible_asset_count,
+    )
+
+
+def _audit_contract_file(
+    product_dir: Path,
+    contract_name: str,
+    *,
+    required: bool,
+) -> tuple[AutoFactoryFolderContractAuditDTO, tuple[AutoFactoryFolderPreflightIssueDTO, ...]]:
+    legacy_path, versioned_path = _contract_file_candidates(product_dir, contract_name)
+    resolved_path, layout_mode, issues = _inspect_layout_path(
+        product_dir=product_dir,
+        legacy_path=legacy_path,
+        versioned_path=versioned_path,
+        logical_name=contract_name,
+        missing_severity="error" if required else "warning",
+        missing_code="missing_required_contract" if required else "missing_optional_contract",
+        missing_message=(
+            f"Missing required contract {contract_name}. Expected either {legacy_path} or {versioned_path}."
+            if required
+            else f"Recommended contract {contract_name} is missing. Expected either {legacy_path} or {versioned_path}."
+        ),
+    )
+    return (
+        AutoFactoryFolderContractAuditDTO(
+            contract_name=contract_name,
+            resolved_path=None if resolved_path is None else str(resolved_path),
+            layout_mode=layout_mode,
+            required=required,
+            present=resolved_path is not None,
+        ),
+        issues,
+    )
+
+
+def _audit_asset_folder(
+    product_dir: Path,
+    *,
+    folder_name: str,
+    asset_type: str,
+    required_tag_labels: tuple[str, ...],
+) -> AutoFactoryFolderAssetFolderAuditDTO:
+    issues: list[AutoFactoryFolderPreflightIssueDTO] = []
+    resolved_path, layout_mode, resolution_issues = _inspect_layout_path(
+        product_dir=product_dir,
+        legacy_path=product_dir / folder_name,
+        versioned_path=product_dir / _ASSETS_DIR_NAME / folder_name,
+        logical_name=f"{folder_name}/",
+        missing_severity="error" if folder_name in _REQUIRED_ASSET_FOLDERS else "warning",
+        missing_code="missing_required_asset_folder" if folder_name in _REQUIRED_ASSET_FOLDERS else "missing_asset_folder",
+        missing_message=(
+            f"Missing required asset folder {folder_name}/. Expected either {product_dir / folder_name} "
+            f"or {product_dir / _ASSETS_DIR_NAME / folder_name}."
+            if folder_name in _REQUIRED_ASSET_FOLDERS
+            else f"Asset folder {folder_name}/ is missing. Expected either {product_dir / folder_name} "
+            f"or {product_dir / _ASSETS_DIR_NAME / folder_name}."
+        ),
+    )
+    issues.extend(resolution_issues)
+    if resolved_path is None:
+        if required_tag_labels:
+            issues.append(
+                _preflight_issue(
+                    "error",
+                    "selection_tags_without_asset_folder",
+                    f"selection_tags requires {folder_name} tags {required_tag_labels}, but the asset folder is missing.",
+                    location=str(product_dir),
+                )
+            )
+        return AutoFactoryFolderAssetFolderAuditDTO(
+            folder_name=folder_name,
+            asset_type=asset_type,
+            resolved_path=None,
+            layout_mode=layout_mode,
+            ingestible_file_count=0,
+            ingestible_files=(),
+            tag_file_present=False,
+            global_tag_count=0,
+            file_tag_entry_count=0,
+            tagged_file_count=0,
+            required_tag_labels=required_tag_labels,
+            matching_required_file_count=0,
+            issues=tuple(issues),
+        )
+    if not resolved_path.is_dir():
+        issues.append(
+            _preflight_issue(
+                "error",
+                "asset_folder_not_directory",
+                f"Resolved asset path is not a directory: {resolved_path}",
+                location=str(resolved_path),
+            )
+        )
+        return AutoFactoryFolderAssetFolderAuditDTO(
+            folder_name=folder_name,
+            asset_type=asset_type,
+            resolved_path=str(resolved_path),
+            layout_mode=layout_mode,
+            ingestible_file_count=0,
+            ingestible_files=(),
+            tag_file_present=False,
+            global_tag_count=0,
+            file_tag_entry_count=0,
+            tagged_file_count=0,
+            required_tag_labels=required_tag_labels,
+            matching_required_file_count=0,
+            issues=tuple(issues),
+        )
+
+    ingestible_files = tuple(
+        sorted(
+            path.name
+            for path in resolved_path.iterdir()
+            if _is_ingestible_asset_file(path, asset_type=asset_type)
+        )
+    )
+    if not ingestible_files:
+        issues.append(
+            _preflight_issue(
+                "error" if folder_name in _REQUIRED_ASSET_FOLDERS else "warning",
+                "empty_required_asset_folder" if folder_name in _REQUIRED_ASSET_FOLDERS else "empty_asset_folder",
+                f"Asset folder {resolved_path} does not contain any ingestible {asset_type} files.",
+                location=str(resolved_path),
+            )
+        )
+
+    tag_file = resolved_path / "tags.toml"
+    if not tag_file.exists():
+        issues.append(
+            _preflight_issue(
+                "warning",
+                "missing_tags_toml",
+                f"Asset folder {resolved_path} does not contain tags.toml.",
+                location=str(resolved_path),
+            )
+        )
+
+    global_tag_count = 0
+    file_tag_entry_count = 0
+    tagged_file_count = 0
+    matching_required_file_count = 0
+    if tag_file.exists():
+        try:
+            tag_config = _load_folder_tag_config(resolved_path)
+            global_tag_count = len(tuple(tag_config.get("global_tags", ())))
+            file_tags = dict(tag_config.get("file_tags", {}))
+            file_tag_entry_count = len(file_tags)
+            ingestible_file_name_set = set(ingestible_files)
+            unknown_file_tag_names = sorted(name for name in file_tags if name not in ingestible_file_name_set)
+            if unknown_file_tag_names:
+                issues.append(
+                    _preflight_issue(
+                        "warning",
+                        "stale_file_tags",
+                        f"tags.toml contains file_tags entries for files that are not present: {unknown_file_tag_names}.",
+                        location=str(tag_file),
+                    )
+                )
+            for file_name in ingestible_files:
+                resolved_tag_labels = _resolve_tag_labels_for_file(tag_config, file_name)
+                if resolved_tag_labels:
+                    tagged_file_count += 1
+                if required_tag_labels and set(required_tag_labels).issubset(set(resolved_tag_labels)):
+                    matching_required_file_count += 1
+        except AutoFactoryFolderContractError as exc:
+            issues.append(
+                _preflight_issue(
+                    "error",
+                    "invalid_tags_toml",
+                    str(exc),
+                    location=str(tag_file),
+                )
+            )
+
+    if required_tag_labels and matching_required_file_count == 0:
+        issues.append(
+            _preflight_issue(
+                "error",
+                "selection_tags_no_matching_assets",
+                f"No ingestible files in {resolved_path} match required tag labels {required_tag_labels}.",
+                location=str(resolved_path),
+            )
+        )
+
+    return AutoFactoryFolderAssetFolderAuditDTO(
+        folder_name=folder_name,
+        asset_type=asset_type,
+        resolved_path=str(resolved_path),
+        layout_mode=layout_mode,
+        ingestible_file_count=len(ingestible_files),
+        ingestible_files=ingestible_files,
+        tag_file_present=tag_file.exists(),
+        global_tag_count=global_tag_count,
+        file_tag_entry_count=file_tag_entry_count,
+        tagged_file_count=tagged_file_count,
+        required_tag_labels=required_tag_labels,
+        matching_required_file_count=matching_required_file_count,
+        issues=tuple(issues),
+    )
 
 
 def _discover_product_dirs(batch_root: Path, *, scan_depth: int) -> tuple[Path, ...]:
@@ -471,6 +818,81 @@ def _resolve_layout_path(
             f"Expected either {legacy_path} or {versioned_path}."
         )
     return None
+
+
+def _inspect_layout_path(
+    *,
+    product_dir: Path,
+    legacy_path: Path,
+    versioned_path: Path,
+    logical_name: str,
+    missing_severity: str,
+    missing_code: str,
+    missing_message: str,
+) -> tuple[Path | None, str | None, tuple[AutoFactoryFolderPreflightIssueDTO, ...]]:
+    legacy_exists = legacy_path.exists()
+    versioned_exists = versioned_path.exists()
+    if legacy_exists and versioned_exists:
+        return (
+            None,
+            None,
+            (
+                _preflight_issue(
+                    "error",
+                    "ambiguous_layout_path",
+                    f"Ambiguous product folder layout for {logical_name} under {product_dir}. "
+                    f"Found both legacy path {legacy_path} and versioned path {versioned_path}.",
+                    location=str(product_dir),
+                ),
+            ),
+        )
+    if versioned_exists:
+        return versioned_path, "v2", ()
+    if legacy_exists:
+        return legacy_path, "legacy", ()
+    return (
+        None,
+        None,
+        (_preflight_issue(missing_severity, missing_code, missing_message, location=str(product_dir)),),
+    )
+
+
+def _preflight_issue(
+    severity: str,
+    code: str,
+    message: str,
+    *,
+    location: str | None = None,
+) -> AutoFactoryFolderPreflightIssueDTO:
+    return AutoFactoryFolderPreflightIssueDTO(
+        severity=severity,
+        code=code,
+        message=message,
+        location=location,
+    )
+
+
+def _combine_layout_modes(layout_modes: list[str]) -> str:
+    unique_modes = sorted({mode for mode in layout_modes if mode})
+    if not unique_modes:
+        return "unknown"
+    if len(unique_modes) == 1:
+        return unique_modes[0]
+    return "hybrid"
+
+
+def _status_from_issues(issues: tuple[AutoFactoryFolderPreflightIssueDTO, ...]) -> str:
+    error_count = sum(1 for issue in issues if issue.severity == "error")
+    warning_count = sum(1 for issue in issues if issue.severity == "warning")
+    return _status_from_issue_counts(error_count=error_count, warning_count=warning_count)
+
+
+def _status_from_issue_counts(*, error_count: int, warning_count: int) -> str:
+    if error_count > 0:
+        return "error"
+    if warning_count > 0:
+        return "warning"
+    return "ready"
 
 
 def _load_folder_tag_config(folder_path: Path) -> dict[str, object]:

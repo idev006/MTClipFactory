@@ -46,6 +46,7 @@ It complements [07_Testing_Strategy.md](/F:/programming/python/MTClipFactory/doc
 - caption safe-band defaults and role-specific vertical placement overrides from product-level `captions.toml`
 - textbox-based caption geometry, including independent textbox placement and text alignment
 - product-local run artifact layout, order snapshot, and run journal behavior
+- product-folder preflight audit behavior for contracts, assets, tags, and `selection_tags` viability
 - per-asset-type fill policy from product-level `pipeline.toml`
 - longest-contributing-layer duration resolution plus shorter-layer fill continuation behavior
 - preview job flow
@@ -223,6 +224,7 @@ It complements [07_Testing_Strategy.md](/F:/programming/python/MTClipFactory/doc
 47. Confirm textbox-based caption layout supports `top`/`middle`/`bottom` text placement inside a taller textbox and still keeps best-fit line widths within textbox content bounds.
 48. Confirm the best-fit caption solver can reduce font size to satisfy textbox height constraints, not only width constraints, while preserving honest overflow signals when no clean candidate exists.
 49. Confirm caption contracts can render one textbox per line for advertising-style captions and that FFmpeg emits one `drawbox` per rendered line.
+50. Confirm product-folder preflight reports `ready`, `warning`, and `error` truthfully, including missing recommended contracts and `selection_tags` that do not match any current ingestible asset files.
 
 ### C. Review And Approval Flow
 

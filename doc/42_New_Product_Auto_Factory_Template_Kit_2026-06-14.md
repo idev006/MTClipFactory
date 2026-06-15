@@ -39,7 +39,8 @@ The template kit includes:
 6. update `contracts/captions.toml` when captioned automation is needed
 7. place media files into `assets/foreground`, `assets/background`, `assets/music`, and `assets/voice`
 8. edit the matching `tags.toml` files when automation tags are needed
-9. run the batch root from the `Auto Factory` screen
+9. run `python scripts/product_folder_preflight.py "<product-folder>" --scan-depth 0`
+10. run the batch root from the `Auto Factory` screen
 
 Operator guidance from the first live product-folder audit:
 
@@ -97,7 +98,8 @@ flowchart LR
     C --> D["Edit pipeline.toml"]
     D --> E["Place Media Files"]
     E --> F["Edit tags.toml Files"]
-    F --> G["Run Auto Factory"]
+    F --> G["Run Preflight Audit"]
+    G --> H["Run Auto Factory"]
 ```
 
 ## Review Notes
