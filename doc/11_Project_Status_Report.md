@@ -74,6 +74,7 @@
 - auto-mode composition planning now treats loop-enabled background music as a filler layer instead of a master-duration authority, so long music tracks no longer stretch short-form ad previews unintentionally
 - auto-mode voiceover can now also loop intentionally when the product-level `pipeline.toml` policy explicitly sets `loop_enabled = true` and `shortfall_mode = "loop_to_timeline"`
 - product-level caption contracts can now use stronger promo-card style presets and wider box-aware sizing so `main` and `sub` overlays read more like ad creative than subtitle leftovers
+- auto-factory batch planning now also prioritizes early `voiceover` variation ahead of some later visual dimensions, so the first clips in one batch do not all repeat the same spoken message when multiple ready voice assets exist
 - a real `Biothentic0001` live auto-mode audit has now validated product-local preview/final artifact paths, journal creation, manifest evidence, caption runtime behavior, and operator-facing contract tuning on an external product folder
 - pixel-based caption layout now measures text against the real frame in pixels, supports point-to-pixel conversion, computes per-line alignment positions, and writes per-line caption layout evidence into manifests
 - auto-mode visual selection now also uses seeded diversity ordering and seeded per-segment cycling so reruns stay deterministic while multi-recipe output feels less repetitive

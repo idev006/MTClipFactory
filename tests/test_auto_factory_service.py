@@ -237,6 +237,36 @@ def test_auto_factory_keeps_seeded_visual_order_deterministic_per_batch(unit_of_
     assert first.planned_recipes[0].fingerprint != third.planned_recipes[0].fingerprint
 
 
+def test_auto_factory_diversifies_voice_early_within_batch(unit_of_work_factory, tmp_path) -> None:
+    product_service = ProductApplicationService(unit_of_work_factory=unit_of_work_factory)
+    product_id = product_service.create_product(CreateProductCommand(product_code="voices", product_name="Voices"))
+    asset_service = _build_asset_service(
+        unit_of_work_factory,
+        tmp_path / "media_library",
+        {"voice_01.mp3": 12.0, "voice_02.mp3": 13.0},
+    )
+    _register_asset(asset_service, product_id=product_id, tmp_path=tmp_path, asset_type="foreground_video", asset_code="fg_01", file_name="fg01.mp4")
+    _register_asset(asset_service, product_id=product_id, tmp_path=tmp_path, asset_type="foreground_video", asset_code="fg_02", file_name="fg02.mp4")
+    _register_asset(asset_service, product_id=product_id, tmp_path=tmp_path, asset_type="background_video", asset_code="bg_01", file_name="bg01.mp4")
+    _register_asset(asset_service, product_id=product_id, tmp_path=tmp_path, asset_type="voiceover", asset_code="voice_01", file_name="voice_01.mp3")
+    _register_asset(asset_service, product_id=product_id, tmp_path=tmp_path, asset_type="voiceover", asset_code="voice_02", file_name="voice_02.mp3")
+    service = _build_auto_factory_service(unit_of_work_factory, tmp_path, {"voice_01.mp3": 12.0, "voice_02.mp3": 13.0})
+
+    plan = service.plan_batch(
+        AutoFactoryBatchOrderDTO(
+            batch_code="voices_batch",
+            product_requests=(AutoFactoryProductRequestDTO(product_code="voices", requested_output_count=2),),
+        )
+    )
+
+    voice_codes = [
+        next(assignment.asset_code for assignment in recipe.assignments if assignment.role == "voice")
+        for recipe in plan.planned_recipes
+    ]
+
+    assert len(set(voice_codes)) == 2
+
+
 def test_auto_factory_reports_shortfall_and_blocks_strict_materialization(unit_of_work_factory, tmp_path) -> None:
     product_service = ProductApplicationService(unit_of_work_factory=unit_of_work_factory)
     product_id = product_service.create_product(CreateProductCommand(product_code="tea", product_name="Tea"))

@@ -30,6 +30,12 @@ from mt_clip_factory.library.services import AssetIntakeService
 
 _DEFAULT_FIXED_DURATION_SEC = 15.0
 _SEMANTIC_VISUAL_ROLES = ("hook", "problem", "benefit", "proof", "cta")
+_DIVERSITY_DIMENSION_PRIORITY = (
+    "voice",
+    "foreground_sequence",
+    "background",
+    "music",
+)
 
 
 class AutoFactoryPlanningError(ValueError):
@@ -300,15 +306,17 @@ class AutoFactoryBatchService:
         background_options = background_assets if background_assets else (None,)
         music_options = music_assets if music_assets else (None,)
         voice_options = voice_assets if voice_assets else (None,)
-
-        variant_index = request_index - 1
-        sequence = sequence_options[variant_index % len(sequence_options)]
-        variant_index //= len(sequence_options)
-        background_asset = background_options[variant_index % len(background_options)]
-        variant_index //= len(background_options)
-        music_asset = music_options[variant_index % len(music_options)]
-        variant_index //= len(music_options)
-        voice_asset = voice_options[variant_index % len(voice_options)]
+        selected_dimensions = _select_variant_dimensions(
+            variant_index=request_index - 1,
+            sequence_options=sequence_options,
+            background_options=background_options,
+            music_options=music_options,
+            voice_options=voice_options,
+        )
+        sequence = selected_dimensions["foreground_sequence"]
+        background_asset = selected_dimensions["background"]
+        music_asset = selected_dimensions["music"]
+        voice_asset = selected_dimensions["voice"]
 
         assignments: list[PlannedBatchAssetAssignmentDTO] = []
         if background_asset is not None:
@@ -359,6 +367,29 @@ class AutoFactoryBatchService:
 def _slugify(value: str) -> str:
     normalized = re.sub(r"[^a-z0-9]+", "_", value.strip().lower())
     return normalized.strip("_")
+
+
+def _select_variant_dimensions(
+    *,
+    variant_index: int,
+    sequence_options: tuple[tuple[int, ...], ...],
+    background_options: tuple[AssetSummaryDTO | None, ...],
+    music_options: tuple[AssetSummaryDTO | None, ...],
+    voice_options: tuple[AssetSummaryDTO | None, ...],
+) -> dict[str, object]:
+    dimension_options: dict[str, tuple[object, ...]] = {
+        "foreground_sequence": sequence_options,
+        "background": background_options,
+        "music": music_options,
+        "voice": voice_options,
+    }
+    remaining_index = variant_index
+    selected: dict[str, object] = {}
+    for dimension_name in _DIVERSITY_DIMENSION_PRIORITY:
+        options = dimension_options[dimension_name]
+        selected[dimension_name] = options[remaining_index % len(options)]
+        remaining_index //= len(options)
+    return selected
 
 
 def _build_foreground_sequences(asset_ids: tuple[int, ...], *, role_count: int) -> tuple[tuple[int, ...], ...]:

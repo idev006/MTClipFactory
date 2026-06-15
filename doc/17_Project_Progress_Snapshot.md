@@ -126,6 +126,7 @@
 - delivered a policy-aware duration fix so loopable background music no longer stretches auto-mode previews past the intended ad timeline while non-loop music can still remain duration-authoritative when explicitly configured
 - delivered product-policy voice-loop support all the way through parser, composition persistence, renderer application, and manifest truth
 - tuned the live `Biothentic0001` contract toward promo-card captions with stronger `main`/`sub` sizing and explicit loop behavior for voice and foreground assets
+- corrected batch-variant ordering so early outputs diversify `voiceover` sooner instead of exhausting only foreground variation first
 
 ## Still Open
 

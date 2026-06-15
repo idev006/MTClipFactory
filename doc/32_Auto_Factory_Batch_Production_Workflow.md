@@ -197,7 +197,26 @@ The batch planner should instead:
 3. generate planner-approved foreground sequences for semantic roles
 4. combine those sequences with optional background, music, and voice pools
 5. stop duplicate fingerprints within the same batch
-6. select the first `N` unique variants in deterministic order
+6. select the first `N` unique variants in deterministic but diversity-prioritized order
+
+### Early-Batch Diversity Rule
+
+Deterministic order alone is not enough.
+
+The planner should avoid spending the first several outputs on low-value variation such as only changing one foreground sequence while keeping the same spoken message.
+
+For the current baseline, early-batch variation should prioritize:
+
+1. `voiceover`
+2. `foreground sequence`
+3. `background`
+4. `music`
+
+Why this policy is preferred:
+
+- repeated spoken copy makes clips feel duplicate faster than repeated scenic context
+- operators can accept some visual reuse in the first slice more easily than identical narration across many outputs
+- this keeps the planner deterministic while making the first requested outputs more commercially distinct
 
 ## Capacity Rule
 
