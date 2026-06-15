@@ -6,6 +6,8 @@ It complements [43_Product_Caption_Pool_And_Font_Workflow_2026-06-14.md](/F:/pro
 
 The textbox-first model is now paired with a solver-based fitting stage described in [52_Best_Fit_Caption_Solver_Workflow_2026-06-15.md](/F:/programming/python/MTClipFactory/doc/52_Best_Fit_Caption_Solver_Workflow_2026-06-15.md).
 
+Advertisement-style `one line = one box` behavior is described in [53_Per_Line_Textbox_Caption_Workflow_2026-06-15.md](/F:/programming/python/MTClipFactory/doc/53_Per_Line_Textbox_Caption_Workflow_2026-06-15.md).
+
 ## Purpose
 
 - make caption positioning easier to control by resolving a textbox first and text inside it second
@@ -146,6 +148,7 @@ The first textbox-based slice should add explicit runtime support for:
 - `textbox_height_ratio`
 - `textbox_alignment`
 - `vertical_alignment`
+- `textbox_mode`
 
 while keeping older contracts backward compatible:
 
@@ -154,6 +157,7 @@ while keeping older contracts backward compatible:
 - if `textbox_height_ratio` is greater than `0`, the runtime should treat it as the target textbox height and let the best-fit solver reduce caption size to fit when possible
 - if `textbox_alignment` is missing, default to `center`
 - if `vertical_alignment` is missing, default to `top`
+- if `textbox_mode` is missing, default to `grouped`
 
 ## Reviewed Workflow
 

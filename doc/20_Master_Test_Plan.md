@@ -222,6 +222,7 @@ It complements [07_Testing_Strategy.md](/F:/programming/python/MTClipFactory/doc
 46. Confirm textbox-only caption rendering can be verified from one segmented frame path without requiring a full product-folder audit, including one `drawbox` plus one `drawtext` per rendered line.
 47. Confirm textbox-based caption layout supports `top`/`middle`/`bottom` text placement inside a taller textbox and still keeps best-fit line widths within textbox content bounds.
 48. Confirm the best-fit caption solver can reduce font size to satisfy textbox height constraints, not only width constraints, while preserving honest overflow signals when no clean candidate exists.
+49. Confirm caption contracts can render one textbox per line for advertising-style captions and that FFmpeg emits one `drawbox` per rendered line.
 
 ### C. Review And Approval Flow
 

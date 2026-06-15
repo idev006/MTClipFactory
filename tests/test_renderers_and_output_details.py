@@ -54,8 +54,13 @@ def _build_caption_role(
     box_height_px: int,
     padding: int,
     textbox_width_ratio: float,
+    line_box_left_positions_px: tuple[int, ...] = (),
+    line_box_top_positions_px: tuple[int, ...] = (),
+    line_box_widths_px: tuple[int, ...] = (),
+    line_box_heights_px: tuple[int, ...] = (),
     textbox_height_ratio: float = 0.0,
     vertical_alignment: str = "top",
+    textbox_mode: str = "grouped",
 ) -> ResolvedCaptionRole:
     return ResolvedCaptionRole(
         role="main",
@@ -84,6 +89,7 @@ def _build_caption_role(
         alignment=alignment,
         vertical_alignment=vertical_alignment,
         textbox_alignment=textbox_alignment,
+        textbox_mode=textbox_mode,
         text_color="#FFFFFF",
         stroke_color="#000000",
         stroke_width=3,
@@ -108,6 +114,10 @@ def _build_caption_role(
         max_text_width_px=max_text_width_px,
         line_left_positions_px=line_left_positions_px,
         line_top_positions_px=line_top_positions_px,
+        line_box_left_positions_px=line_box_left_positions_px,
+        line_box_top_positions_px=line_box_top_positions_px,
+        line_box_widths_px=line_box_widths_px,
+        line_box_heights_px=line_box_heights_px,
         box_left_px=box_left_px,
         box_top_px=box_top_px,
         box_width_px=box_width_px,
@@ -469,6 +479,7 @@ def test_ffmpeg_renderer_builds_drawtext_filters_for_caption_layers(tmp_path) ->
                         alignment="center",
                         vertical_alignment="top",
                         textbox_alignment="center",
+                        textbox_mode="grouped",
                         text_color="#FFFFFF",
                         stroke_color="#000000",
                         stroke_width=3,
@@ -493,6 +504,10 @@ def test_ffmpeg_renderer_builds_drawtext_filters_for_caption_layers(tmp_path) ->
                         max_text_width_px=560,
                         line_left_positions_px=(200,),
                         line_top_positions_px=(600,),
+                        line_box_left_positions_px=(),
+                        line_box_top_positions_px=(),
+                        line_box_widths_px=(),
+                        line_box_heights_px=(),
                         box_left_px=180,
                         box_top_px=580,
                         box_width_px=360,
@@ -575,6 +590,71 @@ def test_ffmpeg_renderer_can_target_textbox_only_caption_geometry_without_full_p
     assert "fontsize=72:x=132:y=420" in command_text
     assert "fontsize=60:x=132:y=510" in command_text
     assert "fontsize=56:x=132:y=600" in command_text
+
+
+def test_ffmpeg_renderer_can_draw_one_textbox_per_caption_line(tmp_path) -> None:
+    settings = _settings(tmp_path)
+    renderer = InspectableFFmpegPreviewRenderer(StaticSettingsService(settings), tmp_path / "preview_root")
+    source_file = tmp_path / "visual.mp4"
+    font_file = tmp_path / "THSarabun.ttf"
+    source_file.write_bytes(b"visual")
+    font_file.write_bytes(b"font")
+
+    renderer.render_output(
+        product_code="honey",
+        output_stem="per_line_textbox_preview",
+        source_files=[source_file],
+        segment_clips=(
+            PreviewSegmentClip(
+                sequence_index=1,
+                segment_type="hook",
+                layer_name="background_visual",
+                asset_id=11,
+                asset_code="visual_asset",
+                source_file=source_file,
+                start_sec=0.0,
+                end_sec=1.0,
+                target_duration_sec=1.0,
+                fill_mode="trim_to_segment",
+                captions=(
+                    _build_caption_role(
+                        font_file=font_file,
+                        rendered_lines=("wow", "amazing offer", "buy now"),
+                        alignment="center",
+                        textbox_alignment="center",
+                        line_left_positions_px=(300, 220, 260),
+                        line_top_positions_px=(420, 510, 600),
+                        line_font_sizes_px=(72, 72, 72),
+                        line_widths_px=(120, 280, 180),
+                        line_height_px=78,
+                        line_heights_px=(78, 78, 78),
+                        text_block_width_px=280,
+                        text_block_height_px=270,
+                        max_text_width_px=716,
+                        box_left_px=182,
+                        box_top_px=396,
+                        box_width_px=716,
+                        box_height_px=320,
+                        padding=24,
+                        textbox_width_ratio=0.66,
+                        textbox_mode="per_line",
+                        line_box_left_positions_px=(276, 196, 236),
+                        line_box_top_positions_px=(396, 486, 576),
+                        line_box_widths_px=(168, 328, 228),
+                        line_box_heights_px=(126, 126, 126),
+                    ),
+                ),
+            ),
+        ),
+        target_ratio="9:16",
+    )
+
+    command_text = "\n".join(" ".join(command) for command in renderer.commands)
+
+    assert command_text.count("drawbox=") >= 3
+    assert "drawbox=x=276:y=396:w=168:h=126:color=#000000@0.15:t=fill" in command_text
+    assert "drawbox=x=196:y=486:w=328:h=126:color=#000000@0.15:t=fill" in command_text
+    assert "drawbox=x=236:y=576:w=228:h=126:color=#000000@0.15:t=fill" in command_text
 
 
 def test_ffmpeg_renderer_uses_freeze_last_frame_for_short_visual_segments(tmp_path) -> None:

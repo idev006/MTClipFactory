@@ -32,6 +32,7 @@ class CaptionRoleStyle:
     alignment: str
     vertical_alignment: str
     textbox_alignment: str
+    textbox_mode: str
     font_family: str
     font_fallbacks: tuple[str, ...]
     font_size: int
@@ -117,6 +118,11 @@ class ResolvedCaptionRole:
     max_text_width_px: int
     line_left_positions_px: tuple[int, ...]
     line_top_positions_px: tuple[int, ...]
+    textbox_mode: str
+    line_box_left_positions_px: tuple[int, ...]
+    line_box_top_positions_px: tuple[int, ...]
+    line_box_widths_px: tuple[int, ...]
+    line_box_heights_px: tuple[int, ...]
     box_left_px: int
     box_top_px: int
     box_width_px: int
@@ -358,6 +364,7 @@ class CaptionRuntimeService:
             min_font_size=style.min_font_size,
             max_lines=style.max_lines,
             max_chars_per_line=style.max_chars_per_line,
+            textbox_mode=style.textbox_mode,
             textbox_width_ratio=style.textbox_width_ratio,
             textbox_height_ratio=style.textbox_height_ratio,
             textbox_alignment=style.textbox_alignment,
@@ -424,6 +431,11 @@ class CaptionRuntimeService:
             max_text_width_px=layout.max_text_width_px,
             line_left_positions_px=layout.line_left_positions_px,
             line_top_positions_px=layout.line_top_positions_px,
+            textbox_mode=layout.textbox_mode,
+            line_box_left_positions_px=layout.line_box_left_positions_px,
+            line_box_top_positions_px=layout.line_box_top_positions_px,
+            line_box_widths_px=layout.line_box_widths_px,
+            line_box_heights_px=layout.line_box_heights_px,
             box_left_px=layout.box_left_px,
             box_top_px=layout.box_top_px,
             box_width_px=layout.box_width_px,
@@ -468,11 +480,18 @@ def _parse_role_style(value, *, role: str) -> CaptionRoleStyle:
         maximum=1.0,
         context=f"[caption_properties.{role}].textbox_width_ratio",
     )
+    textbox_mode = _choice_text(
+        section.get("textbox_mode"),
+        default="grouped",
+        allowed=("grouped", "per_line"),
+        context=f"[caption_properties.{role}].textbox_mode",
+    )
     return CaptionRoleStyle(
         position=_optional_text(section.get("position")) or default_position,
         alignment=_optional_text(section.get("alignment")) or "center",
         vertical_alignment=_optional_text(section.get("vertical_alignment")) or "top",
         textbox_alignment=_optional_text(section.get("textbox_alignment")) or "center",
+        textbox_mode=textbox_mode,
         font_family=_optional_text(section.get("font_family")) or "Arial",
         font_fallbacks=_text_list(section.get("font_fallbacks"), context=f"[caption_properties.{role}].font_fallbacks"),
         font_size=_positive_int(section.get("font_size"), default=default_font_size, context=f"[caption_properties.{role}].font_size"),
@@ -672,6 +691,18 @@ def _bounded_float(value, *, default: float, minimum: float, maximum: float, con
     if parsed < minimum or parsed > maximum:
         raise CaptionContractError(f"Expected {context} to stay within {minimum}..{maximum}.")
     return parsed
+
+
+def _choice_text(value, *, default: str, allowed: tuple[str, ...], context: str) -> str:
+    if value is None:
+        return default
+    text = _optional_text(value)
+    if text is None:
+        return default
+    normalized = text.casefold()
+    if normalized not in allowed:
+        raise CaptionContractError(f"Expected {context} to be one of: {', '.join(allowed)}.")
+    return normalized
 
 
 def _boolean(value, *, default: bool, context: str) -> bool:

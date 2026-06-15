@@ -401,6 +401,69 @@ def test_caption_runtime_supports_vertical_alignment_inside_tall_textbox(tmp_pat
     assert last_line_bottom < content_area_bottom
 
 
+def test_caption_runtime_can_resolve_per_line_textboxes(tmp_path) -> None:
+    media_root = tmp_path / "media_library"
+    fonts_root = tmp_path / "fonts"
+    fonts_root.mkdir(parents=True, exist_ok=True)
+    (fonts_root / "THSarabun.ttf").write_bytes(b"font")
+    product_dir = tmp_path / "product_per_line_boxes"
+    product_dir.mkdir(parents=True, exist_ok=True)
+    caption_file = product_dir / "captions.toml"
+    caption_file.write_text(
+        "\n".join(
+            [
+                "[caption_pools.hook]",
+                'main = ["wow\\namazing offer\\nbuy now"]',
+                "",
+                "[caption_properties.main]",
+                'font_family = "THSarabun"',
+                'alignment = "center"',
+                'textbox_alignment = "center"',
+                'textbox_mode = "per_line"',
+                'vertical_alignment = "middle"',
+                "textbox_width_ratio = 0.7",
+                "textbox_height_ratio = 0.18",
+                "padding = 20",
+                "font_size = 72",
+                "min_font_size = 36",
+                "safe_top_ratio = 0.14",
+                "safe_bottom_ratio = 0.46",
+            ]
+        ),
+        encoding="utf-8",
+    )
+    store = ProductAutomationMetadataStore(media_root)
+    store.sync_caption_contract(product_code="product_per_line_boxes", source_file=caption_file)
+    service = CaptionRuntimeService(metadata_store=store, fonts_root=fonts_root)
+    segments = (
+        TimelineSegment(
+            recipe_id=1,
+            segment_type="hook",
+            sequence_index=1,
+            start_sec=0.0,
+            end_sec=3.0,
+            target_duration_sec=3.0,
+        ),
+    )
+
+    resolved = service.resolve_for_segments(
+        product_code="product_per_line_boxes",
+        recipe_code="product_per_line_boxes_batch_001",
+        segments=segments,
+        frame_width_px=1080,
+        frame_height_px=1920,
+    )
+    role = resolved[0].roles[0]
+
+    assert role.textbox_mode == "per_line"
+    assert len(role.line_box_left_positions_px) == 3
+    assert len(role.line_box_widths_px) == 3
+    assert role.line_box_widths_px[1] > role.line_box_widths_px[0]
+    assert role.line_box_widths_px[1] > role.line_box_widths_px[2]
+    assert role.line_box_left_positions_px[1] < role.line_box_left_positions_px[0]
+    assert role.line_box_top_positions_px[1] > role.line_box_top_positions_px[0]
+
+
 def test_caption_runtime_bestfits_long_line_within_narrow_textbox(tmp_path) -> None:
     media_root = tmp_path / "media_library"
     fonts_root = tmp_path / "fonts"

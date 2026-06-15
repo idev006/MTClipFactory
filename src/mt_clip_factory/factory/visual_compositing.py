@@ -448,20 +448,7 @@ def _caption_overlay_chain(*, input_label: str, caption_filters: list[str]) -> s
 def _caption_drawtext_filters(*, temp_dir: Path, segment: PreviewSegmentClip) -> list[str]:
     filters: list[str] = []
     for role in segment.captions:
-        if role.background_color and role.background_opacity > 0 and role.box_width_px > 0 and role.box_height_px > 0:
-            filters.append(
-                "drawbox="
-                + ":".join(
-                    (
-                        f"x={role.box_left_px}",
-                        f"y={role.box_top_px}",
-                        f"w={role.box_width_px}",
-                        f"h={role.box_height_px}",
-                        f"color={role.background_color}@{role.background_opacity}",
-                        "t=fill",
-                    )
-                )
-            )
+        filters.extend(_caption_drawbox_filters(role))
         for line_index, line_text in enumerate(role.rendered_lines, start=1):
             text_file = temp_dir / f"caption_{segment.sequence_index:02d}_{role.role}_{line_index:02d}.txt"
             text_file.write_text(line_text, encoding="utf-8")
@@ -483,6 +470,51 @@ def _caption_drawtext_filters(*, temp_dir: Path, segment: PreviewSegmentClip) ->
                 drawtext_parts.append(f"bordercolor={role.stroke_color}")
             filters.append(f"drawtext={':'.join(drawtext_parts)}")
     return filters
+
+
+def _caption_drawbox_filters(role) -> list[str]:
+    if not role.background_color or role.background_opacity <= 0:
+        return []
+    if role.textbox_mode == "per_line":
+        drawboxes: list[str] = []
+        for box_left_px, box_top_px, box_width_px, box_height_px in zip(
+            role.line_box_left_positions_px,
+            role.line_box_top_positions_px,
+            role.line_box_widths_px,
+            role.line_box_heights_px,
+            strict=False,
+        ):
+            if box_width_px <= 0 or box_height_px <= 0:
+                continue
+            drawboxes.append(
+                "drawbox="
+                + ":".join(
+                    (
+                        f"x={box_left_px}",
+                        f"y={box_top_px}",
+                        f"w={box_width_px}",
+                        f"h={box_height_px}",
+                        f"color={role.background_color}@{role.background_opacity}",
+                        "t=fill",
+                    )
+                )
+            )
+        return drawboxes
+    if role.box_width_px <= 0 or role.box_height_px <= 0:
+        return []
+    return [
+        "drawbox="
+        + ":".join(
+            (
+                f"x={role.box_left_px}",
+                f"y={role.box_top_px}",
+                f"w={role.box_width_px}",
+                f"h={role.box_height_px}",
+                f"color={role.background_color}@{role.background_opacity}",
+                "t=fill",
+            )
+        )
+    ]
 
 
 def _escape_filter_path(file_path: Path) -> str:

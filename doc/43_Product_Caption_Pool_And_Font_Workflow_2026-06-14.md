@@ -131,6 +131,7 @@ Recommended fields:
 - `alignment`
 - `vertical_alignment`
 - `textbox_alignment`
+- `textbox_mode`
 - `font_family`
 - `font_fallbacks`
 - `font_size`
@@ -155,6 +156,8 @@ Textbox guidance:
 - `textbox_alignment` places the textbox itself in the frame
 - `alignment` places the text inside that textbox
 - `vertical_alignment` places the text block inside that textbox
+- `textbox_mode = "grouped"` keeps one shared box for the whole role
+- `textbox_mode = "per_line"` creates one box per rendered line
 - `textbox_height_ratio = 0` means fit-content height; values above `0` define a target textbox height as a fraction of frame height, and the best-fit solver should scale text to stay inside it when possible
 - legacy `max_width_ratio` remains supported as a backward-compatible fallback, but new contracts should prefer `textbox_width_ratio`
 
@@ -166,6 +169,7 @@ position = "center"
 alignment = "center"
 vertical_alignment = "middle"
 textbox_alignment = "center"
+textbox_mode = "per_line"
 font_family = "THSarabun"
 font_fallbacks = ["TH Chakra Petch", "Tahoma", "Arial Unicode MS"]
 font_size = 72
@@ -190,6 +194,7 @@ position = "bottom"
 alignment = "center"
 vertical_alignment = "middle"
 textbox_alignment = "center"
+textbox_mode = "grouped"
 font_family = "THSarabun"
 font_fallbacks = ["TH Chakra Petch", "Tahoma", "Arial Unicode MS"]
 font_size = 40
