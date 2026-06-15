@@ -4,6 +4,8 @@ This document is the SSOT for evolving MTClipFactory caption rendering from text
 
 It complements [43_Product_Caption_Pool_And_Font_Workflow_2026-06-14.md](/F:/programming/python/MTClipFactory/doc/43_Product_Caption_Pool_And_Font_Workflow_2026-06-14.md), [46_Caption_Runtime_Metadata_And_Render_Workflow_2026-06-14.md](/F:/programming/python/MTClipFactory/doc/46_Caption_Runtime_Metadata_And_Render_Workflow_2026-06-14.md), [49_Pixel_Based_Caption_Layout_And_Diversity_Workflow_2026-06-14.md](/F:/programming/python/MTClipFactory/doc/49_Pixel_Based_Caption_Layout_And_Diversity_Workflow_2026-06-14.md), and [50_Caption_Safe_Bands_And_Longest_Layer_Duration_Workflow_2026-06-14.md](/F:/programming/python/MTClipFactory/doc/50_Caption_Safe_Bands_And_Longest_Layer_Duration_Workflow_2026-06-14.md).
 
+The textbox-first model is now paired with a solver-based fitting stage described in [52_Best_Fit_Caption_Solver_Workflow_2026-06-15.md](/F:/programming/python/MTClipFactory/doc/52_Best_Fit_Caption_Solver_Workflow_2026-06-15.md).
+
 ## Purpose
 
 - make caption positioning easier to control by resolving a textbox first and text inside it second
@@ -45,6 +47,7 @@ Each caption role should conceptually resolve:
 - content height
 - padding
 - text alignment inside the textbox
+- vertical alignment inside the textbox
 
 The textbox is the renderable caption region. Text is then fitted inside the textbox content region.
 
@@ -111,6 +114,20 @@ This allows designs such as:
 - full-width top title box with centered text
 - right-anchored promo badge with right-aligned text
 
+### Vertical Alignment Inside Textbox
+
+The text block inside the textbox may independently be:
+
+- `top`
+- `middle`
+- `bottom`
+
+This matters when the textbox height is intentionally larger than the text height, such as:
+
+- centered title cards with breathing room above and below
+- lower-third panels where text should sit near the bottom edge
+- reusable caption boxes that keep one stable height across multiple caption choices
+
 ## Background Box Rule
 
 If background is enabled:
@@ -126,12 +143,17 @@ This gives operators more visually stable caption cards across different line le
 The first textbox-based slice should add explicit runtime support for:
 
 - `textbox_width_ratio`
+- `textbox_height_ratio`
 - `textbox_alignment`
+- `vertical_alignment`
 
 while keeping older contracts backward compatible:
 
 - if `textbox_width_ratio` is missing, the runtime may fall back to `max_width_ratio`
+- if `textbox_height_ratio` is missing or `0`, the runtime may use fit-content box height
+- if `textbox_height_ratio` is greater than `0`, the runtime should treat it as the target textbox height and let the best-fit solver reduce caption size to fit when possible
 - if `textbox_alignment` is missing, default to `center`
+- if `vertical_alignment` is missing, default to `top`
 
 ## Reviewed Workflow
 

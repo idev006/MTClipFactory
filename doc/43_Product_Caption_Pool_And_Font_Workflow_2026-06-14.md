@@ -129,6 +129,7 @@ Recommended fields:
 
 - `position`
 - `alignment`
+- `vertical_alignment`
 - `textbox_alignment`
 - `font_family`
 - `font_fallbacks`
@@ -144,6 +145,7 @@ Recommended fields:
 - `max_lines`
 - `max_chars_per_line`
 - `textbox_width_ratio`
+- `textbox_height_ratio`
 - `overflow_policy`
 - `enter_animation`
 - `review_required_if_overflow`
@@ -152,6 +154,8 @@ Textbox guidance:
 
 - `textbox_alignment` places the textbox itself in the frame
 - `alignment` places the text inside that textbox
+- `vertical_alignment` places the text block inside that textbox
+- `textbox_height_ratio = 0` means fit-content height; values above `0` define a target textbox height as a fraction of frame height, and the best-fit solver should scale text to stay inside it when possible
 - legacy `max_width_ratio` remains supported as a backward-compatible fallback, but new contracts should prefer `textbox_width_ratio`
 
 Recommended example:
@@ -160,6 +164,7 @@ Recommended example:
 [caption_properties.main]
 position = "center"
 alignment = "center"
+vertical_alignment = "middle"
 textbox_alignment = "center"
 font_family = "THSarabun"
 font_fallbacks = ["TH Chakra Petch", "Tahoma", "Arial Unicode MS"]
@@ -175,6 +180,7 @@ padding = 20
 max_lines = 3
 max_chars_per_line = 18
 textbox_width_ratio = 0.78
+textbox_height_ratio = 0.18
 overflow_policy = "wrap_then_scale_then_review"
 enter_animation = "pop_in"
 review_required_if_overflow = true
@@ -182,6 +188,7 @@ review_required_if_overflow = true
 [caption_properties.sub]
 position = "bottom"
 alignment = "center"
+vertical_alignment = "middle"
 textbox_alignment = "center"
 font_family = "THSarabun"
 font_fallbacks = ["TH Chakra Petch", "Tahoma", "Arial Unicode MS"]
@@ -197,6 +204,7 @@ padding = 16
 max_lines = 3
 max_chars_per_line = 28
 textbox_width_ratio = 0.82
+textbox_height_ratio = 0.14
 overflow_policy = "wrap_then_truncate_or_review"
 enter_animation = "fade_in"
 review_required_if_overflow = true
@@ -233,6 +241,7 @@ Current runtime baseline:
 2. renderer resolves `font_family` against project fonts first
 3. if needed, renderer may fall back to system fonts
 4. missing fonts should produce explicit warning or reviewable fallback, not silent substitution
+5. runtime fitting should use a best-fit solver that measures real pixel widths and heights before choosing the final caption block
 
 ## Reviewed Workflow
 

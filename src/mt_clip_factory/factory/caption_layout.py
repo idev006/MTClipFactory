@@ -49,6 +49,37 @@ class CaptionLayoutResult:
     frame_height_px: int
 
 
+@dataclass(slots=True, frozen=True)
+class _RawLayout:
+    lines: tuple[str, ...]
+    line_widths_px: tuple[int, ...]
+    line_height_px: int
+    overflowed: bool
+    truncated_for_runtime: bool
+    line_count_exceeded: bool
+    width_overflowed: bool
+
+
+@dataclass(slots=True, frozen=True)
+class _LayoutCandidate:
+    lines: tuple[str, ...]
+    font_size_px: int
+    line_font_sizes_px: tuple[int, ...]
+    line_widths_px: tuple[int, ...]
+    line_height_px: int
+    line_heights_px: tuple[int, ...]
+    line_spacing_px: int
+    text_block_width_px: int
+    text_block_height_px: int
+    box_height_px: int
+    content_height_capacity_px: int
+    overflowed: bool
+    truncated_for_runtime: bool
+    fit_strategy: str
+    line_break_mode: str
+    score: float
+
+
 def resolve_caption_layout(
     *,
     source_text: str,
@@ -61,10 +92,12 @@ def resolve_caption_layout(
     max_lines: int,
     max_chars_per_line: int,
     textbox_width_ratio: float,
+    textbox_height_ratio: float,
     textbox_alignment: str,
     line_spacing_ratio: float,
     padding: int,
     alignment: str,
+    vertical_alignment: str,
     position: str,
     stroke_width: int,
     safe_top_ratio: float,
@@ -89,111 +122,49 @@ def resolve_caption_layout(
     )
     textbox_width_px = _textbox_width(frame_context.width_px, textbox_width_ratio=textbox_width_ratio)
     max_text_width_px = _textbox_content_width(textbox_width_px=textbox_width_px, padding=padding)
-    wrap_width_px = _effective_wrap_width(max_text_width_px=max_text_width_px, stroke_width=stroke_width)
-    fit_strategy = "manual_breaks" if manual_breaks else "wrapped"
-    layout = _layout_text(
-        text=normalized_text,
-        font=_build_qfont(
-            font_family=font_family,
-            font_file=font_file,
-            pixel_size=font_size_px,
-        ),
-        max_width_px=wrap_width_px,
-        stroke_width=stroke_width,
-        manual_breaks=manual_breaks,
-        max_lines=max_lines,
-        overflow_policy=overflow_policy,
-    )
-    if not manual_breaks and _needs_balance_adjustment(layout, max_width_px=max_text_width_px):
-        current_badness = _layout_balance_badness(layout, max_width_px=max_text_width_px)
-        while font_size_px > minimum_font_px:
-            next_font_px = max(minimum_font_px, font_size_px - 2)
-            if next_font_px == font_size_px:
-                break
-            next_layout = _layout_text(
-                text=normalized_text,
-                font=_build_qfont(
-                    font_family=font_family,
-                    font_file=font_file,
-                    pixel_size=next_font_px,
-                ),
-                max_width_px=wrap_width_px,
-                stroke_width=stroke_width,
-                manual_breaks=manual_breaks,
-                max_lines=max_lines,
-                overflow_policy=overflow_policy,
-            )
-            next_badness = _layout_balance_badness(next_layout, max_width_px=max_text_width_px)
-            if next_badness >= current_badness:
-                break
-            font_size_px = next_font_px
-            layout = next_layout
-            current_badness = next_badness
-            fit_strategy = "scaled_for_balance"
-    overflowed = layout.overflowed
-    while (not manual_breaks) and overflowed and "scale" in overflow_policy and font_size_px > minimum_font_px:
-        next_font_px = max(minimum_font_px, font_size_px - max(2, (font_size_px - minimum_font_px) // 2 or 1))
-        if next_font_px == font_size_px:
-            break
-        font_size_px = next_font_px
-        wrap_width_px = _effective_wrap_width(max_text_width_px=max_text_width_px, stroke_width=stroke_width)
-        layout = _layout_text(
-            text=normalized_text,
-            font=_build_qfont(
-                font_family=font_family,
-                font_file=font_file,
-                pixel_size=font_size_px,
-            ),
-            max_width_px=wrap_width_px,
-            stroke_width=stroke_width,
-            manual_breaks=manual_breaks,
-            max_lines=max_lines,
-            overflow_policy=overflow_policy,
-        )
-        overflowed = layout.overflowed
-        fit_strategy = "scaled_to_fit"
-    if layout.truncated_for_runtime:
-        fit_strategy = "truncated_for_runtime"
-    line_font_sizes_px, line_widths_px, line_heights_px, per_line_overflow, any_line_scaled = _resolve_line_metrics(
-        lines=layout.lines,
-        font_family=font_family,
-        font_file=font_file,
-        max_font_size_px=font_size_px,
-        min_font_size_px=minimum_font_px,
-        max_width_px=max_text_width_px,
-        stroke_width=stroke_width,
-        allow_per_line_scale=manual_breaks,
-    )
-    overflowed = overflowed or per_line_overflow
-    if any_line_scaled and fit_strategy == "manual_breaks":
-        fit_strategy = "per_line_scaled_to_fit"
-    line_spacing_px = max(0, round(font_size_px * max(0.0, line_spacing_ratio)))
-    line_height_px = max(line_heights_px, default=layout.line_height_px)
-    content_width_px = max(line_widths_px, default=0)
-    content_height_px = sum(line_heights_px) + (max(0, len(layout.lines) - 1) * line_spacing_px)
-    box_left_px = _resolve_box_left(
-        alignment=textbox_alignment,
-        frame_width_px=frame_context.width_px,
-        box_width_px=textbox_width_px,
-    )
     safe_top_px = round(frame_context.height_px * _bounded_ratio(safe_top_ratio))
     safe_bottom_px = round(frame_context.height_px * _bounded_ratio(safe_bottom_ratio))
     if safe_bottom_px <= safe_top_px:
         safe_top_px = round(frame_context.height_px * 0.12)
         safe_bottom_px = round(frame_context.height_px * 0.86)
-    box_height_px = min(
-        frame_context.height_px,
-        max(0, content_height_px + (padding * 2)),
+    band_height_px = max(0, safe_bottom_px - safe_top_px)
+    candidate = _solve_best_fit_layout(
+        text=normalized_text,
+        font_family=font_family,
+        font_file=font_file,
+        requested_font_size_px=font_size_px,
+        min_font_size_px=minimum_font_px,
+        max_width_px=max_text_width_px,
+        stroke_width=stroke_width,
+        max_lines=max_lines,
+        overflow_policy=overflow_policy,
+        manual_breaks=manual_breaks,
+        padding=padding,
+        textbox_height_ratio=textbox_height_ratio,
+        frame_height_px=frame_context.height_px,
+        band_height_px=band_height_px,
+        line_spacing_ratio=line_spacing_ratio,
+    )
+    box_left_px = _resolve_box_left(
+        alignment=textbox_alignment,
+        frame_width_px=frame_context.width_px,
+        box_width_px=textbox_width_px,
     )
     box_top_px = _resolve_box_top(
         position=position,
         frame_height_px=frame_context.height_px,
         safe_top_px=safe_top_px,
         safe_bottom_px=safe_bottom_px,
-        box_height_px=box_height_px,
+        box_height_px=candidate.box_height_px,
     )
     content_left_px = box_left_px + padding
-    content_top_px = box_top_px + padding
+    content_top_px = _resolve_content_top_in_box(
+        box_top_px=box_top_px,
+        box_height_px=candidate.box_height_px,
+        padding=padding,
+        content_height_px=candidate.text_block_height_px,
+        vertical_alignment=vertical_alignment,
+    )
     line_left_positions_px = tuple(
         _resolve_line_left(
             alignment=alignment,
@@ -201,48 +172,153 @@ def resolve_caption_layout(
             content_width_px=max_text_width_px,
             line_width_px=line_width_px,
         )
-        for line_width_px in line_widths_px
+        for line_width_px in candidate.line_widths_px
     )
     line_top_positions_px = _resolve_line_top_positions(
         content_top_px=content_top_px,
-        line_heights_px=line_heights_px,
-        line_spacing_px=line_spacing_px,
+        line_heights_px=candidate.line_heights_px,
+        line_spacing_px=candidate.line_spacing_px,
     )
     return CaptionLayoutResult(
-        rendered_lines=layout.lines,
-        rendered_text="\n".join(layout.lines),
-        font_size_px=font_size_px,
-        line_font_sizes_px=line_font_sizes_px,
-        overflowed=overflowed,
-        review_required=overflowed and review_required_if_overflow,
-        truncated_for_runtime=layout.truncated_for_runtime,
-        fit_strategy=fit_strategy,
+        rendered_lines=candidate.lines,
+        rendered_text="\n".join(candidate.lines),
+        font_size_px=candidate.font_size_px,
+        line_font_sizes_px=candidate.line_font_sizes_px,
+        overflowed=candidate.overflowed,
+        review_required=candidate.overflowed and review_required_if_overflow,
+        truncated_for_runtime=candidate.truncated_for_runtime,
+        fit_strategy=candidate.fit_strategy,
         line_break_mode="manual" if manual_breaks else "auto_wrap",
-        line_widths_px=line_widths_px,
-        line_height_px=line_height_px,
-        line_heights_px=line_heights_px,
-        line_spacing_px=line_spacing_px,
-        text_block_width_px=content_width_px,
-        text_block_height_px=content_height_px,
+        line_widths_px=candidate.line_widths_px,
+        line_height_px=candidate.line_height_px,
+        line_heights_px=candidate.line_heights_px,
+        line_spacing_px=candidate.line_spacing_px,
+        text_block_width_px=candidate.text_block_width_px,
+        text_block_height_px=candidate.text_block_height_px,
         max_text_width_px=max_text_width_px,
         line_left_positions_px=line_left_positions_px,
         line_top_positions_px=line_top_positions_px,
         box_left_px=box_left_px,
         box_top_px=box_top_px,
         box_width_px=textbox_width_px,
-        box_height_px=box_height_px,
+        box_height_px=candidate.box_height_px,
         frame_width_px=frame_context.width_px,
         frame_height_px=frame_context.height_px,
     )
 
 
-@dataclass(slots=True, frozen=True)
-class _RawLayout:
-    lines: tuple[str, ...]
-    line_widths_px: tuple[int, ...]
-    line_height_px: int
-    overflowed: bool
-    truncated_for_runtime: bool
+def _solve_best_fit_layout(
+    *,
+    text: str,
+    font_family: str,
+    font_file: Path | None,
+    requested_font_size_px: int,
+    min_font_size_px: int,
+    max_width_px: int,
+    stroke_width: int,
+    max_lines: int,
+    overflow_policy: str,
+    manual_breaks: bool,
+    padding: int,
+    textbox_height_ratio: float,
+    frame_height_px: int,
+    band_height_px: int,
+    line_spacing_ratio: float,
+) -> _LayoutCandidate:
+    best_candidate: _LayoutCandidate | None = None
+    for candidate_font_size_px in range(requested_font_size_px, min_font_size_px - 1, -1):
+        raw_layout = _layout_text(
+            text=text,
+            font=_build_qfont(
+                font_family=font_family,
+                font_file=font_file,
+                pixel_size=candidate_font_size_px,
+            ),
+            max_width_px=_effective_wrap_width(max_text_width_px=max_width_px, stroke_width=stroke_width),
+            stroke_width=stroke_width,
+            manual_breaks=manual_breaks,
+            max_lines=max_lines,
+            overflow_policy=overflow_policy,
+        )
+        line_font_sizes_px, line_widths_px, line_heights_px, per_line_width_overflow, any_line_scaled = _resolve_line_metrics(
+            lines=raw_layout.lines,
+            font_family=font_family,
+            font_file=font_file,
+            max_font_size_px=candidate_font_size_px,
+            min_font_size_px=min_font_size_px,
+            max_width_px=max_width_px,
+            stroke_width=stroke_width,
+            allow_per_line_scale=manual_breaks,
+        )
+        line_spacing_px = _resolve_line_spacing_px(
+            base_font_size_px=candidate_font_size_px,
+            line_heights_px=line_heights_px,
+            line_spacing_ratio=line_spacing_ratio,
+        )
+        text_block_width_px = max(line_widths_px, default=0)
+        text_block_height_px = sum(line_heights_px) + (max(0, len(raw_layout.lines) - 1) * line_spacing_px)
+        box_height_px = min(
+            frame_height_px if band_height_px <= 0 else band_height_px,
+            _textbox_height(
+                frame_height_px=frame_height_px,
+                textbox_height_ratio=textbox_height_ratio,
+                content_height_px=text_block_height_px,
+                padding=padding,
+                band_height_px=band_height_px,
+            ),
+        )
+        content_height_capacity_px = _textbox_content_height(textbox_height_px=box_height_px, padding=padding)
+        height_overflowed = text_block_height_px > content_height_capacity_px
+        overflowed = (
+            raw_layout.line_count_exceeded
+            or per_line_width_overflow
+            or height_overflowed
+            or raw_layout.truncated_for_runtime
+        )
+        fit_strategy = _resolve_fit_strategy(
+            manual_breaks=manual_breaks,
+            raw_layout=raw_layout,
+            requested_font_size_px=requested_font_size_px,
+            resolved_font_size_px=candidate_font_size_px,
+            any_line_scaled=any_line_scaled,
+        )
+        candidate = _LayoutCandidate(
+            lines=raw_layout.lines,
+            font_size_px=candidate_font_size_px,
+            line_font_sizes_px=line_font_sizes_px,
+            line_widths_px=line_widths_px,
+            line_height_px=max(line_heights_px, default=raw_layout.line_height_px),
+            line_heights_px=line_heights_px,
+            line_spacing_px=line_spacing_px,
+            text_block_width_px=text_block_width_px,
+            text_block_height_px=text_block_height_px,
+            box_height_px=box_height_px,
+            content_height_capacity_px=content_height_capacity_px,
+            overflowed=overflowed,
+            truncated_for_runtime=raw_layout.truncated_for_runtime,
+            fit_strategy=fit_strategy,
+            line_break_mode="manual" if manual_breaks else "auto_wrap",
+            score=_score_layout_candidate(
+                lines=raw_layout.lines,
+                line_widths_px=line_widths_px,
+                line_font_sizes_px=line_font_sizes_px,
+                font_size_px=candidate_font_size_px,
+                requested_font_size_px=requested_font_size_px,
+                max_width_px=max_width_px,
+                text_block_height_px=text_block_height_px,
+                content_height_capacity_px=content_height_capacity_px,
+                overflowed=overflowed,
+                line_count_exceeded=raw_layout.line_count_exceeded,
+                per_line_width_overflow=per_line_width_overflow,
+                height_overflowed=height_overflowed,
+                truncated_for_runtime=raw_layout.truncated_for_runtime,
+            ),
+        )
+        if best_candidate is None or _candidate_sort_key(candidate) < _candidate_sort_key(best_candidate):
+            best_candidate = candidate
+    if best_candidate is None:
+        raise ValueError("Caption solver could not evaluate any layout candidates.")
+    return best_candidate
 
 
 def _resolve_line_metrics(
@@ -284,6 +360,102 @@ def _resolve_line_metrics(
         line_widths.append(width_px)
         line_heights.append(height_px)
     return tuple(line_font_sizes), tuple(line_widths), tuple(line_heights), overflowed, any_scaled
+
+
+def _resolve_fit_strategy(
+    *,
+    manual_breaks: bool,
+    raw_layout: _RawLayout,
+    requested_font_size_px: int,
+    resolved_font_size_px: int,
+    any_line_scaled: bool,
+) -> str:
+    if raw_layout.truncated_for_runtime:
+        return "truncated_for_runtime"
+    if manual_breaks:
+        if any_line_scaled:
+            return "per_line_scaled_to_fit"
+        if resolved_font_size_px < requested_font_size_px:
+            return "scaled_to_fit"
+        return "manual_breaks"
+    if resolved_font_size_px < requested_font_size_px:
+        return "scaled_to_fit"
+    return "wrapped"
+
+
+def _candidate_sort_key(candidate: _LayoutCandidate) -> tuple[float, ...]:
+    return (
+        1.0 if candidate.overflowed else 0.0,
+        -float(candidate.font_size_px),
+        candidate.score,
+        float(candidate.text_block_height_px),
+    )
+
+
+def _score_layout_candidate(
+    *,
+    lines: tuple[str, ...],
+    line_widths_px: tuple[int, ...],
+    line_font_sizes_px: tuple[int, ...],
+    font_size_px: int,
+    requested_font_size_px: int,
+    max_width_px: int,
+    text_block_height_px: int,
+    content_height_capacity_px: int,
+    overflowed: bool,
+    line_count_exceeded: bool,
+    per_line_width_overflow: bool,
+    height_overflowed: bool,
+    truncated_for_runtime: bool,
+) -> float:
+    target_width_px = max_width_px * (0.88 if len(line_widths_px) <= 1 else 0.78)
+    width_balance_penalty = _line_balance_score(list(line_widths_px), target_width_px=target_width_px)
+    width_underfill_penalty = sum(max(0.0, (target_width_px - width) * 0.25) for width in line_widths_px)
+    font_variance_penalty = (
+        0.0
+        if not line_font_sizes_px
+        else (max(line_font_sizes_px) - min(line_font_sizes_px)) * 2.0
+    )
+    whitespace_penalty = max(0.0, (content_height_capacity_px - text_block_height_px) * 0.02)
+    downscale_penalty = max(0.0, requested_font_size_px - font_size_px) * 6.0
+    overflow_penalty = 0.0
+    if overflowed:
+        overflow_penalty += 1_000_000.0
+    if line_count_exceeded:
+        overflow_penalty += 250_000.0
+    if per_line_width_overflow:
+        overflow_penalty += 150_000.0
+    if height_overflowed:
+        overflow_penalty += 150_000.0
+    if truncated_for_runtime:
+        overflow_penalty += 200_000.0
+    if len(lines) >= 2:
+        width_balance_penalty += _layout_balance_badness(
+            _RawLayout(
+                lines=lines,
+                line_widths_px=line_widths_px,
+                line_height_px=0,
+                overflowed=overflowed,
+                truncated_for_runtime=truncated_for_runtime,
+                line_count_exceeded=line_count_exceeded,
+                width_overflowed=per_line_width_overflow,
+            ),
+            max_width_px=max_width_px,
+        )
+    return overflow_penalty + downscale_penalty + width_balance_penalty + width_underfill_penalty + font_variance_penalty + whitespace_penalty
+
+
+def _resolve_line_spacing_px(
+    *,
+    base_font_size_px: int,
+    line_heights_px: tuple[int, ...],
+    line_spacing_ratio: float,
+) -> int:
+    if not line_heights_px:
+        return 0
+    reference_height_px = max(1, round(sum(line_heights_px) / len(line_heights_px)))
+    spacing_basis_px = max(reference_height_px, round(base_font_size_px * 0.75))
+    return max(0, round(spacing_basis_px * max(0.0, line_spacing_ratio)))
 
 
 def _resolve_line_font_size(
@@ -340,33 +512,45 @@ def _layout_text(
     if manual_breaks:
         lines = tuple(text.splitlines() or [""])
         line_widths_px = tuple(_measure_line_width(line, font=font, stroke_width=stroke_width) for line in lines)
-        overflowed = len(lines) > max_lines or any(width > max_width_px for width in line_widths_px)
+        line_count_exceeded = len(lines) > max_lines
+        width_overflowed = any(width > max_width_px for width in line_widths_px)
+        overflowed = line_count_exceeded or width_overflowed
         truncated_for_runtime = False
         if overflowed and "truncate" in overflow_policy:
             lines = _truncate_lines(lines, font=font, max_width_px=max_width_px, max_lines=max_lines, stroke_width=stroke_width)
             line_widths_px = tuple(_measure_line_width(line, font=font, stroke_width=stroke_width) for line in lines)
             truncated_for_runtime = True
+            line_count_exceeded = False
+            width_overflowed = any(width > max_width_px for width in line_widths_px)
         return _RawLayout(
             lines=lines,
             line_widths_px=line_widths_px,
             line_height_px=_measure_line_height(font=font, stroke_width=stroke_width),
             overflowed=overflowed,
             truncated_for_runtime=truncated_for_runtime,
+            line_count_exceeded=line_count_exceeded,
+            width_overflowed=width_overflowed,
         )
     wrapped_lines = _wrap_text_to_width(text, font=font, max_width_px=max_width_px)
     line_widths_px = tuple(_measure_line_width(line, font=font, stroke_width=stroke_width) for line in wrapped_lines)
-    overflowed = len(wrapped_lines) > max_lines or any(width > max_width_px for width in line_widths_px)
+    line_count_exceeded = len(wrapped_lines) > max_lines
+    width_overflowed = any(width > max_width_px for width in line_widths_px)
+    overflowed = line_count_exceeded or width_overflowed
     truncated_for_runtime = False
     if overflowed and "truncate" in overflow_policy:
         wrapped_lines = _truncate_lines(wrapped_lines, font=font, max_width_px=max_width_px, max_lines=max_lines, stroke_width=stroke_width)
         line_widths_px = tuple(_measure_line_width(line, font=font, stroke_width=stroke_width) for line in wrapped_lines)
         truncated_for_runtime = True
+        line_count_exceeded = False
+        width_overflowed = any(width > max_width_px for width in line_widths_px)
     return _RawLayout(
         lines=wrapped_lines,
         line_widths_px=line_widths_px,
         line_height_px=_measure_line_height(font=font, stroke_width=stroke_width),
         overflowed=overflowed,
         truncated_for_runtime=truncated_for_runtime,
+        line_count_exceeded=line_count_exceeded,
+        width_overflowed=width_overflowed,
     )
 
 
@@ -553,8 +737,29 @@ def _textbox_width(frame_width_px: int, *, textbox_width_ratio: float) -> int:
     return max(32, round(frame_width_px * textbox_width_ratio))
 
 
+def _textbox_height(
+    *,
+    frame_height_px: int,
+    textbox_height_ratio: float,
+    content_height_px: int,
+    padding: int,
+    band_height_px: int,
+) -> int:
+    minimum_height_px = max(0, content_height_px + (padding * 2))
+    if textbox_height_ratio <= 0:
+        return minimum_height_px
+    requested_height_px = max((padding * 2) + 1, round(frame_height_px * textbox_height_ratio))
+    if band_height_px > 0:
+        return min(requested_height_px, band_height_px)
+    return requested_height_px
+
+
 def _textbox_content_width(*, textbox_width_px: int, padding: int) -> int:
     return max(16, textbox_width_px - (padding * 2))
+
+
+def _textbox_content_height(*, textbox_height_px: int, padding: int) -> int:
+    return max(0, textbox_height_px - (padding * 2))
 
 
 def _effective_wrap_width(*, max_text_width_px: int, stroke_width: int) -> int:
@@ -568,6 +773,24 @@ def _resolve_box_left(*, alignment: str, frame_width_px: int, box_width_px: int)
     if normalized == "right":
         return max(0, frame_width_px - box_width_px)
     return max(0, round((frame_width_px - box_width_px) / 2))
+
+
+def _resolve_content_top_in_box(
+    *,
+    box_top_px: int,
+    box_height_px: int,
+    padding: int,
+    content_height_px: int,
+    vertical_alignment: str,
+) -> int:
+    content_area_top_px = box_top_px + padding
+    content_area_height_px = max(0, box_height_px - (padding * 2))
+    normalized = vertical_alignment.strip().casefold()
+    if normalized == "bottom":
+        return content_area_top_px + max(0, content_area_height_px - content_height_px)
+    if normalized == "middle":
+        return content_area_top_px + max(0, round((content_area_height_px - content_height_px) / 2))
+    return content_area_top_px
 
 
 def _bounded_ratio(value: float) -> float:

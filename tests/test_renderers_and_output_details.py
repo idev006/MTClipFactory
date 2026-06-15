@@ -33,6 +33,95 @@ class InspectableFFmpegPreviewRenderer(FFmpegPreviewRenderer):
         Path(arguments[-1]).write_bytes(b"ffmpeg-output")
 
 
+def _build_caption_role(
+    *,
+    font_file: Path,
+    rendered_lines: tuple[str, ...],
+    alignment: str,
+    textbox_alignment: str,
+    line_left_positions_px: tuple[int, ...],
+    line_top_positions_px: tuple[int, ...],
+    line_font_sizes_px: tuple[int, ...],
+    line_widths_px: tuple[int, ...],
+    line_height_px: int,
+    line_heights_px: tuple[int, ...],
+    text_block_width_px: int,
+    text_block_height_px: int,
+    max_text_width_px: int,
+    box_left_px: int,
+    box_top_px: int,
+    box_width_px: int,
+    box_height_px: int,
+    padding: int,
+    textbox_width_ratio: float,
+    textbox_height_ratio: float = 0.0,
+    vertical_alignment: str = "top",
+) -> ResolvedCaptionRole:
+    return ResolvedCaptionRole(
+        role="main",
+        source_text="\n".join(rendered_lines),
+        rendered_text="\n".join(rendered_lines),
+        segment_type="hook",
+        sequence_index=1,
+        seed_key="seed",
+        selection_index=0,
+        rendered_lines=rendered_lines,
+        line_break_mode="manual",
+        fit_strategy="manual_breaks",
+        line_count=len(rendered_lines),
+        font_family="THSarabun",
+        font_fallbacks=(),
+        font_size=72,
+        requested_font_size=72,
+        font_size_unit="px",
+        min_font_size=48,
+        font_weight="bold",
+        font_source=str(font_file),
+        font_file=font_file,
+        font_resolution_mode="workspace_primary",
+        font_resolution_target="THSarabun",
+        position="center",
+        alignment=alignment,
+        vertical_alignment=vertical_alignment,
+        textbox_alignment=textbox_alignment,
+        text_color="#FFFFFF",
+        stroke_color="#000000",
+        stroke_width=3,
+        background_color="#000000",
+        background_opacity=0.15,
+        padding=padding,
+        max_lines=3,
+        max_chars_per_line=18,
+        max_width_ratio=textbox_width_ratio,
+        textbox_width_ratio=textbox_width_ratio,
+        textbox_height_ratio=textbox_height_ratio,
+        line_spacing_ratio=0.12,
+        safe_top_ratio=0.14,
+        safe_bottom_ratio=0.46,
+        line_spacing_px=8,
+        line_font_sizes_px=line_font_sizes_px,
+        line_widths_px=line_widths_px,
+        line_height_px=line_height_px,
+        line_heights_px=line_heights_px,
+        text_block_width_px=text_block_width_px,
+        text_block_height_px=text_block_height_px,
+        max_text_width_px=max_text_width_px,
+        line_left_positions_px=line_left_positions_px,
+        line_top_positions_px=line_top_positions_px,
+        box_left_px=box_left_px,
+        box_top_px=box_top_px,
+        box_width_px=box_width_px,
+        box_height_px=box_height_px,
+        frame_width_px=1080,
+        frame_height_px=1920,
+        overflow_policy="wrap_then_scale_then_review",
+        enter_animation="pop_in",
+        overflowed=False,
+        review_required=False,
+        truncated_for_runtime=False,
+    )
+
+
 def _settings(tmp_path: Path) -> SystemSettingsDTO:
     ffmpeg_path = tmp_path / "ffmpeg.exe"
     ffmpeg_path.write_bytes(b"ffmpeg")
@@ -378,6 +467,7 @@ def test_ffmpeg_renderer_builds_drawtext_filters_for_caption_layers(tmp_path) ->
                         font_resolution_target="THSarabun",
                         position="center",
                         alignment="center",
+                        vertical_alignment="top",
                         textbox_alignment="center",
                         text_color="#FFFFFF",
                         stroke_color="#000000",
@@ -389,6 +479,7 @@ def test_ffmpeg_renderer_builds_drawtext_filters_for_caption_layers(tmp_path) ->
                         max_chars_per_line=18,
                         max_width_ratio=0.78,
                         textbox_width_ratio=0.78,
+                        textbox_height_ratio=0.0,
                         line_spacing_ratio=0.12,
                         safe_top_ratio=0.14,
                         safe_bottom_ratio=0.46,
@@ -423,6 +514,67 @@ def test_ffmpeg_renderer_builds_drawtext_filters_for_caption_layers(tmp_path) ->
     assert any("drawtext=" in " ".join(command) for command in renderer.commands)
     assert any("drawbox=" in " ".join(command) for command in renderer.commands)
     assert any("fontfile='" in " ".join(command) for command in renderer.commands)
+
+
+def test_ffmpeg_renderer_can_target_textbox_only_caption_geometry_without_full_pipeline(tmp_path) -> None:
+    settings = _settings(tmp_path)
+    renderer = InspectableFFmpegPreviewRenderer(StaticSettingsService(settings), tmp_path / "preview_root")
+    source_file = tmp_path / "visual.mp4"
+    font_file = tmp_path / "THSarabun.ttf"
+    source_file.write_bytes(b"visual")
+    font_file.write_bytes(b"font")
+
+    renderer.render_output(
+        product_code="honey",
+        output_stem="textbox_only_preview",
+        source_files=[source_file],
+        segment_clips=(
+            PreviewSegmentClip(
+                sequence_index=1,
+                segment_type="hook",
+                layer_name="background_visual",
+                asset_id=11,
+                asset_code="visual_asset",
+                source_file=source_file,
+                start_sec=0.0,
+                end_sec=1.0,
+                target_duration_sec=1.0,
+                fill_mode="trim_to_segment",
+                captions=(
+                    _build_caption_role(
+                        font_file=font_file,
+                        rendered_lines=("main line", "second line", "third line"),
+                        alignment="left",
+                        textbox_alignment="center",
+                        line_left_positions_px=(132, 132, 132),
+                        line_top_positions_px=(420, 510, 600),
+                        line_font_sizes_px=(72, 60, 56),
+                        line_widths_px=(300, 280, 250),
+                        line_height_px=78,
+                        line_heights_px=(78, 66, 62),
+                        text_block_width_px=300,
+                        text_block_height_px=222,
+                        max_text_width_px=816,
+                        box_left_px=108,
+                        box_top_px=396,
+                        box_width_px=864,
+                        box_height_px=270,
+                        padding=24,
+                        textbox_width_ratio=0.8,
+                    ),
+                ),
+            ),
+        ),
+        target_ratio="9:16",
+    )
+
+    command_text = "\n".join(" ".join(command) for command in renderer.commands)
+
+    assert "drawbox=x=108:y=396:w=864:h=270:color=#000000@0.15:t=fill" in command_text
+    assert command_text.count("drawtext=") >= 3
+    assert "fontsize=72:x=132:y=420" in command_text
+    assert "fontsize=60:x=132:y=510" in command_text
+    assert "fontsize=56:x=132:y=600" in command_text
 
 
 def test_ffmpeg_renderer_uses_freeze_last_frame_for_short_visual_segments(tmp_path) -> None:

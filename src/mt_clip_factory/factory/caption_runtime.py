@@ -30,6 +30,7 @@ class CaptionPool:
 class CaptionRoleStyle:
     position: str
     alignment: str
+    vertical_alignment: str
     textbox_alignment: str
     font_family: str
     font_fallbacks: tuple[str, ...]
@@ -47,6 +48,7 @@ class CaptionRoleStyle:
     max_chars_per_line: int
     max_width_ratio: float
     textbox_width_ratio: float
+    textbox_height_ratio: float
     line_spacing_ratio: float
     safe_top_ratio: float
     safe_bottom_ratio: float
@@ -89,6 +91,7 @@ class ResolvedCaptionRole:
     font_resolution_target: str
     position: str
     alignment: str
+    vertical_alignment: str
     textbox_alignment: str
     text_color: str
     stroke_color: str
@@ -100,6 +103,7 @@ class ResolvedCaptionRole:
     max_chars_per_line: int
     max_width_ratio: float
     textbox_width_ratio: float
+    textbox_height_ratio: float
     line_spacing_ratio: float
     safe_top_ratio: float
     safe_bottom_ratio: float
@@ -355,10 +359,12 @@ class CaptionRuntimeService:
             max_lines=style.max_lines,
             max_chars_per_line=style.max_chars_per_line,
             textbox_width_ratio=style.textbox_width_ratio,
+            textbox_height_ratio=style.textbox_height_ratio,
             textbox_alignment=style.textbox_alignment,
             line_spacing_ratio=style.line_spacing_ratio,
             padding=style.padding,
             alignment=style.alignment,
+            vertical_alignment=style.vertical_alignment,
             position=style.position,
             stroke_width=style.stroke_width,
             safe_top_ratio=style.safe_top_ratio,
@@ -392,6 +398,7 @@ class CaptionRuntimeService:
             font_resolution_target=resolved_font_name,
             position=style.position,
             alignment=style.alignment,
+            vertical_alignment=style.vertical_alignment,
             textbox_alignment=style.textbox_alignment,
             text_color=style.text_color,
             stroke_color=style.stroke_color,
@@ -403,6 +410,7 @@ class CaptionRuntimeService:
             max_chars_per_line=style.max_chars_per_line,
             max_width_ratio=style.max_width_ratio,
             textbox_width_ratio=style.textbox_width_ratio,
+            textbox_height_ratio=style.textbox_height_ratio,
             line_spacing_ratio=style.line_spacing_ratio,
             safe_top_ratio=style.safe_top_ratio,
             safe_bottom_ratio=style.safe_bottom_ratio,
@@ -463,6 +471,7 @@ def _parse_role_style(value, *, role: str) -> CaptionRoleStyle:
     return CaptionRoleStyle(
         position=_optional_text(section.get("position")) or default_position,
         alignment=_optional_text(section.get("alignment")) or "center",
+        vertical_alignment=_optional_text(section.get("vertical_alignment")) or "top",
         textbox_alignment=_optional_text(section.get("textbox_alignment")) or "center",
         font_family=_optional_text(section.get("font_family")) or "Arial",
         font_fallbacks=_text_list(section.get("font_fallbacks"), context=f"[caption_properties.{role}].font_fallbacks"),
@@ -504,6 +513,13 @@ def _parse_role_style(value, *, role: str) -> CaptionRoleStyle:
             context=f"[caption_properties.{role}].max_width_ratio",
         ),
         textbox_width_ratio=textbox_width_ratio,
+        textbox_height_ratio=_bounded_float(
+            section.get("textbox_height_ratio"),
+            default=0.0,
+            minimum=0.0,
+            maximum=1.0,
+            context=f"[caption_properties.{role}].textbox_height_ratio",
+        ),
         line_spacing_ratio=_bounded_float(
             section.get("line_spacing_ratio"),
             default=0.12 if role == "main" else 0.16,

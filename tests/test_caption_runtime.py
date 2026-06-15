@@ -188,7 +188,7 @@ def test_caption_runtime_supports_point_sized_fonts_and_pixel_layout(tmp_path) -
                 "font_size = 18",
                 'font_size_unit = "pt"',
                 "min_font_size = 14",
-                "max_lines = 2",
+                "max_lines = 4",
                 "max_chars_per_line = 18",
                 "max_width_ratio = 0.7",
                 "line_spacing_ratio = 0.2",
@@ -338,6 +338,299 @@ def test_caption_runtime_resolves_centered_textbox_with_left_aligned_text(tmp_pa
     assert role.box_left_px == 108
     assert role.line_left_positions_px[0] == role.box_left_px + role.padding
     assert role.max_text_width_px == 816
+
+
+def test_caption_runtime_supports_vertical_alignment_inside_tall_textbox(tmp_path) -> None:
+    media_root = tmp_path / "media_library"
+    fonts_root = tmp_path / "fonts"
+    fonts_root.mkdir(parents=True, exist_ok=True)
+    (fonts_root / "THSarabun.ttf").write_bytes(b"font")
+    product_dir = tmp_path / "product_vertical_align"
+    product_dir.mkdir(parents=True, exist_ok=True)
+    caption_file = product_dir / "captions.toml"
+    caption_file.write_text(
+        "\n".join(
+            [
+                "[caption_pools.hook]",
+                'main = ["one\\ntwo"]',
+                "",
+                "[caption_properties.main]",
+                'font_family = "THSarabun"',
+                'alignment = "center"',
+                'textbox_alignment = "center"',
+                'vertical_alignment = "middle"',
+                "textbox_width_ratio = 0.6",
+                "textbox_height_ratio = 0.2",
+                "padding = 24",
+                "font_size = 72",
+                "min_font_size = 48",
+                "safe_top_ratio = 0.14",
+                "safe_bottom_ratio = 0.46",
+            ]
+        ),
+        encoding="utf-8",
+    )
+    store = ProductAutomationMetadataStore(media_root)
+    store.sync_caption_contract(product_code="product_vertical_align", source_file=caption_file)
+    service = CaptionRuntimeService(metadata_store=store, fonts_root=fonts_root)
+    segments = (
+        TimelineSegment(
+            recipe_id=1,
+            segment_type="hook",
+            sequence_index=1,
+            start_sec=0.0,
+            end_sec=3.0,
+            target_duration_sec=3.0,
+        ),
+    )
+
+    resolved = service.resolve_for_segments(
+        product_code="product_vertical_align",
+        recipe_code="product_vertical_align_batch_001",
+        segments=segments,
+        frame_width_px=1080,
+        frame_height_px=1920,
+    )
+    role = resolved[0].roles[0]
+
+    assert role.vertical_alignment == "middle"
+    assert role.box_height_px == 384
+    assert role.line_top_positions_px[0] > role.box_top_px + role.padding
+    content_area_bottom = role.box_top_px + role.box_height_px - role.padding
+    last_line_bottom = role.line_top_positions_px[-1] + role.line_heights_px[-1]
+    assert last_line_bottom < content_area_bottom
+
+
+def test_caption_runtime_bestfits_long_line_within_narrow_textbox(tmp_path) -> None:
+    media_root = tmp_path / "media_library"
+    fonts_root = tmp_path / "fonts"
+    fonts_root.mkdir(parents=True, exist_ok=True)
+    (fonts_root / "THSarabun.ttf").write_bytes(b"font")
+    product_dir = tmp_path / "product_bestfit"
+    product_dir.mkdir(parents=True, exist_ok=True)
+    caption_file = product_dir / "captions.toml"
+    caption_file.write_text(
+        "\n".join(
+            [
+                "[caption_pools.hook]",
+                'main = ["This line should shrink to fit the box width"]',
+                "",
+                "[caption_properties.main]",
+                'font_family = "THSarabun"',
+                'alignment = "center"',
+                "textbox_width_ratio = 0.35",
+                "padding = 20",
+                "font_size = 72",
+                "min_font_size = 24",
+                "max_lines = 4",
+                'overflow_policy = "wrap_then_scale_then_review"',
+            ]
+        ),
+        encoding="utf-8",
+    )
+    store = ProductAutomationMetadataStore(media_root)
+    store.sync_caption_contract(product_code="product_bestfit", source_file=caption_file)
+    service = CaptionRuntimeService(metadata_store=store, fonts_root=fonts_root)
+    segments = (
+        TimelineSegment(
+            recipe_id=1,
+            segment_type="hook",
+            sequence_index=1,
+            start_sec=0.0,
+            end_sec=3.0,
+            target_duration_sec=3.0,
+        ),
+    )
+
+    resolved = service.resolve_for_segments(
+        product_code="product_bestfit",
+        recipe_code="product_bestfit_batch_001",
+        segments=segments,
+        frame_width_px=1080,
+        frame_height_px=1920,
+    )
+    role = resolved[0].roles[0]
+
+    assert role.box_width_px == 378
+    assert role.max_text_width_px == 338
+    assert all(width <= role.max_text_width_px for width in role.line_widths_px)
+    assert role.font_size <= role.requested_font_size
+    assert role.overflowed is False
+
+
+def test_caption_runtime_scales_to_fit_fixed_textbox_height(tmp_path) -> None:
+    media_root = tmp_path / "media_library"
+    fonts_root = tmp_path / "fonts"
+    fonts_root.mkdir(parents=True, exist_ok=True)
+    (fonts_root / "THSarabun.ttf").write_bytes(b"font")
+    product_dir = tmp_path / "product_height_fit"
+    product_dir.mkdir(parents=True, exist_ok=True)
+    caption_file = product_dir / "captions.toml"
+    caption_file.write_text(
+        "\n".join(
+            [
+                "[caption_pools.hook]",
+                'main = ["one\\ntwo\\nthree\\nfour"]',
+                "",
+                "[caption_properties.main]",
+                'font_family = "THSarabun"',
+                'alignment = "center"',
+                'vertical_alignment = "middle"',
+                "textbox_width_ratio = 0.7",
+                "textbox_height_ratio = 0.12",
+                "padding = 20",
+                "font_size = 96",
+                "min_font_size = 24",
+                "max_lines = 4",
+                'overflow_policy = "wrap_then_scale_then_review"',
+            ]
+        ),
+        encoding="utf-8",
+    )
+    store = ProductAutomationMetadataStore(media_root)
+    store.sync_caption_contract(product_code="product_height_fit", source_file=caption_file)
+    service = CaptionRuntimeService(metadata_store=store, fonts_root=fonts_root)
+    segments = (
+        TimelineSegment(
+            recipe_id=1,
+            segment_type="hook",
+            sequence_index=1,
+            start_sec=0.0,
+            end_sec=3.0,
+            target_duration_sec=3.0,
+        ),
+    )
+
+    resolved = service.resolve_for_segments(
+        product_code="product_height_fit",
+        recipe_code="product_height_fit_batch_001",
+        segments=segments,
+        frame_width_px=1080,
+        frame_height_px=1920,
+    )
+    role = resolved[0].roles[0]
+
+    assert role.box_height_px == 230
+    assert role.font_size < role.requested_font_size
+    assert role.overflowed is False
+    assert role.text_block_height_px <= role.box_height_px - (role.padding * 2)
+
+
+def test_caption_runtime_keeps_overflow_truth_when_textbox_height_cannot_fit(tmp_path) -> None:
+    media_root = tmp_path / "media_library"
+    fonts_root = tmp_path / "fonts"
+    fonts_root.mkdir(parents=True, exist_ok=True)
+    (fonts_root / "THSarabun.ttf").write_bytes(b"font")
+    product_dir = tmp_path / "product_height_overflow"
+    product_dir.mkdir(parents=True, exist_ok=True)
+    caption_file = product_dir / "captions.toml"
+    caption_file.write_text(
+        "\n".join(
+            [
+                "[caption_pools.hook]",
+                'main = ["one\\ntwo\\nthree\\nfour\\nfive"]',
+                "",
+                "[caption_properties.main]",
+                'font_family = "THSarabun"',
+                'alignment = "center"',
+                'vertical_alignment = "middle"',
+                "textbox_width_ratio = 0.7",
+                "textbox_height_ratio = 0.08",
+                "padding = 20",
+                "font_size = 88",
+                "min_font_size = 48",
+                "max_lines = 5",
+                'overflow_policy = "wrap_then_scale_then_review"',
+                "review_required_if_overflow = true",
+            ]
+        ),
+        encoding="utf-8",
+    )
+    store = ProductAutomationMetadataStore(media_root)
+    store.sync_caption_contract(product_code="product_height_overflow", source_file=caption_file)
+    service = CaptionRuntimeService(metadata_store=store, fonts_root=fonts_root)
+    segments = (
+        TimelineSegment(
+            recipe_id=1,
+            segment_type="hook",
+            sequence_index=1,
+            start_sec=0.0,
+            end_sec=3.0,
+            target_duration_sec=3.0,
+        ),
+    )
+
+    resolved = service.resolve_for_segments(
+        product_code="product_height_overflow",
+        recipe_code="product_height_overflow_batch_001",
+        segments=segments,
+        frame_width_px=1080,
+        frame_height_px=1920,
+    )
+    role = resolved[0].roles[0]
+
+    assert role.box_height_px == 154
+    assert role.overflowed is True
+    assert role.review_required is True
+    assert role.text_block_height_px > role.box_height_px - (role.padding * 2)
+
+
+def test_caption_runtime_can_right_align_textbox_while_centering_text_inside_it(tmp_path) -> None:
+    media_root = tmp_path / "media_library"
+    fonts_root = tmp_path / "fonts"
+    fonts_root.mkdir(parents=True, exist_ok=True)
+    (fonts_root / "THSarabun.ttf").write_bytes(b"font")
+    product_dir = tmp_path / "product_textbox_right"
+    product_dir.mkdir(parents=True, exist_ok=True)
+    caption_file = product_dir / "captions.toml"
+    caption_file.write_text(
+        "\n".join(
+            [
+                "[caption_pools.hook]",
+                'main = ["fit\\ninside box"]',
+                "",
+                "[caption_properties.main]",
+                'font_family = "THSarabun"',
+                'alignment = "center"',
+                'textbox_alignment = "right"',
+                "textbox_width_ratio = 0.5",
+                "padding = 24",
+                "font_size = 72",
+                "min_font_size = 48",
+                "safe_top_ratio = 0.14",
+                "safe_bottom_ratio = 0.46",
+            ]
+        ),
+        encoding="utf-8",
+    )
+    store = ProductAutomationMetadataStore(media_root)
+    store.sync_caption_contract(product_code="product_textbox_right", source_file=caption_file)
+    service = CaptionRuntimeService(metadata_store=store, fonts_root=fonts_root)
+    segments = (
+        TimelineSegment(
+            recipe_id=1,
+            segment_type="hook",
+            sequence_index=1,
+            start_sec=0.0,
+            end_sec=3.0,
+            target_duration_sec=3.0,
+        ),
+    )
+
+    resolved = service.resolve_for_segments(
+        product_code="product_textbox_right",
+        recipe_code="product_textbox_right_batch_001",
+        segments=segments,
+        frame_width_px=1080,
+        frame_height_px=1920,
+    )
+    role = resolved[0].roles[0]
+
+    assert role.textbox_alignment == "right"
+    assert role.box_width_px == 540
+    assert role.box_left_px == 540
+    assert role.line_left_positions_px[0] > role.box_left_px + role.padding
+    assert role.line_left_positions_px[0] < role.box_left_px + role.max_text_width_px
 
 
 def test_caption_runtime_scales_manual_break_lines_independently_to_fit_width(tmp_path) -> None:
