@@ -412,6 +412,7 @@ def _build_caption_manifest_payload(resolved_captions: dict[int, ResolvedSegment
                         "vertical_alignment": role.vertical_alignment,
                         "textbox_alignment": role.textbox_alignment,
                         "textbox_mode": role.textbox_mode,
+                        "textbox_height_mode": role.textbox_height_mode,
                         "text_color": role.text_color,
                         "stroke_color": role.stroke_color,
                         "stroke_width": role.stroke_width,

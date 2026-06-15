@@ -59,6 +59,7 @@ When code changes, the related Markdown documents in this folder must be updated
 51. [51_Textbox_Based_Caption_Layout_Workflow_2026-06-15.md](/F:/programming/python/MTClipFactory/doc/51_Textbox_Based_Caption_Layout_Workflow_2026-06-15.md)
 52. [52_Best_Fit_Caption_Solver_Workflow_2026-06-15.md](/F:/programming/python/MTClipFactory/doc/52_Best_Fit_Caption_Solver_Workflow_2026-06-15.md)
 53. [53_Per_Line_Textbox_Caption_Workflow_2026-06-15.md](/F:/programming/python/MTClipFactory/doc/53_Per_Line_Textbox_Caption_Workflow_2026-06-15.md)
+54. [54_Textbox_Height_Mode_And_Promo_Card_Workflow_2026-06-15.md](/F:/programming/python/MTClipFactory/doc/54_Textbox_Height_Mode_And_Promo_Card_Workflow_2026-06-15.md)
 
 ## Governance
 

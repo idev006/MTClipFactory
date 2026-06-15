@@ -359,6 +359,7 @@ def test_caption_runtime_supports_vertical_alignment_inside_tall_textbox(tmp_pat
                 'alignment = "center"',
                 'textbox_alignment = "center"',
                 'vertical_alignment = "middle"',
+                'textbox_height_mode = "fixed"',
                 "textbox_width_ratio = 0.6",
                 "textbox_height_ratio = 0.2",
                 "padding = 24",
@@ -399,6 +400,62 @@ def test_caption_runtime_supports_vertical_alignment_inside_tall_textbox(tmp_pat
     content_area_bottom = role.box_top_px + role.box_height_px - role.padding
     last_line_bottom = role.line_top_positions_px[-1] + role.line_heights_px[-1]
     assert last_line_bottom <= content_area_bottom
+
+
+def test_caption_runtime_defaults_grouped_textbox_to_content_hug_height(tmp_path) -> None:
+    media_root = tmp_path / "media_library"
+    fonts_root = tmp_path / "fonts"
+    fonts_root.mkdir(parents=True, exist_ok=True)
+    (fonts_root / "THSarabun.ttf").write_bytes(b"font")
+    product_dir = tmp_path / "product_content_hug"
+    product_dir.mkdir(parents=True, exist_ok=True)
+    caption_file = product_dir / "captions.toml"
+    caption_file.write_text(
+        "\n".join(
+            [
+                "[caption_pools.hook]",
+                'main = ["sale now"]',
+                "",
+                "[caption_properties.main]",
+                'font_family = "THSarabun"',
+                'alignment = "center"',
+                'textbox_alignment = "center"',
+                "textbox_width_ratio = 0.7",
+                "textbox_height_ratio = 0.2",
+                "padding = 24",
+                "font_size = 72",
+                "min_font_size = 48",
+            ]
+        ),
+        encoding="utf-8",
+    )
+    store = ProductAutomationMetadataStore(media_root)
+    store.sync_caption_contract(product_code="product_content_hug", source_file=caption_file)
+    service = CaptionRuntimeService(metadata_store=store, fonts_root=fonts_root)
+    segments = (
+        TimelineSegment(
+            recipe_id=1,
+            segment_type="hook",
+            sequence_index=1,
+            start_sec=0.0,
+            end_sec=3.0,
+            target_duration_sec=3.0,
+        ),
+    )
+
+    resolved = service.resolve_for_segments(
+        product_code="product_content_hug",
+        recipe_code="product_content_hug_batch_001",
+        segments=segments,
+        frame_width_px=1080,
+        frame_height_px=1920,
+    )
+    role = resolved[0].roles[0]
+
+    assert role.textbox_height_mode == "content_hug"
+    assert role.box_height_px == role.text_block_height_px + (role.padding * 2)
+    assert role.box_height_px < 384
+    assert role.overflowed is False
 
 
 def test_caption_runtime_can_resolve_per_line_textboxes(tmp_path) -> None:
@@ -595,6 +652,7 @@ def test_caption_runtime_scales_to_fit_fixed_textbox_height(tmp_path) -> None:
                 'font_family = "THSarabun"',
                 'alignment = "center"',
                 'vertical_alignment = "middle"',
+                'textbox_height_mode = "fixed"',
                 "textbox_width_ratio = 0.7",
                 "textbox_height_ratio = 0.12",
                 "padding = 20",
@@ -653,6 +711,7 @@ def test_caption_runtime_keeps_overflow_truth_when_textbox_height_cannot_fit(tmp
                 'font_family = "THSarabun"',
                 'alignment = "center"',
                 'vertical_alignment = "middle"',
+                'textbox_height_mode = "fixed"',
                 "textbox_width_ratio = 0.7",
                 "textbox_height_ratio = 0.08",
                 "padding = 20",

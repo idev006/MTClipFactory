@@ -106,6 +106,7 @@ def resolve_caption_layout(
     max_lines: int,
     max_chars_per_line: int,
     textbox_mode: str,
+    textbox_height_mode: str,
     textbox_width_ratio: float,
     textbox_height_ratio: float,
     textbox_alignment: str,
@@ -155,6 +156,7 @@ def resolve_caption_layout(
         overflow_policy=overflow_policy,
         manual_breaks=manual_breaks,
         padding=padding,
+        textbox_height_mode=textbox_height_mode,
         textbox_height_ratio=textbox_height_ratio,
         frame_height_px=frame_context.height_px,
         band_height_px=band_height_px,
@@ -252,6 +254,7 @@ def _solve_best_fit_layout(
     overflow_policy: str,
     manual_breaks: bool,
     padding: int,
+    textbox_height_mode: str,
     textbox_height_ratio: float,
     frame_height_px: int,
     band_height_px: int,
@@ -259,6 +262,7 @@ def _solve_best_fit_layout(
 ) -> _LayoutCandidate:
     max_content_height_capacity_px = _resolve_max_content_height_capacity_px(
         frame_height_px=frame_height_px,
+        textbox_height_mode=textbox_height_mode,
         textbox_height_ratio=textbox_height_ratio,
         band_height_px=band_height_px,
         padding=padding,
@@ -284,6 +288,7 @@ def _solve_best_fit_layout(
             overflow_policy=overflow_policy,
             manual_breaks=manual_breaks,
             padding=padding,
+            textbox_height_mode=textbox_height_mode,
             textbox_height_ratio=textbox_height_ratio,
             frame_height_px=frame_height_px,
             band_height_px=band_height_px,
@@ -299,10 +304,14 @@ def _solve_best_fit_layout(
 def _resolve_max_content_height_capacity_px(
     *,
     frame_height_px: int,
+    textbox_height_mode: str,
     textbox_height_ratio: float,
     band_height_px: int,
     padding: int,
 ) -> int:
+    if textbox_height_mode.strip().casefold() == "content_hug":
+        available_box_height_px = frame_height_px if band_height_px <= 0 else band_height_px
+        return textbox_content_height(textbox_height_px=max(1, available_box_height_px), padding=padding)
     if textbox_height_ratio > 0:
         requested_box_height_px = max((padding * 2) + 1, round(frame_height_px * textbox_height_ratio))
         available_box_height_px = min(requested_box_height_px, frame_height_px if band_height_px <= 0 else band_height_px)
@@ -342,6 +351,7 @@ def _evaluate_layout_candidate(
     overflow_policy: str,
     manual_breaks: bool,
     padding: int,
+    textbox_height_mode: str,
     textbox_height_ratio: float,
     frame_height_px: int,
     band_height_px: int,
@@ -379,6 +389,7 @@ def _evaluate_layout_candidate(
     box_height_px = min(
         frame_height_px if band_height_px <= 0 else band_height_px,
         textbox_height(
+            textbox_height_mode=textbox_height_mode,
             frame_height_px=frame_height_px,
             textbox_height_ratio=textbox_height_ratio,
             content_height_px=text_block_height_px,
@@ -670,4 +681,3 @@ def _font_size_to_pixels(*, requested_font_size: int, font_size_unit: str, dpi: 
     if normalized == "pt":
         return max(1, round(requested_font_size * dpi / 72))
     return max(1, int(requested_font_size))
-

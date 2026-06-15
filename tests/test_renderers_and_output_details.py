@@ -61,6 +61,7 @@ def _build_caption_role(
     textbox_height_ratio: float = 0.0,
     vertical_alignment: str = "top",
     textbox_mode: str = "grouped",
+    textbox_height_mode: str = "content_hug",
 ) -> ResolvedCaptionRole:
     return ResolvedCaptionRole(
         role="main",
@@ -90,6 +91,7 @@ def _build_caption_role(
         vertical_alignment=vertical_alignment,
         textbox_alignment=textbox_alignment,
         textbox_mode=textbox_mode,
+        textbox_height_mode=textbox_height_mode,
         text_color="#FFFFFF",
         stroke_color="#000000",
         stroke_width=3,
@@ -480,6 +482,7 @@ def test_ffmpeg_renderer_builds_drawtext_filters_for_caption_layers(tmp_path) ->
                         vertical_alignment="top",
                         textbox_alignment="center",
                         textbox_mode="grouped",
+                        textbox_height_mode="content_hug",
                         text_color="#FFFFFF",
                         stroke_color="#000000",
                         stroke_width=3,

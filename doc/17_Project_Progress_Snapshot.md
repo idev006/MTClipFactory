@@ -2,7 +2,7 @@
 
 ## Snapshot Date
 
-- 2026-06-14
+- 2026-06-15
 
 ## Where To See Progress
 
@@ -107,6 +107,8 @@
 - delivered a corrective runtime slice so each recipe now keeps one deterministic selected visual asset per visual layer across all segments, with fill policy extending that asset instead of per-segment reselection
 - delivered per-line manual-caption font fitting so operator-authored `\n` lines can shrink independently by pixel width while still surfacing overflow for review when `min_font_size` is not enough
 - delivered a textbox-first caption layout slice so resolved caption boxes now hold stable geometry while text alignment remains controllable inside the box
+- delivered a caption-card height-policy slice with explicit `textbox_height_mode`, making grouped promo cards default to `content_hug` while preserving deliberate tall cards through `fixed`
+- delivered manifest-visible textbox height policy truth plus pytest coverage for compact-card and fixed-height caption behavior
 
 ## Still Open
 
@@ -115,7 +117,7 @@
 3. extend the new auto-preview factory baseline into controlled final-render automation only after operators accept the current planner, tag-aware selection rules, and review-gate truth
 4. repeat the new live auto-mode audit seam on more products so `Biothentic0001` does not remain the only proof point
 5. rerun a live `Biothentic0001` preview/final audit after the new persistent-layer looping and per-line manual-caption sizing slice
-6. rerun a live `Biothentic0001` preview/final audit after the new textbox-first caption layout slice
+6. rerun a live `Biothentic0001` preview/final audit after the new textbox-first and content-hug caption card slices
 
 ## Verification Baseline
 

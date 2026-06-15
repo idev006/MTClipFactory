@@ -2,7 +2,7 @@
 
 ## Project Manager Snapshot
 
-- Report date: 2026-06-14
+- Report date: 2026-06-15
 - Overall status: In Progress
 - Current phase: Phase 6, production-order plus operator-friendly auto-factory and bulk-tagging baselines delivered; worker-lease and distributed execution still pending
 - Delivery mode: document-led SSOT with code and tests kept in sync
@@ -80,6 +80,7 @@
 - preview composition now keeps one deterministic selected visual asset per recipe-layer and lets fill policy extend that chosen asset across all segments instead of reselection per segment
 - manual multi-line captions can now shrink font size per line against real pixel width while preserving operator-authored `\n` grouping and overflow review truth
 - caption runtime now also resolves textbox-first geometry so background box width can stay stable while text alignment remains independently controllable inside the box
+- caption runtime now also exposes `textbox_height_mode` so grouped cards can default to compact `content_hug` behavior while `fixed` remains available for deliberate tall-card layouts
 - assets can now be safely renamed or deleted from the `Assets` screen, with repository checks that block deletion when recipe-item or artifact-job references still exist
 - the `Assets` screen now supports `Show References`, `Retire Selected`, and `Purge Media` so referenced assets can leave active use and disk without destroying audit truth
 - the `Assets` screen now also supports `Replace In Recipes...` with recipe-safe validation, recipe reset-to-candidate behavior, and approval guards that prevent stale pre-replacement outputs from being reused as evidence for changed recipes
@@ -112,7 +113,7 @@
 
 ## Verification Baseline
 
-- `python -m pytest` via `.venv`: `212 passed, 4 warnings`
+- `python -m pytest` via `.venv`: `222 passed, 4 warnings`
 - targeted `QT_QPA_PLATFORM=offscreen` UI coverage for the new `Auto Factory` window and existing themed windows: passed
 
 ## Current Focus

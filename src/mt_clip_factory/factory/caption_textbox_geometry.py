@@ -17,6 +17,7 @@ def textbox_width(frame_width_px: int, *, textbox_width_ratio: float) -> int:
 
 def textbox_height(
     *,
+    textbox_height_mode: str,
     frame_height_px: int,
     textbox_height_ratio: float,
     content_height_px: int,
@@ -24,6 +25,11 @@ def textbox_height(
     band_height_px: int,
 ) -> int:
     minimum_height_px = max(0, content_height_px + (padding * 2))
+    normalized_mode = textbox_height_mode.strip().casefold()
+    if normalized_mode == "content_hug":
+        if band_height_px > 0:
+            return min(minimum_height_px, band_height_px)
+        return minimum_height_px
     if textbox_height_ratio <= 0:
         return minimum_height_px
     requested_height_px = max((padding * 2) + 1, round(frame_height_px * textbox_height_ratio))

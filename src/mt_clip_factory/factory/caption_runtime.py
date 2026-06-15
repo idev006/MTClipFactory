@@ -33,6 +33,7 @@ class CaptionRoleStyle:
     vertical_alignment: str
     textbox_alignment: str
     textbox_mode: str
+    textbox_height_mode: str
     font_family: str
     font_fallbacks: tuple[str, ...]
     font_size: int
@@ -94,6 +95,7 @@ class ResolvedCaptionRole:
     alignment: str
     vertical_alignment: str
     textbox_alignment: str
+    textbox_height_mode: str
     text_color: str
     stroke_color: str
     stroke_width: int
@@ -365,6 +367,7 @@ class CaptionRuntimeService:
             max_lines=style.max_lines,
             max_chars_per_line=style.max_chars_per_line,
             textbox_mode=style.textbox_mode,
+            textbox_height_mode=style.textbox_height_mode,
             textbox_width_ratio=style.textbox_width_ratio,
             textbox_height_ratio=style.textbox_height_ratio,
             textbox_alignment=style.textbox_alignment,
@@ -407,6 +410,7 @@ class CaptionRuntimeService:
             alignment=style.alignment,
             vertical_alignment=style.vertical_alignment,
             textbox_alignment=style.textbox_alignment,
+            textbox_height_mode=style.textbox_height_mode,
             text_color=style.text_color,
             stroke_color=style.stroke_color,
             stroke_width=style.stroke_width,
@@ -486,12 +490,19 @@ def _parse_role_style(value, *, role: str) -> CaptionRoleStyle:
         allowed=("grouped", "per_line"),
         context=f"[caption_properties.{role}].textbox_mode",
     )
+    textbox_height_mode = _choice_text(
+        section.get("textbox_height_mode"),
+        default="content_hug",
+        allowed=("content_hug", "fixed"),
+        context=f"[caption_properties.{role}].textbox_height_mode",
+    )
     return CaptionRoleStyle(
         position=_optional_text(section.get("position")) or default_position,
         alignment=_optional_text(section.get("alignment")) or "center",
         vertical_alignment=_optional_text(section.get("vertical_alignment")) or "top",
         textbox_alignment=_optional_text(section.get("textbox_alignment")) or "center",
         textbox_mode=textbox_mode,
+        textbox_height_mode=textbox_height_mode,
         font_family=_optional_text(section.get("font_family")) or "Arial",
         font_fallbacks=_text_list(section.get("font_fallbacks"), context=f"[caption_properties.{role}].font_fallbacks"),
         font_size=_positive_int(section.get("font_size"), default=default_font_size, context=f"[caption_properties.{role}].font_size"),
