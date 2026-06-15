@@ -52,6 +52,7 @@ class AutoFactoryControlWindow(QMainWindow):
 
         self._view_model.recent_orders_changed.connect(self._refresh_recent_orders)
         self._view_model.run_report_changed.connect(self._refresh_run_report)
+        self._view_model.preflight_report_changed.connect(self._refresh_preflight_report)
         self._view_model.selected_order_changed.connect(self._refresh_selected_order)
         self._view_model.status_changed.connect(self._refresh_status)
         self._view_model.feedback_changed.connect(self._refresh_feedback)
@@ -85,6 +86,7 @@ class AutoFactoryControlWindow(QMainWindow):
         self.scan_depth_input.setMaximum(32)
         self.scan_depth_input.setValue(1)
         self.run_mode_combo = QComboBox()
+        self.run_mode_combo.addItem("Audit Only", self._view_model.RUN_MODE_AUDIT_ONLY)
         self.run_mode_combo.addItem("Intake Only", self._view_model.RUN_MODE_INTAKE_ONLY)
         self.run_mode_combo.addItem("Intake + Materialize", self._view_model.RUN_MODE_MATERIALIZE)
         self.run_mode_combo.addItem(
@@ -120,13 +122,17 @@ class AutoFactoryControlWindow(QMainWindow):
     def _build_results_area(self) -> QWidget:
         splitter = QSplitter(Qt.Vertical)
         splitter.addWidget(self._build_run_summary_group())
+        splitter.addWidget(self._build_preflight_products_group())
+        splitter.addWidget(self._build_preflight_issues_group())
         splitter.addWidget(self._build_product_reports_group())
         splitter.addWidget(self._build_asset_actions_group())
         splitter.addWidget(self._build_order_stages_group())
         splitter.setStretchFactor(0, 2)
         splitter.setStretchFactor(1, 2)
         splitter.setStretchFactor(2, 2)
-        splitter.setStretchFactor(3, 3)
+        splitter.setStretchFactor(3, 2)
+        splitter.setStretchFactor(4, 2)
+        splitter.setStretchFactor(5, 3)
         self.results_splitter = splitter
         return splitter
 
@@ -139,7 +145,7 @@ class AutoFactoryControlWindow(QMainWindow):
         return group
 
     def _build_product_reports_group(self) -> QGroupBox:
-        group = QGroupBox("Product Reports")
+        group = QGroupBox("Intake Product Reports")
         layout = QVBoxLayout(group)
         self.product_reports_table = QTableWidget(0, 5)
         self.product_reports_table.setHorizontalHeaderLabels(
@@ -153,7 +159,7 @@ class AutoFactoryControlWindow(QMainWindow):
         return group
 
     def _build_asset_actions_group(self) -> QGroupBox:
-        group = QGroupBox("Asset Intake Actions")
+        group = QGroupBox("Intake Asset Actions")
         layout = QVBoxLayout(group)
         self.asset_actions_table = QTableWidget(0, 5)
         self.asset_actions_table.setHorizontalHeaderLabels(
@@ -164,6 +170,34 @@ class AutoFactoryControlWindow(QMainWindow):
         self.asset_actions_table.setEditTriggers(QTableWidget.NoEditTriggers)
         self.asset_actions_table.horizontalHeader().setStretchLastSection(True)
         layout.addWidget(self.asset_actions_table)
+        return group
+
+    def _build_preflight_products_group(self) -> QGroupBox:
+        group = QGroupBox("Audit Product Summary")
+        layout = QVBoxLayout(group)
+        self.preflight_products_table = QTableWidget(0, 5)
+        self.preflight_products_table.setHorizontalHeaderLabels(
+            ["Product Code", "Layout", "Status", "Requested Outputs", "Assets"]
+        )
+        self.preflight_products_table.setSelectionBehavior(QTableWidget.SelectRows)
+        self.preflight_products_table.setSelectionMode(QTableWidget.SingleSelection)
+        self.preflight_products_table.setEditTriggers(QTableWidget.NoEditTriggers)
+        self.preflight_products_table.horizontalHeader().setStretchLastSection(True)
+        layout.addWidget(self.preflight_products_table)
+        return group
+
+    def _build_preflight_issues_group(self) -> QGroupBox:
+        group = QGroupBox("Audit Issues")
+        layout = QVBoxLayout(group)
+        self.preflight_issues_table = QTableWidget(0, 5)
+        self.preflight_issues_table.setHorizontalHeaderLabels(
+            ["Severity", "Code", "Product", "Location", "Message"]
+        )
+        self.preflight_issues_table.setSelectionBehavior(QTableWidget.SelectRows)
+        self.preflight_issues_table.setSelectionMode(QTableWidget.SingleSelection)
+        self.preflight_issues_table.setEditTriggers(QTableWidget.NoEditTriggers)
+        self.preflight_issues_table.horizontalHeader().setStretchLastSection(True)
+        layout.addWidget(self.preflight_issues_table)
         return group
 
     def _build_order_stages_group(self) -> QGroupBox:
@@ -207,10 +241,14 @@ class AutoFactoryControlWindow(QMainWindow):
     def _refresh_run_report(self) -> None:
         run_report = self._view_model.run_report
         if run_report is None:
-            self.run_summary_text.clear()
+            if self._view_model.preflight_report is None:
+                self.run_summary_text.clear()
             self.product_reports_table.setRowCount(0)
             self.asset_actions_table.setRowCount(0)
             return
+
+        self.preflight_products_table.setRowCount(0)
+        self.preflight_issues_table.setRowCount(0)
 
         request_lines = [
             _format_product_request_summary(request)
@@ -254,6 +292,61 @@ class AutoFactoryControlWindow(QMainWindow):
             ]
             for column_index, value in enumerate(values):
                 self.asset_actions_table.setItem(row_index, column_index, QTableWidgetItem(value))
+
+    def _refresh_preflight_report(self) -> None:
+        preflight_report = self._view_model.preflight_report
+        if preflight_report is None:
+            if self._view_model.run_report is None:
+                self.run_summary_text.clear()
+            self.preflight_products_table.setRowCount(0)
+            self.preflight_issues_table.setRowCount(0)
+            return
+
+        self.product_reports_table.setRowCount(0)
+        self.asset_actions_table.setRowCount(0)
+        self.order_summary_text.setPlainText("No production order selected.")
+        self.order_stages_table.setRowCount(0)
+        self.run_summary_text.setPlainText(
+            "\n".join(
+                [
+                    f"Audit Status: {preflight_report.status}",
+                    f"Scan Depth: {preflight_report.scan_depth}",
+                    f"Discovered Product Folders: {len(preflight_report.discovered_product_dirs)}",
+                    f"Errors: {preflight_report.error_count}",
+                    f"Warnings: {preflight_report.warning_count}",
+                    "Folders:",
+                    *[f"- {path}" for path in preflight_report.discovered_product_dirs],
+                ]
+            )
+        )
+
+        self.preflight_products_table.setRowCount(len(preflight_report.product_reports))
+        issue_rows: list[tuple[str, str, str, str, str]] = []
+        for row_index, product_report in enumerate(preflight_report.product_reports):
+            values = [
+                product_report.product_code or "<unknown>",
+                product_report.layout_mode,
+                product_report.status,
+                "" if product_report.requested_output_count is None else str(product_report.requested_output_count),
+                str(product_report.ingestible_asset_count),
+            ]
+            for column_index, value in enumerate(values):
+                self.preflight_products_table.setItem(row_index, column_index, QTableWidgetItem(value))
+            for issue in product_report.issues:
+                issue_rows.append(
+                    (
+                        issue.severity,
+                        issue.code,
+                        product_report.product_code or "<unknown>",
+                        issue.location or "",
+                        issue.message,
+                    )
+                )
+
+        self.preflight_issues_table.setRowCount(len(issue_rows))
+        for row_index, values in enumerate(issue_rows):
+            for column_index, value in enumerate(values):
+                self.preflight_issues_table.setItem(row_index, column_index, QTableWidgetItem(value))
 
     def _refresh_selected_order(self) -> None:
         selected_order = self._view_model.selected_order

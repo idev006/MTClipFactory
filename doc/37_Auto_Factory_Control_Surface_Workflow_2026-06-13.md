@@ -32,6 +32,7 @@ The first control-surface slice should provide:
 2. an optional batch-code override
 3. a numeric `Scan Depth` control
 4. one explicit `Run Mode` selector:
+   - `Audit Only`
    - `Intake Only`
    - `Intake + Materialize`
    - `Intake + Materialize + Build Previews`
@@ -51,6 +52,13 @@ The first control-surface slice should provide:
 - create or reuse products
 - register deterministic asset codes
 - do not create or run a production order
+
+`Audit Only`
+
+- discover valid product folders under the selected root
+- validate contracts, assets, tags, and `selection_tags` viability
+- do not create products, ingest assets, or create a production order
+- return read-only `ready` / `warning` / `error` truth plus actionable issues
 
 `Intake + Materialize`
 
@@ -73,15 +81,18 @@ flowchart LR
     A["Open Dashboard"] --> B["Open Auto Factory"]
     B --> C["Select Root Folder"]
     C --> D["Set Scan Depth + Run Mode"]
-    D --> E["Run Intake"]
-    E --> F["Discover Product Folders"]
-    F --> G["Create / Reuse Products"]
-    G --> H["Register Deterministic Assets"]
-    H --> I{"Run Mode"}
-    I -->|"Intake Only"| J["Show Intake Report"]
-    I -->|"Materialize / Previews"| K["Create Persisted Production Order"]
-    K --> L["Run Order Stages"]
-    L --> M["Show Order + Stage Truth"]
+    D --> E{"Run Mode"}
+    E -->|"Audit Only"| F["Run Read-Only Preflight"]
+    F --> G["Show Audit Summary + Issues"]
+    E -->|"Intake / Materialize / Previews"| H["Run Intake"]
+    H --> I["Discover Product Folders"]
+    I --> J["Create / Reuse Products"]
+    J --> K["Register Deterministic Assets"]
+    K --> L{"Run Mode"}
+    L -->|"Intake Only"| M["Show Intake Report"]
+    L -->|"Materialize / Previews"| N["Create Persisted Production Order"]
+    N --> O["Run Order Stages"]
+    O --> P["Show Order + Stage Truth"]
 ```
 
 ## Control-Surface Sequence
@@ -96,14 +107,20 @@ sequenceDiagram
 
     Operator->>View: choose root folder, scan depth, run mode
     View->>VM: run_batch_root(...)
-    VM->>FolderSvc: run_batch_root(..., materialize=False)
-    FolderSvc-->>VM: intake report + batch order DTO
-    alt run mode is intake only
-        VM-->>View: intake report + feedback
-    else run mode includes materialization
-        VM->>OrderSvc: create_and_run_order(report.order, source_mode="folder_control_surface", ...)
-        OrderSvc-->>VM: persisted order details + stages
-        VM-->>View: intake report + production-order truth
+    alt run mode is audit only
+        VM->>FolderSvc: audit_batch_root(...)
+        FolderSvc-->>VM: preflight report
+        VM-->>View: audit summary + issues + feedback
+    else run mode includes intake
+        VM->>FolderSvc: run_batch_root(..., materialize=False)
+        FolderSvc-->>VM: intake report + batch order DTO
+        alt run mode is intake only
+            VM-->>View: intake report + feedback
+        else run mode includes materialization
+            VM->>OrderSvc: create_and_run_order(report.order, source_mode="folder_control_surface", ...)
+            OrderSvc-->>VM: persisted order details + stages
+            VM-->>View: intake report + production-order truth
+        end
     end
 ```
 
@@ -121,5 +138,7 @@ This plan was reviewed before implementation and the following decisions were lo
 
 - delivered a dedicated `Auto Factory` desktop window reachable from the dashboard
 - delivered guided controls for root-folder browse, optional batch-code override, `scan_depth`, and explicit run mode
+- delivered an `Audit Only` mode that reuses the new read-only preflight seam so operators can validate product folders before intake or preview work begins
 - delivered truthful result surfaces for discovered product folders, product create/reuse outcomes, deterministic asset-intake actions, recent orders, and selected order stages
+- delivered dedicated audit result surfaces for preflight product summaries and actionable issues without mixing them into intake or production-order truth
 - delivered a composed execution path where folder intake always runs first and materialize/preview modes then create and run persisted `Production Order` records

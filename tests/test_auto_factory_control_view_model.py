@@ -3,6 +3,11 @@ from __future__ import annotations
 from mt_clip_factory.factory.auto_factory_dto import AutoFactoryBatchOrderDTO, AutoFactoryProductRequestDTO
 from mt_clip_factory.factory.auto_factory_folder_dto import (
     AutoFactoryFolderAssetActionDTO,
+    AutoFactoryFolderAssetFolderAuditDTO,
+    AutoFactoryFolderContractAuditDTO,
+    AutoFactoryFolderPreflightIssueDTO,
+    AutoFactoryFolderPreflightProductReportDTO,
+    AutoFactoryFolderPreflightReportDTO,
     AutoFactoryFolderProductReportDTO,
     AutoFactoryFolderRunReportDTO,
 )
@@ -18,6 +23,7 @@ from mt_clip_factory.presentation.factory.auto_factory_control import AutoFactor
 class FakeAutoFactoryFolderService:
     def __init__(self) -> None:
         self.calls: list[tuple[str, str | None, int, bool]] = []
+        self.audit_calls: list[tuple[str, int]] = []
 
     def run_batch_root(
         self,
@@ -60,6 +66,73 @@ class FakeAutoFactoryFolderService:
                     asset_code="tea_fg_hook",
                     source_file=f"{batch_root}\\foreground\\hook.mp4",
                     action="registered",
+                ),
+            ),
+        )
+
+    def audit_batch_root(
+        self,
+        batch_root,
+        *,
+        scan_depth: int = 1,
+    ) -> AutoFactoryFolderPreflightReportDTO:
+        self.audit_calls.append((str(batch_root), scan_depth))
+        return AutoFactoryFolderPreflightReportDTO(
+            root_folder=str(batch_root),
+            scan_depth=scan_depth,
+            discovered_product_dirs=(str(batch_root),),
+            status="warning",
+            error_count=0,
+            warning_count=1,
+            product_reports=(
+                AutoFactoryFolderPreflightProductReportDTO(
+                    product_dir=str(batch_root),
+                    layout_mode="v2",
+                    status="warning",
+                    product_code="tea",
+                    product_name="Tea Product",
+                    requested_output_count=2,
+                    ready_for_automation=True,
+                    contracts=(
+                        AutoFactoryFolderContractAuditDTO(
+                            contract_name="product.toml",
+                            resolved_path=f"{batch_root}\\contracts\\product.toml",
+                            layout_mode="v2",
+                            required=True,
+                            present=True,
+                        ),
+                    ),
+                    asset_folders=(
+                        AutoFactoryFolderAssetFolderAuditDTO(
+                            folder_name="music",
+                            asset_type="background_music",
+                            resolved_path=f"{batch_root}\\assets\\music",
+                            layout_mode="v2",
+                            ingestible_file_count=0,
+                            ingestible_files=(),
+                            tag_file_present=True,
+                            global_tag_count=1,
+                            file_tag_entry_count=0,
+                            tagged_file_count=0,
+                            issues=(
+                                AutoFactoryFolderPreflightIssueDTO(
+                                    severity="warning",
+                                    code="empty_asset_folder",
+                                    message="music folder is empty",
+                                    location=f"{batch_root}\\assets\\music",
+                                ),
+                            ),
+                        ),
+                    ),
+                    issues=(
+                        AutoFactoryFolderPreflightIssueDTO(
+                            severity="warning",
+                            code="empty_asset_folder",
+                            message="music folder is empty",
+                            location=f"{batch_root}\\assets\\music",
+                        ),
+                    ),
+                    ingestible_asset_count=3,
                 ),
             ),
         )
@@ -162,6 +235,28 @@ def test_auto_factory_control_view_model_runs_intake_only_without_order_creation
     assert folder_service.calls == [("F:\\batch_root", None, 2, False)]
     assert order_service.create_calls == []
     assert "Intake completed without creating a production order." in view_model.feedback
+
+
+def test_auto_factory_control_view_model_runs_audit_only_without_order_creation() -> None:
+    folder_service = FakeAutoFactoryFolderService()
+    order_service = FakeProductionOrderService()
+    view_model = AutoFactoryControlViewModel(folder_service, order_service)
+
+    view_model.run_batch_root(
+        root_folder="F:\\batch_root",
+        scan_depth=0,
+        run_mode=AutoFactoryControlViewModel.RUN_MODE_AUDIT_ONLY,
+    )
+
+    assert view_model.status == "ready"
+    assert view_model.preflight_report is not None
+    assert view_model.preflight_report.status == "warning"
+    assert view_model.run_report is None
+    assert view_model.selected_order is None
+    assert folder_service.audit_calls == [("F:\\batch_root", 0)]
+    assert folder_service.calls == []
+    assert order_service.create_calls == []
+    assert "Audited 1 product folder(s): 0 error(s), 1 warning(s)." in view_model.feedback
 
 
 def test_auto_factory_control_view_model_runs_materialization_with_preview_mode() -> None:

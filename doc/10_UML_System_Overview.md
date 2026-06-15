@@ -665,14 +665,20 @@ sequenceDiagram
 
     Operator->>View: choose root folder, scan depth, run mode
     View->>VM: run_batch_root(...)
-    VM->>FolderSvc: run_batch_root(..., materialize=False)
-    FolderSvc-->>VM: intake report + order DTO
-    alt intake only
-        VM-->>View: intake report + feedback
-    else materialize or previews
-        VM->>OrderSvc: create_and_run_order(order,...)
-        OrderSvc-->>VM: persisted order details + stages
-        VM-->>View: intake report + recent order truth
+    alt audit only
+        VM->>FolderSvc: audit_batch_root(...)
+        FolderSvc-->>VM: preflight report
+        VM-->>View: audit summary + issue tables + feedback
+    else intake/materialize/previews
+        VM->>FolderSvc: run_batch_root(..., materialize=False)
+        FolderSvc-->>VM: intake report + order DTO
+        alt intake only
+            VM-->>View: intake report + feedback
+        else materialize or previews
+            VM->>OrderSvc: create_and_run_order(order,...)
+            OrderSvc-->>VM: persisted order details + stages
+            VM-->>View: intake report + recent order truth
+        end
     end
 ```
 

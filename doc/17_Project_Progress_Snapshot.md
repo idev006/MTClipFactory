@@ -118,6 +118,7 @@
 - delivered a backward-compatible product-folder `v2` layout with `contracts/` plus `assets/` resolution, truthful ambiguity failure when old/new paths overlap, and pytest coverage for both legacy and `v2` discovery
 - updated the new-product auto-factory template kit to ship in the preferred `v2` layout, including `contracts/prod_detail.txt` for operator-facing product context capture
 - delivered a read-only product-folder preflight audit seam plus CLI script so operators can validate contracts, assets, tags, and `selection_tags` viability before a real automation run
+- delivered `Audit Only` inside the desktop `Auto Factory` screen so the same preflight seam is available through guided UI controls and dedicated audit result tables
 
 ## Still Open
 
@@ -128,9 +129,9 @@
 5. rerun a live `Biothentic0001` preview/final audit after the new persistent-layer looping and per-line manual-caption sizing slice
 6. rerun a live `Biothentic0001` preview/final audit after the new textbox-first, content-hug, and style-preset caption slices
 7. run one live folder-intake audit against a real product folder arranged in the new `contracts/` plus `assets/` layout
-8. decide whether to add the new preflight audit seam into the desktop `Auto Factory` screen as an `Audit Only` action
+8. validate whether the new `Audit Only` UI mode needs issue export, filtering, or grouping after broader operator use
 
 ## Verification Baseline
 
-- `python -m pytest` in `.venv`: `235 passed, 4 warnings`
+- `python -m pytest` in `.venv`: `236 passed, 4 warnings`
 - targeted `QT_QPA_PLATFORM=offscreen` UI/theme coverage for the new `Auto Factory` window and existing app windows: passed

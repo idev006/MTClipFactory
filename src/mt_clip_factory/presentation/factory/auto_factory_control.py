@@ -6,7 +6,10 @@ from pathlib import Path
 from PySide6.QtCore import QObject, Property, Signal
 
 from mt_clip_factory.factory.auto_factory_folder import AutoFactoryFolderService
-from mt_clip_factory.factory.auto_factory_folder_dto import AutoFactoryFolderRunReportDTO
+from mt_clip_factory.factory.auto_factory_folder_dto import (
+    AutoFactoryFolderPreflightReportDTO,
+    AutoFactoryFolderRunReportDTO,
+)
 from mt_clip_factory.factory.production_order_dto import ProductionOrderDetailsDTO, ProductionOrderSummaryDTO
 from mt_clip_factory.factory.production_order_service import ProductionOrderService
 
@@ -14,14 +17,17 @@ from mt_clip_factory.factory.production_order_service import ProductionOrderServ
 class AutoFactoryControlViewModel(QObject):
     recent_orders_changed = Signal()
     run_report_changed = Signal()
+    preflight_report_changed = Signal()
     selected_order_changed = Signal()
     status_changed = Signal()
     feedback_changed = Signal()
 
+    RUN_MODE_AUDIT_ONLY = "audit_only"
     RUN_MODE_INTAKE_ONLY = "intake_only"
     RUN_MODE_MATERIALIZE = "materialize"
     RUN_MODE_MATERIALIZE_AND_PREVIEWS = "materialize_and_build_previews"
     RUN_MODES = (
+        RUN_MODE_AUDIT_ONLY,
         RUN_MODE_INTAKE_ONLY,
         RUN_MODE_MATERIALIZE,
         RUN_MODE_MATERIALIZE_AND_PREVIEWS,
@@ -37,6 +43,7 @@ class AutoFactoryControlViewModel(QObject):
         self._production_order_service = production_order_service
         self._recent_orders: list[ProductionOrderSummaryDTO] = []
         self._run_report: AutoFactoryFolderRunReportDTO | None = None
+        self._preflight_report: AutoFactoryFolderPreflightReportDTO | None = None
         self._selected_order: ProductionOrderDetailsDTO | None = None
         self._status = "idle"
         self._feedback = ""
@@ -71,6 +78,10 @@ class AutoFactoryControlViewModel(QObject):
         return self._run_report
 
     @property
+    def preflight_report(self) -> AutoFactoryFolderPreflightReportDTO | None:
+        return self._preflight_report
+
+    @property
     def selected_order(self) -> ProductionOrderDetailsDTO | None:
         return self._selected_order
 
@@ -102,14 +113,22 @@ class AutoFactoryControlViewModel(QObject):
 
         self._set_status("running")
         try:
-            run_report = self._auto_factory_folder_service.run_batch_root(
-                Path(normalized_root),
-                batch_code=batch_code or None,
-                scan_depth=scan_depth,
-                materialize=False,
-            )
+            preflight_report = None
+            run_report = None
             selected_order = None
-            if run_mode != self.RUN_MODE_INTAKE_ONLY:
+            if run_mode == self.RUN_MODE_AUDIT_ONLY:
+                preflight_report = self._auto_factory_folder_service.audit_batch_root(
+                    Path(normalized_root),
+                    scan_depth=scan_depth,
+                )
+            else:
+                run_report = self._auto_factory_folder_service.run_batch_root(
+                    Path(normalized_root),
+                    batch_code=batch_code or None,
+                    scan_depth=scan_depth,
+                    materialize=False,
+                )
+            if run_report is not None and run_mode != self.RUN_MODE_INTAKE_ONLY:
                 selected_order = self._production_order_service.create_and_run_order(
                     run_report.order,
                     source_mode="folder_control_surface",
@@ -117,8 +136,10 @@ class AutoFactoryControlViewModel(QObject):
                     build_previews=run_mode == self.RUN_MODE_MATERIALIZE_AND_PREVIEWS,
                 )
             self._run_report = run_report
+            self._preflight_report = preflight_report
             self._selected_order = selected_order
             self.run_report_changed.emit()
+            self.preflight_report_changed.emit()
             self.selected_order_changed.emit()
             self._recent_orders = self._production_order_service.list_orders()
             self.recent_orders_changed.emit()
@@ -127,7 +148,10 @@ class AutoFactoryControlViewModel(QObject):
             self._set_status("error")
             raise
 
-        self._set_feedback(_build_run_feedback(run_report, selected_order))
+        if preflight_report is not None:
+            self._set_feedback(_build_preflight_feedback(preflight_report))
+        elif run_report is not None:
+            self._set_feedback(_build_run_feedback(run_report, selected_order))
         self._set_status("ready")
 
     def select_order(self, production_order_id: int | None) -> None:
@@ -171,3 +195,15 @@ def _build_run_feedback(
         f"{base} Production order {selected_order.order_code} finished in state "
         f"{selected_order.status} with {len(selected_order.stages)} recorded stage(s)."
     )
+
+
+def _build_preflight_feedback(preflight_report: AutoFactoryFolderPreflightReportDTO) -> str:
+    base = (
+        f"Audited {len(preflight_report.discovered_product_dirs)} product folder(s): "
+        f"{preflight_report.error_count} error(s), {preflight_report.warning_count} warning(s)."
+    )
+    if preflight_report.error_count > 0:
+        return f"{base} Resolve blocking issues before running Auto Factory."
+    if preflight_report.warning_count > 0:
+        return f"{base} Automation can proceed, but cleanup is recommended."
+    return f"{base} Product folders are ready for automation."

@@ -38,6 +38,7 @@ It complements [07_Testing_Strategy.md](/F:/programming/python/MTClipFactory/doc
 - automatic preview production from materialized auto-factory batches
 - persisted production-order and orchestration-stage tracking
 - desktop `Auto Factory` control-surface workflow for root selection, scan depth, run mode, intake reporting, and recent-order inspection
+- desktop `Auto Factory` `Audit Only` workflow for preflight summary and issue visibility
 - tag-aware auto-factory asset-pool filtering from normalized asset labels
 - asset-first tagging workflow for selected-asset details, tag search, and create-and-attach behavior
 - bulk asset tagging workflow for multi-select assignment and primary selected-asset review
@@ -225,6 +226,7 @@ It complements [07_Testing_Strategy.md](/F:/programming/python/MTClipFactory/doc
 48. Confirm the best-fit caption solver can reduce font size to satisfy textbox height constraints, not only width constraints, while preserving honest overflow signals when no clean candidate exists.
 49. Confirm caption contracts can render one textbox per line for advertising-style captions and that FFmpeg emits one `drawbox` per rendered line.
 50. Confirm product-folder preflight reports `ready`, `warning`, and `error` truthfully, including missing recommended contracts and `selection_tags` that do not match any current ingestible asset files.
+51. Confirm the desktop `Auto Factory` screen can run `Audit Only` and show dedicated preflight product summaries plus actionable issue rows without creating a production order.
 
 ### C. Review And Approval Flow
 

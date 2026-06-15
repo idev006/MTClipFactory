@@ -190,10 +190,12 @@ class FakeRecipeBuilderViewModel(QObject):
 class FakeAutoFactoryControlViewModel(QObject):
     recent_orders_changed = Signal()
     run_report_changed = Signal()
+    preflight_report_changed = Signal()
     selected_order_changed = Signal()
     feedback_changed = Signal()
     status_changed = Signal()
 
+    RUN_MODE_AUDIT_ONLY = "audit_only"
     RUN_MODE_INTAKE_ONLY = "intake_only"
     RUN_MODE_MATERIALIZE = "materialize"
     RUN_MODE_MATERIALIZE_AND_PREVIEWS = "materialize_and_build_previews"
@@ -202,6 +204,7 @@ class FakeAutoFactoryControlViewModel(QObject):
         super().__init__()
         self.recent_orders = []
         self.run_report = None
+        self.preflight_report = None
         self.selected_order = None
         self.feedback = ""
         self.status = "ready"
@@ -209,6 +212,7 @@ class FakeAutoFactoryControlViewModel(QObject):
     def load(self) -> None:
         self.recent_orders_changed.emit()
         self.run_report_changed.emit()
+        self.preflight_report_changed.emit()
         self.selected_order_changed.emit()
         self.feedback_changed.emit()
         self.status_changed.emit()
@@ -267,12 +271,15 @@ def test_auto_factory_window_exposes_guided_run_controls(qapp: QApplication) -> 
     auto_factory_window = AutoFactoryControlWindow(FakeAutoFactoryControlViewModel())
 
     assert isinstance(auto_factory_window.run_mode_combo, QComboBox)
-    assert auto_factory_window.run_mode_combo.itemText(0) == "Intake Only"
-    assert auto_factory_window.run_mode_combo.itemText(2) == "Intake + Materialize + Build Previews"
+    assert auto_factory_window.run_mode_combo.itemText(0) == "Audit Only"
+    assert auto_factory_window.run_mode_combo.itemText(1) == "Intake Only"
+    assert auto_factory_window.run_mode_combo.itemText(3) == "Intake + Materialize + Build Previews"
     assert auto_factory_window.scan_depth_input.minimum() == 0
     assert auto_factory_window.browse_button.text() == "Browse..."
     assert auto_factory_window.run_button.text() == "Run Auto Factory"
     assert auto_factory_window.refresh_orders_button.text() == "Refresh Orders"
+    assert auto_factory_window.preflight_products_table.columnCount() == 5
+    assert auto_factory_window.preflight_issues_table.columnCount() == 5
     auto_factory_window.close()
 
 
