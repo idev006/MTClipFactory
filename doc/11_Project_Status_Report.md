@@ -81,6 +81,7 @@
 - manual multi-line captions can now shrink font size per line against real pixel width while preserving operator-authored `\n` grouping and overflow review truth
 - caption runtime now also resolves textbox-first geometry so background box width can stay stable while text alignment remains independently controllable inside the box
 - caption runtime now also exposes `textbox_height_mode` so grouped cards can default to compact `content_hug` behavior while `fixed` remains available for deliberate tall-card layouts
+- caption runtime now also supports built-in role-aware `style_preset` values so operators can start from `sale_blast`, `clean_cta`, or `benefit_stack` and still override individual fields per product
 - assets can now be safely renamed or deleted from the `Assets` screen, with repository checks that block deletion when recipe-item or artifact-job references still exist
 - the `Assets` screen now supports `Show References`, `Retire Selected`, and `Purge Media` so referenced assets can leave active use and disk without destroying audit truth
 - the `Assets` screen now also supports `Replace In Recipes...` with recipe-safe validation, recipe reset-to-candidate behavior, and approval guards that prevent stale pre-replacement outputs from being reused as evidence for changed recipes
@@ -113,7 +114,7 @@
 
 ## Verification Baseline
 
-- `python -m pytest` via `.venv`: `222 passed, 4 warnings`
+- `python -m pytest` via `.venv`: `225 passed, 4 warnings`
 - targeted `QT_QPA_PLATFORM=offscreen` UI coverage for the new `Auto Factory` window and existing themed windows: passed
 
 ## Current Focus

@@ -109,6 +109,8 @@
 - delivered a textbox-first caption layout slice so resolved caption boxes now hold stable geometry while text alignment remains controllable inside the box
 - delivered a caption-card height-policy slice with explicit `textbox_height_mode`, making grouped promo cards default to `content_hug` while preserving deliberate tall cards through `fixed`
 - delivered manifest-visible textbox height policy truth plus pytest coverage for compact-card and fixed-height caption behavior
+- delivered built-in caption style presets with role-aware defaults for `sale_blast`, `clean_cta`, and `benefit_stack`, plus per-field override behavior in `captions.toml`
+- updated the new-product caption template and SSOT so operators can start from presets instead of tuning every style field manually
 
 ## Still Open
 
@@ -117,7 +119,7 @@
 3. extend the new auto-preview factory baseline into controlled final-render automation only after operators accept the current planner, tag-aware selection rules, and review-gate truth
 4. repeat the new live auto-mode audit seam on more products so `Biothentic0001` does not remain the only proof point
 5. rerun a live `Biothentic0001` preview/final audit after the new persistent-layer looping and per-line manual-caption sizing slice
-6. rerun a live `Biothentic0001` preview/final audit after the new textbox-first and content-hug caption card slices
+6. rerun a live `Biothentic0001` preview/final audit after the new textbox-first, content-hug, and style-preset caption slices
 
 ## Verification Baseline
 

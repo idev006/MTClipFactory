@@ -8,6 +8,7 @@ import tomllib
 
 from mt_clip_factory.domain.timeline_segments import TimelineSegment
 from mt_clip_factory.factory.caption_layout import CaptionFrameContext, resolve_caption_layout
+from mt_clip_factory.factory.caption_style_presets import resolve_caption_style_preset
 
 
 class CaptionContractError(ValueError):
@@ -34,6 +35,7 @@ class CaptionRoleStyle:
     textbox_alignment: str
     textbox_mode: str
     textbox_height_mode: str
+    style_preset: str | None
     font_family: str
     font_fallbacks: tuple[str, ...]
     font_size: int
@@ -96,6 +98,7 @@ class ResolvedCaptionRole:
     vertical_alignment: str
     textbox_alignment: str
     textbox_height_mode: str
+    style_preset: str | None
     text_color: str
     stroke_color: str
     stroke_width: int
@@ -411,6 +414,7 @@ class CaptionRuntimeService:
             vertical_alignment=style.vertical_alignment,
             textbox_alignment=style.textbox_alignment,
             textbox_height_mode=style.textbox_height_mode,
+            style_preset=style.style_preset,
             text_color=style.text_color,
             stroke_color=style.stroke_color,
             stroke_width=style.stroke_width,
@@ -466,6 +470,8 @@ def _expect_table(value, *, table_name: str, required: bool) -> dict[str, object
 
 def _parse_role_style(value, *, role: str) -> CaptionRoleStyle:
     section = _expect_table(value, table_name=f"[caption_properties.{role}]", required=False)
+    style_preset = _optional_text(section.get("style_preset"))
+    preset_defaults = _resolve_style_preset_defaults(style_preset=style_preset, role=role)
     default_position = "top" if role == "main" else "bottom"
     default_font_size = 72 if role == "main" else 40
     default_min_font_size = 48 if role == "main" else 30
@@ -477,66 +483,77 @@ def _parse_role_style(value, *, role: str) -> CaptionRoleStyle:
     default_animation = "pop_in" if role == "main" else "fade_in"
     default_safe_top = 0.14 if role == "main" else 0.64
     default_safe_bottom = 0.46 if role == "main" else 0.88
+
+    def value_for(*keys: str):
+        for key in keys:
+            if key in section:
+                return section[key]
+        for key in keys:
+            if key in preset_defaults:
+                return preset_defaults[key]
+        return None
+
     textbox_width_ratio = _bounded_float(
-        section.get("textbox_width_ratio", section.get("max_width_ratio")),
+        value_for("textbox_width_ratio", "max_width_ratio"),
         default=default_max_width,
         minimum=0.1,
         maximum=1.0,
         context=f"[caption_properties.{role}].textbox_width_ratio",
     )
     textbox_mode = _choice_text(
-        section.get("textbox_mode"),
+        value_for("textbox_mode"),
         default="grouped",
         allowed=("grouped", "per_line"),
         context=f"[caption_properties.{role}].textbox_mode",
     )
     textbox_height_mode = _choice_text(
-        section.get("textbox_height_mode"),
+        value_for("textbox_height_mode"),
         default="content_hug",
         allowed=("content_hug", "fixed"),
         context=f"[caption_properties.{role}].textbox_height_mode",
     )
     return CaptionRoleStyle(
-        position=_optional_text(section.get("position")) or default_position,
-        alignment=_optional_text(section.get("alignment")) or "center",
-        vertical_alignment=_optional_text(section.get("vertical_alignment")) or "top",
-        textbox_alignment=_optional_text(section.get("textbox_alignment")) or "center",
+        position=_optional_text(value_for("position")) or default_position,
+        alignment=_optional_text(value_for("alignment")) or "center",
+        vertical_alignment=_optional_text(value_for("vertical_alignment")) or "top",
+        textbox_alignment=_optional_text(value_for("textbox_alignment")) or "center",
         textbox_mode=textbox_mode,
         textbox_height_mode=textbox_height_mode,
-        font_family=_optional_text(section.get("font_family")) or "Arial",
-        font_fallbacks=_text_list(section.get("font_fallbacks"), context=f"[caption_properties.{role}].font_fallbacks"),
-        font_size=_positive_int(section.get("font_size"), default=default_font_size, context=f"[caption_properties.{role}].font_size"),
-        font_size_unit=_optional_text(section.get("font_size_unit")) or "px",
+        style_preset=style_preset.casefold() if style_preset else None,
+        font_family=_optional_text(value_for("font_family")) or "Arial",
+        font_fallbacks=_text_list(value_for("font_fallbacks"), context=f"[caption_properties.{role}].font_fallbacks"),
+        font_size=_positive_int(value_for("font_size"), default=default_font_size, context=f"[caption_properties.{role}].font_size"),
+        font_size_unit=_optional_text(value_for("font_size_unit")) or "px",
         min_font_size=_positive_int(
-            section.get("min_font_size"),
+            value_for("min_font_size"),
             default=default_min_font_size,
             context=f"[caption_properties.{role}].min_font_size",
         ),
-        font_weight=_optional_text(section.get("font_weight")) or ("bold" if role == "main" else "medium"),
-        text_color=_optional_text(section.get("text_color")) or "#FFFFFF",
-        stroke_color=_optional_text(section.get("stroke_color")) or "#000000",
+        font_weight=_optional_text(value_for("font_weight")) or ("bold" if role == "main" else "medium"),
+        text_color=_optional_text(value_for("text_color")) or "#FFFFFF",
+        stroke_color=_optional_text(value_for("stroke_color")) or "#000000",
         stroke_width=_non_negative_int(
-            section.get("stroke_width"),
+            value_for("stroke_width"),
             default=3 if role == "main" else 2,
             context=f"[caption_properties.{role}].stroke_width",
         ),
-        background_color=_optional_text(section.get("background_color")),
+        background_color=_optional_text(value_for("background_color")),
         background_opacity=_bounded_float(
-            section.get("background_opacity"),
+            value_for("background_opacity"),
             default=0.15 if role == "main" else 0.30,
             minimum=0.0,
             maximum=1.0,
             context=f"[caption_properties.{role}].background_opacity",
         ),
-        padding=_non_negative_int(section.get("padding"), default=default_padding, context=f"[caption_properties.{role}].padding"),
-        max_lines=_positive_int(section.get("max_lines"), default=default_max_lines, context=f"[caption_properties.{role}].max_lines"),
+        padding=_non_negative_int(value_for("padding"), default=default_padding, context=f"[caption_properties.{role}].padding"),
+        max_lines=_positive_int(value_for("max_lines"), default=default_max_lines, context=f"[caption_properties.{role}].max_lines"),
         max_chars_per_line=_positive_int(
-            section.get("max_chars_per_line"),
+            value_for("max_chars_per_line"),
             default=default_max_chars,
             context=f"[caption_properties.{role}].max_chars_per_line",
         ),
         max_width_ratio=_bounded_float(
-            section.get("max_width_ratio"),
+            value_for("max_width_ratio"),
             default=default_max_width,
             minimum=0.1,
             maximum=1.0,
@@ -544,41 +561,50 @@ def _parse_role_style(value, *, role: str) -> CaptionRoleStyle:
         ),
         textbox_width_ratio=textbox_width_ratio,
         textbox_height_ratio=_bounded_float(
-            section.get("textbox_height_ratio"),
+            value_for("textbox_height_ratio"),
             default=0.0,
             minimum=0.0,
             maximum=1.0,
             context=f"[caption_properties.{role}].textbox_height_ratio",
         ),
         line_spacing_ratio=_bounded_float(
-            section.get("line_spacing_ratio"),
+            value_for("line_spacing_ratio"),
             default=0.12 if role == "main" else 0.16,
             minimum=0.0,
             maximum=1.0,
             context=f"[caption_properties.{role}].line_spacing_ratio",
         ),
         safe_top_ratio=_bounded_float(
-            section.get("safe_top_ratio"),
+            value_for("safe_top_ratio"),
             default=default_safe_top,
             minimum=0.0,
             maximum=1.0,
             context=f"[caption_properties.{role}].safe_top_ratio",
         ),
         safe_bottom_ratio=_bounded_float(
-            section.get("safe_bottom_ratio"),
+            value_for("safe_bottom_ratio"),
             default=default_safe_bottom,
             minimum=0.0,
             maximum=1.0,
             context=f"[caption_properties.{role}].safe_bottom_ratio",
         ),
-        overflow_policy=_optional_text(section.get("overflow_policy")) or default_overflow_policy,
-        enter_animation=_optional_text(section.get("enter_animation")) or default_animation,
+        overflow_policy=_optional_text(value_for("overflow_policy")) or default_overflow_policy,
+        enter_animation=_optional_text(value_for("enter_animation")) or default_animation,
         review_required_if_overflow=_boolean(
-            section.get("review_required_if_overflow"),
+            value_for("review_required_if_overflow"),
             default=True,
             context=f"[caption_properties.{role}].review_required_if_overflow",
         ),
     )
+
+
+def _resolve_style_preset_defaults(*, style_preset: str | None, role: str) -> dict[str, object]:
+    if not style_preset:
+        return {}
+    try:
+        return resolve_caption_style_preset(preset_name=style_preset, role=role)
+    except ValueError as exc:
+        raise CaptionContractError(str(exc)) from exc
 
 
 def _select_index(

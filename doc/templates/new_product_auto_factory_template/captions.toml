@@ -45,6 +45,7 @@ sub = [
 ]
 
 [caption_properties.main]
+style_preset = "sale_blast"
 position = "center"
 alignment = "center"
 vertical_alignment = "middle"
@@ -70,6 +71,7 @@ enter_animation = "pop_in"
 review_required_if_overflow = true
 
 [caption_properties.sub]
+style_preset = "sale_blast"
 position = "bottom"
 alignment = "center"
 vertical_alignment = "middle"
