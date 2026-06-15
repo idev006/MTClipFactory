@@ -37,6 +37,7 @@ That model was not strong enough for production quality because it could still:
 6. When no explicit break exists, the solver must keep a single rendered line and search for the strongest safe textbox fill instead of auto-wrapping.
 7. The selected candidate should maximize safe textbox occupancy, then prefer the most balanced layout among near-equivalent candidates.
 8. Grouped manual-break captions may still use different font sizes per line, but their vertical line advance should stay visually consistent enough for promo-card readability.
+9. Line height should prefer ink-aware text bounds over raw font-box height when that produces more natural multi-line Thai spacing.
 
 ## Solver Inputs
 
@@ -130,6 +131,7 @@ sequenceDiagram
 - fixed-height textboxes can trigger height-aware downscaling
 - manual line-break captions may keep different font sizes per line when needed to fit
 - grouped manual line-break captions keep visually steadier vertical spacing even when per-line font sizes differ
+- the solver uses ink-aware line-height measurement so Thai promo captions do not look artificially over-spaced from font metrics alone
 - captions without `\n` stay single-line and use best-fit sizing instead of automatic wrapping
 - the chosen layout improves width occupancy and balance over naive fit-only behavior
 - pytest coverage verifies both width-fit and height-fit behavior

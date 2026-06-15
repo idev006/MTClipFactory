@@ -55,7 +55,7 @@ def _resolve_line_metrics(
                 any_scaled = True
         font = _build_qfont(font_family=font_family, font_file=font_file, pixel_size=resolved_font_size)
         width_px = _measure_line_width(line, font=font, stroke_width=stroke_width)
-        height_px = _measure_line_height(font=font, stroke_width=stroke_width)
+        height_px = _measure_line_height(font=font, stroke_width=stroke_width, line=line)
         if width_px > max_width_px:
             overflowed = True
         line_font_sizes.append(resolved_font_size)
@@ -133,7 +133,10 @@ def _layout_text(
         return _RawLayout(
             lines=lines,
             line_widths_px=line_widths_px,
-            line_height_px=_measure_line_height(font=font, stroke_width=stroke_width),
+            line_height_px=max(
+                (_measure_line_height(font=font, stroke_width=stroke_width, line=line) for line in lines),
+                default=_measure_line_height(font=font, stroke_width=stroke_width),
+            ),
             overflowed=overflowed,
             truncated_for_runtime=truncated_for_runtime,
             line_count_exceeded=line_count_exceeded,
@@ -161,7 +164,7 @@ def _layout_text(
     return _RawLayout(
         lines=rendered_lines,
         line_widths_px=line_widths_px,
-        line_height_px=_measure_line_height(font=font, stroke_width=stroke_width),
+        line_height_px=_measure_line_height(font=font, stroke_width=stroke_width, line=rendered_lines[0] if rendered_lines else ""),
         overflowed=overflowed,
         truncated_for_runtime=truncated_for_runtime,
         line_count_exceeded=line_count_exceeded,
@@ -304,9 +307,12 @@ def _measure_line_width(line: str, *, font: QFont, stroke_width: int) -> int:
     return max(0, round(metrics.horizontalAdvance(line)) + max(0, stroke_width * 2))
 
 
-def _measure_line_height(*, font: QFont, stroke_width: int) -> int:
+def _measure_line_height(*, font: QFont, stroke_width: int, line: str | None = None) -> int:
     metrics = QFontMetricsF(font)
-    return max(1, round(metrics.height()) + max(0, stroke_width * 2))
+    sample_text = (line or "").strip() or "Ag"
+    tight_height_px = max(1.0, metrics.tightBoundingRect(sample_text).height())
+    safe_height_px = max(tight_height_px, metrics.height() * 0.78)
+    return max(1, round(safe_height_px) + max(0, stroke_width * 2))
 
 
 def _build_qfont(*, font_family: str, font_file: Path | None, pixel_size: int) -> QFont:

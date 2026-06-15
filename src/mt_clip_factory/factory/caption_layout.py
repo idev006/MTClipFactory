@@ -629,7 +629,7 @@ def _grow_manual_line_sizes_to_fill_textbox(
         for line, size in zip(lines, sizes, strict=False):
             font = _build_qfont(font_family=font_family, font_file=font_file, pixel_size=size)
             widths.append(_measure_line_width(line, font=font, stroke_width=stroke_width))
-            heights.append(_measure_line_height(font=font, stroke_width=stroke_width))
+            heights.append(_measure_line_height(font=font, stroke_width=stroke_width, line=line))
         normalized_heights = _normalize_line_heights(
             line_heights_px=tuple(heights),
             use_uniform_line_height=use_uniform_line_height,
