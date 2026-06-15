@@ -49,6 +49,7 @@ The project now uses two roadmap layers:
 - `IR-28` Product-local run artifacts and fill-policy baseline: complete on 2026-06-14
 - `IR-29` Pixel-based caption layout and diversity baseline: complete on 2026-06-14
 - `IR-30` Caption safe bands and longest-layer duration baseline: complete on 2026-06-14
+- `IR-31` Textbox-based caption layout baseline: complete on 2026-06-15
 
 ## Current Execution Stream
 
@@ -839,6 +840,34 @@ Turn product-level `captions.toml` preparation into real preview/final caption r
 - delivered manual `\n` preservation plus bounded runtime fit handling and review-required overflow signaling
 - delivered FFmpeg caption overlay rendering plus manifest-backed caption evidence and output-detail visibility
 - covered caption contract parsing, runtime sync, renderer command generation, manifest visibility, and review-gate behavior with pytest
+
+## IR-31 | Textbox-Based Caption Layout Baseline
+
+### Goal
+
+Make caption layout easier to control and evolve by resolving textbox geometry first and placing text inside that box second.
+
+### Scope
+
+- add textbox-first caption layout policy with stable box geometry
+- separate textbox placement from text alignment
+- fit measured text against textbox content width instead of shrinking a text-derived box only
+- keep the contract backward compatible for older `max_width_ratio` caption metadata
+- expose textbox geometry truth through runtime objects, manifests, docs, and pytest
+
+### Acceptance Criteria
+
+- one caption role can center the textbox while left-aligning the text inside it
+- background box width remains stable for one role even when line widths differ
+- measured fit remains pixel-based and review-truthful
+- new-product caption templates and docs explain the new textbox fields
+
+### Delivery Result
+
+- delivered `textbox_width_ratio` and `textbox_alignment` support in the caption runtime contract
+- delivered textbox-first caption geometry resolution in the layout engine with text fit measured against textbox content width
+- delivered stroke-aware line measurement, manifest evidence, and renderer parity for textbox-backed caption rendering
+- covered textbox geometry behavior and render compatibility with pytest and kept the full regression suite green
 
 ## Cross-Milestone Rules
 

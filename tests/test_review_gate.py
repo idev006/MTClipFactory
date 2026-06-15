@@ -188,3 +188,96 @@ def test_review_gate_counts_background_and_foreground_assets_for_visual_diversit
 
     assert assessment.metrics["distinct_visual_assets"] == 2
     assert not any(signal.code == "low_visual_diversity" for signal in assessment.signals)
+
+
+def test_review_gate_allows_persistent_primary_asset_when_recipe_uses_single_selected_visual() -> None:
+    assessment = assess_review_gate(
+        plan=CompositionPlan(recipe_id=1, duration_source="background", target_duration_sec=8.0, resolved_duration_sec=8.0),
+        composition=PreviewComposition(
+            manifest_payload={},
+            source_files=(Path("foreground.mp4"), Path("background.mp4")),
+            segment_clips=(
+                PreviewSegmentClip(
+                    sequence_index=1,
+                    segment_type="hook",
+                    layer_name="product_focus_visual",
+                    asset_id=21,
+                    asset_code="foreground_asset",
+                    source_file=Path("foreground.mp4"),
+                    start_sec=0.0,
+                    end_sec=2.0,
+                    target_duration_sec=2.0,
+                    fill_mode="loop_to_segment",
+                    background_layer=PreviewLayerClip(
+                        layer_name="background_visual",
+                        asset_id=11,
+                        asset_code="background_asset",
+                        source_file=Path("background.mp4"),
+                        fill_mode="loop_to_segment",
+                    ),
+                ),
+                PreviewSegmentClip(
+                    sequence_index=2,
+                    segment_type="benefit",
+                    layer_name="product_focus_visual",
+                    asset_id=21,
+                    asset_code="foreground_asset",
+                    source_file=Path("foreground.mp4"),
+                    start_sec=2.0,
+                    end_sec=4.0,
+                    target_duration_sec=2.0,
+                    fill_mode="loop_to_segment",
+                    background_layer=PreviewLayerClip(
+                        layer_name="background_visual",
+                        asset_id=11,
+                        asset_code="background_asset",
+                        source_file=Path("background.mp4"),
+                        fill_mode="loop_to_segment",
+                    ),
+                ),
+                PreviewSegmentClip(
+                    sequence_index=3,
+                    segment_type="proof",
+                    layer_name="product_focus_visual",
+                    asset_id=21,
+                    asset_code="foreground_asset",
+                    source_file=Path("foreground.mp4"),
+                    start_sec=4.0,
+                    end_sec=6.0,
+                    target_duration_sec=2.0,
+                    fill_mode="loop_to_segment",
+                    background_layer=PreviewLayerClip(
+                        layer_name="background_visual",
+                        asset_id=11,
+                        asset_code="background_asset",
+                        source_file=Path("background.mp4"),
+                        fill_mode="loop_to_segment",
+                    ),
+                ),
+                PreviewSegmentClip(
+                    sequence_index=4,
+                    segment_type="cta",
+                    layer_name="product_focus_visual",
+                    asset_id=21,
+                    asset_code="foreground_asset",
+                    source_file=Path("foreground.mp4"),
+                    start_sec=6.0,
+                    end_sec=8.0,
+                    target_duration_sec=2.0,
+                    fill_mode="loop_to_segment",
+                    background_layer=PreviewLayerClip(
+                        layer_name="background_visual",
+                        asset_id=11,
+                        asset_code="background_asset",
+                        source_file=Path("background.mp4"),
+                        fill_mode="loop_to_segment",
+                    ),
+                ),
+            ),
+            audio_mix_plan=None,
+        ),
+        settings=default_review_settings(),
+    )
+
+    assert assessment.metrics["max_consecutive_same_asset_segments"] == 4
+    assert not any(signal.code == "repeated_visual_asset" for signal in assessment.signals)

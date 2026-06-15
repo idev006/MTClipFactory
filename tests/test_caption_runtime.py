@@ -222,7 +222,8 @@ def test_caption_runtime_supports_point_sized_fonts_and_pixel_layout(tmp_path) -
 
     assert role.font_size_unit == "pt"
     assert role.font_size == 24
-    assert role.max_text_width_px == 756
+    assert role.box_width_px == 756
+    assert role.max_text_width_px == 716
     assert role.line_left_positions_px
     assert role.line_top_positions_px
 
@@ -278,6 +279,107 @@ def test_caption_runtime_centers_main_within_safe_band_not_full_frame(tmp_path) 
 
     assert role.position == "center"
     assert role.box_top_px < 700
+
+
+def test_caption_runtime_resolves_centered_textbox_with_left_aligned_text(tmp_path) -> None:
+    media_root = tmp_path / "media_library"
+    fonts_root = tmp_path / "fonts"
+    fonts_root.mkdir(parents=True, exist_ok=True)
+    (fonts_root / "THSarabun.ttf").write_bytes(b"font")
+    product_dir = tmp_path / "product_textbox"
+    product_dir.mkdir(parents=True, exist_ok=True)
+    caption_file = product_dir / "captions.toml"
+    caption_file.write_text(
+        "\n".join(
+            [
+                "[caption_pools.hook]",
+                'main = ["hello world"]',
+                "",
+                "[caption_properties.main]",
+                'font_family = "THSarabun"',
+                'alignment = "left"',
+                'textbox_alignment = "center"',
+                "textbox_width_ratio = 0.8",
+                "padding = 24",
+                "font_size = 72",
+                "min_font_size = 48",
+                "safe_top_ratio = 0.14",
+                "safe_bottom_ratio = 0.46",
+            ]
+        ),
+        encoding="utf-8",
+    )
+    store = ProductAutomationMetadataStore(media_root)
+    store.sync_caption_contract(product_code="product_textbox", source_file=caption_file)
+    service = CaptionRuntimeService(metadata_store=store, fonts_root=fonts_root)
+    segments = (
+        TimelineSegment(
+            recipe_id=1,
+            segment_type="hook",
+            sequence_index=1,
+            start_sec=0.0,
+            end_sec=3.0,
+            target_duration_sec=3.0,
+        ),
+    )
+
+    resolved = service.resolve_for_segments(
+        product_code="product_textbox",
+        recipe_code="product_textbox_batch_001",
+        segments=segments,
+        frame_width_px=1080,
+        frame_height_px=1920,
+    )
+    role = resolved[0].roles[0]
+
+    assert role.textbox_alignment == "center"
+    assert role.textbox_width_ratio == 0.8
+    assert role.box_width_px == 864
+    assert role.box_left_px == 108
+    assert role.line_left_positions_px[0] == role.box_left_px + role.padding
+    assert role.max_text_width_px == 816
+
+
+def test_caption_runtime_scales_manual_break_lines_independently_to_fit_width(tmp_path) -> None:
+    media_root = tmp_path / "media_library"
+    fonts_root = tmp_path / "fonts"
+    fonts_root.mkdir(parents=True, exist_ok=True)
+    (fonts_root / "THSarabun.ttf").write_bytes(b"font")
+    product_dir = tmp_path / "product_line_scale"
+    product_dir.mkdir(parents=True, exist_ok=True)
+    caption_file = _write_caption_contract(
+        product_dir,
+        main_entries=("wow\\nthis is a much longer line than wow\\nspace",),
+    )
+    store = ProductAutomationMetadataStore(media_root)
+    store.sync_caption_contract(product_code="product_line_scale", source_file=caption_file)
+    service = CaptionRuntimeService(metadata_store=store, fonts_root=fonts_root)
+    segments = (
+        TimelineSegment(
+            recipe_id=1,
+            segment_type="hook",
+            sequence_index=1,
+            start_sec=0.0,
+            end_sec=3.0,
+            target_duration_sec=3.0,
+        ),
+    )
+
+    resolved = service.resolve_for_segments(
+        product_code="product_line_scale",
+        recipe_code="product_line_scale_batch_001",
+        segments=segments,
+        frame_width_px=360,
+        frame_height_px=640,
+    )
+    role = resolved[0].roles[0]
+
+    assert role.line_break_mode == "manual"
+    assert role.fit_strategy == "per_line_scaled_to_fit"
+    assert len(role.line_font_sizes_px) == 3
+    assert len(set(role.line_font_sizes_px)) > 1
+    assert min(role.line_font_sizes_px) == role.min_font_size
+    assert role.overflowed is True
 
 
 def test_balanced_wrap_rearranges_space_separated_lines_more_evenly() -> None:

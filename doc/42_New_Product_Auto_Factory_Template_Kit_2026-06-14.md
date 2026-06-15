@@ -45,6 +45,7 @@ Operator guidance from the first live product-folder audit:
 
 - keep `selection_tags` broad enough to preserve the intended visual pool; narrow them only when repetition is acceptable on purpose
 - write `captions.toml` as publishable clip copy, not as editorial instructions to the operator
+- think of caption layout as a textbox first: use `textbox_alignment` for the box and `alignment` for the text inside it
 - use a rerun after contract edits as the standard recovery loop for caption overflow or overly repetitive visual selection
 
 ## Minimum Required Files

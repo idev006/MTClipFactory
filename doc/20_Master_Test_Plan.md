@@ -44,6 +44,7 @@ It complements [07_Testing_Strategy.md](/F:/programming/python/MTClipFactory/doc
 - folder-driven tag metadata sync from `tags.toml`
 - caption runtime sync and render behavior from product-level `captions.toml`
 - caption safe-band defaults and role-specific vertical placement overrides from product-level `captions.toml`
+- textbox-based caption geometry, including independent textbox placement and text alignment
 - product-local run artifact layout, order snapshot, and run journal behavior
 - per-asset-type fill policy from product-level `pipeline.toml`
 - longest-contributing-layer duration resolution plus shorter-layer fill continuation behavior
@@ -217,6 +218,7 @@ It complements [07_Testing_Strategy.md](/F:/programming/python/MTClipFactory/doc
 42. Confirm a real prepared product folder can move from review-required preview output to clean rerun by correcting overly narrow `selection_tags` and non-publishable or overlong caption copy in the product-local contract files.
 43. Confirm caption layout uses pixel-based fit evidence, supports `left`/`center`/`right` line alignment, and writes per-line layout truth into the manifest.
 44. Confirm seeded auto-mode visual selection yields varied but deterministic foreground/background choices across multiple recipes in one batch.
+45. Confirm textbox-based caption layout can center the textbox while left-aligning the text inside it, and that manifest evidence keeps box width distinct from text-content width.
 
 ### C. Review And Approval Flow
 

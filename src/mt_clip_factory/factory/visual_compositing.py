@@ -465,10 +465,11 @@ def _caption_drawtext_filters(*, temp_dir: Path, segment: PreviewSegmentClip) ->
         for line_index, line_text in enumerate(role.rendered_lines, start=1):
             text_file = temp_dir / f"caption_{segment.sequence_index:02d}_{role.role}_{line_index:02d}.txt"
             text_file.write_text(line_text, encoding="utf-8")
+            line_font_size = role.line_font_sizes_px[line_index - 1] if role.line_font_sizes_px else role.font_size
             drawtext_parts = [
                 f"textfile='{_escape_filter_path(text_file)}'",
                 f"fontcolor={role.text_color}",
-                f"fontsize={role.font_size}",
+                f"fontsize={line_font_size}",
                 f"x={role.line_left_positions_px[line_index - 1]}",
                 f"y={role.line_top_positions_px[line_index - 1]}",
                 "fix_bounds=1",

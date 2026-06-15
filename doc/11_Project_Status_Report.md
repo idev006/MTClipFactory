@@ -77,6 +77,9 @@
 - a live `Biothentic0001` spot-check has now validated the new pixel-layout caption manifest evidence on a real `1080x1920` preview output
 - caption runtime now also supports role-specific safe vertical bands so default `main` and `sub` overlays avoid generic center-of-frame placement and behave more like title-plus-lower-third graphics
 - composition planning now resolves clip duration from the longest contributing layer extent, so longer voice sequences, music sequences, or visual source extents do not get clipped by an earlier narrow fallback
+- preview composition now keeps one deterministic selected visual asset per recipe-layer and lets fill policy extend that chosen asset across all segments instead of reselection per segment
+- manual multi-line captions can now shrink font size per line against real pixel width while preserving operator-authored `\n` grouping and overflow review truth
+- caption runtime now also resolves textbox-first geometry so background box width can stay stable while text alignment remains independently controllable inside the box
 - assets can now be safely renamed or deleted from the `Assets` screen, with repository checks that block deletion when recipe-item or artifact-job references still exist
 - the `Assets` screen now supports `Show References`, `Retire Selected`, and `Purge Media` so referenced assets can leave active use and disk without destroying audit truth
 - the `Assets` screen now also supports `Replace In Recipes...` with recipe-safe validation, recipe reset-to-candidate behavior, and approval guards that prevent stale pre-replacement outputs from being reused as evidence for changed recipes
@@ -109,7 +112,7 @@
 
 ## Verification Baseline
 
-- `python -m pytest` via `.venv`: `206 passed, 4 warnings`
+- `python -m pytest` via `.venv`: `212 passed, 4 warnings`
 - targeted `QT_QPA_PLATFORM=offscreen` UI coverage for the new `Auto Factory` window and existing themed windows: passed
 
 ## Current Focus
@@ -136,6 +139,8 @@
 - validate the new pixel-based caption layout and seeded clip diversity seam on additional products beyond `Biothentic0001`
 - validate the new safe-band caption defaults on more real presenter shots and product compositions beyond the current sample
 - validate longest-layer duration resolution against more real product mixes so longer visual or music extents do not get clipped early
+- validate the new persistent visual-layer selection and per-line manual caption sizing on more live product folders beyond the current sample
+- validate the new textbox-first caption geometry on more live product folders, especially cases that need centered boxes with left-aligned text or stable lower-third card widths
 
 ## Next Steps
 
@@ -145,6 +150,8 @@
 4. Decide whether production-order orchestration should surface on the dashboard before multi-node execution begins.
 5. Clean the Alembic `path_separator=os` warning in a maintenance pass.
 6. Validate whether product-local `runs/<batch_code>` artifacts remain sufficient across multiple products and whether journal detail is enough for recovery-facing operator use.
+7. Run another live end-to-end preview/final audit on `Biothentic0001` after the new persistent visual-loop and per-line manual-caption sizing slice.
+8. Run another live end-to-end preview/final audit on `Biothentic0001` after the textbox-first caption layout slice.
 
 ## Direction Locked In This Documentation Revision
 

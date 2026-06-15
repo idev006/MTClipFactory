@@ -457,6 +457,53 @@ def test_factory_service_builds_layered_visual_stack_when_background_and_foregro
     assert manifest_payload["segments"][0]["background_layer"]["asset_code"] == "bg_asset"
 
 
+def test_factory_service_keeps_selected_visual_asset_persistent_across_segments(unit_of_work_factory, tmp_path) -> None:
+    product_id, background_asset_id = _register_ready_asset(
+        unit_of_work_factory,
+        tmp_path,
+        asset_type="background_video",
+        asset_code="bg_asset",
+        file_name="bg.mp4",
+    )
+    _, foreground_asset_id_a = _register_ready_asset(
+        unit_of_work_factory,
+        tmp_path,
+        asset_type="foreground_video",
+        asset_code="fg_asset_a",
+        file_name="fg_a.mp4",
+    )
+    _, foreground_asset_id_b = _register_ready_asset(
+        unit_of_work_factory,
+        tmp_path,
+        asset_type="foreground_video",
+        asset_code="fg_asset_b",
+        file_name="fg_b.mp4",
+    )
+    service = _build_factory_service(unit_of_work_factory, tmp_path / "previews")
+    recipe_id = service.create_recipe(CreateRecipeCommand(product_id=product_id, recipe_code="Persistent Layer", target_ratio="9:16"))
+    service.assign_asset_to_recipe(AssignAssetToRecipeCommand(recipe_id=recipe_id, asset_id=background_asset_id, role="background"))
+    service.assign_asset_to_recipe(AssignAssetToRecipeCommand(recipe_id=recipe_id, asset_id=foreground_asset_id_a, role="hero_a"))
+    service.assign_asset_to_recipe(AssignAssetToRecipeCommand(recipe_id=recipe_id, asset_id=foreground_asset_id_b, role="hero_b"))
+
+    job_id = service.enqueue_preview_job(recipe_id)
+    service.run_preview_job(job_id)
+
+    output = service.list_outputs(recipe_id=recipe_id)[0]
+    manifest_payload = json.loads(Path(output.manifest_path).read_text(encoding="utf-8"))
+    segment_clips = service._preview_renderer.calls[0]["segment_clips"]
+    selected_foreground_codes = {segment.asset_code for segment in segment_clips}
+    selected_background_codes = {
+        segment.background_layer.asset_code
+        for segment in segment_clips
+        if segment.background_layer is not None
+    }
+
+    assert len(selected_foreground_codes) == 1
+    assert selected_foreground_codes <= {"fg_asset_a", "fg_asset_b"}
+    assert selected_background_codes == {"bg_asset"}
+    assert {segment["asset_code"] for segment in manifest_payload["segments"]} == selected_foreground_codes
+
+
 def test_factory_service_routes_audio_masking_risk_to_review_manifest(unit_of_work_factory, tmp_path) -> None:
     product_id, visual_asset_id = _register_ready_asset(unit_of_work_factory, tmp_path)
     _, voice_asset_id = _register_ready_asset(

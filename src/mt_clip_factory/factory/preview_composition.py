@@ -11,7 +11,7 @@ from mt_clip_factory.domain.timeline_segments import TimelineSegment
 from mt_clip_factory.factory.audio_composition import PreviewAudioMixPlan, build_audio_mix_plan
 from mt_clip_factory.factory.automation_policy import ProductAutomationPolicyService, default_fill_policies
 from mt_clip_factory.factory.caption_runtime import CaptionRuntimeService, ResolvedCaptionRole, ResolvedSegmentCaptions
-from mt_clip_factory.factory.visual_selection import seeded_cycled_choice
+from mt_clip_factory.factory.visual_selection import seeded_choice
 
 
 VISUAL_LAYER_FALLBACK = ("product_focus_visual", "background_visual")
@@ -71,6 +71,10 @@ def build_segmented_preview_composition(
         else automation_policy_service.load_fill_policies(product_code)
     )
     visual_assets_by_layer = _build_visual_assets_by_layer(plan, assets)
+    selected_visual_assets_by_layer = _select_visual_assets_by_layer(
+        visual_assets_by_layer,
+        recipe_code=recipe.recipe_code,
+    )
     audio_mix_plan = build_audio_mix_plan(plan, assets, fill_policies=fill_policies)
     resolved_captions = _resolve_segment_captions(
         caption_runtime_service=caption_runtime_service,
@@ -98,8 +102,7 @@ def build_segmented_preview_composition(
     segment_clips = tuple(
         _build_segment_clip(
             segment,
-            visual_assets_by_layer,
-            recipe_code=recipe.recipe_code,
+            selected_visual_assets_by_layer,
             captions_by_sequence=resolved_captions,
             fill_policies=fill_policies,
         )
@@ -155,37 +158,29 @@ def _build_visual_assets_by_layer(plan: CompositionPlan, assets: dict[int, Asset
 
 def _build_segment_clip(
     segment: TimelineSegment,
-    visual_assets_by_layer: dict[str, tuple[Asset, ...]],
+    selected_visual_assets_by_layer: dict[str, Asset],
     *,
-    recipe_code: str,
     captions_by_sequence: dict[int, ResolvedSegmentCaptions],
     fill_policies,
 ) -> PreviewSegmentClip:
     background_layer = _build_optional_layer_clip(
         segment,
-        visual_assets_by_layer,
-        recipe_code=recipe_code,
+        selected_visual_assets_by_layer,
         layer_name="background_visual",
         fill_policy=fill_policies.background_video,
     )
     foreground_layer = _build_optional_layer_clip(
         segment,
-        visual_assets_by_layer,
-        recipe_code=recipe_code,
+        selected_visual_assets_by_layer,
         layer_name="product_focus_visual",
         fill_policy=fill_policies.foreground_video,
     )
     primary_layer = foreground_layer or background_layer
     if primary_layer is None:
-        layer_name, candidate_assets = _resolve_candidate_assets(segment, visual_assets_by_layer)
+        layer_name, asset = _resolve_selected_layer_asset(segment, selected_visual_assets_by_layer)
         primary_layer = _build_layer_clip(
             layer_name=layer_name,
-            asset=_select_visual_asset(
-                candidate_assets,
-                recipe_code=recipe_code,
-                segment=segment,
-                layer_name=layer_name,
-            ),
+            asset=asset,
             target_duration_sec=segment.target_duration_sec,
             fill_policy=(
                 fill_policies.background_video
@@ -218,21 +213,14 @@ def _build_segment_clip(
 
 def _build_optional_layer_clip(
     segment: TimelineSegment,
-    visual_assets_by_layer: dict[str, tuple[Asset, ...]],
+    selected_visual_assets_by_layer: dict[str, Asset],
     *,
-    recipe_code: str,
     layer_name: str,
     fill_policy=None,
 ) -> PreviewLayerClip | None:
-    candidate_assets = visual_assets_by_layer.get(layer_name)
-    if not candidate_assets:
+    asset = selected_visual_assets_by_layer.get(layer_name)
+    if asset is None:
         return None
-    asset = _select_visual_asset(
-        candidate_assets,
-        recipe_code=recipe_code,
-        segment=segment,
-        layer_name=layer_name,
-    )
     return _build_layer_clip(
         layer_name=layer_name,
         asset=asset,
@@ -251,18 +239,18 @@ def _build_layer_clip(*, layer_name: str, asset: Asset, target_duration_sec: flo
     )
 
 
-def _resolve_candidate_assets(
+def _resolve_selected_layer_asset(
     segment: TimelineSegment,
-    visual_assets_by_layer: dict[str, tuple[Asset, ...]],
-) -> tuple[str, tuple[Asset, ...]]:
+    selected_visual_assets_by_layer: dict[str, Asset],
+) -> tuple[str, Asset]:
     for layer_name in segment.preferred_layers:
-        candidate_assets = visual_assets_by_layer.get(layer_name)
-        if candidate_assets:
-            return layer_name, candidate_assets
+        asset = selected_visual_assets_by_layer.get(layer_name)
+        if asset is not None:
+            return layer_name, asset
     for layer_name in VISUAL_LAYER_FALLBACK:
-        candidate_assets = visual_assets_by_layer.get(layer_name)
-        if candidate_assets:
-            return layer_name, candidate_assets
+        asset = selected_visual_assets_by_layer.get(layer_name)
+        if asset is not None:
+            return layer_name, asset
     raise ValueError(f"Segment {segment.segment_type} has no renderable visual assets.")
 
 
@@ -372,23 +360,18 @@ def _resolve_segment_captions(
     return {segment.sequence_index: segment for segment in resolved_segments}
 
 
-def _select_visual_asset(
-    candidate_assets: tuple[Asset, ...],
+def _select_visual_assets_by_layer(
+    visual_assets_by_layer: dict[str, tuple[Asset, ...]],
     *,
     recipe_code: str,
-    segment: TimelineSegment,
-    layer_name: str,
-) -> Asset:
-    return seeded_cycled_choice(
-        candidate_assets,
-        seed_key="|".join(
-            (
-                recipe_code,
-                layer_name,
-            )
-        ),
-        position=segment.sequence_index - 1,
-    )
+) -> dict[str, Asset]:
+    selected: dict[str, Asset] = {}
+    for layer_name, candidate_assets in visual_assets_by_layer.items():
+        selected[layer_name] = seeded_choice(
+            candidate_assets,
+            seed_key="|".join((recipe_code, layer_name, "persistent_layer_asset")),
+        )
+    return selected
 
 
 def _build_caption_manifest_payload(resolved_captions: dict[int, ResolvedSegmentCaptions]) -> dict:
@@ -426,6 +409,7 @@ def _build_caption_manifest_payload(resolved_captions: dict[int, ResolvedSegment
                         "min_font_size": role.min_font_size,
                         "position": role.position,
                         "alignment": role.alignment,
+                        "textbox_alignment": role.textbox_alignment,
                         "text_color": role.text_color,
                         "stroke_color": role.stroke_color,
                         "stroke_width": role.stroke_width,
@@ -435,12 +419,15 @@ def _build_caption_manifest_payload(resolved_captions: dict[int, ResolvedSegment
                         "max_lines": role.max_lines,
                         "max_chars_per_line": role.max_chars_per_line,
                         "max_width_ratio": role.max_width_ratio,
+                        "textbox_width_ratio": role.textbox_width_ratio,
                         "line_spacing_ratio": role.line_spacing_ratio,
                         "safe_top_ratio": role.safe_top_ratio,
                         "safe_bottom_ratio": role.safe_bottom_ratio,
                         "line_spacing_px": role.line_spacing_px,
+                        "line_font_sizes_px": list(role.line_font_sizes_px),
                         "line_widths_px": list(role.line_widths_px),
                         "line_height_px": role.line_height_px,
+                        "line_heights_px": list(role.line_heights_px),
                         "text_block_width_px": role.text_block_width_px,
                         "text_block_height_px": role.text_block_height_px,
                         "max_text_width_px": role.max_text_width_px,

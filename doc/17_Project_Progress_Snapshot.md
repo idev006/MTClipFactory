@@ -104,6 +104,9 @@
 - began the next corrective SSOT slice for operator-safe caption bands plus longest-layer duration resolution based on real preview evidence from product-folder automation
 - completed the corrective caption safe-band and longest-layer duration slice so default main/sub overlays land in separated vertical bands and resolved clip duration now rises to the longest contributing layer extent when needed
 - delivered pytest coverage that locks the new defaults: separated `main`/`sub` safe bands plus duration escalation when a contributing visual layer exceeds the older requested recipe length
+- delivered a corrective runtime slice so each recipe now keeps one deterministic selected visual asset per visual layer across all segments, with fill policy extending that asset instead of per-segment reselection
+- delivered per-line manual-caption font fitting so operator-authored `\n` lines can shrink independently by pixel width while still surfacing overflow for review when `min_font_size` is not enough
+- delivered a textbox-first caption layout slice so resolved caption boxes now hold stable geometry while text alignment remains controllable inside the box
 
 ## Still Open
 
@@ -111,8 +114,10 @@
 2. implement worker lease, heartbeat, and retry-policy semantics on top of the new control-plane baseline
 3. extend the new auto-preview factory baseline into controlled final-render automation only after operators accept the current planner, tag-aware selection rules, and review-gate truth
 4. repeat the new live auto-mode audit seam on more products so `Biothentic0001` does not remain the only proof point
+5. rerun a live `Biothentic0001` preview/final audit after the new persistent-layer looping and per-line manual-caption sizing slice
+6. rerun a live `Biothentic0001` preview/final audit after the new textbox-first caption layout slice
 
 ## Verification Baseline
 
-- `python -m pytest` in `.venv`: `206 passed, 4 warnings`
+- `python -m pytest` in `.venv`: `212 passed, 4 warnings`
 - targeted `QT_QPA_PLATFORM=offscreen` UI/theme coverage for the new `Auto Factory` window and existing app windows: passed

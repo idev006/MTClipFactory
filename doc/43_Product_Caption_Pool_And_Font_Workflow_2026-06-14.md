@@ -129,6 +129,7 @@ Recommended fields:
 
 - `position`
 - `alignment`
+- `textbox_alignment`
 - `font_family`
 - `font_fallbacks`
 - `font_size`
@@ -142,10 +143,16 @@ Recommended fields:
 - `padding`
 - `max_lines`
 - `max_chars_per_line`
-- `max_width_ratio`
+- `textbox_width_ratio`
 - `overflow_policy`
 - `enter_animation`
 - `review_required_if_overflow`
+
+Textbox guidance:
+
+- `textbox_alignment` places the textbox itself in the frame
+- `alignment` places the text inside that textbox
+- legacy `max_width_ratio` remains supported as a backward-compatible fallback, but new contracts should prefer `textbox_width_ratio`
 
 Recommended example:
 
@@ -153,6 +160,7 @@ Recommended example:
 [caption_properties.main]
 position = "center"
 alignment = "center"
+textbox_alignment = "center"
 font_family = "THSarabun"
 font_fallbacks = ["TH Chakra Petch", "Tahoma", "Arial Unicode MS"]
 font_size = 72
@@ -166,7 +174,7 @@ background_opacity = 0.15
 padding = 20
 max_lines = 3
 max_chars_per_line = 18
-max_width_ratio = 0.78
+textbox_width_ratio = 0.78
 overflow_policy = "wrap_then_scale_then_review"
 enter_animation = "pop_in"
 review_required_if_overflow = true
@@ -174,6 +182,7 @@ review_required_if_overflow = true
 [caption_properties.sub]
 position = "bottom"
 alignment = "center"
+textbox_alignment = "center"
 font_family = "THSarabun"
 font_fallbacks = ["TH Chakra Petch", "Tahoma", "Arial Unicode MS"]
 font_size = 40
@@ -187,7 +196,7 @@ background_opacity = 0.30
 padding = 16
 max_lines = 3
 max_chars_per_line = 28
-max_width_ratio = 0.82
+textbox_width_ratio = 0.82
 overflow_policy = "wrap_then_truncate_or_review"
 enter_animation = "fade_in"
 review_required_if_overflow = true

@@ -56,6 +56,7 @@ When code changes, the related Markdown documents in this folder must be updated
 48. [48_Biothentic0001_Live_Auto_Mode_Audit_Report_2026-06-14.md](/F:/programming/python/MTClipFactory/doc/48_Biothentic0001_Live_Auto_Mode_Audit_Report_2026-06-14.md)
 49. [49_Pixel_Based_Caption_Layout_And_Diversity_Workflow_2026-06-14.md](/F:/programming/python/MTClipFactory/doc/49_Pixel_Based_Caption_Layout_And_Diversity_Workflow_2026-06-14.md)
 50. [50_Caption_Safe_Bands_And_Longest_Layer_Duration_Workflow_2026-06-14.md](/F:/programming/python/MTClipFactory/doc/50_Caption_Safe_Bands_And_Longest_Layer_Duration_Workflow_2026-06-14.md)
+51. [51_Textbox_Based_Caption_Layout_Workflow_2026-06-15.md](/F:/programming/python/MTClipFactory/doc/51_Textbox_Based_Caption_Layout_Workflow_2026-06-15.md)
 
 ## Governance
 

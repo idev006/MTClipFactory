@@ -26,6 +26,8 @@ Observed problems from real auto-mode previews:
 3. Operators may still override caption position and band ratios in `captions.toml`.
 4. Master duration must resolve from the longest contributing layer extent.
 5. Shorter layers must continue through existing asset-type fill policy until the resolved timeline ends.
+6. One recipe should select one persistent visual asset per visual layer and let fill policy extend that asset through the whole resolved timeline instead of reselecting a different asset for each segment.
+7. Manual multi-line captions may shrink font size per line when one line is materially longer than its neighbors.
 
 ## Caption Safe Band Rule
 
@@ -63,6 +65,19 @@ The first balancing slice should:
 
 This especially matters for Thai marketing copy where phrases are often separated by spaces rather than long sentence punctuation.
 
+## Per-Line Font Fit Rule
+
+When the operator intentionally inserts manual `\n` line breaks, the runtime should treat each rendered line as an independent width-fit candidate.
+
+Rules:
+
+- each line starts from the role requested font size
+- each line may shrink independently down to the role `min_font_size`
+- shorter neighboring lines may remain larger than longer lines
+- if one line still cannot fit at `min_font_size`, the role must remain overflow-visible and review-visible
+
+This keeps operator-authored line grouping intact while making mixed-length title cards look more deliberate.
+
 ## Duration Resolution Rule
 
 The master clip duration must resolve from the longest contributing layer extent.
@@ -89,6 +104,17 @@ After the master duration is resolved:
 - shorter visual layers continue by their configured fill policy such as `loop_to_segment`, `freeze_last_frame`, or `review_if_short`
 - shorter music layers continue by their configured audio fill policy such as `loop_to_timeline`
 - narration must remain non-looping unless the product policy is intentionally changed in a future approved design
+
+## Persistent Visual Layer Rule
+
+For one rendered recipe:
+
+- `background_visual` chooses one deterministic asset for the recipe
+- `product_focus_visual` chooses one deterministic asset for the recipe
+- timeline segments reuse those chosen assets
+- segment fill mode determines whether the chosen asset trims, loops, freezes, or raises review
+
+This prevents accidental per-segment asset swapping when the operator expectation is one presenter clip or one background clip extended across the full result timeline.
 
 ## Reviewed Workflow
 
@@ -126,9 +152,10 @@ sequenceDiagram
     Plan-->>Factory: segments + resolved duration
     Factory->>Caption: resolve_for_segments(frame_size)
     Caption->>Layout: resolve role safe bands + pixel layout
-    Layout-->>Caption: line positions + box geometry
+    Layout->>Layout: optionally shrink manual lines independently
+    Layout-->>Caption: line positions + per-line font sizes + box geometry
     Factory->>Render: render segment clips to resolved timeline
-    Render->>Render: loop or fill shorter layers by asset policy
+    Render->>Render: keep selected recipe-layer asset and loop or fill by asset policy
 ```
 
 ## Acceptance Criteria
@@ -136,5 +163,7 @@ sequenceDiagram
 - default `main` captions no longer land in the generic frame center when role properties are omitted
 - default `sub` captions render in a lower-band pattern
 - `captions.toml` can override role band ratios when needed
+- manual `\n` captions may produce different per-line font sizes when line widths differ materially
 - composition duration reflects the longest contributing layer extent instead of only recipe-or-voice precedence
 - shorter layer fill behavior remains manifest-visible and review-visible
+- one recipe keeps the same selected foreground/background visual asset across all segments unless a future design explicitly introduces segment-level reselection
