@@ -67,6 +67,7 @@ When code changes, the related Markdown documents in this folder must be updated
 59. [59_Product_Folder_V2_Backward_Compatible_Layout_Workflow_2026-06-15.md](/F:/programming/python/MTClipFactory/doc/59_Product_Folder_V2_Backward_Compatible_Layout_Workflow_2026-06-15.md)
 60. [60_Product_Folder_Preflight_Audit_Workflow_2026-06-15.md](/F:/programming/python/MTClipFactory/doc/60_Product_Folder_Preflight_Audit_Workflow_2026-06-15.md)
 61. [61_Product_Policy_Driven_Loop_Authority_And_Promo_Caption_Workflow_2026-06-15.md](/F:/programming/python/MTClipFactory/doc/61_Product_Policy_Driven_Loop_Authority_And_Promo_Caption_Workflow_2026-06-15.md)
+62. [62_Promo_Headline_Compression_Workflow_2026-06-16.md](/F:/programming/python/MTClipFactory/doc/62_Promo_Headline_Compression_Workflow_2026-06-16.md)
 
 ## Governance
 

@@ -2,7 +2,7 @@
 
 ## Snapshot Date
 
-- 2026-06-15
+- 2026-06-16
 
 ## Where To See Progress
 
@@ -111,6 +111,7 @@
 - delivered per-line manual-caption font fitting so operator-authored `\n` lines can shrink independently by pixel width while still surfacing overflow for review when `min_font_size` is not enough
 - delivered steadier grouped-caption vertical spacing so per-line best-fit sizing does not leave promo cards looking uneven between lines
 - delivered ink-aware caption line-height measurement so Thai multi-line cards no longer look over-spaced from raw font metrics alone
+- delivered product-local promo headline compression through `line_advance_ratio`, allowing grouped manual-break captions to tighten vertical stacking without losing deterministic layout or manifest traceability
 - delivered a textbox-first caption layout slice so resolved caption boxes now hold stable geometry while text alignment remains controllable inside the box
 - delivered a caption-card height-policy slice with explicit `textbox_height_mode`, making grouped promo cards default to `content_hug` while preserving deliberate tall cards through `fixed`
 - delivered manifest-visible textbox height policy truth plus pytest coverage for compact-card and fixed-height caption behavior

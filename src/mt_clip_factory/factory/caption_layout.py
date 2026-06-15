@@ -22,6 +22,7 @@ from mt_clip_factory.factory.caption_textbox_geometry import (
     resolve_line_box_geometry,
     resolve_line_left,
     resolve_line_top_positions,
+    resolve_line_top_positions_compressed,
     textbox_content_height,
     textbox_content_width,
     textbox_height,
@@ -55,6 +56,7 @@ class CaptionLayoutResult:
     line_height_px: int
     line_heights_px: tuple[int, ...]
     line_spacing_px: int
+    line_advance_ratio: float
     text_block_width_px: int
     text_block_height_px: int
     max_text_width_px: int
@@ -82,6 +84,7 @@ class _LayoutCandidate:
     line_height_px: int
     line_heights_px: tuple[int, ...]
     line_spacing_px: int
+    line_advance_ratio: float
     text_block_width_px: int
     text_block_height_px: int
     box_height_px: int
@@ -111,6 +114,7 @@ def resolve_caption_layout(
     textbox_height_ratio: float,
     textbox_alignment: str,
     line_spacing_ratio: float,
+    line_advance_ratio: float,
     padding: int,
     alignment: str,
     vertical_alignment: str,
@@ -162,6 +166,7 @@ def resolve_caption_layout(
         frame_height_px=frame_context.height_px,
         band_height_px=band_height_px,
         line_spacing_ratio=line_spacing_ratio,
+        line_advance_ratio=line_advance_ratio,
     )
     box_left_px = resolve_box_left(
         alignment=textbox_alignment,
@@ -192,10 +197,19 @@ def resolve_caption_layout(
         )
         for line_width_px in candidate.line_widths_px
     )
-    line_top_positions_px = resolve_line_top_positions(
-        content_top_px=content_top_px,
-        line_heights_px=candidate.line_heights_px,
-        line_spacing_px=candidate.line_spacing_px,
+    line_top_positions_px = (
+        resolve_line_top_positions_compressed(
+            content_top_px=content_top_px,
+            line_heights_px=candidate.line_heights_px,
+            line_spacing_px=candidate.line_spacing_px,
+            line_advance_ratio=candidate.line_advance_ratio,
+        )
+        if abs(candidate.line_advance_ratio - 1.0) > 0.001
+        else resolve_line_top_positions(
+            content_top_px=content_top_px,
+            line_heights_px=candidate.line_heights_px,
+            line_spacing_px=candidate.line_spacing_px,
+        )
     )
     line_box_geometry = resolve_line_box_geometry(
         textbox_mode=textbox_mode,
@@ -223,6 +237,7 @@ def resolve_caption_layout(
         line_height_px=candidate.line_height_px,
         line_heights_px=candidate.line_heights_px,
         line_spacing_px=candidate.line_spacing_px,
+        line_advance_ratio=candidate.line_advance_ratio,
         text_block_width_px=candidate.text_block_width_px,
         text_block_height_px=candidate.text_block_height_px,
         max_text_width_px=max_text_width_px,
@@ -261,6 +276,7 @@ def _solve_best_fit_layout(
     frame_height_px: int,
     band_height_px: int,
     line_spacing_ratio: float,
+    line_advance_ratio: float,
 ) -> _LayoutCandidate:
     max_content_height_capacity_px = _resolve_max_content_height_capacity_px(
         frame_height_px=frame_height_px,
@@ -296,6 +312,7 @@ def _solve_best_fit_layout(
             frame_height_px=frame_height_px,
             band_height_px=band_height_px,
             line_spacing_ratio=line_spacing_ratio,
+            line_advance_ratio=line_advance_ratio,
         )
         if best_candidate is None or _candidate_sort_key(candidate) < _candidate_sort_key(best_candidate):
             best_candidate = candidate
@@ -360,8 +377,14 @@ def _evaluate_layout_candidate(
     frame_height_px: int,
     band_height_px: int,
     line_spacing_ratio: float,
+    line_advance_ratio: float,
 ) -> _LayoutCandidate:
     use_uniform_line_height = manual_breaks and textbox_mode.strip().casefold() != "per_line"
+    effective_line_advance_ratio = (
+        max(0.5, min(1.2, line_advance_ratio))
+        if use_uniform_line_height
+        else 1.0
+    )
     raw_layout = _layout_text(
         text=text,
         font=_build_qfont(
@@ -394,7 +417,11 @@ def _evaluate_layout_candidate(
         line_heights_px=line_heights_px,
         line_spacing_ratio=line_spacing_ratio,
     )
-    text_block_height_px = sum(line_heights_px) + (max(0, len(raw_layout.lines) - 1) * line_spacing_px)
+    text_block_height_px = _resolve_text_block_height_px(
+        line_heights_px=line_heights_px,
+        line_spacing_px=line_spacing_px,
+        line_advance_ratio=effective_line_advance_ratio,
+    )
     box_height_px = min(
         frame_height_px if band_height_px <= 0 else band_height_px,
         textbox_height(
@@ -431,9 +458,14 @@ def _evaluate_layout_candidate(
             stroke_width=stroke_width,
             line_spacing_ratio=line_spacing_ratio,
             use_uniform_line_height=use_uniform_line_height,
+            line_advance_ratio=effective_line_advance_ratio,
         )
     text_block_width_px = max(line_widths_px, default=0)
-    text_block_height_px = sum(line_heights_px) + (max(0, len(raw_layout.lines) - 1) * line_spacing_px)
+    text_block_height_px = _resolve_text_block_height_px(
+        line_heights_px=line_heights_px,
+        line_spacing_px=line_spacing_px,
+        line_advance_ratio=effective_line_advance_ratio,
+    )
     height_overflowed = text_block_height_px > content_height_capacity_px
     overflowed = (
         raw_layout.line_count_exceeded
@@ -457,6 +489,7 @@ def _evaluate_layout_candidate(
         line_height_px=max(line_heights_px, default=raw_layout.line_height_px),
         line_heights_px=line_heights_px,
         line_spacing_px=line_spacing_px,
+        line_advance_ratio=effective_line_advance_ratio,
         text_block_width_px=text_block_width_px,
         text_block_height_px=text_block_height_px,
         box_height_px=box_height_px,
@@ -493,6 +526,23 @@ def _normalize_line_heights(
         return line_heights_px
     uniform_height_px = max(line_heights_px)
     return tuple(uniform_height_px for _ in line_heights_px)
+
+
+def _resolve_text_block_height_px(
+    *,
+    line_heights_px: tuple[int, ...],
+    line_spacing_px: int,
+    line_advance_ratio: float,
+) -> int:
+    if not line_heights_px:
+        return 0
+    if len(line_heights_px) == 1:
+        return line_heights_px[0]
+    normalized_ratio = max(0.5, min(1.2, line_advance_ratio))
+    stacked_height_px = 0
+    for line_height_px in line_heights_px[:-1]:
+        stacked_height_px += max(1, round(line_height_px * normalized_ratio)) + line_spacing_px
+    return stacked_height_px + line_heights_px[-1]
 
 def _resolve_fit_strategy(
     *,
@@ -617,6 +667,7 @@ def _grow_manual_line_sizes_to_fill_textbox(
     stroke_width: int,
     line_spacing_ratio: float,
     use_uniform_line_height: bool,
+    line_advance_ratio: float,
 ) -> tuple[tuple[int, ...], tuple[int, ...], tuple[int, ...], int, bool]:
     line_sizes = list(current_line_font_sizes_px)
     any_line_grown = False
@@ -639,7 +690,11 @@ def _grow_manual_line_sizes_to_fill_textbox(
             line_heights_px=normalized_heights,
             line_spacing_ratio=line_spacing_ratio,
         )
-        total_height = sum(normalized_heights) + (max(0, len(normalized_heights) - 1) * spacing)
+        total_height = _resolve_text_block_height_px(
+            line_heights_px=normalized_heights,
+            line_spacing_px=spacing,
+            line_advance_ratio=line_advance_ratio,
+        )
         return tuple(widths), normalized_heights, spacing, total_height
 
     while True:

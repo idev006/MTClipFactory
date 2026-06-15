@@ -1080,6 +1080,68 @@ def test_caption_runtime_scales_manual_break_lines_independently_to_fit_width(tm
     assert role.overflowed is True
 
 
+def test_caption_runtime_supports_compressed_grouped_headline_stack(tmp_path) -> None:
+    media_root = tmp_path / "media_library"
+    fonts_root = tmp_path / "fonts"
+    fonts_root.mkdir(parents=True, exist_ok=True)
+    (fonts_root / "TH Chakra Petch.ttf").write_bytes(b"font")
+    product_dir = tmp_path / "product_headline_compression"
+    product_dir.mkdir(parents=True, exist_ok=True)
+    caption_file = product_dir / "captions.toml"
+    caption_file.write_text(
+        "\n".join(
+            [
+                "[caption_pools.hook]",
+                'main = ["พร้อมดูแลกระดูก\\nเริ่มต้นวันนี้\\nทันที"]',
+                "",
+                "[caption_properties.main]",
+                'font_family = "TH Chakra Petch"',
+                'textbox_mode = "grouped"',
+                "font_size = 120",
+                "min_font_size = 72",
+                "padding = 20",
+                "textbox_width_ratio = 0.84",
+                "line_spacing_ratio = 0.02",
+                "line_advance_ratio = 0.80",
+                "max_lines = 3",
+            ]
+        ),
+        encoding="utf-8",
+    )
+    store = ProductAutomationMetadataStore(media_root)
+    store.sync_caption_contract(product_code="product_headline_compression", source_file=caption_file)
+    service = CaptionRuntimeService(metadata_store=store, fonts_root=fonts_root)
+    segments = (
+        TimelineSegment(
+            recipe_id=1,
+            segment_type="hook",
+            sequence_index=1,
+            start_sec=0.0,
+            end_sec=3.0,
+            target_duration_sec=3.0,
+        ),
+    )
+
+    resolved = service.resolve_for_segments(
+        product_code="product_headline_compression",
+        recipe_code="product_headline_compression_batch_001",
+        segments=segments,
+        frame_width_px=1080,
+        frame_height_px=1920,
+    )
+    role = resolved[0].roles[0]
+    deltas = tuple(
+        role.line_top_positions_px[index + 1] - role.line_top_positions_px[index]
+        for index in range(len(role.line_top_positions_px) - 1)
+    )
+
+    assert role.line_advance_ratio == 0.80
+    assert role.line_break_mode == "manual"
+    assert role.textbox_mode == "grouped"
+    assert deltas
+    assert max(deltas) < role.line_heights_px[0] + role.line_spacing_px
+
+
 def test_balanced_wrap_rearranges_space_separated_lines_more_evenly() -> None:
     _ensure_qt_application()
     font = QFont("Arial")

@@ -141,6 +141,7 @@ classDiagram
         +deterministic main/sub selection
         +manual newline preservation
         +font-file resolution from workspace fonts
+        +config-driven promo line-advance compression
         +overflow risk reporting
     }
 
@@ -1215,6 +1216,29 @@ sequenceDiagram
     Factory->>Render: render_output(..., audio_mix_plan, fill_policies)
     Render->>Render: loop voice/foreground/music only when product policy allows
     Factory->>Manifest: write duration source + loop evidence + caption geometry
+```
+
+## Promo Headline Compression Sequence
+
+```mermaid
+sequenceDiagram
+    actor Operator
+    participant Contract as captions.toml
+    participant Caption as CaptionRuntimeService
+    participant Layout as Caption Layout Solver
+    participant Geometry as Textbox Geometry
+    participant Render as FFmpegPreviewRenderer
+    participant Manifest as PreviewManifestBuilder
+
+    Operator->>Contract: author grouped headline with manual \n
+    Caption->>Contract: parse line_advance_ratio
+    Caption->>Layout: resolve_caption_layout(..., line_advance_ratio)
+    Layout->>Layout: measure pixel widths + ink-aware heights
+    Layout->>Geometry: resolve compressed grouped line tops
+    Geometry-->>Layout: line_top_positions_px
+    Layout-->>Caption: compact promo-card geometry
+    Caption->>Render: draw grouped caption card
+    Caption->>Manifest: persist line_advance_ratio + line geometry
 ```
 
 ## Target Factory Plane Map

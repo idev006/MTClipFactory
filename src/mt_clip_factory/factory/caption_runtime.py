@@ -57,6 +57,7 @@ class CaptionRoleStyle:
     textbox_width_ratio: float
     textbox_height_ratio: float
     line_spacing_ratio: float
+    line_advance_ratio: float
     safe_top_ratio: float
     safe_bottom_ratio: float
     overflow_policy: str
@@ -117,6 +118,7 @@ class ResolvedCaptionRole:
     textbox_width_ratio: float
     textbox_height_ratio: float
     line_spacing_ratio: float
+    line_advance_ratio: float
     safe_top_ratio: float
     safe_bottom_ratio: float
     line_spacing_px: int
@@ -381,6 +383,7 @@ class CaptionRuntimeService:
             textbox_height_ratio=style.textbox_height_ratio,
             textbox_alignment=style.textbox_alignment,
             line_spacing_ratio=style.line_spacing_ratio,
+            line_advance_ratio=style.line_advance_ratio,
             padding=style.padding,
             alignment=style.alignment,
             vertical_alignment=style.vertical_alignment,
@@ -436,6 +439,7 @@ class CaptionRuntimeService:
             textbox_width_ratio=style.textbox_width_ratio,
             textbox_height_ratio=style.textbox_height_ratio,
             line_spacing_ratio=style.line_spacing_ratio,
+            line_advance_ratio=style.line_advance_ratio,
             safe_top_ratio=style.safe_top_ratio,
             safe_bottom_ratio=style.safe_bottom_ratio,
             line_spacing_px=layout.line_spacing_px,
@@ -595,6 +599,13 @@ def _parse_role_style(value, *, role: str) -> CaptionRoleStyle:
             minimum=0.0,
             maximum=1.0,
             context=f"[caption_properties.{role}].line_spacing_ratio",
+        ),
+        line_advance_ratio=_bounded_float(
+            value_for("line_advance_ratio"),
+            default=1.0,
+            minimum=0.5,
+            maximum=1.2,
+            context=f"[caption_properties.{role}].line_advance_ratio",
         ),
         safe_top_ratio=_bounded_float(
             value_for("safe_top_ratio"),

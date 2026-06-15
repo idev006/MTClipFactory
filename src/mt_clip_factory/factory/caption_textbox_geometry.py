@@ -64,9 +64,25 @@ def resolve_line_top_positions(*, content_top_px: int, line_heights_px: tuple[in
     cursor = content_top_px
     for index, line_height_px in enumerate(line_heights_px):
         positions.append(cursor)
-        cursor += line_height_px
         if index < len(line_heights_px) - 1:
-            cursor += line_spacing_px
+            cursor += line_height_px + line_spacing_px
+    return tuple(positions)
+
+
+def resolve_line_top_positions_compressed(
+    *,
+    content_top_px: int,
+    line_heights_px: tuple[int, ...],
+    line_spacing_px: int,
+    line_advance_ratio: float,
+) -> tuple[int, ...]:
+    positions: list[int] = []
+    cursor = content_top_px
+    normalized_ratio = max(0.5, min(1.2, line_advance_ratio))
+    for index, line_height_px in enumerate(line_heights_px):
+        positions.append(cursor)
+        if index < len(line_heights_px) - 1:
+            cursor += max(1, round(line_height_px * normalized_ratio)) + line_spacing_px
     return tuple(positions)
 
 
