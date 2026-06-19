@@ -79,7 +79,7 @@ enter_animation = "pop_in"
 review_required_if_overflow = true
 
 [caption_properties.sub]
-style_preset = "sale_blast"
+style_preset = "dark_lower_third"
 position = "bottom"
 alignment = "center"
 vertical_alignment = "middle"

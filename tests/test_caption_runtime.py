@@ -4,6 +4,7 @@ from pathlib import Path
 
 from mt_clip_factory.domain.timeline_segments import TimelineSegment
 from mt_clip_factory.factory.caption_layout import _balanced_wrap_paragraph, _ensure_qt_application
+from mt_clip_factory.factory.caption_style_presets import caption_style_preset_group_names, caption_style_preset_names
 from mt_clip_factory.factory.caption_runtime import CaptionContractError, CaptionRuntimeService, ProductAutomationMetadataStore
 from PySide6.QtGui import QFont
 
@@ -520,6 +521,63 @@ def test_caption_runtime_applies_sale_blast_style_preset_defaults(tmp_path) -> N
     assert sub_role.background_color == "#111827"
     assert sub_role.box_border_color == "#F8FAFC"
     assert sub_role.position == "bottom"
+
+
+def test_caption_style_preset_catalog_supports_groups_and_role_filters() -> None:
+    assert caption_style_preset_group_names() == ("headline_main", "support_sub", "proof_info")
+    assert caption_style_preset_names(role="sub", group_name="support_sub") == ("clean_cta", "dark_lower_third")
+    assert caption_style_preset_names(role="main", group_name="support_sub") == ("clean_cta",)
+
+
+def test_caption_runtime_applies_dark_lower_third_sub_preset_defaults(tmp_path) -> None:
+    media_root = tmp_path / "media_library"
+    fonts_root = tmp_path / "fonts"
+    fonts_root.mkdir(parents=True, exist_ok=True)
+    (fonts_root / "TH Baijam.ttf").write_bytes(b"font")
+    product_dir = tmp_path / "product_dark_lower_third"
+    product_dir.mkdir(parents=True, exist_ok=True)
+    caption_file = product_dir / "captions.toml"
+    caption_file.write_text(
+        "\n".join(
+            [
+                "[caption_pools.hook]",
+                'sub = ["today only"]',
+                "",
+                "[caption_properties.sub]",
+                'style_preset = "dark_lower_third"',
+            ]
+        ),
+        encoding="utf-8",
+    )
+    store = ProductAutomationMetadataStore(media_root)
+    store.sync_caption_contract(product_code="product_dark_lower_third", source_file=caption_file)
+    service = CaptionRuntimeService(metadata_store=store, fonts_root=fonts_root)
+    segments = (
+        TimelineSegment(
+            recipe_id=1,
+            segment_type="hook",
+            sequence_index=1,
+            start_sec=0.0,
+            end_sec=3.0,
+            target_duration_sec=3.0,
+        ),
+    )
+
+    resolved = service.resolve_for_segments(
+        product_code="product_dark_lower_third",
+        recipe_code="product_dark_lower_third_batch_001",
+        segments=segments,
+        frame_width_px=1080,
+        frame_height_px=1920,
+    )
+    role = resolved[0].roles[0]
+
+    assert role.role == "sub"
+    assert role.style_preset == "dark_lower_third"
+    assert role.background_color == "#0F172A"
+    assert role.background_opacity == 0.76
+    assert role.stroke_color == "#020617"
+    assert role.textbox_width_ratio == 0.90
 
 
 def test_caption_runtime_allows_explicit_override_over_style_preset(tmp_path) -> None:

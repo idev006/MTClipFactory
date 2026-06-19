@@ -163,7 +163,7 @@ Textbox guidance:
 - `vertical_alignment` places the text block inside that textbox
 - `textbox_mode = "grouped"` keeps one shared box for the whole role
 - `textbox_mode = "per_line"` creates one box per rendered line
-- `style_preset` can apply a built-in professional baseline such as `sale_blast`, `clean_cta`, or `benefit_stack` before explicit field overrides
+- `style_preset` can apply a built-in professional baseline such as `sale_blast`, `clean_cta`, `dark_lower_third`, or `benefit_stack` before explicit field overrides
 - `textbox_height_ratio = 0` means fit-content height; values above `0` define a target textbox height as a fraction of frame height, and the best-fit solver should scale text to stay inside it when possible
 - legacy `max_width_ratio` remains supported as a backward-compatible fallback, but new contracts should prefer `textbox_width_ratio`
 
@@ -198,7 +198,7 @@ enter_animation = "pop_in"
 review_required_if_overflow = true
 
 [caption_properties.sub]
-style_preset = "sale_blast"
+style_preset = "dark_lower_third"
 position = "bottom"
 alignment = "center"
 vertical_alignment = "middle"
@@ -206,21 +206,21 @@ textbox_alignment = "center"
 textbox_mode = "grouped"
 font_family = "TH Baijam"
 font_fallbacks = ["TH Chakra Petch", "THSarabun", "Tahoma", "Arial Unicode MS"]
-font_size = 40
-min_font_size = 30
-font_weight = "medium"
+font_size = 42
+min_font_size = 28
+font_weight = "bold"
 text_color = "#FFFFFF"
-stroke_color = "#000000"
-stroke_width = 2
-background_color = "#000000"
-background_opacity = 0.30
+stroke_color = "#020617"
+stroke_width = 3
+background_color = "#0F172A"
+background_opacity = 0.76
 padding = 16
-max_lines = 3
+max_lines = 2
 preferred_line_count = 1
-max_chars_per_line = 28
-textbox_width_ratio = 0.82
-textbox_height_ratio = 0.14
-overflow_policy = "wrap_then_truncate_or_review"
+max_chars_per_line = 30
+textbox_width_ratio = 0.90
+textbox_height_ratio = 0.12
+overflow_policy = "wrap_then_scale_then_review"
 enter_animation = "fade_in"
 review_required_if_overflow = true
 ```

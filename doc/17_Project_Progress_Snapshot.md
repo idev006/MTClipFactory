@@ -120,6 +120,7 @@
 - delivered a caption-card height-policy slice with explicit `textbox_height_mode`, making grouped promo cards default to `content_hug` while preserving deliberate tall cards through `fixed`
 - delivered manifest-visible textbox height policy truth plus pytest coverage for compact-card and fixed-height caption behavior
 - delivered built-in caption style presets with role-aware defaults for `sale_blast`, `clean_cta`, and `benefit_stack`, plus per-field override behavior in `captions.toml`
+- delivered preset-group metadata plus a new `dark_lower_third` support preset so future UI flows can filter style choices by caption job and sub captions can keep stronger readability over complex footage
 - updated the new-product caption template and SSOT so operators can start from presets instead of tuning every style field manually
 - delivered caption box-border styling with manifest-visible `box_border_*` fields plus grouped/per-line FFmpeg drawbox coverage
 - locked caption composition to `explicit \n only` multi-line behavior so captions without authored breaks now stay single-line and use box-aware best-fit sizing instead of runtime auto-wrap

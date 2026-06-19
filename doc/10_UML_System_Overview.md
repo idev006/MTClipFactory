@@ -1343,3 +1343,21 @@ flowchart LR
     WB --> FS
     WC --> FS
 ```
+
+## Caption Preset Group Resolution
+
+```mermaid
+sequenceDiagram
+    actor Operator
+    participant Contract as "captions.toml"
+    participant Runtime as "CaptionRuntimeService"
+    participant Catalog as "Preset Catalog"
+    participant Resolver as "Preset Resolver"
+
+    Operator->>Contract: author style_preset
+    Runtime->>Catalog: list presets by role/group
+    Catalog-->>Runtime: filtered preset metadata
+    Runtime->>Resolver: resolve style_preset for role
+    Resolver-->>Runtime: role defaults
+    Runtime->>Runtime: apply product overrides
+```

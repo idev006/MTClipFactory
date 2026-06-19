@@ -34,6 +34,8 @@ That is too much manual design work for routine automation. It also leads to inc
 6. Manifest payloads must expose the resolved `style_preset` so the output can be audited later.
 7. Presets may also carry textbox border defaults so ad-card emphasis stays consistent without per-product retuning.
 8. Presets may also carry `preferred_line_count` so promo headlines can prefer `2 lines` before growing into a taller stack.
+9. Presets should be grouped by caption job so operators can narrow choices by `headline_main`, `support_sub`, or `proof_info`.
+10. The built-in catalog should stay intentionally small until broader operator use proves the need for more variations.
 
 ## Contract Rule
 
@@ -41,6 +43,7 @@ Each role may now declare:
 
 - `style_preset = "sale_blast"`
 - `style_preset = "clean_cta"`
+- `style_preset = "dark_lower_third"`
 - `style_preset = "benefit_stack"`
 
 Example:
@@ -83,6 +86,16 @@ Recommended feel:
 - balanced spacing
 - readable, lower-drama contrast
 - better fit for educational or premium product messaging
+
+### `dark_lower_third`
+
+Use when the clip needs a bottom support card that stays readable over busy or bright footage.
+
+Recommended feel:
+
+- stronger lower-third holdout
+- bold readable support text
+- darker chip with more reliable contrast than a lightly translucent CTA card
 
 ### `benefit_stack`
 

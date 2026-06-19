@@ -89,6 +89,7 @@
 - caption runtime now also resolves textbox-first geometry so background box width can stay stable while text alignment remains independently controllable inside the box
 - caption runtime now also exposes `textbox_height_mode` so grouped cards can default to compact `content_hug` behavior while `fixed` remains available for deliberate tall-card layouts
 - caption runtime now also supports built-in role-aware `style_preset` values so operators can start from `sale_blast`, `clean_cta`, or `benefit_stack` and still override individual fields per product
+- caption style presets now also expose preset-group metadata for `headline_main`, `support_sub`, and `proof_info`, and the built-in catalog now includes a `dark_lower_third` option for more readable sub captions over busy footage
 - caption runtime now also supports box-border styling on grouped or per-line cards, with manifest-visible resolved border truth and preset-carried border defaults
 - caption runtime now treats multi-line rendering as explicit author intent only, so captions without `\n` stay single-line and use box-aware best-fit font sizing instead of automatic runtime wrapping
 - the next auto-factory operations requirements slice is now documented in SSOT, locking operator-visible progress, multi-worker gating, pause/stop/resume semantics, and restart recovery expectations before `IR-20` implementation begins
