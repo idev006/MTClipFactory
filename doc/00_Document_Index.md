@@ -69,6 +69,7 @@ When code changes, the related Markdown documents in this folder must be updated
 61. [61_Product_Policy_Driven_Loop_Authority_And_Promo_Caption_Workflow_2026-06-15.md](/F:/programming/python/MTClipFactory/doc/61_Product_Policy_Driven_Loop_Authority_And_Promo_Caption_Workflow_2026-06-15.md)
 62. [62_Promo_Headline_Compression_Workflow_2026-06-16.md](/F:/programming/python/MTClipFactory/doc/62_Promo_Headline_Compression_Workflow_2026-06-16.md)
 63. [63_Auto_Factory_Operations_Control_Requirements_2026-06-19.md](/F:/programming/python/MTClipFactory/doc/63_Auto_Factory_Operations_Control_Requirements_2026-06-19.md)
+64. [64_Manual_Break_Compaction_And_Face_Safe_Headline_Workflow_2026-06-19.md](/F:/programming/python/MTClipFactory/doc/64_Manual_Break_Compaction_And_Face_Safe_Headline_Workflow_2026-06-19.md)
 
 ## Governance
 

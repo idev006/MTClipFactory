@@ -114,6 +114,7 @@
 - delivered ink-aware caption line-height measurement so Thai multi-line cards no longer look over-spaced from raw font metrics alone
 - delivered product-local promo headline compression through `line_advance_ratio`, allowing grouped manual-break captions to tighten vertical stacking without losing deterministic layout or manifest traceability
 - delivered an SSOT requirements slice for the next auto-factory operations control surface so the upcoming worker-control implementation can answer operator questions about progress, multi-worker use, pause, stop, resume, and reopen-and-continue behavior before code expands
+- delivered manual-break headline compaction with `preferred_line_count` so grouped promo cards can prefer 2 lines over 3 when the text can be safely rebalanced inside the available width
 - delivered a textbox-first caption layout slice so resolved caption boxes now hold stable geometry while text alignment remains controllable inside the box
 - delivered a caption-card height-policy slice with explicit `textbox_height_mode`, making grouped promo cards default to `content_hug` while preserving deliberate tall cards through `fixed`
 - delivered manifest-visible textbox height policy truth plus pytest coverage for compact-card and fixed-height caption behavior

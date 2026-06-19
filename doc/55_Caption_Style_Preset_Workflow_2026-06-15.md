@@ -33,6 +33,7 @@ That is too much manual design work for routine automation. It also leads to inc
 5. Presets are only convenience defaults, not locked templates.
 6. Manifest payloads must expose the resolved `style_preset` so the output can be audited later.
 7. Presets may also carry textbox border defaults so ad-card emphasis stays consistent without per-product retuning.
+8. Presets may also carry `preferred_line_count` so promo headlines can prefer `2 lines` before growing into a taller stack.
 
 ## Contract Rule
 

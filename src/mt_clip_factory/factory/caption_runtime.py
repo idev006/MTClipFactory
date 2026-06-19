@@ -52,6 +52,7 @@ class CaptionRoleStyle:
     box_border_width: int
     padding: int
     max_lines: int
+    preferred_line_count: int
     max_chars_per_line: int
     max_width_ratio: float
     textbox_width_ratio: float
@@ -113,6 +114,7 @@ class ResolvedCaptionRole:
     box_border_width: int
     padding: int
     max_lines: int
+    preferred_line_count: int
     max_chars_per_line: int
     max_width_ratio: float
     textbox_width_ratio: float
@@ -376,6 +378,7 @@ class CaptionRuntimeService:
             font_size_unit=style.font_size_unit,
             min_font_size=style.min_font_size,
             max_lines=style.max_lines,
+            preferred_line_count=style.preferred_line_count,
             max_chars_per_line=style.max_chars_per_line,
             textbox_mode=style.textbox_mode,
             textbox_height_mode=style.textbox_height_mode,
@@ -434,6 +437,7 @@ class CaptionRuntimeService:
             box_border_width=style.box_border_width,
             padding=style.padding,
             max_lines=style.max_lines,
+            preferred_line_count=style.preferred_line_count,
             max_chars_per_line=style.max_chars_per_line,
             max_width_ratio=style.max_width_ratio,
             textbox_width_ratio=style.textbox_width_ratio,
@@ -525,6 +529,15 @@ def _parse_role_style(value, *, role: str) -> CaptionRoleStyle:
         allowed=("content_hug", "fixed"),
         context=f"[caption_properties.{role}].textbox_height_mode",
     )
+    max_lines = _positive_int(value_for("max_lines"), default=default_max_lines, context=f"[caption_properties.{role}].max_lines")
+    preferred_line_count = min(
+        max_lines,
+        _positive_int(
+            value_for("preferred_line_count"),
+            default=max_lines,
+            context=f"[caption_properties.{role}].preferred_line_count",
+        ),
+    )
     return CaptionRoleStyle(
         position=_optional_text(value_for("position")) or default_position,
         alignment=_optional_text(value_for("alignment")) or "center",
@@ -572,7 +585,8 @@ def _parse_role_style(value, *, role: str) -> CaptionRoleStyle:
             context=f"[caption_properties.{role}].box_border_width",
         ),
         padding=_non_negative_int(value_for("padding"), default=default_padding, context=f"[caption_properties.{role}].padding"),
-        max_lines=_positive_int(value_for("max_lines"), default=default_max_lines, context=f"[caption_properties.{role}].max_lines"),
+        max_lines=max_lines,
+        preferred_line_count=preferred_line_count,
         max_chars_per_line=_positive_int(
             value_for("max_chars_per_line"),
             default=default_max_chars,

@@ -1107,6 +1107,7 @@ def test_caption_runtime_supports_compressed_grouped_headline_stack(tmp_path) ->
                 "textbox_width_ratio = 0.84",
                 "line_spacing_ratio = 0.02",
                 "line_advance_ratio = 0.80",
+                "preferred_line_count = 2",
                 "max_lines = 3",
             ]
         ),
@@ -1140,10 +1141,11 @@ def test_caption_runtime_supports_compressed_grouped_headline_stack(tmp_path) ->
     )
 
     assert role.line_advance_ratio == 0.80
-    assert role.line_break_mode == "manual"
+    assert role.line_break_mode == "manual_compacted"
     assert role.textbox_mode == "grouped"
     assert deltas
     assert max(deltas) < role.line_heights_px[0] + role.line_spacing_px
+    assert len(role.rendered_lines) == 2
 
 
 def test_balanced_wrap_rearranges_space_separated_lines_more_evenly() -> None:

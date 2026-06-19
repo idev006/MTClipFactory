@@ -107,6 +107,7 @@ def resolve_caption_layout(
     font_size_unit: str,
     min_font_size: int,
     max_lines: int,
+    preferred_line_count: int,
     max_chars_per_line: int,
     textbox_mode: str,
     textbox_height_mode: str,
@@ -157,6 +158,7 @@ def resolve_caption_layout(
         max_width_px=max_text_width_px,
         stroke_width=stroke_width,
         max_lines=max_lines,
+        preferred_line_count=preferred_line_count,
         overflow_policy=overflow_policy,
         manual_breaks=manual_breaks,
         textbox_mode=textbox_mode,
@@ -232,7 +234,7 @@ def resolve_caption_layout(
         review_required=candidate.overflowed and review_required_if_overflow,
         truncated_for_runtime=candidate.truncated_for_runtime,
         fit_strategy=candidate.fit_strategy,
-        line_break_mode="manual" if manual_breaks else "single_line",
+        line_break_mode=candidate.line_break_mode,
         line_widths_px=candidate.line_widths_px,
         line_height_px=candidate.line_height_px,
         line_heights_px=candidate.line_heights_px,
@@ -267,6 +269,7 @@ def _solve_best_fit_layout(
     max_width_px: int,
     stroke_width: int,
     max_lines: int,
+    preferred_line_count: int,
     overflow_policy: str,
     manual_breaks: bool,
     textbox_mode: str,
@@ -303,6 +306,7 @@ def _solve_best_fit_layout(
             max_width_px=max_width_px,
             stroke_width=stroke_width,
             max_lines=max_lines,
+            preferred_line_count=preferred_line_count,
             overflow_policy=overflow_policy,
             manual_breaks=manual_breaks,
             textbox_mode=textbox_mode,
@@ -368,6 +372,7 @@ def _evaluate_layout_candidate(
     max_width_px: int,
     stroke_width: int,
     max_lines: int,
+    preferred_line_count: int,
     overflow_policy: str,
     manual_breaks: bool,
     textbox_mode: str,
@@ -379,7 +384,15 @@ def _evaluate_layout_candidate(
     line_spacing_ratio: float,
     line_advance_ratio: float,
 ) -> _LayoutCandidate:
-    use_uniform_line_height = manual_breaks and textbox_mode.strip().casefold() != "per_line"
+    normalized_textbox_mode = textbox_mode.strip().casefold()
+    source_manual_line_count = len(text.splitlines()) if manual_breaks else 1
+    allow_manual_break_compaction = (
+        manual_breaks
+        and normalized_textbox_mode == "grouped"
+        and preferred_line_count > 1
+        and preferred_line_count < source_manual_line_count
+    )
+    use_uniform_line_height = manual_breaks and normalized_textbox_mode != "per_line"
     effective_line_advance_ratio = (
         max(0.5, min(1.2, line_advance_ratio))
         if use_uniform_line_height
@@ -396,6 +409,8 @@ def _evaluate_layout_candidate(
         stroke_width=stroke_width,
         manual_breaks=manual_breaks,
         max_lines=max_lines,
+        preferred_line_count=preferred_line_count,
+        allow_manual_break_compaction=allow_manual_break_compaction,
         overflow_policy=overflow_policy,
     )
     line_font_sizes_px, line_widths_px, line_heights_px, per_line_width_overflow, any_line_scaled = _resolve_line_metrics(
@@ -497,7 +512,11 @@ def _evaluate_layout_candidate(
         overflowed=overflowed,
         truncated_for_runtime=raw_layout.truncated_for_runtime,
         fit_strategy=fit_strategy,
-        line_break_mode="manual" if manual_breaks else "single_line",
+        line_break_mode=(
+            "manual_compacted"
+            if raw_layout.manual_break_compacted
+            else ("manual" if manual_breaks else "single_line")
+        ),
         score=_score_layout_candidate(
             lines=raw_layout.lines,
             line_widths_px=line_widths_px,
@@ -512,6 +531,7 @@ def _evaluate_layout_candidate(
             per_line_width_overflow=per_line_width_overflow,
             height_overflowed=height_overflowed,
             truncated_for_runtime=raw_layout.truncated_for_runtime,
+            preferred_line_count=preferred_line_count if allow_manual_break_compaction else 0,
         ),
         any_line_grown=any_line_grown,
     )
@@ -594,6 +614,7 @@ def _score_layout_candidate(
     per_line_width_overflow: bool,
     height_overflowed: bool,
     truncated_for_runtime: bool,
+    preferred_line_count: int,
 ) -> float:
     single_line = len(line_widths_px) <= 1
     target_fill_ratio = 0.985 if single_line else 0.84
@@ -613,6 +634,10 @@ def _score_layout_candidate(
         else (max(line_font_sizes_px) - min(line_font_sizes_px)) * 2.0
     )
     whitespace_penalty = max(0.0, (content_height_capacity_px - text_block_height_px) * 0.02)
+    line_count_preference_penalty = 0.0
+    if preferred_line_count > 0:
+        line_count_distance = abs(len(lines) - preferred_line_count)
+        line_count_preference_penalty = float(line_count_distance * 250_000)
     if font_size_px >= requested_font_size_px:
         size_distance_penalty = (font_size_px - requested_font_size_px) * 0.35
     else:
@@ -645,6 +670,7 @@ def _score_layout_candidate(
         )
     return (
         overflow_penalty
+        + line_count_preference_penalty
         + size_distance_penalty
         + width_balance_penalty
         + width_underfill_penalty

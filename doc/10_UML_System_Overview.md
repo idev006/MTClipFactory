@@ -1275,6 +1275,24 @@ sequenceDiagram
     Caption->>Manifest: persist line_advance_ratio + line geometry
 ```
 
+## Manual Break Compaction Sequence
+
+```mermaid
+sequenceDiagram
+    actor Operator
+    participant Contract as captions.toml
+    participant Caption as CaptionRuntimeService
+    participant Solver as Caption Layout Solver
+    participant Manifest as PreviewManifestBuilder
+
+    Operator->>Contract: author manual multi-line hook
+    Caption->>Contract: parse preferred_line_count
+    Caption->>Solver: resolve grouped headline
+    Solver->>Solver: rebalance manual lines when width allows
+    Solver-->>Caption: manual or manual_compacted line mode
+    Caption->>Manifest: persist preferred_line_count + line_break_mode
+```
+
 ## Target Factory Plane Map
 
 ```mermaid

@@ -21,6 +21,7 @@ class _RawLayout:
     truncated_for_runtime: bool
     line_count_exceeded: bool
     width_overflowed: bool
+    manual_break_compacted: bool = False
 
 
 def _resolve_line_metrics(
@@ -115,10 +116,24 @@ def _layout_text(
     stroke_width: int,
     manual_breaks: bool,
     max_lines: int,
+    preferred_line_count: int,
+    allow_manual_break_compaction: bool,
     overflow_policy: str,
 ) -> _RawLayout:
     if manual_breaks:
-        lines = tuple(text.splitlines() or [""])
+        raw_lines = tuple(text.splitlines() or [""])
+        lines = raw_lines
+        manual_break_compacted = False
+        if allow_manual_break_compaction:
+            compacted_lines = _compact_manual_break_lines(
+                raw_lines,
+                font=font,
+                max_width_px=max_width_px,
+                preferred_line_count=preferred_line_count,
+            )
+            if compacted_lines is not None:
+                lines = compacted_lines
+                manual_break_compacted = True
         line_widths_px = tuple(_measure_line_width(line, font=font, stroke_width=stroke_width) for line in lines)
         line_count_exceeded = len(lines) > max_lines
         width_overflowed = any(width > max_width_px for width in line_widths_px)
@@ -141,6 +156,7 @@ def _layout_text(
             truncated_for_runtime=truncated_for_runtime,
             line_count_exceeded=line_count_exceeded,
             width_overflowed=width_overflowed,
+            manual_break_compacted=manual_break_compacted,
         )
     single_line = _single_line_text(text)
     rendered_lines = (single_line,)
@@ -170,6 +186,67 @@ def _layout_text(
         line_count_exceeded=line_count_exceeded,
         width_overflowed=width_overflowed,
     )
+
+
+def _compact_manual_break_lines(
+    raw_lines: tuple[str, ...],
+    *,
+    font: QFont,
+    max_width_px: int,
+    preferred_line_count: int,
+) -> tuple[str, ...] | None:
+    if preferred_line_count <= 1 or len(raw_lines) <= preferred_line_count:
+        return None
+    paragraph = " ".join(line.strip() for line in raw_lines if line.strip()).strip()
+    if not paragraph:
+        return None
+    balanced = _balanced_wrap_paragraph(
+        paragraph,
+        font=font,
+        max_width_px=max_width_px,
+        target_line_count=preferred_line_count,
+    )
+    if balanced is not None and 1 < len(balanced) <= preferred_line_count:
+        return balanced
+    fallback = _qt_wrap_paragraph(paragraph, font=font, max_width_px=max_width_px)
+    if 1 < len(fallback) <= preferred_line_count:
+        return fallback
+    relaxed = _balanced_compact_tokens(paragraph, target_line_count=preferred_line_count)
+    if relaxed is not None:
+        return relaxed
+    return None
+
+
+def _balanced_compact_tokens(paragraph: str, *, target_line_count: int) -> tuple[str, ...] | None:
+    tokens = [token for token in paragraph.split(" ") if token]
+    if len(tokens) < target_line_count or target_line_count <= 1:
+        return None
+    target_chars_per_line = max(1.0, sum(len(token) for token in tokens) / target_line_count)
+    best_score: float | None = None
+    best_lines: tuple[str, ...] | None = None
+
+    def walk(start: int, lines_left: int, built: list[str]) -> None:
+        nonlocal best_score, best_lines
+        remaining = len(tokens) - start
+        if lines_left == 0:
+            if remaining == 0:
+                lengths = [len(line.replace(" ", "")) for line in built]
+                score = sum(abs(target_chars_per_line - length) for length in lengths)
+                if lengths:
+                    score += (max(lengths) - min(lengths)) * 0.5
+                if best_score is None or score < best_score:
+                    best_score = score
+                    best_lines = tuple(built)
+            return
+        if remaining < lines_left:
+            return
+        max_end = len(tokens) - (lines_left - 1)
+        for end in range(start + 1, max_end + 1):
+            line = " ".join(tokens[start:end]).strip()
+            walk(end, lines_left - 1, [*built, line])
+
+    walk(0, target_line_count, [])
+    return best_lines
 
 
 def _single_line_text(text: str) -> str:

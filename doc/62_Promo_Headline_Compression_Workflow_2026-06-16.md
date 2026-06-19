@@ -52,6 +52,7 @@ Recommended starting point:
 style_preset = "sale_blast"
 font_family = "TH Baijam"
 textbox_mode = "grouped"
+preferred_line_count = 2
 line_spacing_ratio = 0.03
 line_advance_ratio = 0.82
 
@@ -59,6 +60,7 @@ line_advance_ratio = 0.82
 style_preset = "clean_cta"
 font_family = "TH Baijam"
 textbox_mode = "grouped"
+preferred_line_count = 1
 line_spacing_ratio = 0.06
 line_advance_ratio = 0.92
 ```
