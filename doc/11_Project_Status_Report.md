@@ -100,6 +100,7 @@
 - the new-product template kit now ships in the preferred `v2` layout, including `contracts/prod_detail.txt`, while runtime rejects ambiguous mixed old/new paths truthfully instead of guessing
 - folder-driven auto-factory now also exposes a read-only product-folder preflight audit seam that validates contracts, assets, tags, and `selection_tags` viability before a real automation run
 - the desktop `Auto Factory` control surface now also exposes `Audit Only`, so operators can run the same preflight validation from the UI before intake or preview work begins
+- the desktop `Auto Factory` control surface now also exposes one selected-product contract/runtime detail surface so operators can inspect product contract fields, pipeline duration and tag rules, caption preset/font intent, and per-folder tag readiness without leaving the app
 - assets can now be safely renamed or deleted from the `Assets` screen, with repository checks that block deletion when recipe-item or artifact-job references still exist
 - the `Assets` screen now supports `Show References`, `Retire Selected`, and `Purge Media` so referenced assets can leave active use and disk without destroying audit truth
 - the `Assets` screen now also supports `Replace In Recipes...` with recipe-safe validation, recipe reset-to-candidate behavior, and approval guards that prevent stale pre-replacement outputs from being reused as evidence for changed recipes
@@ -168,6 +169,7 @@
 - validate whether the new backward-compatible product-folder `v2` layout is clear enough for operators and whether migration guidance is needed for existing legacy product folders
 - validate whether operators prefer the new scriptable preflight seam before every live auto-mode run or only for onboarding/debugging cases
 - validate whether the new `Audit Only` UI mode is clear enough for operators or whether issue grouping/filtering is needed after broader use
+- validate whether the new selected-product contract detail surface is sufficient for operator self-checks or whether inline fix/open shortcuts are needed later
 - implement the newly locked auto-factory operations-control requirements so operators can see live run progress and safely pause, stop, resume, or recover interrupted runs
 
 ## Next Steps

@@ -58,6 +58,7 @@ class AutoFactoryControlWindow(QMainWindow):
         self._view_model.feedback_changed.connect(self._refresh_feedback)
         self._refresh_status()
         self._refresh_feedback()
+        self._refresh_run_mode_hint()
         self._view_model.load()
 
     def showEvent(self, event) -> None:  # noqa: N802
@@ -93,12 +94,18 @@ class AutoFactoryControlWindow(QMainWindow):
             "Intake + Materialize + Build Previews",
             self._view_model.RUN_MODE_MATERIALIZE_AND_PREVIEWS,
         )
+        self.run_mode_combo.currentIndexChanged.connect(self._refresh_run_mode_hint)
 
         form_layout.addRow("Root Folder", root_row)
         form_layout.addRow("Batch Code", self.batch_code_input)
         form_layout.addRow("Scan Depth", self.scan_depth_input)
         form_layout.addRow("Run Mode", self.run_mode_combo)
         layout.addLayout(form_layout)
+
+        self.run_mode_hint_label = QLabel()
+        self.run_mode_hint_label.setWordWrap(True)
+        self.run_mode_hint_label.setAlignment(Qt.AlignTop | Qt.AlignLeft)
+        layout.addWidget(self.run_mode_hint_label)
 
         button_row = QHBoxLayout()
         self.run_button = QPushButton("Run Auto Factory")
@@ -122,6 +129,7 @@ class AutoFactoryControlWindow(QMainWindow):
     def _build_results_area(self) -> QWidget:
         splitter = QSplitter(Qt.Vertical)
         splitter.addWidget(self._build_run_summary_group())
+        splitter.addWidget(self._build_selected_product_group())
         splitter.addWidget(self._build_preflight_products_group())
         splitter.addWidget(self._build_preflight_issues_group())
         splitter.addWidget(self._build_product_reports_group())
@@ -132,7 +140,8 @@ class AutoFactoryControlWindow(QMainWindow):
         splitter.setStretchFactor(2, 2)
         splitter.setStretchFactor(3, 2)
         splitter.setStretchFactor(4, 2)
-        splitter.setStretchFactor(5, 3)
+        splitter.setStretchFactor(5, 2)
+        splitter.setStretchFactor(6, 3)
         self.results_splitter = splitter
         return splitter
 
@@ -155,6 +164,7 @@ class AutoFactoryControlWindow(QMainWindow):
         self.product_reports_table.setSelectionMode(QTableWidget.SingleSelection)
         self.product_reports_table.setEditTriggers(QTableWidget.NoEditTriggers)
         self.product_reports_table.horizontalHeader().setStretchLastSection(True)
+        self.product_reports_table.itemSelectionChanged.connect(self._refresh_selected_run_product_details)
         layout.addWidget(self.product_reports_table)
         return group
 
@@ -183,7 +193,17 @@ class AutoFactoryControlWindow(QMainWindow):
         self.preflight_products_table.setSelectionMode(QTableWidget.SingleSelection)
         self.preflight_products_table.setEditTriggers(QTableWidget.NoEditTriggers)
         self.preflight_products_table.horizontalHeader().setStretchLastSection(True)
+        self.preflight_products_table.itemSelectionChanged.connect(self._refresh_selected_preflight_product_details)
         layout.addWidget(self.preflight_products_table)
+        return group
+
+    def _build_selected_product_group(self) -> QGroupBox:
+        group = QGroupBox("Selected Product Contract And Runtime Summary")
+        layout = QVBoxLayout(group)
+        self.selected_product_text = QTextEdit()
+        self.selected_product_text.setReadOnly(True)
+        self.selected_product_text.setPlainText("Select an audit or intake product row to inspect its contract/runtime details.")
+        layout.addWidget(self.selected_product_text)
         return group
 
     def _build_preflight_issues_group(self) -> QGroupBox:
@@ -238,11 +258,18 @@ class AutoFactoryControlWindow(QMainWindow):
     def _refresh_feedback(self) -> None:
         self.feedback_label.setText(self._view_model.feedback)
 
+    def _refresh_run_mode_hint(self) -> None:
+        run_mode = str(self.run_mode_combo.currentData())
+        self.run_mode_hint_label.setText(_build_run_mode_hint(run_mode))
+
     def _refresh_run_report(self) -> None:
         run_report = self._view_model.run_report
         if run_report is None:
             if self._view_model.preflight_report is None:
                 self.run_summary_text.clear()
+                self.selected_product_text.setPlainText(
+                    "Select an audit or intake product row to inspect its contract/runtime details."
+                )
             self.product_reports_table.setRowCount(0)
             self.asset_actions_table.setRowCount(0)
             return
@@ -280,6 +307,7 @@ class AutoFactoryControlWindow(QMainWindow):
             ]
             for column_index, value in enumerate(values):
                 self.product_reports_table.setItem(row_index, column_index, QTableWidgetItem(value))
+        _select_first_row(self.product_reports_table)
 
         self.asset_actions_table.setRowCount(len(run_report.asset_actions))
         for row_index, action in enumerate(run_report.asset_actions):
@@ -292,12 +320,16 @@ class AutoFactoryControlWindow(QMainWindow):
             ]
             for column_index, value in enumerate(values):
                 self.asset_actions_table.setItem(row_index, column_index, QTableWidgetItem(value))
+        self._refresh_selected_run_product_details()
 
     def _refresh_preflight_report(self) -> None:
         preflight_report = self._view_model.preflight_report
         if preflight_report is None:
             if self._view_model.run_report is None:
                 self.run_summary_text.clear()
+                self.selected_product_text.setPlainText(
+                    "Select an audit or intake product row to inspect its contract/runtime details."
+                )
             self.preflight_products_table.setRowCount(0)
             self.preflight_issues_table.setRowCount(0)
             return
@@ -347,6 +379,8 @@ class AutoFactoryControlWindow(QMainWindow):
         for row_index, values in enumerate(issue_rows):
             for column_index, value in enumerate(values):
                 self.preflight_issues_table.setItem(row_index, column_index, QTableWidgetItem(value))
+        _select_first_row(self.preflight_products_table)
+        self._refresh_selected_preflight_product_details()
 
     def _refresh_selected_order(self) -> None:
         selected_order = self._view_model.selected_order
@@ -435,6 +469,39 @@ class AutoFactoryControlWindow(QMainWindow):
         except Exception as exc:
             QMessageBox.warning(self, "Load Production Order", str(exc))
 
+    def _refresh_selected_preflight_product_details(self) -> None:
+        preflight_report = self._view_model.preflight_report
+        if preflight_report is None:
+            return
+        row_index = _selected_row_index(self.preflight_products_table)
+        if row_index is None or row_index >= len(preflight_report.product_reports):
+            return
+        product_report = preflight_report.product_reports[row_index]
+        self.selected_product_text.setPlainText(_build_preflight_product_detail_text(product_report))
+
+    def _refresh_selected_run_product_details(self) -> None:
+        run_report = self._view_model.run_report
+        if run_report is None:
+            return
+        row_index = _selected_row_index(self.product_reports_table)
+        if row_index is None or row_index >= len(run_report.product_reports):
+            return
+        product_report = run_report.product_reports[row_index]
+        request = next(
+            (item for item in run_report.order.product_requests if item.product_code == product_report.product_code),
+            None,
+        )
+        product_actions = [action for action in run_report.asset_actions if action.product_code == product_report.product_code]
+        self.selected_product_text.setPlainText(
+            _build_run_product_detail_text(
+                batch_code=run_report.batch_code,
+                scan_depth=run_report.scan_depth,
+                product_report=product_report,
+                request=request,
+                product_actions=product_actions,
+            )
+        )
+
 
 def _format_product_request_summary(request) -> str:
     summary = (
@@ -454,3 +521,198 @@ def _format_product_request_summary(request) -> str:
     if not tag_filter_parts:
         return summary
     return f"{summary} | tag_filters: {'; '.join(tag_filter_parts)}"
+
+
+def _build_run_mode_hint(run_mode: str) -> str:
+    hints = {
+        AutoFactoryControlViewModel.RUN_MODE_AUDIT_ONLY: (
+            "Audit reads product-folder contracts, tags, and asset readiness without creating products or orders. "
+            "Use this first when checking whether pipeline/tag/caption inputs are safe."
+        ),
+        AutoFactoryControlViewModel.RUN_MODE_INTAKE_ONLY: (
+            "Intake registers deterministic assets and writes product-local run evidence without creating a production order. "
+            "Use this when you want the library synced before preview/render work."
+        ),
+        AutoFactoryControlViewModel.RUN_MODE_MATERIALIZE: (
+            "Materialize runs intake first, then creates one persisted production order and materializes recipe work."
+        ),
+        AutoFactoryControlViewModel.RUN_MODE_MATERIALIZE_AND_PREVIEWS: (
+            "Build Previews runs the full intake -> production-order -> preview path and writes operator-auditable run artifacts "
+            "under each product's runs/<batch_code> layout."
+        ),
+    }
+    base = hints.get(run_mode, "")
+    return (
+        "Run Mode Guide: "
+        f"{base} Product-local snapshots, manifests, and journal evidence are designed to stay traceable under "
+        "runs/<batch_code> whenever the source product folder is known."
+    )
+
+
+def _selected_row_index(table: QTableWidget) -> int | None:
+    selected_items = table.selectedItems()
+    if not selected_items:
+        return None
+    return selected_items[0].row()
+
+
+def _select_first_row(table: QTableWidget) -> None:
+    if table.rowCount() > 0 and not table.selectedItems():
+        table.selectRow(0)
+
+
+def _build_preflight_product_detail_text(product_report) -> str:
+    lines = [
+        f"Product Folder: {product_report.product_dir}",
+        f"Layout: {product_report.layout_mode}",
+        f"Status: {product_report.status}",
+        f"Ready For Automation: {'yes' if product_report.ready_for_automation else 'no'}",
+        f"Ingestible Assets: {product_report.ingestible_asset_count}",
+    ]
+
+    product_config = product_report.product_config
+    if product_config is not None:
+        lines.extend(
+            [
+                "",
+                "Product Contract:",
+                f"- Product Code: {product_config.product_code}",
+                f"- Product Name: {product_config.product_name}",
+                f"- Category: {product_config.category or '-'}",
+                f"- Brand: {product_config.brand_name or '-'}",
+                f"- Default Platform: {product_config.default_platform or '-'}",
+            ]
+        )
+
+    pipeline_config = product_report.pipeline_config
+    if pipeline_config is not None:
+        lines.extend(
+            [
+                "",
+                "Pipeline Contract:",
+                f"- Requested Outputs: {pipeline_config.requested_output_count}",
+                f"- Platform: {pipeline_config.target_platform or '-'}",
+                f"- Ratio: {pipeline_config.target_ratio or '-'}",
+                f"- Uniqueness Scope: {pipeline_config.uniqueness_scope}",
+                f"- Duration Mode: {pipeline_config.duration_mode}",
+                f"- Fixed Duration Sec: {_format_optional_number(pipeline_config.fixed_duration_sec)}",
+                f"- Min/Max Duration Sec: {pipeline_config.min_duration_sec} / {pipeline_config.max_duration_sec}",
+                f"- Selection Tags: {_format_selection_tag_summary(pipeline_config)}",
+            ]
+        )
+
+    caption_contract = product_report.caption_contract
+    if caption_contract is not None:
+        lines.extend(
+            [
+                "",
+                "Caption Contract:",
+                f"- Selection Mode: {caption_contract.selection_mode or '-'}",
+                f"- Seed Scope: {caption_contract.seed_scope or '-'}",
+                f"- Segment Pools: {', '.join(caption_contract.segment_pool_names) or '-'}",
+                f"- Main Pool Entries: {caption_contract.main_pool_entry_count}",
+                f"- Sub Pool Entries: {caption_contract.sub_pool_entry_count}",
+                f"- Main Preset / Font: {_join_optional(caption_contract.main_style_preset, caption_contract.main_font_family)}",
+                f"- Sub Preset / Font: {_join_optional(caption_contract.sub_style_preset, caption_contract.sub_font_family)}",
+            ]
+        )
+
+    lines.extend(["", "Asset Folders:"])
+    for asset_audit in product_report.asset_folders:
+        lines.append(
+            "- "
+            f"{asset_audit.folder_name} ({asset_audit.asset_type}) | files={asset_audit.ingestible_file_count} "
+            f"| tagged={asset_audit.tagged_file_count} | global_tags={asset_audit.global_tag_count} "
+            f"| file_tag_entries={asset_audit.file_tag_entry_count} | tags.toml={'yes' if asset_audit.tag_file_present else 'no'} "
+            f"| required={', '.join(asset_audit.required_tag_labels) or '-'} "
+            f"| matching_required={asset_audit.matching_required_file_count}"
+        )
+
+    if product_report.issues:
+        lines.extend(["", "Issues:"])
+        for issue in product_report.issues:
+            location = f" @ {issue.location}" if issue.location else ""
+            lines.append(f"- [{issue.severity}] {issue.code}: {issue.message}{location}")
+
+    return "\n".join(lines)
+
+
+def _build_run_product_detail_text(
+    *,
+    batch_code: str,
+    scan_depth: int,
+    product_report,
+    request,
+    product_actions: list,
+) -> str:
+    lines = [
+        f"Batch Code: {batch_code}",
+        f"Scan Depth: {scan_depth}",
+        f"Product Code: {product_report.product_code}",
+        f"Product ID: {product_report.product_id}",
+        f"Created Product: {'yes' if product_report.created_product else 'no'}",
+        f"Registered Assets: {product_report.registered_asset_count}",
+        f"Skipped Existing Assets: {product_report.skipped_existing_asset_count}",
+    ]
+
+    if request is not None:
+        lines.extend(
+            [
+                "",
+                "Resolved Runtime Request:",
+                f"- Requested Outputs: {request.requested_output_count}",
+                f"- Platform: {request.target_platform or '-'}",
+                f"- Ratio: {request.target_ratio or '-'}",
+                f"- Uniqueness Scope: {request.uniqueness_scope}",
+                f"- Duration Mode: {request.duration_mode}",
+                f"- Fixed Duration Sec: {_format_optional_number(request.fixed_duration_sec)}",
+                f"- Min/Max Duration Sec: {request.min_duration_sec} / {request.max_duration_sec}",
+                f"- Selection Tags: {_format_selection_tag_summary(request)}",
+            ]
+        )
+
+    lines.extend(
+        [
+            "",
+            "Asset Intake Actions:",
+        ]
+    )
+    if not product_actions:
+        lines.append("- none")
+    else:
+        for action in product_actions:
+            lines.append(f"- {action.action}: {action.asset_type} -> {action.asset_code} ({action.source_file})")
+
+    lines.extend(
+        [
+            "",
+            "Artifact Note:",
+            "- Product-local order snapshots and journal events are written under runs/<batch_code> when the product folder is known.",
+        ]
+    )
+    return "\n".join(lines)
+
+
+def _format_selection_tag_summary(config) -> str:
+    parts: list[str] = []
+    for label, values in (
+        ("foreground", tuple(getattr(config, "foreground_required_tag_labels", ()))),
+        ("background", tuple(getattr(config, "background_required_tag_labels", ()))),
+        ("music", tuple(getattr(config, "music_required_tag_labels", ()))),
+        ("voice", tuple(getattr(config, "voice_required_tag_labels", ()))),
+    ):
+        if values:
+            parts.append(f"{label}={', '.join(values)}")
+    return "; ".join(parts) if parts else "-"
+
+
+def _format_optional_number(value: float | None) -> str:
+    if value is None:
+        return "-"
+    return f"{value:g}"
+
+
+def _join_optional(left: str | None, right: str | None) -> str:
+    if left and right:
+        return f"{left} / {right}"
+    return left or right or "-"

@@ -504,7 +504,32 @@ def test_folder_preflight_reports_ready_v2_layout_with_matching_selection_tags(u
     )
     contracts_dir = product_dir / "contracts"
     assets_dir = product_dir / "assets"
-    _write_captions_toml(product_dir, main_text="ข้อความ v2")
+    (contracts_dir / "captions.toml").write_text(
+        "\n".join(
+            [
+                "[caption_selection]",
+                'mode = "random_with_seed"',
+                'seed_scope = "batch"',
+                "",
+                "[caption_pools.hook]",
+                'main = ["hook text"]',
+                'sub = ["start today"]',
+                "",
+                "[caption_pools.benefit]",
+                'main = ["daily support"]',
+                'sub = ["steady routine support"]',
+                "",
+                "[caption_properties.main]",
+                'style_preset = "sale_blast"',
+                'font_family = "TH Baijam"',
+                "",
+                "[caption_properties.sub]",
+                'style_preset = "dark_lower_third"',
+                'font_family = "TH Chakra Petch"',
+            ]
+        ),
+        encoding="utf-8",
+    )
     (contracts_dir / "prod_detail.txt").write_text("Useful operator detail", encoding="utf-8")
     (contracts_dir / "pipeline.toml").write_text(
         "\n".join(
@@ -546,6 +571,20 @@ def test_folder_preflight_reports_ready_v2_layout_with_matching_selection_tags(u
     assert product_report.product_code == "product_v2"
     assert product_report.requested_output_count == 1
     assert product_report.ingestible_asset_count == 5
+    assert product_report.product_config is not None
+    assert product_report.product_config.product_name == "Product V2"
+    assert product_report.pipeline_config is not None
+    assert product_report.pipeline_config.target_platform == "shopee"
+    assert product_report.caption_contract is not None
+    assert product_report.caption_contract.selection_mode == "random_with_seed"
+    assert product_report.caption_contract.seed_scope == "batch"
+    assert product_report.caption_contract.segment_pool_names == ("benefit", "hook")
+    assert product_report.caption_contract.main_pool_entry_count == 2
+    assert product_report.caption_contract.sub_pool_entry_count == 2
+    assert product_report.caption_contract.main_style_preset == "sale_blast"
+    assert product_report.caption_contract.sub_style_preset == "dark_lower_third"
+    assert product_report.caption_contract.main_font_family == "TH Baijam"
+    assert product_report.caption_contract.sub_font_family == "TH Chakra Petch"
     foreground_audit = next(audit for audit in product_report.asset_folders if audit.folder_name == "foreground")
     assert foreground_audit.matching_required_file_count == 1
     voice_audit = next(audit for audit in product_report.asset_folders if audit.folder_name == "voice")

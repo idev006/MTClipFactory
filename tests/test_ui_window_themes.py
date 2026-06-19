@@ -278,8 +278,11 @@ def test_auto_factory_window_exposes_guided_run_controls(qapp: QApplication) -> 
     assert auto_factory_window.browse_button.text() == "Browse..."
     assert auto_factory_window.run_button.text() == "Run Auto Factory"
     assert auto_factory_window.refresh_orders_button.text() == "Refresh Orders"
+    assert auto_factory_window.run_mode_hint_label.text().startswith("Run Mode Guide:")
+    assert "runs/<batch_code>" in auto_factory_window.run_mode_hint_label.text()
     assert auto_factory_window.preflight_products_table.columnCount() == 5
     assert auto_factory_window.preflight_issues_table.columnCount() == 5
+    assert auto_factory_window.selected_product_text.isReadOnly() is True
     auto_factory_window.close()
 
 

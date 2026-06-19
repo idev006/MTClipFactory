@@ -130,6 +130,7 @@
 - updated the new-product auto-factory template kit to ship in the preferred `v2` layout, including `contracts/prod_detail.txt` for operator-facing product context capture
 - delivered a read-only product-folder preflight audit seam plus CLI script so operators can validate contracts, assets, tags, and `selection_tags` viability before a real automation run
 - delivered `Audit Only` inside the desktop `Auto Factory` screen so the same preflight seam is available through guided UI controls and dedicated audit result tables
+- delivered selected-product contract/runtime detail inspection inside the desktop `Auto Factory` screen so operators can review product metadata, pipeline policy, caption preset/font intent, and tag-readiness evidence from the currently highlighted product row
 - delivered a policy-aware duration fix so loopable background music no longer stretches auto-mode previews past the intended ad timeline while non-loop music can still remain duration-authoritative when explicitly configured
 - delivered product-policy voice-loop support all the way through parser, composition persistence, renderer application, and manifest truth
 - tuned the live `Biothentic0001` contract toward promo-card captions with stronger `main`/`sub` sizing and explicit loop behavior for voice and foreground assets
@@ -145,6 +146,7 @@
 6. rerun a live `Biothentic0001` preview/final audit after the stronger promo-card caption contract tuning
 7. run one live folder-intake audit against a real product folder arranged in the new `contracts/` plus `assets/` layout
 8. validate whether the new `Audit Only` UI mode needs issue export, filtering, or grouping after broader operator use
+9. validate whether the new selected-product contract inspection pane should grow operator actions such as `Open Contract`, `Copy Path`, or `Open Runs Folder`
 
 ## Verification Baseline
 

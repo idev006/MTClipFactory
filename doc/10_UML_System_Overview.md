@@ -669,16 +669,18 @@ sequenceDiagram
     alt audit only
         VM->>FolderSvc: audit_batch_root(...)
         FolderSvc-->>VM: preflight report
-        VM-->>View: audit summary + issue tables + feedback
+        VM-->>View: audit summary + issue tables + selected-product detail
+        Operator->>View: select audit product row
+        View->>View: show product/pipeline/caption contract truth
     else intake/materialize/previews
         VM->>FolderSvc: run_batch_root(..., materialize=False)
         FolderSvc-->>VM: intake report + order DTO
         alt intake only
-            VM-->>View: intake report + feedback
+            VM-->>View: intake report + selected-product runtime detail
         else materialize or previews
             VM->>OrderSvc: create_and_run_order(order,...)
             OrderSvc-->>VM: persisted order details + stages
-            VM-->>View: intake report + recent order truth
+            VM-->>View: intake report + recent order truth + selected-product runtime detail
         end
     end
 ```

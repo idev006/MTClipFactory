@@ -13,6 +13,7 @@ from mt_clip_factory.factory.auto_factory_dto import AutoFactoryBatchOrderDTO, A
 from mt_clip_factory.factory.auto_factory_folder_dto import (
     AutoFactoryFolderAssetFolderAuditDTO,
     AutoFactoryFolderAssetActionDTO,
+    AutoFactoryFolderCaptionContractAuditDTO,
     AutoFactoryFolderContractAuditDTO,
     AutoFactoryFolderPipelineConfigDTO,
     AutoFactoryFolderPreflightIssueDTO,
@@ -367,6 +368,7 @@ def _audit_product_dir(product_dir: Path) -> AutoFactoryFolderPreflightProductRe
     layout_modes: list[str] = []
     product_config: AutoFactoryFolderProductConfigDTO | None = None
     pipeline_config: AutoFactoryFolderPipelineConfigDTO | None = None
+    caption_contract: AutoFactoryFolderCaptionContractAuditDTO | None = None
 
     for contract_name in (*_REQUIRED_CONTRACT_FILES, *_OPTIONAL_CONTRACT_FILES):
         required = contract_name in _REQUIRED_CONTRACT_FILES
@@ -408,7 +410,7 @@ def _audit_product_dir(product_dir: Path) -> AutoFactoryFolderPreflightProductRe
     captions_file = contract_paths["captions.toml"]
     if captions_file is not None:
         try:
-            _load_toml(captions_file)
+            caption_contract = _summarize_captions_contract(captions_file)
         except AutoFactoryFolderContractError as exc:
             issues.append(
                 _preflight_issue(
@@ -457,6 +459,9 @@ def _audit_product_dir(product_dir: Path) -> AutoFactoryFolderPreflightProductRe
         product_name=None if product_config is None else product_config.product_name,
         requested_output_count=None if pipeline_config is None else pipeline_config.requested_output_count,
         ready_for_automation=status != "error",
+        product_config=product_config,
+        pipeline_config=pipeline_config,
+        caption_contract=caption_contract,
         contracts=tuple(contract_audits),
         asset_folders=tuple(asset_audits),
         issues=tuple(issues),
@@ -762,6 +767,61 @@ def _load_toml(file_path: Path) -> dict:
     return data
 
 
+def _summarize_captions_contract(captions_file: Path) -> AutoFactoryFolderCaptionContractAuditDTO:
+    data = _load_toml(captions_file)
+    selection_section = _expect_toml_table(
+        data.get("caption_selection"),
+        context=f"[caption_selection] in {captions_file}",
+        required=False,
+    )
+    pools_section = _expect_toml_table(
+        data.get("caption_pools"),
+        context=f"[caption_pools] in {captions_file}",
+        required=False,
+    )
+    properties_section = _expect_toml_table(
+        data.get("caption_properties"),
+        context=f"[caption_properties] in {captions_file}",
+        required=False,
+    )
+
+    segment_pool_names: list[str] = []
+    main_pool_entry_count = 0
+    sub_pool_entry_count = 0
+    for segment_name, section_value in sorted(pools_section.items()):
+        segment_section = _expect_toml_table(
+            section_value,
+            context=f"[caption_pools.{segment_name}] in {captions_file}",
+            required=True,
+        )
+        segment_pool_names.append(str(segment_name))
+        main_pool_entry_count += len(_optional_text_list(segment_section.get("main")))
+        sub_pool_entry_count += len(_optional_text_list(segment_section.get("sub")))
+
+    main_properties = _expect_toml_table(
+        properties_section.get("main"),
+        context=f"[caption_properties.main] in {captions_file}",
+        required=False,
+    )
+    sub_properties = _expect_toml_table(
+        properties_section.get("sub"),
+        context=f"[caption_properties.sub] in {captions_file}",
+        required=False,
+    )
+
+    return AutoFactoryFolderCaptionContractAuditDTO(
+        selection_mode=_optional_text(selection_section.get("mode")),
+        seed_scope=_optional_text(selection_section.get("seed_scope")),
+        segment_pool_names=tuple(segment_pool_names),
+        main_pool_entry_count=main_pool_entry_count,
+        sub_pool_entry_count=sub_pool_entry_count,
+        main_style_preset=_optional_text(main_properties.get("style_preset")),
+        sub_style_preset=_optional_text(sub_properties.get("style_preset")),
+        main_font_family=_optional_text(main_properties.get("font_family")),
+        sub_font_family=_optional_text(sub_properties.get("font_family")),
+    )
+
+
 def _has_contract_file(product_dir: Path, file_name: str) -> bool:
     legacy_file, versioned_file = _contract_file_candidates(product_dir, file_name)
     return legacy_file.exists() or versioned_file.exists()
@@ -1004,6 +1064,16 @@ def _optional_text_list(value) -> tuple[str, ...]:
             continue
         normalized_values.append(text.casefold())
     return tuple(normalized_values)
+
+
+def _expect_toml_table(value, *, context: str, required: bool) -> dict[str, object]:
+    if value is None:
+        return {}
+    if not isinstance(value, dict):
+        if required:
+            raise AutoFactoryFolderContractError(f"Expected table for {context} but got {value!r}")
+        raise AutoFactoryFolderContractError(f"Invalid table for {context}: {value!r}")
+    return value
 
 
 def _normalize_tag_label_list(value, *, file_path: Path) -> tuple[str, ...]:

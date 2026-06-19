@@ -50,6 +50,7 @@ The project now uses two roadmap layers:
 - `IR-29` Pixel-based caption layout and diversity baseline: complete on 2026-06-14
 - `IR-30` Caption safe bands and longest-layer duration baseline: complete on 2026-06-14
 - `IR-31` Textbox-based caption layout baseline: complete on 2026-06-15
+- `IR-32` Auto Factory product-contract inspection surface: complete on 2026-06-19
 
 ## Current Execution Stream
 
@@ -874,6 +875,34 @@ Make caption layout easier to control and evolve by resolving textbox geometry f
 - delivered textbox-first caption geometry resolution in the layout engine with text fit measured against textbox content width
 - delivered stroke-aware line measurement, manifest evidence, and renderer parity for textbox-backed caption rendering
 - covered textbox geometry behavior and render compatibility with pytest and kept the full regression suite green
+
+## IR-32 | Auto Factory Product-Contract Inspection Surface
+
+### Goal
+
+Make the desktop `Auto Factory` screen show the selected product's contract/runtime intent clearly enough that operators can validate pipeline and caption setup without opening raw files first.
+
+### Scope
+
+- expose product contract summary from preflight DTOs
+- expose pipeline duration/tag-rule summary from preflight DTOs
+- expose caption preset/font intent from `captions.toml` summary data
+- show selected-product runtime request and asset intake actions after intake-mode runs
+- keep the surface read-only and aligned with product-local `runs/<batch_code>` audit behavior
+
+### Acceptance Criteria
+
+- operators can select one audit product row and inspect product, pipeline, caption, and tag-readiness truth
+- operators can select one intake product row and inspect the resolved runtime request plus asset actions
+- the UI uses service DTO output rather than reparsing contracts inside the window
+- pytest covers both the DTO summary seam and the upgraded window surface
+
+### Delivery Result
+
+- delivered caption-contract, product-contract, and pipeline-contract summaries through the folder preflight seam
+- delivered a selected-product detail panel inside the desktop `Auto Factory` screen for both audit and intake tables
+- delivered run-mode guidance that explains what each mode does and reminds operators where product-local run artifacts land
+- covered the new summary seam and UI surface with targeted pytest
 
 ## Cross-Milestone Rules
 

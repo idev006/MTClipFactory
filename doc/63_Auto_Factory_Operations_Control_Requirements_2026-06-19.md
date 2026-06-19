@@ -95,6 +95,7 @@ The operations UI must show:
 
 - one run summary card
 - one per-product table
+- one selected-product contract/runtime detail panel
 - one per-stage summary
 - one active-worker panel
 - one append-only event or journal view
@@ -112,6 +113,9 @@ Recommended visible fields:
 - preview or final counts
 - review-required counts
 - current blocking issue
+- resolved pipeline duration rule
+- active selection tags by asset type
+- caption preset/font intent when a product caption contract exists
 
 ## FR-03 Multi-Worker Control
 

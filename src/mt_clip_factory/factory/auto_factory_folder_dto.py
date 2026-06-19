@@ -83,6 +83,19 @@ class AutoFactoryFolderContractAuditDTO:
 
 
 @dataclass(slots=True, frozen=True)
+class AutoFactoryFolderCaptionContractAuditDTO:
+    selection_mode: str | None
+    seed_scope: str | None
+    segment_pool_names: tuple[str, ...]
+    main_pool_entry_count: int
+    sub_pool_entry_count: int
+    main_style_preset: str | None = None
+    sub_style_preset: str | None = None
+    main_font_family: str | None = None
+    sub_font_family: str | None = None
+
+
+@dataclass(slots=True, frozen=True)
 class AutoFactoryFolderAssetFolderAuditDTO:
     folder_name: str
     asset_type: str
@@ -112,6 +125,9 @@ class AutoFactoryFolderPreflightProductReportDTO:
     asset_folders: tuple[AutoFactoryFolderAssetFolderAuditDTO, ...]
     issues: tuple[AutoFactoryFolderPreflightIssueDTO, ...]
     ingestible_asset_count: int
+    product_config: AutoFactoryFolderProductConfigDTO | None = None
+    pipeline_config: AutoFactoryFolderPipelineConfigDTO | None = None
+    caption_contract: AutoFactoryFolderCaptionContractAuditDTO | None = None
 
 
 @dataclass(slots=True, frozen=True)
