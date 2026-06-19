@@ -91,6 +91,7 @@
 - caption runtime now also supports built-in role-aware `style_preset` values so operators can start from `sale_blast`, `clean_cta`, or `benefit_stack` and still override individual fields per product
 - caption runtime now also supports box-border styling on grouped or per-line cards, with manifest-visible resolved border truth and preset-carried border defaults
 - caption runtime now treats multi-line rendering as explicit author intent only, so captions without `\n` stay single-line and use box-aware best-fit font sizing instead of automatic runtime wrapping
+- the next auto-factory operations requirements slice is now documented in SSOT, locking operator-visible progress, multi-worker gating, pause/stop/resume semantics, and restart recovery expectations before `IR-20` implementation begins
 - preview and final render now also write a versioned manifest envelope with stable `manifest_meta`, `artifact`, `run`, `composition`, `render`, and `quality` sections while preserving backward-safe reader behavior for older manifests
 - folder-driven auto-factory now also supports a preferred product-folder `v2` layout with `contracts/` plus `assets/` paths, while staying backward compatible with legacy root-level contracts and typed media folders
 - the new-product template kit now ships in the preferred `v2` layout, including `contracts/prod_detail.txt`, while runtime rejects ambiguous mixed old/new paths truthfully instead of guessing
@@ -164,10 +165,12 @@
 - validate whether the new backward-compatible product-folder `v2` layout is clear enough for operators and whether migration guidance is needed for existing legacy product folders
 - validate whether operators prefer the new scriptable preflight seam before every live auto-mode run or only for onboarding/debugging cases
 - validate whether the new `Audit Only` UI mode is clear enough for operators or whether issue grouping/filtering is needed after broader use
+- implement the newly locked auto-factory operations-control requirements so operators can see live run progress and safely pause, stop, resume, or recover interrupted runs
 
 ## Next Steps
 
 1. Implement worker lease, heartbeat, and retry-policy semantics on top of the new production-order orchestration baseline.
+   This slice must now also carry live progress visibility plus persisted pause/stop/resume and restart recovery semantics for Auto Factory operations.
 2. Run broader controlled operator use on additional real campaign media, including the new `Auto Factory` screen and bulk tagging flow, without service-side assistance.
 3. Extend the auto-factory baseline from automated preview production into controlled final-render automation only after operators accept the current planner, tag-aware selection flow, control-surface flow, review-gate truth, and the new product-local run audit seam.
 4. Decide whether production-order orchestration should surface on the dashboard before multi-node execution begins.

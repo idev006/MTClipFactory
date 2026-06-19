@@ -683,6 +683,40 @@ sequenceDiagram
     end
 ```
 
+## Auto Factory Operations Sequence
+
+```mermaid
+sequenceDiagram
+    actor Operator
+    participant View as AutoFactoryControlWindow
+    participant VM as AutoFactoryControlViewModel
+    participant OrderSvc as ProductionOrderService
+    participant Dispatch as Dispatch Controller
+    participant Worker as Execution Worker
+    participant State as State Plane
+
+    Operator->>View: start auto run for selected root folder
+    View->>VM: start_auto_run(...)
+    VM->>OrderSvc: create order + persist run intent
+    VM->>Dispatch: dispatch order work
+    Dispatch->>State: claim leases
+    Worker->>State: heartbeat + progress + stage events
+    State-->>VM: persisted run/stage/job truth
+    VM-->>View: refresh live progress
+    alt pause requested
+        Operator->>View: Pause
+        View->>VM: request_pause(order_id)
+        VM->>State: persist pause_requested
+        Dispatch->>State: stop new claims
+        Worker->>State: complete safe checkpoint
+        State-->>VM: paused
+    else resume after interruption
+        Operator->>View: Resume
+        View->>VM: resume_order(order_id)
+        VM->>Dispatch: recover stale work and continue
+    end
+```
+
 ## Assisted Tagging Sequence
 
 ```mermaid
@@ -1260,6 +1294,12 @@ stateDiagram-v2
     [*] --> queued
     queued --> leased
     leased --> processing
+    processing --> pause_requested
+    pause_requested --> paused
+    paused --> queued
+    processing --> stop_requested
+    stop_requested --> stopped
+    stopped --> queued
     processing --> succeeded
     processing --> failed_retryable
     processing --> failed_terminal

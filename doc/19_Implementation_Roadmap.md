@@ -635,6 +635,10 @@ Make the new control-plane baseline safe for future multi-worker execution by in
 - define worker heartbeat persistence and visibility
 - distinguish claimed work from merely queued work
 - formalize requeue rules after lease expiration
+- surface live order, stage, and worker progress truth for the operator-facing auto-factory screen
+- persist operator intents for `pause`, `stop`, and `resume`
+- define reopen-and-continue recovery behavior for interrupted auto-factory runs
+- keep worker concurrency bounded and configurable instead of ad hoc
 - keep the baseline compatible with the current local runtime before remote workers arrive
 
 ### Planned Acceptance Criteria
@@ -642,6 +646,8 @@ Make the new control-plane baseline safe for future multi-worker execution by in
 - queueable work can be claimed through explicit ownership semantics
 - stale work can be identified without guessing from timestamps alone
 - retry policy becomes more precise than one generic failed state
+- operators can tell whether a run is running, pausing, paused, stopped, blocked, resumable, or complete
+- interrupted auto-factory runs can be reopened and continued from persisted state without duplicating already-completed work
 - docs, UML, issues, Kanban, and tests stay aligned to the new worker-control seam
 
 ## IR-21 | Folder Discovery Depth And Assisted Tagging Ergonomics

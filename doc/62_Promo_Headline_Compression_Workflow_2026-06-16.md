@@ -50,14 +50,14 @@ Recommended starting point:
 ```toml
 [caption_properties.main]
 style_preset = "sale_blast"
-font_family = "TH Chakra Petch"
+font_family = "TH Baijam"
 textbox_mode = "grouped"
 line_spacing_ratio = 0.03
 line_advance_ratio = 0.82
 
 [caption_properties.sub]
 style_preset = "clean_cta"
-font_family = "TH Chakra Petch"
+font_family = "TH Baijam"
 textbox_mode = "grouped"
 line_spacing_ratio = 0.06
 line_advance_ratio = 0.92

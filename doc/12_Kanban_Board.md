@@ -10,6 +10,7 @@ This Markdown board is the SSOT Kanban for the repository.
 ## Ready
 
 - `IR-20` queue lease, worker heartbeat, and retry-policy baseline
+- auto-factory operations control requirements slice for progress visibility, pause/stop/resume, and restart recovery
 
 ## In Progress
 

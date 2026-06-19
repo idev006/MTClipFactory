@@ -2,7 +2,7 @@
 
 ## Snapshot Date
 
-- 2026-06-16
+- 2026-06-19
 
 ## Where To See Progress
 
@@ -83,6 +83,7 @@
 - The first controlled operator/UAT run has now completed end to end and produced a real final output from the current workspace.
 - A second controlled operator/UAT run has now validated runtime voice/music mixing, richer visual coverage, and a no-review-gate path on a stronger recipe.
 - The roadmap is now split into strategic and implementation layers, and the next mandatory implementation slice remains `IR-20` worker lease, heartbeat, and retry semantics.
+- The next auto-factory operations slice is now also locked in SSOT at the requirements level, including live progress visibility, bounded multi-worker execution, pause/stop/resume semantics, and restart-safe recovery.
 - A new corrective execution slice is now active for safer default caption placement bands and longest-contributing-layer duration resolution after real auto-mode preview feedback exposed layout and timeline quality gaps.
 
 ## Delivered In The Latest Loop
@@ -112,6 +113,7 @@
 - delivered steadier grouped-caption vertical spacing so per-line best-fit sizing does not leave promo cards looking uneven between lines
 - delivered ink-aware caption line-height measurement so Thai multi-line cards no longer look over-spaced from raw font metrics alone
 - delivered product-local promo headline compression through `line_advance_ratio`, allowing grouped manual-break captions to tighten vertical stacking without losing deterministic layout or manifest traceability
+- delivered an SSOT requirements slice for the next auto-factory operations control surface so the upcoming worker-control implementation can answer operator questions about progress, multi-worker use, pause, stop, resume, and reopen-and-continue behavior before code expands
 - delivered a textbox-first caption layout slice so resolved caption boxes now hold stable geometry while text alignment remains controllable inside the box
 - delivered a caption-card height-policy slice with explicit `textbox_height_mode`, making grouped promo cards default to `content_hug` while preserving deliberate tall cards through `fixed`
 - delivered manifest-visible textbox height policy truth plus pytest coverage for compact-card and fixed-height caption behavior

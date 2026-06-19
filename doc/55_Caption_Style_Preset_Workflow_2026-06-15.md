@@ -47,7 +47,7 @@ Example:
 ```toml
 [caption_properties.main]
 style_preset = "sale_blast"
-font_family = "TH Chakra Petch"
+font_family = "TH Baijam"
 
 [caption_properties.sub]
 style_preset = "sale_blast"

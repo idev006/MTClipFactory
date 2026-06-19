@@ -177,8 +177,8 @@ alignment = "center"
 vertical_alignment = "middle"
 textbox_alignment = "center"
 textbox_mode = "per_line"
-font_family = "THSarabun"
-font_fallbacks = ["TH Chakra Petch", "Tahoma", "Arial Unicode MS"]
+font_family = "TH Baijam"
+font_fallbacks = ["TH Chakra Petch", "THSarabun", "Tahoma", "Arial Unicode MS"]
 font_size = 72
 min_font_size = 48
 font_weight = "bold"
@@ -203,8 +203,8 @@ alignment = "center"
 vertical_alignment = "middle"
 textbox_alignment = "center"
 textbox_mode = "grouped"
-font_family = "THSarabun"
-font_fallbacks = ["TH Chakra Petch", "Tahoma", "Arial Unicode MS"]
+font_family = "TH Baijam"
+font_fallbacks = ["TH Chakra Petch", "THSarabun", "Tahoma", "Arial Unicode MS"]
 font_size = 40
 min_font_size = 30
 font_weight = "medium"
@@ -255,6 +255,10 @@ Current runtime baseline:
 3. if needed, renderer may fall back to system fonts
 4. missing fonts should produce explicit warning or reviewable fallback, not silent substitution
 5. runtime fitting should use a best-fit solver that measures real pixel widths and heights before choosing the final caption block
+
+Default operator baseline:
+
+- `TH Baijam.ttf` is now the preferred default caption font when the product contract does not intentionally choose another family
 
 ## Reviewed Workflow
 

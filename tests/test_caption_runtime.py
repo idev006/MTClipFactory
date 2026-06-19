@@ -462,6 +462,7 @@ def test_caption_runtime_applies_sale_blast_style_preset_defaults(tmp_path) -> N
     media_root = tmp_path / "media_library"
     fonts_root = tmp_path / "fonts"
     fonts_root.mkdir(parents=True, exist_ok=True)
+    (fonts_root / "TH Baijam.ttf").write_bytes(b"font")
     (fonts_root / "THSarabun.ttf").write_bytes(b"font")
     (fonts_root / "TH Chakra Petch.ttf").write_bytes(b"font")
     product_dir = tmp_path / "product_preset_defaults"
@@ -507,12 +508,14 @@ def test_caption_runtime_applies_sale_blast_style_preset_defaults(tmp_path) -> N
     main_role, sub_role = resolved[0].roles
 
     assert main_role.style_preset == "sale_blast"
+    assert main_role.font_family == "TH Baijam"
     assert main_role.textbox_height_mode == "content_hug"
     assert main_role.background_color == "#D61F3A"
     assert main_role.box_border_color == "#FFD447"
     assert main_role.box_border_width == 4
     assert main_role.textbox_width_ratio == 0.78
     assert sub_role.style_preset == "sale_blast"
+    assert sub_role.font_family == "TH Baijam"
     assert sub_role.background_color == "#111827"
     assert sub_role.box_border_color == "#F8FAFC"
     assert sub_role.position == "bottom"
@@ -522,6 +525,7 @@ def test_caption_runtime_allows_explicit_override_over_style_preset(tmp_path) ->
     media_root = tmp_path / "media_library"
     fonts_root = tmp_path / "fonts"
     fonts_root.mkdir(parents=True, exist_ok=True)
+    (fonts_root / "TH Baijam.ttf").write_bytes(b"font")
     (fonts_root / "THSarabun.ttf").write_bytes(b"font")
     product_dir = tmp_path / "product_preset_override"
     product_dir.mkdir(parents=True, exist_ok=True)
