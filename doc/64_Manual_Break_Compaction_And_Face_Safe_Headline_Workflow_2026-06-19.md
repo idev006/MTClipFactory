@@ -17,6 +17,8 @@ It complements [62_Promo_Headline_Compression_Workflow_2026-06-16.md](/F:/progra
 - it does not remove the operator's multi-line intent
 - it tells the runtime how many lines the role should prefer when manual-break text can be rebalanced safely
 - if safe compaction fails, the runtime falls back to the authored line split
+- grouped headline cards now keep one shared resolved font size across every rendered line
+- per-line font-size fitting remains available only for `textbox_mode = "per_line"`
 
 ## Contract Example
 
@@ -44,6 +46,7 @@ the runtime may compact the grouped headline stack to the preferred count.
 - a 3-line promo hook can become a tighter 2-line headline
 - the box height drops
 - the top-band card is more likely to stay face-safe
+- grouped promo headlines no longer look lopsided because one line grew much larger than the others
 - deterministic selection and layout evidence remain intact
 
 ## Sequence
@@ -61,6 +64,7 @@ sequenceDiagram
     Runtime->>Solver: resolve manual-break layout
     Solver->>Solver: try rebalance to preferred line count
     alt rebalance succeeds
+        Solver->>Solver: solve one shared grouped font size
         Solver-->>Runtime: compacted grouped headline
     else rebalance fails
         Solver-->>Runtime: original authored line split
@@ -71,5 +75,7 @@ sequenceDiagram
 ## Acceptance Criteria
 
 - grouped manual-break headlines can compact from 3 lines to 2 when width allows
+- grouped manual-break headlines keep uniform per-line font size after compaction
+- `per_line` cards still keep independent line-by-line width fitting
 - unsafe compaction does not silently destroy the authored structure
 - manifest payload exposes the chosen line-break mode and preferred line count

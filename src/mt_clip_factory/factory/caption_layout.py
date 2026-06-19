@@ -385,6 +385,7 @@ def _evaluate_layout_candidate(
     line_advance_ratio: float,
 ) -> _LayoutCandidate:
     normalized_textbox_mode = textbox_mode.strip().casefold()
+    allow_per_line_scale = manual_breaks and normalized_textbox_mode == "per_line"
     source_manual_line_count = len(text.splitlines()) if manual_breaks else 1
     allow_manual_break_compaction = (
         manual_breaks
@@ -421,7 +422,7 @@ def _evaluate_layout_candidate(
         min_font_size_px=min_font_size_px,
         max_width_px=max_width_px,
         stroke_width=stroke_width,
-        allow_per_line_scale=manual_breaks,
+        allow_per_line_scale=allow_per_line_scale,
     )
     line_heights_px = _normalize_line_heights(
         line_heights_px=line_heights_px,
@@ -450,7 +451,7 @@ def _evaluate_layout_candidate(
     )
     content_height_capacity_px = textbox_content_height(textbox_height_px=box_height_px, padding=padding)
     any_line_grown = False
-    if manual_breaks and not raw_layout.truncated_for_runtime:
+    if allow_per_line_scale and not raw_layout.truncated_for_runtime:
         (
             line_font_sizes_px,
             line_widths_px,
@@ -493,6 +494,7 @@ def _evaluate_layout_candidate(
         raw_layout=raw_layout,
         requested_font_size_px=requested_font_size_px,
         resolved_font_size_px=candidate_font_size_px,
+        allow_per_line_scale=allow_per_line_scale,
         any_line_scaled=any_line_scaled,
         any_line_grown=any_line_grown,
     )
@@ -570,16 +572,20 @@ def _resolve_fit_strategy(
     raw_layout: _RawLayout,
     requested_font_size_px: int,
     resolved_font_size_px: int,
+    allow_per_line_scale: bool,
     any_line_scaled: bool,
     any_line_grown: bool,
 ) -> str:
     if raw_layout.truncated_for_runtime:
         return "truncated_for_runtime"
     if manual_breaks:
-        if any_line_grown:
-            return "per_line_best_fit"
-        if any_line_scaled:
-            return "per_line_scaled_to_fit"
+        if allow_per_line_scale:
+            if any_line_grown:
+                return "per_line_best_fit"
+            if any_line_scaled or resolved_font_size_px < requested_font_size_px:
+                return "per_line_scaled_to_fit"
+        if resolved_font_size_px > requested_font_size_px:
+            return "manual_best_fit"
         if resolved_font_size_px < requested_font_size_px:
             return "scaled_to_fit"
         return "manual_breaks"

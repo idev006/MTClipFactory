@@ -511,6 +511,7 @@ def test_caption_runtime_applies_sale_blast_style_preset_defaults(tmp_path) -> N
     assert main_role.font_family == "TH Baijam"
     assert main_role.textbox_height_mode == "content_hug"
     assert main_role.background_color == "#D61F3A"
+    assert main_role.background_opacity == 0.34
     assert main_role.box_border_color == "#FFD447"
     assert main_role.box_border_width == 4
     assert main_role.textbox_width_ratio == 0.78
@@ -1044,9 +1045,23 @@ def test_caption_runtime_scales_manual_break_lines_independently_to_fit_width(tm
     (fonts_root / "THSarabun.ttf").write_bytes(b"font")
     product_dir = tmp_path / "product_line_scale"
     product_dir.mkdir(parents=True, exist_ok=True)
-    caption_file = _write_caption_contract(
-        product_dir,
-        main_entries=("wow\\nthis is a much longer line than wow\\nspace",),
+    caption_file = product_dir / "captions.toml"
+    caption_file.write_text(
+        "\n".join(
+            [
+                "[caption_pools.hook]",
+                'main = ["wow\\nthis is a much longer line than wow\\nspace"]',
+                "",
+                "[caption_properties.main]",
+                'font_family = "THSarabun"',
+                'textbox_mode = "per_line"',
+                "font_size = 72",
+                "min_font_size = 48",
+                "max_lines = 3",
+                'overflow_policy = "wrap_then_scale_then_review"',
+            ]
+        ),
+        encoding="utf-8",
     )
     store = ProductAutomationMetadataStore(media_root)
     store.sync_caption_contract(product_code="product_line_scale", source_file=caption_file)
@@ -1075,11 +1090,9 @@ def test_caption_runtime_scales_manual_break_lines_independently_to_fit_width(tm
     assert role.fit_strategy == "per_line_scaled_to_fit"
     assert len(role.line_font_sizes_px) == 3
     assert len(set(role.line_font_sizes_px)) > 1
-    assert len(set(role.line_heights_px)) == 1
-    assert len(set(
-        role.line_top_positions_px[index + 1] - role.line_top_positions_px[index]
-        for index in range(len(role.line_top_positions_px) - 1)
-    )) == 1
+    assert len(set(role.line_heights_px)) > 1
+    assert role.line_top_positions_px[1] > role.line_top_positions_px[0]
+    assert role.line_top_positions_px[2] > role.line_top_positions_px[1]
     assert min(role.line_font_sizes_px) == role.min_font_size
     assert role.overflowed is True
 
@@ -1143,6 +1156,8 @@ def test_caption_runtime_supports_compressed_grouped_headline_stack(tmp_path) ->
     assert role.line_advance_ratio == 0.80
     assert role.line_break_mode == "manual_compacted"
     assert role.textbox_mode == "grouped"
+    assert len(set(role.line_font_sizes_px)) == 1
+    assert role.fit_strategy in {"manual_breaks", "manual_best_fit", "scaled_to_fit"}
     assert deltas
     assert max(deltas) < role.line_heights_px[0] + role.line_spacing_px
     assert len(role.rendered_lines) == 2

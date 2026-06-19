@@ -19,7 +19,7 @@ _STYLE_PRESETS: dict[str, dict[str, dict[str, object]]] = {
             "stroke_color": "#1A1A1A",
             "stroke_width": 4,
             "background_color": "#D61F3A",
-            "background_opacity": 0.92,
+            "background_opacity": 0.34,
             "box_border_color": "#FFD447",
             "box_border_opacity": 0.98,
             "box_border_width": 4,

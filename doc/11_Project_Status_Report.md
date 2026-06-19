@@ -93,6 +93,7 @@
 - caption runtime now treats multi-line rendering as explicit author intent only, so captions without `\n` stay single-line and use box-aware best-fit font sizing instead of automatic runtime wrapping
 - the next auto-factory operations requirements slice is now documented in SSOT, locking operator-visible progress, multi-worker gating, pause/stop/resume semantics, and restart recovery expectations before `IR-20` implementation begins
 - caption runtime can now also compact grouped manual-break promo headlines toward a preferred line count, helping top-band cards stay more face-safe without giving up deterministic multi-line authoring
+- grouped manual-break promo cards now also keep one shared resolved font size across all rendered lines, while `per_line` cards retain independent line fitting for operator-authored stacked labels
 - preview and final render now also write a versioned manifest envelope with stable `manifest_meta`, `artifact`, `run`, `composition`, `render`, and `quality` sections while preserving backward-safe reader behavior for older manifests
 - folder-driven auto-factory now also supports a preferred product-folder `v2` layout with `contracts/` plus `assets/` paths, while staying backward compatible with legacy root-level contracts and typed media folders
 - the new-product template kit now ships in the preferred `v2` layout, including `contracts/prod_detail.txt`, while runtime rejects ambiguous mixed old/new paths truthfully instead of guessing
