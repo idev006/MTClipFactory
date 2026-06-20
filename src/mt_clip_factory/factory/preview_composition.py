@@ -436,6 +436,7 @@ def _build_caption_manifest_payload(resolved_captions: dict[int, ResolvedSegment
                         "line_pair_spacing_details": [
                             {
                                 "pair_index": detail.pair_index,
+                                "local_risk_level": detail.local_risk_level,
                                 "risk_level": detail.risk_level,
                                 "base_line_advance_ratio": detail.base_line_advance_ratio,
                                 "minimum_line_advance_ratio": detail.minimum_line_advance_ratio,

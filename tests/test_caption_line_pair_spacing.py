@@ -58,6 +58,7 @@ def test_resolve_line_pair_spacing_details_covers_all_basic_upper_lower_combinat
     expected_ratio = _expected_ratio(expected_risk)
 
     assert detail.risk_level == expected_risk
+    assert detail.local_risk_level == expected_risk
     assert detail.applied_line_advance_ratio == pytest.approx(expected_ratio)
     assert detail.advance_px == round(100 * expected_ratio) + 8
 
@@ -70,8 +71,9 @@ def test_pair_aware_positions_and_height_use_pair_specific_applied_ratios() -> N
         base_line_advance_ratio=0.80,
     )
 
-    assert [detail.risk_level for detail in details] == ["high", "low"]
-    assert [detail.advance_px for detail in details] == [108, 88]
+    assert [detail.local_risk_level for detail in details] == ["high", "low"]
+    assert [detail.risk_level for detail in details] == ["high", "medium"]
+    assert [detail.advance_px for detail in details] == [108, 100]
 
     positions = resolve_pair_aware_line_top_positions(
         content_top_px=200,
@@ -87,8 +89,21 @@ def test_pair_aware_positions_and_height_use_pair_specific_applied_ratios() -> N
         fallback_line_advance_ratio=0.80,
     )
 
-    assert positions == (200, 308, 396)
-    assert height == 296
+    assert positions == (200, 308, 408)
+    assert height == 308
+
+
+def test_global_context_smoothing_promotes_low_middle_pair_between_high_risk_pairs() -> None:
+    details = resolve_line_pair_spacing_details(
+        lines=(_LINE_BY_STATE["D"], _LINE_BY_STATE["U"], _LINE_BY_STATE["D"], _LINE_BY_STATE["U"]),
+        line_heights_px=(100, 100, 100, 100),
+        line_spacing_px=8,
+        base_line_advance_ratio=0.80,
+    )
+
+    assert [detail.local_risk_level for detail in details] == ["high", "low", "high"]
+    assert [detail.risk_level for detail in details] == ["high", "medium", "high"]
+    assert [detail.applied_line_advance_ratio for detail in details] == [1.0, 0.92, 1.0]
 
 
 def _expected_risk(*, upper_state: str, lower_state: str) -> str:

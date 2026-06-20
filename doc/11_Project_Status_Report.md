@@ -114,6 +114,7 @@
 - caption rendering now also rasterizes a transparent Qt bitmap per segment before FFmpeg compositing, so Thai glyph shaping and textbox rendering stay on one measured-vs-drawn engine path instead of depending on FFmpeg `drawtext`
 - grouped Thai multi-line captions now also raise compressed `line_advance_ratio` to a script-safe runtime floor and report that effective resolved ratio truthfully in runtime metadata and manifests
 - grouped Thai multi-line captions now also resolve pair-aware adjacent-line spacing, so low-risk pairs may stay tighter while medium/high-risk pairs surface truthful per-pair runtime evidence in manifests
+- grouped Thai multi-line captions now also apply one global context-smoothing pass across arbitrary `n`-line blocks, so neighboring risky gaps can lift a middle pair when that produces safer and more coherent vertical rhythm
 - assets can now be safely renamed or deleted from the `Assets` screen, with repository checks that block deletion when recipe-item or artifact-job references still exist
 - the `Assets` screen now supports `Show References`, `Retire Selected`, and `Purge Media` so referenced assets can leave active use and disk without destroying audit truth
 - the `Assets` screen now also supports `Replace In Recipes...` with recipe-safe validation, recipe reset-to-candidate behavior, and approval guards that prevent stale pre-replacement outputs from being reused as evidence for changed recipes

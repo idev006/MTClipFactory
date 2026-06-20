@@ -27,6 +27,7 @@ class LineScriptProfile:
 @dataclass(slots=True, frozen=True)
 class LinePairSpacingDetail:
     pair_index: int
+    local_risk_level: str
     risk_level: str
     base_line_advance_ratio: float
     minimum_line_advance_ratio: float
@@ -79,21 +80,32 @@ def resolve_line_pair_spacing_details(
     if len(lines) <= 1:
         return ()
     profiles = tuple(analyze_line_script_profile(line) for line in lines)
-    details: list[LinePairSpacingDetail] = []
+    local_details: list[tuple[str, float, LineScriptProfile, LineScriptProfile, int]] = []
     for pair_index, line_height_px in enumerate(line_heights_px[:-1]):
         upper = profiles[pair_index]
         lower = profiles[pair_index + 1]
-        risk_level, minimum_ratio = _resolve_pair_risk_and_floor(
+        local_risk_level, minimum_ratio = _resolve_pair_risk_and_floor(
             upper_profile=upper,
             lower_profile=lower,
             base_line_advance_ratio=normalized_base_ratio,
         )
+        local_details.append((local_risk_level, minimum_ratio, upper, lower, line_height_px))
+    details: list[LinePairSpacingDetail] = []
+    risk_scores = [_risk_score(local_risk_level) for local_risk_level, _, _, _, _ in local_details]
+    for pair_index, (local_risk_level, minimum_ratio, upper, lower, line_height_px) in enumerate(local_details):
+        contextual_risk_level = _resolve_contextual_risk_level(pair_index=pair_index, risk_scores=risk_scores)
+        contextual_minimum_ratio = _minimum_ratio_for_risk_level(
+            risk_level=contextual_risk_level,
+            base_line_advance_ratio=normalized_base_ratio,
+        )
+        minimum_ratio = max(minimum_ratio, contextual_minimum_ratio)
         applied_ratio = max(normalized_base_ratio, minimum_ratio)
         advance_px = max(1, round(line_height_px * applied_ratio)) + line_spacing_px
         details.append(
             LinePairSpacingDetail(
                 pair_index=pair_index,
-                risk_level=risk_level,
+                local_risk_level=local_risk_level,
+                risk_level=contextual_risk_level,
                 base_line_advance_ratio=normalized_base_ratio,
                 minimum_line_advance_ratio=minimum_ratio,
                 applied_line_advance_ratio=applied_ratio,
@@ -163,6 +175,34 @@ def _resolve_pair_risk_and_floor(
     if upper_profile.has_lower_marks or lower_profile.has_upper_marks:
         return "medium", max(base_line_advance_ratio, _MEDIUM_RISK_LINE_ADVANCE_FLOOR)
     return "low", base_line_advance_ratio
+
+
+def _resolve_contextual_risk_level(*, pair_index: int, risk_scores: list[int]) -> str:
+    local_score = risk_scores[pair_index]
+    left_score = risk_scores[pair_index - 1] if pair_index > 0 else 0
+    right_score = risk_scores[pair_index + 1] if pair_index < (len(risk_scores) - 1) else 0
+    smoothed_score = max(local_score, _round_half_up((left_score + (local_score * 2) + right_score) / 4.0))
+    return _risk_level(smoothed_score)
+
+
+def _minimum_ratio_for_risk_level(*, risk_level: str, base_line_advance_ratio: float) -> float:
+    if risk_level == "high":
+        return max(base_line_advance_ratio, _HIGH_RISK_LINE_ADVANCE_FLOOR)
+    if risk_level == "medium":
+        return max(base_line_advance_ratio, _MEDIUM_RISK_LINE_ADVANCE_FLOOR)
+    return base_line_advance_ratio
+
+
+def _risk_score(risk_level: str) -> int:
+    return {"low": 0, "medium": 1, "high": 2}[risk_level]
+
+
+def _risk_level(score: int) -> str:
+    return {0: "low", 1: "medium", 2: "high"}[max(0, min(2, score))]
+
+
+def _round_half_up(value: float) -> int:
+    return int(value + 0.5)
 
 
 def _codepoint_in_ranges(codepoint: int, ranges: tuple[tuple[int, int], ...]) -> bool:

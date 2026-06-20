@@ -1428,6 +1428,68 @@ def test_caption_runtime_uses_medium_pair_spacing_floor_when_only_one_side_intru
     assert role.line_pair_spacing_details[0].applied_line_advance_ratio == pytest.approx(0.92)
 
 
+def test_caption_runtime_globally_smooths_middle_gap_inside_four_line_thai_block(tmp_path) -> None:
+    media_root = tmp_path / "media_library"
+    fonts_root = tmp_path / "fonts"
+    fonts_root.mkdir(parents=True, exist_ok=True)
+    (fonts_root / "TH Chakra Petch.ttf").write_bytes(b"font")
+    product_dir = tmp_path / "product_four_line_global_smoothing"
+    product_dir.mkdir(parents=True, exist_ok=True)
+    caption_file = product_dir / "captions.toml"
+    caption_file.write_text(
+        "\n".join(
+            [
+                "[caption_pools.hook]",
+                'main = ["\u0e01\u0e38\\n\u0e01\u0e34\\n\u0e01\u0e38\\n\u0e01\u0e34"]',
+                "",
+                "[caption_properties.main]",
+                'font_family = "TH Chakra Petch"',
+                'textbox_mode = "grouped"',
+                "font_size = 120",
+                "min_font_size = 72",
+                "padding = 20",
+                "textbox_width_ratio = 0.84",
+                "line_spacing_ratio = 0.02",
+                "line_advance_ratio = 0.80",
+                "preferred_line_count = 4",
+                "max_lines = 4",
+            ]
+        ),
+        encoding="utf-8",
+    )
+    store = ProductAutomationMetadataStore(media_root)
+    store.sync_caption_contract(product_code="product_four_line_global_smoothing", source_file=caption_file)
+    service = CaptionRuntimeService(metadata_store=store, fonts_root=fonts_root)
+    segments = (
+        TimelineSegment(
+            recipe_id=1,
+            segment_type="hook",
+            sequence_index=1,
+            start_sec=0.0,
+            end_sec=3.0,
+            target_duration_sec=3.0,
+        ),
+    )
+
+    resolved = service.resolve_for_segments(
+        product_code="product_four_line_global_smoothing",
+        recipe_code="product_four_line_global_smoothing_batch_001",
+        segments=segments,
+        frame_width_px=1080,
+        frame_height_px=1920,
+    )
+    role = resolved[0].roles[0]
+
+    assert len(role.rendered_lines) == 4
+    assert [detail.local_risk_level for detail in role.line_pair_spacing_details] == ["high", "low", "high"]
+    assert [detail.risk_level for detail in role.line_pair_spacing_details] == ["high", "medium", "high"]
+    assert [detail.applied_line_advance_ratio for detail in role.line_pair_spacing_details] == [
+        pytest.approx(1.0),
+        pytest.approx(0.92),
+        pytest.approx(1.0),
+    ]
+
+
 def test_balanced_wrap_rearranges_space_separated_lines_more_evenly() -> None:
     _ensure_qt_application()
     font = QFont("Arial")
