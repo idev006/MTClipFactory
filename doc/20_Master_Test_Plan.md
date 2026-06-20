@@ -42,6 +42,7 @@ It complements [07_Testing_Strategy.md](/F:/programming/python/MTClipFactory/doc
 - desktop `Auto Factory` live-progress workflow plus truthful `Pause/Stop/Resume` groundwork that remains pending backend support
 - desktop `Auto Factory` `Audit Only` workflow for preflight summary and issue visibility
 - history-aware auto-factory anti-duplicate selection across repeated product runs
+- near-duplicate score and reason visibility on planned auto-factory recipes
 - tag-aware auto-factory asset-pool filtering from normalized asset labels
 - asset-first tagging workflow for selected-asset details, tag search, and create-and-attach behavior
 - bulk asset tagging workflow for multi-select assignment and primary selected-asset review
@@ -214,21 +215,22 @@ It complements [07_Testing_Strategy.md](/F:/programming/python/MTClipFactory/doc
 26. Confirm planner shortfalls caused by tag filters remain truthful and do not silently fall back to untagged visual assets.
 27. Confirm the planner avoids a historically repeated exact asset-role combination when a different feasible variant exists for the same product.
 28. Confirm the planner deprioritizes a historically overused voiceover when another feasible voice exists for the same product.
-29. Confirm the `Tags` screen shows current asset tag labels and supports `Asset Type` filtering during assignment work.
-30. Confirm the `Tags` screen keeps a selected asset in focus and allows `Create And Attach` plus existing-tag attach from the same workflow.
-31. Confirm the `Tags` screen can multi-select assets and attach one existing tag across the selected asset set.
-32. Confirm `Create And Attach` can create one tag and apply it across the selected asset set while preserving one primary selected-asset detail panel.
-33. Confirm folder-driven intake can read `tags.toml` global and per-file tag metadata, create missing tags, and assign them to matching assets.
-34. Confirm rerunning folder-driven intake does not duplicate tag assignment links for existing assets.
-35. Confirm invalid `tags.toml` labels fail truthfully.
-36. Confirm folder-driven automation syncs `captions.toml` into runtime metadata under the media library.
-37. Confirm preview/final manifests record resolved caption text, font resolution, and caption-fit evidence when caption metadata exists.
-38. Confirm unsafe caption fit raises a review signal instead of silently treating the render as clean.
-39. Confirm folder-driven automation syncs `pipeline.toml` and source product context into runtime metadata.
-40. Confirm auto-mode preview artifacts can be written into `Product/runs/<batch_code>/previews/videos`.
-41. Confirm auto-mode final artifacts can be written into `Product/runs/<batch_code>/finals/videos`.
-42. Confirm `order_snapshot.toml` and `journal.toml` are created for product-local auto runs.
-43. Confirm per-asset-type fill policy is reflected in manifest evidence for voice, music, background video, and foreground video.
+29. Confirm each planned recipe exposes a deterministic `near_duplicate_score` and machine-readable `near_duplicate_reasons`.
+30. Confirm the `Tags` screen shows current asset tag labels and supports `Asset Type` filtering during assignment work.
+31. Confirm the `Tags` screen keeps a selected asset in focus and allows `Create And Attach` plus existing-tag attach from the same workflow.
+32. Confirm the `Tags` screen can multi-select assets and attach one existing tag across the selected asset set.
+33. Confirm `Create And Attach` can create one tag and apply it across the selected asset set while preserving one primary selected-asset detail panel.
+34. Confirm folder-driven intake can read `tags.toml` global and per-file tag metadata, create missing tags, and assign them to matching assets.
+35. Confirm rerunning folder-driven intake does not duplicate tag assignment links for existing assets.
+36. Confirm invalid `tags.toml` labels fail truthfully.
+37. Confirm folder-driven automation syncs `captions.toml` into runtime metadata under the media library.
+38. Confirm preview/final manifests record resolved caption text, font resolution, and caption-fit evidence when caption metadata exists.
+39. Confirm unsafe caption fit raises a review signal instead of silently treating the render as clean.
+40. Confirm folder-driven automation syncs `pipeline.toml` and source product context into runtime metadata.
+41. Confirm auto-mode preview artifacts can be written into `Product/runs/<batch_code>/previews/videos`.
+42. Confirm auto-mode final artifacts can be written into `Product/runs/<batch_code>/finals/videos`.
+43. Confirm `order_snapshot.toml` and `journal.toml` are created for product-local auto runs.
+44. Confirm per-asset-type fill policy is reflected in manifest evidence for voice, music, background video, and foreground video.
 41. Confirm non-loop foreground shortfall can use `freeze_last_frame` or raise review-visible shortfall instead of silently looping.
 42. Confirm a real prepared product folder can move from review-required preview output to clean rerun by correcting overly narrow `selection_tags` and non-publishable or overlong caption copy in the product-local contract files.
 43. Confirm caption layout uses pixel-based fit evidence, supports `left`/`center`/`right` line alignment, and writes per-line layout truth into the manifest.

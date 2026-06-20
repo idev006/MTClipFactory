@@ -1,7 +1,6 @@
 from __future__ import annotations
 
 from collections import Counter
-from dataclasses import dataclass
 import math
 import re
 
@@ -19,6 +18,12 @@ from mt_clip_factory.factory.auto_factory_dto import (
     PlannedBatchRecipeDTO,
     ProductBatchPlanSummaryDTO,
 )
+from mt_clip_factory.factory.auto_factory_planning_support import (
+    _PlanningHistory,
+    _SEMANTIC_VISUAL_ROLES,
+    _VariantBlueprint,
+    _select_blueprints_greedily,
+)
 from mt_clip_factory.factory.dto import (
     AssignAssetToRecipeCommand,
     CreateRecipeCommand,
@@ -31,7 +36,6 @@ from mt_clip_factory.library.dto import AssetSummaryDTO
 from mt_clip_factory.library.services import AssetIntakeService
 
 _DEFAULT_FIXED_DURATION_SEC = 15.0
-_SEMANTIC_VISUAL_ROLES = ("hook", "problem", "benefit", "proof", "cta")
 _DIVERSITY_DIMENSION_PRIORITY = (
     "voice",
     "foreground_sequence",
@@ -42,16 +46,6 @@ _HISTORY_RECIPE_LIMIT = 24
 _MIN_CANDIDATE_SCAN = 64
 _CANDIDATE_SCAN_MULTIPLIER = 24
 _MAX_CANDIDATE_SCAN = 4096
-_SELECTION_ROLE_WEIGHTS = {
-    "voice": 8.0,
-    "hook": 5.0,
-    "problem": 4.0,
-    "benefit": 4.0,
-    "proof": 4.0,
-    "cta": 4.0,
-    "background": 3.0,
-    "music": 1.5,
-}
 
 
 class AutoFactoryPlanningError(ValueError):
@@ -64,34 +58,6 @@ class AutoFactoryUnknownProductError(AutoFactoryPlanningError):
 
 class AutoFactoryCapacityError(AutoFactoryPlanningError):
     """Raised when the planner cannot fulfill an order exactly."""
-
-
-@dataclass(slots=True, frozen=True)
-class _VariantBlueprint:
-    target_platform: str | None
-    target_ratio: str | None
-    duration_sec: float | None
-    duration_source: str
-    fingerprint: str
-    assignments: tuple[PlannedBatchAssetAssignmentDTO, ...]
-    assignment_signature: tuple[tuple[str, int], ...]
-    foreground_sequence: tuple[int, ...]
-    variant_index: int
-
-
-@dataclass(slots=True, frozen=True)
-class _PlanningHistory:
-    exact_signature_weights: Counter
-    foreground_sequence_weights: Counter
-    role_asset_weights: Counter
-
-    @classmethod
-    def empty(cls) -> _PlanningHistory:
-        return cls(
-            exact_signature_weights=Counter(),
-            foreground_sequence_weights=Counter(),
-            role_asset_weights=Counter(),
-        )
 
 
 class AutoFactoryBatchService:
@@ -553,80 +519,6 @@ def _build_foreground_sequences(asset_ids: tuple[int, ...], *, role_count: int) 
     return tuple(sequences)
 
 
-def _select_blueprints_greedily(
-    candidate_blueprints: tuple[_VariantBlueprint, ...],
-    *,
-    planned_count: int,
-    planning_history: _PlanningHistory,
-) -> tuple[_VariantBlueprint, ...]:
-    remaining = list(candidate_blueprints)
-    selected: list[_VariantBlueprint] = []
-    selected_exact_signature_counts: Counter = Counter()
-    selected_foreground_sequence_counts: Counter = Counter()
-    selected_role_asset_counts: Counter = Counter()
-
-    while remaining and len(selected) < planned_count:
-        best_index, best_blueprint = min(
-            enumerate(remaining),
-            key=lambda entry: _selection_score(
-                entry[1],
-                planning_history=planning_history,
-                selected_exact_signature_counts=selected_exact_signature_counts,
-                selected_foreground_sequence_counts=selected_foreground_sequence_counts,
-                selected_role_asset_counts=selected_role_asset_counts,
-            ),
-        )
-        remaining.pop(best_index)
-        selected.append(best_blueprint)
-        selected_exact_signature_counts[best_blueprint.assignment_signature] += 1
-        if best_blueprint.foreground_sequence:
-            selected_foreground_sequence_counts[best_blueprint.foreground_sequence] += 1
-        for assignment in best_blueprint.assignments:
-            selected_role_asset_counts[(assignment.role, assignment.asset_id)] += 1
-
-    return tuple(selected)
-
-
-def _selection_score(
-    blueprint: _VariantBlueprint,
-    *,
-    planning_history: _PlanningHistory,
-    selected_exact_signature_counts: Counter,
-    selected_foreground_sequence_counts: Counter,
-    selected_role_asset_counts: Counter,
-) -> tuple[float, int]:
-    history_exact_penalty = float(planning_history.exact_signature_weights[blueprint.assignment_signature]) * 400.0
-    selected_exact_penalty = float(selected_exact_signature_counts[blueprint.assignment_signature]) * 1000.0
-    history_foreground_penalty = float(planning_history.foreground_sequence_weights[blueprint.foreground_sequence]) * 40.0
-    selected_foreground_penalty = float(selected_foreground_sequence_counts[blueprint.foreground_sequence]) * 120.0
-    history_role_penalty = 0.0
-    selected_role_penalty = 0.0
-    for assignment in blueprint.assignments:
-        role_weight = _SELECTION_ROLE_WEIGHTS.get(assignment.role, 1.0)
-        history_role_penalty += (
-            float(planning_history.role_asset_weights[(assignment.role, assignment.asset_id)]) * role_weight
-        )
-        selected_role_penalty += (
-            float(selected_role_asset_counts[(assignment.role, assignment.asset_id)]) * role_weight
-        )
-    internal_repeat_penalty = float(_foreground_internal_repeat_count(blueprint.foreground_sequence)) * 25.0
-    total_penalty = (
-        selected_exact_penalty
-        + history_exact_penalty
-        + selected_foreground_penalty
-        + history_foreground_penalty
-        + (selected_role_penalty * 20.0)
-        + (history_role_penalty * 6.0)
-        + internal_repeat_penalty
-    )
-    return total_penalty, blueprint.variant_index
-
-
-def _foreground_internal_repeat_count(sequence: tuple[int, ...]) -> int:
-    counts = Counter(sequence)
-    return sum(max(0, count - 1) for count in counts.values())
-
-
 def _require_asset(assets: tuple[AssetSummaryDTO, ...], asset_id: int) -> AssetSummaryDTO:
     for asset in assets:
         if asset.asset_id == asset_id:
@@ -663,6 +555,8 @@ def _blueprint_to_planned_recipe(
         duration_source=blueprint.duration_source,
         fingerprint=blueprint.fingerprint,
         assignments=blueprint.assignments,
+        near_duplicate_score=blueprint.near_duplicate_score,
+        near_duplicate_reasons=blueprint.near_duplicate_reasons,
     )
 
 

@@ -47,6 +47,8 @@ class PlannedBatchRecipeDTO:
     duration_source: str
     fingerprint: str
     assignments: tuple[PlannedBatchAssetAssignmentDTO, ...]
+    near_duplicate_score: float = 0.0
+    near_duplicate_reasons: tuple[str, ...] = ()
 
 
 @dataclass(slots=True, frozen=True)

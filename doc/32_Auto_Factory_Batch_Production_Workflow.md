@@ -14,6 +14,8 @@ Tag-aware asset-pool filtering for this workflow is now defined in [38_Tag_Aware
 
 History-aware anti-duplicate candidate ranking for repeated product runs is now extended in [77_Auto_Factory_History_Aware_Anti_Duplicate_Selection_Workflow_2026-06-21.md](/F:/programming/python/MTClipFactory/doc/77_Auto_Factory_History_Aware_Anti_Duplicate_Selection_Workflow_2026-06-21.md).
 
+Explicit near-duplicate similarity scoring for planned recipes is now extended in [78_Auto_Factory_Near_Duplicate_Similarity_Workflow_2026-06-21.md](/F:/programming/python/MTClipFactory/doc/78_Auto_Factory_Near_Duplicate_Similarity_Workflow_2026-06-21.md).
+
 ## Purpose
 
 - let operators request output counts by product instead of building recipes one by one
@@ -229,6 +231,16 @@ First delivered weighting rules:
 1. strongly penalize exact historical asset-role combinations
 2. penalize repeated foreground semantic sequences
 3. penalize overused role-specific assets, with `voice` weighted more heavily than `background` or `music`
+
+### Near-Duplicate Similarity Extension
+
+The planner should now also expose one explicit `near_duplicate_score` and one `near_duplicate_reasons` list for each planned recipe.
+
+This score should be:
+
+- deterministic
+- explainable from current planner evidence
+- usable by later policy layers such as cooldown thresholds or operator warnings
 
 ## Capacity Rule
 

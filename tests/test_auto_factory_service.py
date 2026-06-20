@@ -363,6 +363,8 @@ def test_auto_factory_avoids_historically_repeated_exact_combo_when_alternative_
     rerun_plan = service.plan_batch(order)
 
     assert _assignment_signature(rerun_plan.planned_recipes[0]) != _assignment_signature(baseline_recipe)
+    assert rerun_plan.planned_recipes[0].near_duplicate_score < 1.0
+    assert "exact_combo_reused" not in rerun_plan.planned_recipes[0].near_duplicate_reasons
 
 
 def test_auto_factory_deprioritizes_historically_overused_voice_even_when_combo_changes(unit_of_work_factory, tmp_path) -> None:

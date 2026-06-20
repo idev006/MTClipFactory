@@ -88,6 +88,7 @@
 - The auto-factory operations slice defined in SSOT now has a delivered background-worker plus live-progress baseline, while backend-functional pause/stop/resume and restart-safe recovery remain open.
 - Auto Factory now also auto-generates a unique root-folder-based `batch_code` when the operator leaves the field blank, keeping product-local `runs/<batch_code>` evidence separated across repeated runs from the same root.
 - Auto Factory planning now also uses recent same-product recipe history to reduce repeated exact combos and overused voice-led reruns before recipes are materialized.
+- Auto Factory planning now also emits per-recipe `near_duplicate_score` plus concise `near_duplicate_reasons`, creating a machine-readable seam for future operator-facing duplicate-risk review before publishing.
 - A new corrective execution slice is now active for safer default caption placement bands and longest-contributing-layer duration resolution after real auto-mode preview feedback exposed layout and timeline quality gaps.
 
 ## Delivered In The Latest Loop
@@ -148,6 +149,7 @@
 - delivered a safer blank-`Batch Code` behavior so the desktop `Auto Factory` screen now generates a unique root-folder-based batch code instead of reusing the bare folder name alone
 - delivered product-local traceability hardening so repeated runs from the same root now default into distinct `runs/<batch_code>` folders without requiring manual operator typing every time
 - delivered history-aware anti-duplicate planning so recent same-product recipe history now penalizes repeated exact combos, repeated foreground sequences, and overused voice assets before Auto Factory materializes a new batch
+- delivered an explicit near-duplicate similarity layer so each planned recipe now carries a bounded `near_duplicate_score` plus machine-readable reasons such as `exact_combo_reused`, `foreground_sequence_reused`, and `voice_asset_overused`
 - delivered a new caption runtime guard for presenter-led top headline cards through `max_safe_band_height_ratio`, so grouped top-band promo boxes shrink before covering the presenter eye line
 - stopped grouped multi-line caption layouts from growing above the requested contract font size, while preserving single-line best-fit upscaling for deliberately short hooks
 - split caption runtime/layout support helpers into dedicated modules so the core orchestrators stay below the repo `800`-line guardrail
@@ -175,8 +177,9 @@
 12. decide whether the append-only order-event journal should grow into a richer operator-facing event view with filtering, grouping, or export
 13. validate the new top-band face-safe clamp on more presenter-led products and decide whether future work should add subject-aware or face-detection-driven placement beyond the current contract-only geometry model
 14. validate the new Qt caption bitmap overlay on more Thai-heavy products and decide whether any remaining issues are font-specific rather than render-path-specific
+15. validate whether the new near-duplicate similarity score is calibrated tightly enough for Shopee/TikTok publishing batches and decide whether future policy thresholds should be operator-configurable
 
 ## Verification Baseline
 
-- `python -m pytest` in `.venv`: `285 passed, 4 warnings`
+- `python -m pytest` in `.venv`: `288 passed, 4 warnings`
 - targeted `QT_QPA_PLATFORM=offscreen` UI/theme coverage for the new `Auto Factory` window and existing app windows: passed
