@@ -3,20 +3,15 @@ from __future__ import annotations
 from dataclasses import dataclass
 import os
 from pathlib import Path
-import unicodedata
 
 from PySide6.QtCore import Qt
 from PySide6.QtGui import QFont, QFontDatabase, QFontMetricsF, QTextLayout, QTextOption
 from PySide6.QtWidgets import QApplication
 
+from mt_clip_factory.factory.caption_line_pair_spacing import text_requires_script_safe_line_spacing
+
 
 _FONT_FILE_FAMILY_CACHE: dict[Path, str] = {}
-_SCRIPT_SAFE_MARK_CATEGORIES = frozenset({"Mn", "Mc", "Me"})
-_THAI_SCRIPT_SAFE_MARK_RANGES = (
-    (0x0E31, 0x0E31),
-    (0x0E34, 0x0E3A),
-    (0x0E47, 0x0E4E),
-)
 
 
 @dataclass(slots=True, frozen=True)
@@ -395,21 +390,9 @@ def _measure_line_height(*, font: QFont, stroke_width: int, line: str | None = N
     metrics = QFontMetricsF(font)
     sample_text = (line or "").strip() or "Ag"
     tight_height_px = max(1.0, metrics.tightBoundingRect(sample_text).height())
-    safe_height_floor_px = metrics.height() if _text_requires_script_safe_line_spacing(sample_text) else (metrics.height() * 0.78)
+    safe_height_floor_px = metrics.height() if text_requires_script_safe_line_spacing(sample_text) else (metrics.height() * 0.78)
     safe_height_px = max(tight_height_px, safe_height_floor_px)
     return max(1, round(safe_height_px) + max(0, stroke_width * 2))
-
-
-def _text_requires_script_safe_line_spacing(text: str) -> bool:
-    for character in text:
-        if character.isspace():
-            continue
-        if unicodedata.category(character) in _SCRIPT_SAFE_MARK_CATEGORIES:
-            return True
-        codepoint = ord(character)
-        if any(start <= codepoint <= end for start, end in _THAI_SCRIPT_SAFE_MARK_RANGES):
-            return True
-    return False
 
 
 def _build_qfont(*, font_family: str, font_file: Path | None, pixel_size: int) -> QFont:

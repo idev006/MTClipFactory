@@ -50,6 +50,7 @@ It complements [07_Testing_Strategy.md](/F:/programming/python/MTClipFactory/doc
 - top-band face-safe caption clamp behavior for grouped presenter-led promo headlines
 - Thai-safe caption bitmap overlay rendering where Qt is responsible for both measured geometry and final glyph rasterization
 - Thai script-safe grouped line-advance behavior so compressed headline stacks do not collide upper/lower vowel marks across adjacent lines
+- Thai pair-aware grouped line-spacing behavior so adjacent line pairs can resolve different runtime spacing floors based on upper-mark versus lower-mark collision risk
 - textbox-based caption geometry, including independent textbox placement and text alignment
 - product-local run artifact layout, order snapshot, and run journal behavior
 - product-folder preflight audit behavior for contracts, assets, tags, and `selection_tags` viability

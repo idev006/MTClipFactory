@@ -7,6 +7,7 @@ import tomllib
 
 from mt_clip_factory.domain.timeline_segments import TimelineSegment
 from mt_clip_factory.factory.caption_layout import CaptionFrameContext, resolve_caption_layout
+from mt_clip_factory.factory.caption_line_pair_spacing import LinePairSpacingDetail
 from mt_clip_factory.factory.caption_runtime_support import (
     CaptionContractError,
     _bounded_float,
@@ -130,6 +131,7 @@ class ResolvedCaptionRole:
     textbox_height_ratio: float
     line_spacing_ratio: float
     line_advance_ratio: float
+    line_pair_spacing_details: tuple[LinePairSpacingDetail, ...]
     safe_top_ratio: float
     safe_bottom_ratio: float
     max_safe_band_height_ratio: float
@@ -456,6 +458,7 @@ class CaptionRuntimeService:
             textbox_height_ratio=style.textbox_height_ratio,
             line_spacing_ratio=style.line_spacing_ratio,
             line_advance_ratio=layout.line_advance_ratio,
+            line_pair_spacing_details=layout.line_pair_spacing_details,
             safe_top_ratio=style.safe_top_ratio,
             safe_bottom_ratio=style.safe_bottom_ratio,
             max_safe_band_height_ratio=style.max_safe_band_height_ratio,

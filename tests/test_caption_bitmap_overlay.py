@@ -80,6 +80,7 @@ def _build_caption_role(
         textbox_height_ratio=0.0,
         line_spacing_ratio=0.12,
         line_advance_ratio=1.0,
+        line_pair_spacing_details=(),
         safe_top_ratio=0.14,
         safe_bottom_ratio=0.46,
         max_safe_band_height_ratio=0.0,

@@ -10,6 +10,12 @@ from mt_clip_factory.factory.caption_layout_math import (
     _line_balance_score,
     _needs_balance_adjustment,
 )
+from mt_clip_factory.factory.caption_line_pair_spacing import (
+    LinePairSpacingDetail,
+    resolve_line_pair_spacing_details,
+    resolve_pair_aware_line_top_positions,
+    resolve_pair_aware_text_block_height_px,
+)
 from mt_clip_factory.factory.caption_layout_support import (
     _RawLayout,
     _balanced_wrap_paragraph,
@@ -20,7 +26,6 @@ from mt_clip_factory.factory.caption_layout_support import (
     _measure_line_width,
     _resolve_line_metrics,
     _resolve_line_spacing_px,
-    _text_requires_script_safe_line_spacing,
 )
 from mt_clip_factory.factory.caption_textbox_geometry import (
     effective_wrap_width,
@@ -29,8 +34,6 @@ from mt_clip_factory.factory.caption_textbox_geometry import (
     resolve_content_top_in_box,
     resolve_line_box_geometry,
     resolve_line_left,
-    resolve_line_top_positions,
-    resolve_line_top_positions_compressed,
     textbox_content_height,
     textbox_content_width,
     textbox_height,
@@ -40,15 +43,11 @@ from mt_clip_factory.factory.caption_textbox_geometry import (
 
 _DEFAULT_DPI = 96
 _DEFAULT_FRAME_SIZE = (720, 1280)
-
-
 @dataclass(slots=True, frozen=True)
 class CaptionFrameContext:
     width_px: int
     height_px: int
     dpi: int = _DEFAULT_DPI
-
-
 @dataclass(slots=True, frozen=True)
 class CaptionLayoutResult:
     rendered_lines: tuple[str, ...]
@@ -65,6 +64,7 @@ class CaptionLayoutResult:
     line_heights_px: tuple[int, ...]
     line_spacing_px: int
     line_advance_ratio: float
+    line_pair_spacing_details: tuple[LinePairSpacingDetail, ...]
     effective_safe_bottom_ratio: float
     text_block_width_px: int
     text_block_height_px: int
@@ -82,8 +82,6 @@ class CaptionLayoutResult:
     box_height_px: int
     frame_width_px: int
     frame_height_px: int
-
-
 @dataclass(slots=True, frozen=True)
 class _LayoutCandidate:
     lines: tuple[str, ...]
@@ -94,6 +92,7 @@ class _LayoutCandidate:
     line_heights_px: tuple[int, ...]
     line_spacing_px: int
     line_advance_ratio: float
+    line_pair_spacing_details: tuple[LinePairSpacingDetail, ...]
     text_block_width_px: int
     text_block_height_px: int
     box_height_px: int
@@ -104,8 +103,6 @@ class _LayoutCandidate:
     line_break_mode: str
     score: float
     any_line_grown: bool
-
-
 def resolve_caption_layout(
     *,
     source_text: str,
@@ -217,19 +214,12 @@ def resolve_caption_layout(
         )
         for line_width_px in candidate.line_widths_px
     )
-    line_top_positions_px = (
-        resolve_line_top_positions_compressed(
-            content_top_px=content_top_px,
-            line_heights_px=candidate.line_heights_px,
-            line_spacing_px=candidate.line_spacing_px,
-            line_advance_ratio=candidate.line_advance_ratio,
-        )
-        if abs(candidate.line_advance_ratio - 1.0) > 0.001
-        else resolve_line_top_positions(
-            content_top_px=content_top_px,
-            line_heights_px=candidate.line_heights_px,
-            line_spacing_px=candidate.line_spacing_px,
-        )
+    line_top_positions_px = resolve_pair_aware_line_top_positions(
+        content_top_px=content_top_px,
+        line_heights_px=candidate.line_heights_px,
+        line_spacing_px=candidate.line_spacing_px,
+        pair_spacing_details=candidate.line_pair_spacing_details,
+        fallback_line_advance_ratio=candidate.line_advance_ratio,
     )
     line_box_geometry = resolve_line_box_geometry(
         textbox_mode=textbox_mode,
@@ -258,6 +248,7 @@ def resolve_caption_layout(
         line_heights_px=candidate.line_heights_px,
         line_spacing_px=candidate.line_spacing_px,
         line_advance_ratio=candidate.line_advance_ratio,
+        line_pair_spacing_details=candidate.line_pair_spacing_details,
         effective_safe_bottom_ratio=normalized_safe_bottom_ratio,
         text_block_width_px=candidate.text_block_width_px,
         text_block_height_px=candidate.text_block_height_px,
@@ -455,17 +446,26 @@ def _evaluate_layout_candidate(
         line_heights_px=line_heights_px,
         use_uniform_line_height=use_uniform_line_height,
     )
-    if use_uniform_line_height and any(_text_requires_script_safe_line_spacing(line) for line in raw_layout.lines if line):
-        effective_line_advance_ratio = max(effective_line_advance_ratio, 1.0)
     line_spacing_px = _resolve_line_spacing_px(
         base_font_size_px=candidate_font_size_px,
         line_heights_px=line_heights_px,
         line_spacing_ratio=line_spacing_ratio,
     )
-    text_block_height_px = _resolve_text_block_height_px(
+    pair_spacing_details = resolve_line_pair_spacing_details(
+        lines=raw_layout.lines,
         line_heights_px=line_heights_px,
         line_spacing_px=line_spacing_px,
-        line_advance_ratio=effective_line_advance_ratio,
+        base_line_advance_ratio=effective_line_advance_ratio,
+    )
+    resolved_line_advance_ratio = max(
+        (detail.applied_line_advance_ratio for detail in pair_spacing_details),
+        default=effective_line_advance_ratio,
+    )
+    text_block_height_px = resolve_pair_aware_text_block_height_px(
+        line_heights_px=line_heights_px,
+        line_spacing_px=line_spacing_px,
+        pair_spacing_details=pair_spacing_details,
+        fallback_line_advance_ratio=resolved_line_advance_ratio,
     )
     box_height_px = min(
         frame_height_px if band_height_px <= 0 else band_height_px,
@@ -506,11 +506,22 @@ def _evaluate_layout_candidate(
             use_uniform_line_height=use_uniform_line_height,
             line_advance_ratio=effective_line_advance_ratio,
         )
+        pair_spacing_details = resolve_line_pair_spacing_details(
+            lines=raw_layout.lines,
+            line_heights_px=line_heights_px,
+            line_spacing_px=line_spacing_px,
+            base_line_advance_ratio=effective_line_advance_ratio,
+        )
+        resolved_line_advance_ratio = max(
+            (detail.applied_line_advance_ratio for detail in pair_spacing_details),
+            default=effective_line_advance_ratio,
+        )
     text_block_width_px = max(line_widths_px, default=0)
-    text_block_height_px = _resolve_text_block_height_px(
+    text_block_height_px = resolve_pair_aware_text_block_height_px(
         line_heights_px=line_heights_px,
         line_spacing_px=line_spacing_px,
-        line_advance_ratio=effective_line_advance_ratio,
+        pair_spacing_details=pair_spacing_details,
+        fallback_line_advance_ratio=resolved_line_advance_ratio,
     )
     height_overflowed = text_block_height_px > content_height_capacity_px
     overflowed = (
@@ -536,7 +547,8 @@ def _evaluate_layout_candidate(
         line_height_px=max(line_heights_px, default=raw_layout.line_height_px),
         line_heights_px=line_heights_px,
         line_spacing_px=line_spacing_px,
-        line_advance_ratio=effective_line_advance_ratio,
+        line_advance_ratio=resolved_line_advance_ratio,
+        line_pair_spacing_details=pair_spacing_details,
         text_block_width_px=text_block_width_px,
         text_block_height_px=text_block_height_px,
         box_height_px=box_height_px,
