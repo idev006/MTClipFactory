@@ -109,7 +109,7 @@ class AutoFactoryFolderService:
         product_dirs = _discover_product_dirs(root_path, scan_depth=scan_depth)
         product_configs = {product_dir: _load_product_config(product_dir) for product_dir in product_dirs}
         pipeline_configs = {product_dir: _load_pipeline_config(product_dir) for product_dir in product_dirs}
-        effective_batch_code = _slugify(batch_code or root_path.name or "auto_factory_batch")
+        effective_batch_code = _resolve_effective_batch_code(batch_code=batch_code, root_path=root_path)
 
         existing_product_ids = {product.product_code: product.product_id for product in self._product_service.list_products()}
         product_reports: list[AutoFactoryFolderProductReportDTO] = []
@@ -1035,6 +1035,15 @@ def _is_ingestible_asset_file(file_path: Path, *, asset_type: str) -> bool:
 def _slugify(value: str) -> str:
     normalized = re.sub(r"[^a-z0-9]+", "_", value.strip().lower())
     return normalized.strip("_")
+
+
+def _resolve_effective_batch_code(*, batch_code: str | None, root_path: Path) -> str:
+    explicit_batch_code = _slugify("" if batch_code is None else batch_code)
+    if explicit_batch_code:
+        return explicit_batch_code
+    root_slug = _slugify(root_path.name) or "auto_factory_batch"
+    timestamp = datetime.now(UTC).strftime("%Y%m%d_%H%M%S_%f")
+    return f"{root_slug}_{timestamp}"
 
 
 def _optional_text(value) -> str | None:

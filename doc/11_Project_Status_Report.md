@@ -2,7 +2,7 @@
 
 ## Project Manager Snapshot
 
-- Report date: 2026-06-20
+- Report date: 2026-06-21
 - Overall status: In Progress
 - Current phase: Phase 6, operator-grade local-worker auto-factory control baseline delivered; distributed execution and deeper recovery-facing UX still pending
 - Delivery mode: document-led SSOT with code and tests kept in sync
@@ -107,6 +107,7 @@
 - the desktop `Auto Factory` control surface now also uses a tabbed operator workspace so overview, audit, intake, and order-stage truth stay readable without crushing buttons, headers, or recent-order history
 - the desktop `Auto Factory` control surface now also runs in a background worker, shows live progress in-screen, and polls monitored production-order truth without freezing the UI
 - the desktop `Auto Factory` control surface now also runs long automation through a background worker, persists production-order stage/event truth, and keeps live progress visible without freezing the UI
+- blank `Batch Code` input in the desktop `Auto Factory` control surface now auto-generates a unique root-folder-based batch code so repeated runs do not collapse into one ambiguous product-local `runs/<batch_code>` folder
 - `Pause Run`, `Stop Run`, and `Resume Run` remain visible operator-control groundwork only; the UI must continue to say `pending backend support` until persisted safe-checkpoint and worker-lease semantics are actually implemented
 - caption runtime now also clamps grouped top-band headline height through a new `max_safe_band_height_ratio` rule so presenter-led promo cards shrink before covering the eye line, while still keeping overflow review-visible when the safer band cannot contain the text
 - grouped multi-line caption solving no longer grows above the requested contract font size, while short single-line best-fit cards may still upscale when that is the intended readability behavior
@@ -147,7 +148,7 @@
 
 ## Verification Baseline
 
-- `python -m pytest` via `.venv`: `257 passed, 4 warnings`
+- `python -m pytest` via `.venv`: `283 passed, 4 warnings`
 - targeted `QT_QPA_PLATFORM=offscreen` UI coverage for the new `Auto Factory` window and existing themed windows: passed
 
 ## Current Focus

@@ -395,6 +395,7 @@ def test_auto_factory_window_exposes_guided_run_controls(qapp: QApplication) -> 
     assert auto_factory_window.scan_depth_input.minimum() == 0
     assert auto_factory_window.browse_button.text() == "Browse..."
     assert auto_factory_window.run_button.text() == "Run Auto Factory"
+    assert "blank auto-generates a unique code" in auto_factory_window.batch_code_input.placeholderText()
     assert auto_factory_window.refresh_orders_button.text() == "Refresh Orders"
     assert auto_factory_window.refresh_progress_button.text() == "Refresh Progress"
     assert auto_factory_window.pause_button.text() == "Pause Run"

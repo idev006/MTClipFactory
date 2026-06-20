@@ -2,7 +2,7 @@
 
 ## Snapshot Date
 
-- 2026-06-20
+- 2026-06-21
 
 ## Where To See Progress
 
@@ -86,6 +86,7 @@
 - A second controlled operator/UAT run has now validated runtime voice/music mixing, richer visual coverage, and a no-review-gate path on a stronger recipe.
 - The roadmap is now split into strategic and implementation layers, and the next major control-plane gap remains persisted worker-lease plus safe-checkpoint semantics for truthful `Pause/Stop/Resume`.
 - The auto-factory operations slice defined in SSOT now has a delivered background-worker plus live-progress baseline, while backend-functional pause/stop/resume and restart-safe recovery remain open.
+- Auto Factory now also auto-generates a unique root-folder-based `batch_code` when the operator leaves the field blank, keeping product-local `runs/<batch_code>` evidence separated across repeated runs from the same root.
 - A new corrective execution slice is now active for safer default caption placement bands and longest-contributing-layer duration resolution after real auto-mode preview feedback exposed layout and timeline quality gaps.
 
 ## Delivered In The Latest Loop
@@ -143,6 +144,8 @@
 - extended that Thai grouped-caption solver into `n`-line global context smoothing so one low-risk middle gap can still be promoted when surrounding high-risk gaps would otherwise make the full block look uneven or unsafe
 - delivered truthful operator-control groundwork in that same screen, with active `Refresh Progress` and a visible control seam for `Pause/Stop/Resume`
 - kept `Pause Run`, `Stop Run`, and `Resume Run` explicitly at `pending backend support` until persisted safe-checkpoint and worker-lease semantics exist
+- delivered a safer blank-`Batch Code` behavior so the desktop `Auto Factory` screen now generates a unique root-folder-based batch code instead of reusing the bare folder name alone
+- delivered product-local traceability hardening so repeated runs from the same root now default into distinct `runs/<batch_code>` folders without requiring manual operator typing every time
 - delivered a new caption runtime guard for presenter-led top headline cards through `max_safe_band_height_ratio`, so grouped top-band promo boxes shrink before covering the presenter eye line
 - stopped grouped multi-line caption layouts from growing above the requested contract font size, while preserving single-line best-fit upscaling for deliberately short hooks
 - split caption runtime/layout support helpers into dedicated modules so the core orchestrators stay below the repo `800`-line guardrail
@@ -173,5 +176,5 @@
 
 ## Verification Baseline
 
-- `python -m pytest` in `.venv`: `257 passed, 4 warnings`
+- `python -m pytest` in `.venv`: `283 passed, 4 warnings`
 - targeted `QT_QPA_PLATFORM=offscreen` UI/theme coverage for the new `Auto Factory` window and existing app windows: passed

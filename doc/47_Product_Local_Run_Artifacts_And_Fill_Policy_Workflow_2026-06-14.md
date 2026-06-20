@@ -32,8 +32,9 @@ If left unresolved, real operators would struggle to answer:
 1. Folder-driven automation should sync product runtime context into the media-library automation cache.
 2. Auto-mode preview/final artifacts should be written into the source product folder when that source folder is known.
 3. Product-local run artifacts should be organized by `batch_code`.
-4. Timeline fill policy should be declared in `pipeline.toml` per asset type.
-5. Unsupported or unsafe shortfall behavior should become review-visible truth, not hidden fallback behavior.
+4. If the operator omits `batch_code`, folder-driven automation should generate a unique root-folder-based default instead of reusing the bare root-folder name alone.
+5. Timeline fill policy should be declared in `pipeline.toml` per asset type.
+6. Unsupported or unsafe shortfall behavior should become review-visible truth, not hidden fallback behavior.
 
 ## Runtime Metadata Cache
 
@@ -91,6 +92,7 @@ Rules:
 4. `logs/` stores lightweight run-visible text logs when runtime messages are recorded.
 5. `journal.toml` stores append-only run events for intake, render, review, and recovery visibility.
 6. `order_snapshot.toml` stores the order/product request snapshot that produced this run.
+7. When the operator leaves `Batch Code` blank, the effective folder name should be auto-generated from the root-folder slug plus a UTC timestamp so repeated runs do not collapse into one ambiguous batch path.
 
 ## Journal Rule
 

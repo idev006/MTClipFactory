@@ -213,7 +213,7 @@ def test_folder_service_creates_products_registers_assets_and_materializes_batch
         requested_output_count=2,
     )
 
-    report = folder_service.run_batch_root(batch_root)
+    report = folder_service.run_batch_root(batch_root, batch_code="batch_root")
 
     assert report.batch_code == "batch_root"
     assert report.scan_depth == 1
@@ -235,6 +235,33 @@ def test_folder_service_creates_products_registers_assets_and_materializes_batch
     ]
 
 
+def test_folder_service_generates_unique_root_based_batch_code_when_override_missing(
+    unit_of_work_factory,
+    tmp_path,
+) -> None:
+    _, _, _, folder_service, _ = _build_services(unit_of_work_factory, tmp_path, {"voice_a.mp3": 15.0})
+    batch_root = tmp_path / "Products Root"
+    product_dir = _write_product_folder(
+        batch_root,
+        folder_name="ProductA",
+        product_code="product_a",
+        product_name="Product A",
+        requested_output_count=1,
+    )
+
+    report = folder_service.run_batch_root(batch_root, materialize=False)
+
+    assert report.batch_code.startswith("products_root_")
+    assert report.batch_code != "products_root"
+    assert len(report.batch_code.split("_")) >= 5
+    order_snapshot_path = product_dir / "runs" / report.batch_code / "order_snapshot.toml"
+    journal_path = product_dir / "runs" / report.batch_code / "journal.toml"
+    assert order_snapshot_path.exists()
+    assert journal_path.exists()
+    assert f'batch_code = "{report.batch_code}"' in order_snapshot_path.read_text(encoding="utf-8")
+    assert f'batch_code = "{report.batch_code}"' in journal_path.read_text(encoding="utf-8")
+
+
 def test_folder_service_skips_existing_assets_when_rerun(unit_of_work_factory, tmp_path) -> None:
     _, asset_service, _, folder_service, _ = _build_services(
         unit_of_work_factory,
@@ -250,8 +277,8 @@ def test_folder_service_skips_existing_assets_when_rerun(unit_of_work_factory, t
         requested_output_count=2,
     )
 
-    first_report = folder_service.run_batch_root(batch_root, materialize=False)
-    second_report = folder_service.run_batch_root(batch_root, materialize=False)
+    first_report = folder_service.run_batch_root(batch_root, batch_code="batch_root", materialize=False)
+    second_report = folder_service.run_batch_root(batch_root, batch_code="batch_root", materialize=False)
 
     assert first_report.product_reports[0].registered_asset_count == 5
     assert second_report.product_reports[0].registered_asset_count == 0
@@ -360,7 +387,7 @@ def test_folder_service_builds_one_batch_order_from_multiple_product_dirs(unit_o
     (batch_root / "ProductB" / "voice" / "voice_a.mp3").unlink()
     (batch_root / "ProductB" / "voice" / "voice_b.mp3").write_bytes(b"voice2")
 
-    report = folder_service.run_batch_root(batch_root)
+    report = folder_service.run_batch_root(batch_root, batch_code="batch_root")
 
     assert len(report.order.product_requests) == 2
     assert {request.product_code for request in report.order.product_requests} == {"product_a", "product_b"}
@@ -930,7 +957,7 @@ def test_folder_service_supports_selection_tags_from_folder_tag_metadata(unit_of
         file_tags={},
     )
 
-    report = folder_service.run_batch_root(batch_root)
+    report = folder_service.run_batch_root(batch_root, batch_code="batch_root")
 
     assert report.materialization is not None
     recipes = sorted(factory_service.list_recipes(), key=lambda recipe: recipe.recipe_code)

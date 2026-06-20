@@ -85,6 +85,7 @@ The operations UI must allow:
 - root-folder selection with `Browse...`
 - recent-root reuse
 - optional batch-code override
+- auto-generated unique default batch code when the override is omitted
 - run profile selection
 - explicit concurrency selection or profile-based worker caps
 - explicit `Start` action

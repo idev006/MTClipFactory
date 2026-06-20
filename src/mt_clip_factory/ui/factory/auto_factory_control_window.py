@@ -134,7 +134,9 @@ class AutoFactoryControlWindow(QMainWindow):
         root_layout.addWidget(self.browse_button)
 
         self.batch_code_input = QLineEdit()
-        self.batch_code_input.setPlaceholderText("optional override; default uses the folder name")
+        self.batch_code_input.setPlaceholderText(
+            "optional override; blank auto-generates a unique code from the folder name"
+        )
         self.scan_depth_input = QSpinBox()
         self.scan_depth_input.setMinimum(0)
         self.scan_depth_input.setMaximum(32)
