@@ -96,6 +96,85 @@ def test_caption_runtime_resolves_deterministic_roles_and_workspace_font(tmp_pat
     assert first[0].roles[1].safe_bottom_ratio == 0.88
 
 
+def test_caption_runtime_batch_seed_scope_cycles_caption_choices_across_outputs(tmp_path) -> None:
+    media_root = tmp_path / "media_library"
+    fonts_root = tmp_path / "fonts"
+    fonts_root.mkdir(parents=True, exist_ok=True)
+    (fonts_root / "THSarabun.ttf").write_bytes(b"font")
+    product_dir = tmp_path / "product_batch_cycle"
+    product_dir.mkdir(parents=True, exist_ok=True)
+    caption_file = product_dir / "captions.toml"
+    caption_file.write_text(
+        "\n".join(
+            [
+                "[caption_selection]",
+                'mode = "random_with_seed"',
+                'seed_scope = "batch"',
+                "",
+                "[caption_pools.hook]",
+                'main = ["hook one", "hook two", "hook three"]',
+                'sub = ["sub one", "sub two", "sub three"]',
+                "",
+                "[caption_properties.main]",
+                'font_family = "THSarabun"',
+                "",
+                "[caption_properties.sub]",
+                'font_family = "THSarabun"',
+            ]
+        ),
+        encoding="utf-8",
+    )
+    store = ProductAutomationMetadataStore(media_root)
+    store.sync_caption_contract(product_code="product_batch_cycle", source_file=caption_file)
+    service = CaptionRuntimeService(metadata_store=store, fonts_root=fonts_root)
+    segments = (
+        TimelineSegment(
+            recipe_id=1,
+            segment_type="hook",
+            sequence_index=1,
+            start_sec=0.0,
+            end_sec=3.0,
+            target_duration_sec=3.0,
+        ),
+    )
+
+    first = service.resolve_for_segments(
+        product_code="product_batch_cycle",
+        recipe_code="product_batch_cycle_launch_batch_001",
+        segments=segments,
+    )
+    second = service.resolve_for_segments(
+        product_code="product_batch_cycle",
+        recipe_code="product_batch_cycle_launch_batch_002",
+        segments=segments,
+    )
+    third = service.resolve_for_segments(
+        product_code="product_batch_cycle",
+        recipe_code="product_batch_cycle_launch_batch_003",
+        segments=segments,
+    )
+    repeated_first = service.resolve_for_segments(
+        product_code="product_batch_cycle",
+        recipe_code="product_batch_cycle_launch_batch_001",
+        segments=segments,
+    )
+
+    assert first[0].roles[0].source_text != second[0].roles[0].source_text
+    assert second[0].roles[0].source_text != third[0].roles[0].source_text
+    assert {first[0].roles[0].source_text, second[0].roles[0].source_text, third[0].roles[0].source_text} == {
+        "hook one",
+        "hook two",
+        "hook three",
+    }
+    assert {first[0].roles[1].source_text, second[0].roles[1].source_text, third[0].roles[1].source_text} == {
+        "sub one",
+        "sub two",
+        "sub three",
+    }
+    assert repeated_first[0].roles[0].source_text == first[0].roles[0].source_text
+    assert repeated_first[0].roles[1].source_text == first[0].roles[1].source_text
+
+
 def test_caption_runtime_places_default_main_and_sub_in_separate_safe_bands(tmp_path) -> None:
     media_root = tmp_path / "media_library"
     fonts_root = tmp_path / "fonts"
@@ -512,10 +591,10 @@ def test_caption_runtime_applies_sale_blast_style_preset_defaults(tmp_path) -> N
     assert main_role.font_family == "TH Baijam"
     assert main_role.textbox_height_mode == "content_hug"
     assert main_role.background_color == "#D61F3A"
-    assert main_role.background_opacity == 0.34
+    assert main_role.background_opacity == 0.24
     assert main_role.box_border_color == "#FFD447"
     assert main_role.box_border_width == 4
-    assert main_role.textbox_width_ratio == 0.78
+    assert main_role.textbox_width_ratio == 0.74
     assert sub_role.style_preset == "sale_blast"
     assert sub_role.font_family == "TH Baijam"
     assert sub_role.background_color == "#111827"
@@ -575,9 +654,9 @@ def test_caption_runtime_applies_dark_lower_third_sub_preset_defaults(tmp_path) 
     assert role.role == "sub"
     assert role.style_preset == "dark_lower_third"
     assert role.background_color == "#0F172A"
-    assert role.background_opacity == 0.76
+    assert role.background_opacity == 0.64
     assert role.stroke_color == "#020617"
-    assert role.textbox_width_ratio == 0.90
+    assert role.textbox_width_ratio == 0.94
 
 
 def test_caption_runtime_allows_explicit_override_over_style_preset(tmp_path) -> None:

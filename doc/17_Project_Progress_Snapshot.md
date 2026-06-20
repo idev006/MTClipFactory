@@ -2,7 +2,7 @@
 
 ## Snapshot Date
 
-- 2026-06-19
+- 2026-06-20
 
 ## Where To See Progress
 
@@ -75,6 +75,8 @@
 - Auto-mode now also treats loop-enabled background music as a fill layer instead of a clip-length authority, keeping short-form previews aligned to the intended ad duration even when music assets are much longer.
 - Auto-mode voiceover can now also loop intentionally when product policy allows it, and renderer manifests now report that request/applied truth from the product contract rather than stale global settings.
 - Product-local caption contracts can now lean on stronger promo-card presets plus wider textbox sizing so `main` and `sub` overlays land closer to ad creative and further from subtitle-like defaults.
+- Caption runtime now also rotates deterministic caption choices across outputs when `seed_scope = "batch"` is selected, reducing repeated hook/sub lines in the first outputs of one batch.
+- Built-in `sale_blast` and `dark_lower_third` promo presets are now tuned toward lighter headline holdouts, tighter grouped headline rhythm, and stronger lower-third readability defaults.
 - A live `Biothentic0001` product-folder audit has now verified the real operator loop: initial review-gate truth on narrow filters plus long captions, operator contract correction in `pipeline.toml` and `captions.toml`, clean rerun previews, and one approved final output written back into the product folder.
 - Caption runtime now uses pixel-based measurement plus per-line placement, and auto-mode visual selection now applies seeded diversity so outputs stay deterministic without feeling as repetitive.
 - An enterprise pipeline review and architecture blueprint now exist so the project can grow into a true Video Production Factory instead of accumulating disconnected automation slices.
@@ -136,6 +138,8 @@
 - delivered product-policy voice-loop support all the way through parser, composition persistence, renderer application, and manifest truth
 - tuned the live `Biothentic0001` contract toward promo-card captions with stronger `main`/`sub` sizing and explicit loop behavior for voice and foreground assets
 - corrected batch-variant ordering so early outputs diversify `voiceover` sooner instead of exhausting only foreground variation first
+- delivered deterministic caption cycling for `seed_scope = "batch"` so the first outputs in one automation batch vary caption picks instead of collapsing onto one repeated hook/sub pair when the pool has enough entries
+- tuned the built-in `sale_blast` and `dark_lower_third` preset defaults plus the new-product caption template toward lighter top banners, tighter grouped headline spacing, and larger lower-third readability baselines
 
 ## Still Open
 
@@ -152,5 +156,5 @@
 
 ## Verification Baseline
 
-- `python -m pytest` in `.venv`: `241 passed, 4 warnings`
+- `python -m pytest` in `.venv`: `248 passed, 4 warnings`
 - targeted `QT_QPA_PLATFORM=offscreen` UI/theme coverage for the new `Auto Factory` window and existing app windows: passed

@@ -2,7 +2,7 @@
 
 ## Project Manager Snapshot
 
-- Report date: 2026-06-15
+- Report date: 2026-06-20
 - Overall status: In Progress
 - Current phase: Phase 6, production-order plus operator-friendly auto-factory and bulk-tagging baselines delivered; worker-lease and distributed execution still pending
 - Delivery mode: document-led SSOT with code and tests kept in sync
@@ -92,6 +92,8 @@
 - caption style presets now also expose preset-group metadata for `headline_main`, `support_sub`, and `proof_info`, and the built-in catalog now includes a `dark_lower_third` option for more readable sub captions over busy footage
 - caption runtime now also supports box-border styling on grouped or per-line cards, with manifest-visible resolved border truth and preset-carried border defaults
 - caption runtime now treats multi-line rendering as explicit author intent only, so captions without `\n` stay single-line and use box-aware best-fit font sizing instead of automatic runtime wrapping
+- caption runtime now also interprets `seed_scope = "batch"` as deterministic caption cycling across output ordinals inside the same batch, reducing early-batch caption repetition without losing rerun safety
+- built-in promo presets are now tuned toward lighter presenter-safe headline banners and stronger lower-third readability defaults before product-specific contract overrides are applied
 - the next auto-factory operations requirements slice is now documented in SSOT, locking operator-visible progress, multi-worker gating, pause/stop/resume semantics, and restart recovery expectations before `IR-20` implementation begins
 - caption runtime can now also compact grouped manual-break promo headlines toward a preferred line count, helping top-band cards stay more face-safe without giving up deterministic multi-line authoring
 - grouped manual-break promo cards now also keep one shared resolved font size across all rendered lines, while `per_line` cards retain independent line fitting for operator-authored stacked labels
@@ -134,7 +136,7 @@
 
 ## Verification Baseline
 
-- `python -m pytest` via `.venv`: `241 passed, 4 warnings`
+- `python -m pytest` via `.venv`: `248 passed, 4 warnings`
 - targeted `QT_QPA_PLATFORM=offscreen` UI coverage for the new `Auto Factory` window and existing themed windows: passed
 
 ## Current Focus
@@ -166,6 +168,7 @@
 - validate the new explicit-break-only caption policy on more Thai/English product copy so operators know when to author `\n` versus when to keep one strong headline line
 - validate whether the new product-policy voice looping option remains acceptable for real ad use or needs guardrails such as max repetition count or per-product warnings
 - validate whether the stronger promo-card caption presets are sufficient for live products or whether segment-specific preset selection should become explicit in `captions.toml`
+- validate whether live product contracts should expose a clearer operator-facing choice between batch-cycled caption variation and intentionally locked repeated slogans
 - validate whether the new versioned manifest envelope is sufficient for future audit tooling or whether a compact operator summary/index file should be added beside per-output manifests
 - validate whether the new backward-compatible product-folder `v2` layout is clear enough for operators and whether migration guidance is needed for existing legacy product folders
 - validate whether operators prefer the new scriptable preflight seam before every live auto-mode run or only for onboarding/debugging cases

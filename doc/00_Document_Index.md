@@ -73,6 +73,7 @@ When code changes, the related Markdown documents in this folder must be updated
 65. [65_Caption_Preset_Group_And_Role_Catalog_Workflow_2026-06-19.md](/F:/programming/python/MTClipFactory/doc/65_Caption_Preset_Group_And_Role_Catalog_Workflow_2026-06-19.md)
 66. [66_Auto_Factory_Product_Contract_Review_Surface_2026-06-19.md](/F:/programming/python/MTClipFactory/doc/66_Auto_Factory_Product_Contract_Review_Surface_2026-06-19.md)
 67. [67_Auto_Factory_Review_Surface_Operator_Actions_2026-06-20.md](/F:/programming/python/MTClipFactory/doc/67_Auto_Factory_Review_Surface_Operator_Actions_2026-06-20.md)
+68. [68_Caption_Batch_Cycling_And_Preset_Tuning_Workflow_2026-06-20.md](/F:/programming/python/MTClipFactory/doc/68_Caption_Batch_Cycling_And_Preset_Tuning_Workflow_2026-06-20.md)
 
 ## Governance
 

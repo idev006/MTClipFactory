@@ -1,7 +1,6 @@
 from __future__ import annotations
 
 from dataclasses import dataclass
-import hashlib
 from pathlib import Path
 import shutil
 import tomllib
@@ -9,6 +8,7 @@ import tomllib
 from mt_clip_factory.domain.timeline_segments import TimelineSegment
 from mt_clip_factory.factory.caption_layout import CaptionFrameContext, resolve_caption_layout
 from mt_clip_factory.factory.caption_style_presets import resolve_caption_style_preset
+from mt_clip_factory.factory.visual_selection import seeded_choice, seeded_cycled_choice
 
 
 class CaptionContractError(ValueError):
@@ -665,9 +665,24 @@ def _select_index(
 ) -> tuple[int, str]:
     if option_count <= 0:
         raise CaptionContractError("Caption option count must be greater than zero.")
+    normalized_scope = seed_scope.strip().casefold()
+    if normalized_scope == "batch":
+        batch_seed_key, batch_position = _resolve_batch_seed_context(
+            product_code=product_code,
+            recipe_code=recipe_code,
+            segment=segment,
+            role=role,
+        )
+        selection_index = seeded_cycled_choice(
+            tuple(range(option_count)),
+            seed_key=batch_seed_key,
+            position=batch_position,
+        )
+        seed_key = f"{batch_seed_key}|cycle_position={batch_position}"
+        return selection_index, seed_key
     seed_key = "|".join(
         (
-            seed_scope,
+            normalized_scope or "recipe",
             product_code,
             recipe_code,
             segment.segment_type,
@@ -675,9 +690,36 @@ def _select_index(
             role,
         )
     )
-    digest = hashlib.sha256(seed_key.encode("utf-8")).digest()
-    selection_index = int.from_bytes(digest[:8], "big") % option_count
+    selection_index = seeded_choice(tuple(range(option_count)), seed_key=seed_key)
     return selection_index, seed_key
+
+
+def _resolve_batch_seed_context(
+    *,
+    product_code: str,
+    recipe_code: str,
+    segment: TimelineSegment,
+    role: str,
+) -> tuple[str, int]:
+    batch_recipe_code, batch_position = _split_batch_recipe_code(recipe_code)
+    seed_key = "|".join(
+        (
+            "batch",
+            product_code,
+            batch_recipe_code,
+            segment.segment_type,
+            str(segment.sequence_index),
+            role,
+        )
+    )
+    return seed_key, batch_position
+
+
+def _split_batch_recipe_code(recipe_code: str) -> tuple[str, int]:
+    prefix, separator, suffix = recipe_code.rpartition("_")
+    if separator and suffix.isdigit():
+        return prefix, max(0, int(suffix) - 1)
+    return recipe_code, 0
 
 
 def _resolve_font(
