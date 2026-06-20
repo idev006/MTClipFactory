@@ -51,6 +51,7 @@ class AutoFactoryFolderProductReportDTO:
     created_product: bool
     registered_asset_count: int
     skipped_existing_asset_count: int
+    product_dir: str | None = None
 
 
 @dataclass(slots=True, frozen=True)

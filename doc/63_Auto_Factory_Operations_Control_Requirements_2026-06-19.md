@@ -96,6 +96,7 @@ The operations UI must show:
 - one run summary card
 - one per-product table
 - one selected-product contract/runtime detail panel
+- one action row for product-folder navigation or summary handoff
 - one per-stage summary
 - one active-worker panel
 - one append-only event or journal view

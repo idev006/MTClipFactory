@@ -672,6 +672,7 @@ sequenceDiagram
         VM-->>View: audit summary + issue tables + selected-product detail
         Operator->>View: select audit product row
         View->>View: show product/pipeline/caption contract truth
+        Operator->>View: open product/contracts/runs or copy summary
     else intake/materialize/previews
         VM->>FolderSvc: run_batch_root(..., materialize=False)
         FolderSvc-->>VM: intake report + order DTO
@@ -682,6 +683,7 @@ sequenceDiagram
             OrderSvc-->>VM: persisted order details + stages
             VM-->>View: intake report + recent order truth + selected-product runtime detail
         end
+        Operator->>View: open product/contracts/runs or copy summary
     end
 ```
 

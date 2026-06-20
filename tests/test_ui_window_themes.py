@@ -1,10 +1,26 @@
 from __future__ import annotations
 
+from pathlib import Path
+
 import pytest
 from PySide6.QtCore import QObject, Qt, Signal
 from PySide6.QtWidgets import QApplication, QAbstractItemView, QComboBox, QScrollArea, QSplitter
 
 from mt_clip_factory.control_center.dto import SystemSettingsDTO
+from mt_clip_factory.factory.auto_factory_dto import AutoFactoryBatchOrderDTO, AutoFactoryProductRequestDTO
+from mt_clip_factory.factory.auto_factory_folder_dto import (
+    AutoFactoryFolderAssetActionDTO,
+    AutoFactoryFolderAssetFolderAuditDTO,
+    AutoFactoryFolderCaptionContractAuditDTO,
+    AutoFactoryFolderContractAuditDTO,
+    AutoFactoryFolderPipelineConfigDTO,
+    AutoFactoryFolderPreflightIssueDTO,
+    AutoFactoryFolderPreflightReportDTO,
+    AutoFactoryFolderPreflightProductReportDTO,
+    AutoFactoryFolderProductConfigDTO,
+    AutoFactoryFolderProductReportDTO,
+    AutoFactoryFolderRunReportDTO,
+)
 from mt_clip_factory.factory.dto import CompositionPlanDTO, DecisionEventDTO, OutputSummaryDTO, RecipeItemDTO, TimelineSegmentDTO
 from mt_clip_factory.ui.control_center.dashboard_window import DashboardWindow
 from mt_clip_factory.ui.factory.auto_factory_control_window import AutoFactoryControlWindow
@@ -200,11 +216,11 @@ class FakeAutoFactoryControlViewModel(QObject):
     RUN_MODE_MATERIALIZE = "materialize"
     RUN_MODE_MATERIALIZE_AND_PREVIEWS = "materialize_and_build_previews"
 
-    def __init__(self) -> None:
+    def __init__(self, *, run_report=None, preflight_report=None) -> None:  # noqa: ANN001
         super().__init__()
         self.recent_orders = []
-        self.run_report = None
-        self.preflight_report = None
+        self.run_report = run_report
+        self.preflight_report = preflight_report
         self.selected_order = None
         self.feedback = ""
         self.status = "ready"
@@ -283,6 +299,172 @@ def test_auto_factory_window_exposes_guided_run_controls(qapp: QApplication) -> 
     assert auto_factory_window.preflight_products_table.columnCount() == 5
     assert auto_factory_window.preflight_issues_table.columnCount() == 5
     assert auto_factory_window.selected_product_text.isReadOnly() is True
+    assert auto_factory_window.open_product_folder_button.text() == "Open Product Folder"
+    assert auto_factory_window.open_contracts_button.text() == "Open Contracts"
+    assert auto_factory_window.open_runs_button.text() == "Open Runs Folder"
+    assert auto_factory_window.copy_summary_button.text() == "Copy Summary"
+    assert auto_factory_window.open_product_folder_button.isEnabled() is False
+    auto_factory_window.close()
+
+
+def test_auto_factory_window_can_open_selected_preflight_product_paths_and_copy_summary(
+    qapp: QApplication,
+    monkeypatch: pytest.MonkeyPatch,
+    tmp_path: Path,
+) -> None:
+    product_dir = tmp_path / "TeaProduct"
+    contracts_dir = product_dir / "contracts"
+    runs_dir = product_dir / "runs"
+    contracts_dir.mkdir(parents=True)
+    runs_dir.mkdir(parents=True)
+
+    view_model = FakeAutoFactoryControlViewModel(
+        preflight_report=AutoFactoryFolderPreflightReportDTO(
+            root_folder=str(tmp_path),
+            scan_depth=1,
+            discovered_product_dirs=(str(product_dir),),
+            status="ready",
+            error_count=0,
+            warning_count=0,
+            product_reports=(
+                AutoFactoryFolderPreflightProductReportDTO(
+                    product_dir=str(product_dir),
+                    layout_mode="v2",
+                    status="ready",
+                    product_code="tea",
+                    product_name="Tea Product",
+                    requested_output_count=2,
+                    ready_for_automation=True,
+                    contracts=(
+                        AutoFactoryFolderContractAuditDTO(
+                            contract_name="product.toml",
+                            resolved_path=str(contracts_dir / "product.toml"),
+                            layout_mode="v2",
+                            required=True,
+                            present=True,
+                        ),
+                    ),
+                    asset_folders=(
+                        AutoFactoryFolderAssetFolderAuditDTO(
+                            folder_name="foreground",
+                            asset_type="foreground_video",
+                            resolved_path=str(product_dir / "assets" / "foreground"),
+                            layout_mode="v2",
+                            ingestible_file_count=1,
+                            ingestible_files=("hook.mp4",),
+                            tag_file_present=True,
+                            global_tag_count=1,
+                            file_tag_entry_count=1,
+                            tagged_file_count=1,
+                            matching_required_file_count=1,
+                        ),
+                    ),
+                    issues=(),
+                    ingestible_asset_count=1,
+                    product_config=AutoFactoryFolderProductConfigDTO(
+                        product_code="tea",
+                        product_name="Tea Product",
+                        default_platform="tiktok",
+                    ),
+                    pipeline_config=AutoFactoryFolderPipelineConfigDTO(
+                        requested_output_count=2,
+                        target_platform="tiktok",
+                        target_ratio="9:16",
+                        foreground_required_tag_labels=("message:hook",),
+                    ),
+                    caption_contract=AutoFactoryFolderCaptionContractAuditDTO(
+                        selection_mode="random_with_seed",
+                        seed_scope="batch",
+                        segment_pool_names=("hook",),
+                        main_pool_entry_count=1,
+                        sub_pool_entry_count=1,
+                        main_style_preset="sale_blast",
+                        sub_style_preset="dark_lower_third",
+                        main_font_family="TH Baijam",
+                        sub_font_family="TH Chakra Petch",
+                    ),
+                ),
+            ),
+        )
+    )
+    auto_factory_window = AutoFactoryControlWindow(view_model)
+
+    opened_paths: list[str] = []
+    monkeypatch.setattr(
+        "mt_clip_factory.ui.factory.auto_factory_control_window.QDesktopServices.openUrl",
+        lambda url: opened_paths.append(url.toLocalFile()) or True,
+    )
+
+    assert auto_factory_window.open_product_folder_button.isEnabled() is True
+    assert auto_factory_window.open_runs_button.isEnabled() is True
+    auto_factory_window._open_selected_product_folder()
+    auto_factory_window._open_selected_contracts_folder()
+    auto_factory_window._open_selected_runs_folder()
+    auto_factory_window._copy_selected_product_summary()
+
+    assert [Path(path) for path in opened_paths] == [product_dir, contracts_dir, runs_dir]
+    assert "Product Folder:" in qapp.clipboard().text()
+    assert "copied to clipboard" in auto_factory_window.feedback_label.text().lower()
+    auto_factory_window.close()
+
+
+def test_auto_factory_window_opens_batch_specific_runs_folder_for_intake_rows(
+    qapp: QApplication,
+    monkeypatch: pytest.MonkeyPatch,
+    tmp_path: Path,
+) -> None:
+    product_dir = tmp_path / "TeaProduct"
+    batch_runs_dir = product_dir / "runs" / "launch_batch"
+    batch_runs_dir.mkdir(parents=True)
+
+    view_model = FakeAutoFactoryControlViewModel(
+        run_report=AutoFactoryFolderRunReportDTO(
+            batch_code="launch_batch",
+            scan_depth=1,
+            order=AutoFactoryBatchOrderDTO(
+                batch_code="launch_batch",
+                product_requests=(
+                    AutoFactoryProductRequestDTO(
+                        product_code="tea",
+                        requested_output_count=2,
+                        target_platform="tiktok",
+                        target_ratio="9:16",
+                    ),
+                ),
+            ),
+            discovered_product_dirs=(str(product_dir),),
+            product_reports=(
+                AutoFactoryFolderProductReportDTO(
+                    product_id=1,
+                    product_code="tea",
+                    created_product=False,
+                    registered_asset_count=2,
+                    skipped_existing_asset_count=1,
+                    product_dir=str(product_dir),
+                ),
+            ),
+            asset_actions=(
+                AutoFactoryFolderAssetActionDTO(
+                    product_code="tea",
+                    asset_type="foreground_video",
+                    asset_code="tea_fg_hook",
+                    source_file=str(product_dir / "assets" / "foreground" / "hook.mp4"),
+                    action="registered",
+                ),
+            ),
+        )
+    )
+    auto_factory_window = AutoFactoryControlWindow(view_model)
+
+    opened_paths: list[str] = []
+    monkeypatch.setattr(
+        "mt_clip_factory.ui.factory.auto_factory_control_window.QDesktopServices.openUrl",
+        lambda url: opened_paths.append(url.toLocalFile()) or True,
+    )
+
+    auto_factory_window._open_selected_runs_folder()
+
+    assert [Path(path) for path in opened_paths] == [batch_runs_dir]
     auto_factory_window.close()
 
 

@@ -51,6 +51,7 @@ The project now uses two roadmap layers:
 - `IR-30` Caption safe bands and longest-layer duration baseline: complete on 2026-06-14
 - `IR-31` Textbox-based caption layout baseline: complete on 2026-06-15
 - `IR-32` Auto Factory product-contract inspection surface: complete on 2026-06-19
+- `IR-33` Auto Factory review-surface operator actions: complete on 2026-06-20
 
 ## Current Execution Stream
 
@@ -903,6 +904,34 @@ Make the desktop `Auto Factory` screen show the selected product's contract/runt
 - delivered a selected-product detail panel inside the desktop `Auto Factory` screen for both audit and intake tables
 - delivered run-mode guidance that explains what each mode does and reminds operators where product-local run artifacts land
 - covered the new summary seam and UI surface with targeted pytest
+
+## IR-33 | Auto Factory Review-Surface Operator Actions
+
+### Goal
+
+Turn the selected-product review panel into a more practical operator surface by adding safe navigation and handoff shortcuts without turning it into an editor.
+
+### Scope
+
+- expose product-folder navigation from the selected product row
+- expose contracts-folder navigation with legacy-layout fallback
+- expose batch-aware runs-folder navigation when intake already knows the batch code
+- expose one truthful copy-to-clipboard summary action
+- keep all actions DTO-backed and read-only
+
+### Acceptance Criteria
+
+- operators can open product, contracts, or runs context from the selected-product panel
+- intake rows prefer `runs/<batch_code>` when it exists
+- audit rows can still navigate to product-local context without a persisted run
+- pytest covers the new UI actions
+
+### Delivery Result
+
+- delivered product-folder, contracts-folder, and runs-folder shortcuts from the selected-product review panel
+- delivered batch-aware runs resolution through intake DTO product-path truth
+- delivered clipboard copy for the currently rendered product summary
+- covered audit-mode and intake-mode operator actions with targeted pytest
 
 ## Cross-Milestone Rules
 

@@ -57,6 +57,7 @@ class FakeAutoFactoryFolderService:
                     created_product=False,
                     registered_asset_count=3,
                     skipped_existing_asset_count=1,
+                    product_dir=str(batch_root),
                 ),
             ),
             asset_actions=(

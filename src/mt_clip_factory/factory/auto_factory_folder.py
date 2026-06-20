@@ -154,6 +154,7 @@ class AutoFactoryFolderService:
                     created_product=created_product,
                     registered_asset_count=registered_asset_count,
                     skipped_existing_asset_count=skipped_existing_asset_count,
+                    product_dir=str(product_dir),
                 )
             )
 

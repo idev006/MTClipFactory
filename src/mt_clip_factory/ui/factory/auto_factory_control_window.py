@@ -1,6 +1,9 @@
 from __future__ import annotations
 
-from PySide6.QtCore import Qt
+from pathlib import Path
+
+from PySide6.QtCore import Qt, QUrl
+from PySide6.QtGui import QDesktopServices, QGuiApplication
 from PySide6.QtWidgets import (
     QComboBox,
     QFileDialog,
@@ -28,6 +31,7 @@ from mt_clip_factory.ui.theme import apply_theme
 
 class AutoFactoryControlWindow(QMainWindow):
     THEME_NAME = "app_window"
+    SELECTED_PRODUCT_PLACEHOLDER = "Select an audit or intake product row to inspect its contract/runtime details."
 
     def __init__(self, view_model: AutoFactoryControlViewModel) -> None:
         super().__init__()
@@ -200,10 +204,25 @@ class AutoFactoryControlWindow(QMainWindow):
     def _build_selected_product_group(self) -> QGroupBox:
         group = QGroupBox("Selected Product Contract And Runtime Summary")
         layout = QVBoxLayout(group)
+        action_row = QHBoxLayout()
+        self.open_product_folder_button = QPushButton("Open Product Folder")
+        self.open_contracts_button = QPushButton("Open Contracts")
+        self.open_runs_button = QPushButton("Open Runs Folder")
+        self.copy_summary_button = QPushButton("Copy Summary")
+        self.open_product_folder_button.clicked.connect(self._open_selected_product_folder)
+        self.open_contracts_button.clicked.connect(self._open_selected_contracts_folder)
+        self.open_runs_button.clicked.connect(self._open_selected_runs_folder)
+        self.copy_summary_button.clicked.connect(self._copy_selected_product_summary)
+        action_row.addWidget(self.open_product_folder_button)
+        action_row.addWidget(self.open_contracts_button)
+        action_row.addWidget(self.open_runs_button)
+        action_row.addWidget(self.copy_summary_button)
+        layout.addLayout(action_row)
         self.selected_product_text = QTextEdit()
         self.selected_product_text.setReadOnly(True)
-        self.selected_product_text.setPlainText("Select an audit or intake product row to inspect its contract/runtime details.")
+        self.selected_product_text.setPlainText(self.SELECTED_PRODUCT_PLACEHOLDER)
         layout.addWidget(self.selected_product_text)
+        self._refresh_selected_product_action_state()
         return group
 
     def _build_preflight_issues_group(self) -> QGroupBox:
@@ -267,9 +286,8 @@ class AutoFactoryControlWindow(QMainWindow):
         if run_report is None:
             if self._view_model.preflight_report is None:
                 self.run_summary_text.clear()
-                self.selected_product_text.setPlainText(
-                    "Select an audit or intake product row to inspect its contract/runtime details."
-                )
+                self.selected_product_text.setPlainText(self.SELECTED_PRODUCT_PLACEHOLDER)
+                self._refresh_selected_product_action_state()
             self.product_reports_table.setRowCount(0)
             self.asset_actions_table.setRowCount(0)
             return
@@ -327,9 +345,8 @@ class AutoFactoryControlWindow(QMainWindow):
         if preflight_report is None:
             if self._view_model.run_report is None:
                 self.run_summary_text.clear()
-                self.selected_product_text.setPlainText(
-                    "Select an audit or intake product row to inspect its contract/runtime details."
-                )
+                self.selected_product_text.setPlainText(self.SELECTED_PRODUCT_PLACEHOLDER)
+                self._refresh_selected_product_action_state()
             self.preflight_products_table.setRowCount(0)
             self.preflight_issues_table.setRowCount(0)
             return
@@ -472,19 +489,24 @@ class AutoFactoryControlWindow(QMainWindow):
     def _refresh_selected_preflight_product_details(self) -> None:
         preflight_report = self._view_model.preflight_report
         if preflight_report is None:
+            self._refresh_selected_product_action_state()
             return
         row_index = _selected_row_index(self.preflight_products_table)
         if row_index is None or row_index >= len(preflight_report.product_reports):
+            self._refresh_selected_product_action_state()
             return
         product_report = preflight_report.product_reports[row_index]
         self.selected_product_text.setPlainText(_build_preflight_product_detail_text(product_report))
+        self._refresh_selected_product_action_state()
 
     def _refresh_selected_run_product_details(self) -> None:
         run_report = self._view_model.run_report
         if run_report is None:
+            self._refresh_selected_product_action_state()
             return
         row_index = _selected_row_index(self.product_reports_table)
         if row_index is None or row_index >= len(run_report.product_reports):
+            self._refresh_selected_product_action_state()
             return
         product_report = run_report.product_reports[row_index]
         request = next(
@@ -501,6 +523,105 @@ class AutoFactoryControlWindow(QMainWindow):
                 product_actions=product_actions,
             )
         )
+        self._refresh_selected_product_action_state()
+
+    def _open_selected_product_folder(self) -> None:
+        product_dir = self._selected_product_dir()
+        if product_dir is None:
+            QMessageBox.information(self, "Auto Factory", "Select one product row first.")
+            return
+        self._open_local_path(product_dir, description="product folder")
+
+    def _open_selected_contracts_folder(self) -> None:
+        product_dir = self._selected_product_dir()
+        if product_dir is None:
+            QMessageBox.information(self, "Auto Factory", "Select one product row first.")
+            return
+        contracts_dir = product_dir / "contracts"
+        self._open_local_path(contracts_dir if contracts_dir.exists() else product_dir, description="contracts folder")
+
+    def _open_selected_runs_folder(self) -> None:
+        product_dir = self._selected_product_dir()
+        if product_dir is None:
+            QMessageBox.information(self, "Auto Factory", "Select one product row first.")
+            return
+        batch_code = self._selected_batch_code()
+        preferred_path = product_dir / "runs" / batch_code if batch_code else product_dir / "runs"
+        fallback_path = product_dir / "runs"
+        if preferred_path.exists():
+            self._open_local_path(preferred_path, description="runs folder")
+            return
+        if fallback_path.exists():
+            self._open_local_path(fallback_path, description="runs folder")
+            return
+        QMessageBox.information(
+            self,
+            "Auto Factory",
+            f"Runs folder does not exist yet.\nExpected path: {preferred_path}",
+        )
+
+    def _copy_selected_product_summary(self) -> None:
+        summary = self.selected_product_text.toPlainText().strip()
+        if not summary or summary == self.SELECTED_PRODUCT_PLACEHOLDER:
+            QMessageBox.information(self, "Auto Factory", "There is no selected product summary to copy yet.")
+            return
+        clipboard = QGuiApplication.clipboard()
+        clipboard.setText(summary)
+        self._set_feedback_message("Selected product summary copied to clipboard.")
+
+    def _selected_product_dir(self) -> Path | None:
+        preflight_report = self._view_model.preflight_report
+        if preflight_report is not None and hasattr(self, "preflight_products_table"):
+            row_index = _selected_row_index(self.preflight_products_table)
+            if row_index is not None and row_index < len(preflight_report.product_reports):
+                return Path(preflight_report.product_reports[row_index].product_dir)
+
+        run_report = self._view_model.run_report
+        if run_report is not None and hasattr(self, "product_reports_table"):
+            row_index = _selected_row_index(self.product_reports_table)
+            if row_index is not None and row_index < len(run_report.product_reports):
+                product_dir = run_report.product_reports[row_index].product_dir
+                if product_dir:
+                    return Path(product_dir)
+        return None
+
+    def _selected_batch_code(self) -> str | None:
+        run_report = self._view_model.run_report
+        if run_report is None or not hasattr(self, "product_reports_table"):
+            return None
+        row_index = _selected_row_index(self.product_reports_table)
+        if row_index is None or row_index >= len(run_report.product_reports):
+            return None
+        return run_report.batch_code
+
+    def _refresh_selected_product_action_state(self) -> None:
+        has_product_path = self._selected_product_dir() is not None
+        has_summary = bool(self.selected_product_text.toPlainText().strip()) and (
+            self.selected_product_text.toPlainText() != self.SELECTED_PRODUCT_PLACEHOLDER
+        )
+        self.open_product_folder_button.setEnabled(has_product_path)
+        self.open_contracts_button.setEnabled(has_product_path)
+        self.open_runs_button.setEnabled(has_product_path)
+        self.copy_summary_button.setEnabled(has_summary)
+
+    def _open_local_path(self, path: Path, *, description: str) -> None:
+        if not path.exists():
+            QMessageBox.information(self, "Auto Factory", f"Cannot open {description} because it does not exist:\n{path}")
+            return
+        if not QDesktopServices.openUrl(QUrl.fromLocalFile(str(path))):
+            QMessageBox.warning(self, "Auto Factory", f"Unable to open {description}:\n{path}")
+
+    def _set_feedback_message(self, message: str) -> None:
+        set_feedback = getattr(self._view_model, "_set_feedback", None)
+        if callable(set_feedback):
+            set_feedback(message)
+            return
+        if hasattr(self._view_model, "feedback"):
+            self._view_model.feedback = message
+            feedback_changed = getattr(self._view_model, "feedback_changed", None)
+            if feedback_changed is not None:
+                feedback_changed.emit()
+        self._refresh_feedback()
 
 
 def _format_product_request_summary(request) -> str:

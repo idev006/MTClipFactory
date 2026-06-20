@@ -101,6 +101,7 @@
 - folder-driven auto-factory now also exposes a read-only product-folder preflight audit seam that validates contracts, assets, tags, and `selection_tags` viability before a real automation run
 - the desktop `Auto Factory` control surface now also exposes `Audit Only`, so operators can run the same preflight validation from the UI before intake or preview work begins
 - the desktop `Auto Factory` control surface now also exposes one selected-product contract/runtime detail surface so operators can inspect product contract fields, pipeline duration and tag rules, caption preset/font intent, and per-folder tag readiness without leaving the app
+- the desktop `Auto Factory` control surface now also exposes operator shortcuts from that selected-product panel, including `Open Product Folder`, `Open Contracts`, `Open Runs Folder`, and `Copy Summary`
 - assets can now be safely renamed or deleted from the `Assets` screen, with repository checks that block deletion when recipe-item or artifact-job references still exist
 - the `Assets` screen now supports `Show References`, `Retire Selected`, and `Purge Media` so referenced assets can leave active use and disk without destroying audit truth
 - the `Assets` screen now also supports `Replace In Recipes...` with recipe-safe validation, recipe reset-to-candidate behavior, and approval guards that prevent stale pre-replacement outputs from being reused as evidence for changed recipes
@@ -170,6 +171,7 @@
 - validate whether operators prefer the new scriptable preflight seam before every live auto-mode run or only for onboarding/debugging cases
 - validate whether the new `Audit Only` UI mode is clear enough for operators or whether issue grouping/filtering is needed after broader use
 - validate whether the new selected-product contract detail surface is sufficient for operator self-checks or whether inline fix/open shortcuts are needed later
+- validate whether the new review-surface shortcuts are enough or whether direct `Open captions.toml` / `Open pipeline.toml` actions are needed next
 - implement the newly locked auto-factory operations-control requirements so operators can see live run progress and safely pause, stop, resume, or recover interrupted runs
 
 ## Next Steps
