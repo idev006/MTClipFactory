@@ -12,6 +12,8 @@ The first desktop operator control surface for this workflow is now defined in [
 
 Tag-aware asset-pool filtering for this workflow is now defined in [38_Tag_Aware_Auto_Factory_Selection_Workflow_2026-06-13.md](/F:/programming/python/MTClipFactory/doc/38_Tag_Aware_Auto_Factory_Selection_Workflow_2026-06-13.md).
 
+History-aware anti-duplicate candidate ranking for repeated product runs is now extended in [77_Auto_Factory_History_Aware_Anti_Duplicate_Selection_Workflow_2026-06-21.md](/F:/programming/python/MTClipFactory/doc/77_Auto_Factory_History_Aware_Anti_Duplicate_Selection_Workflow_2026-06-21.md).
+
 ## Purpose
 
 - let operators request output counts by product instead of building recipes one by one
@@ -218,6 +220,16 @@ Why this policy is preferred:
 - operators can accept some visual reuse in the first slice more easily than identical narration across many outputs
 - this keeps the planner deterministic while making the first requested outputs more commercially distinct
 
+### History-Aware Anti-Duplicate Extension
+
+The planner should now also use recent same-product recipe history to reduce duplicate-looking reruns.
+
+First delivered weighting rules:
+
+1. strongly penalize exact historical asset-role combinations
+2. penalize repeated foreground semantic sequences
+3. penalize overused role-specific assets, with `voice` weighted more heavily than `background` or `music`
+
 ## Capacity Rule
 
 The planner must estimate capacity before creating internal recipes.
@@ -283,8 +295,8 @@ Explicitly deferred to later slices:
 - folder watcher or scheduled auto-scan
 - preview/final auto-run orchestration
 - review-by-exception UI
-- historical uniqueness modes
-- asset cooldown or historical reuse weighting
+- external publish-history evidence
+- operator-tunable cooldown policy in `pipeline.toml`
 
 ## Reviewed Second Implementation Slice
 

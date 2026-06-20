@@ -1,5 +1,7 @@
 from __future__ import annotations
 
+from collections import Counter
+from dataclasses import dataclass
 import math
 import re
 
@@ -36,6 +38,20 @@ _DIVERSITY_DIMENSION_PRIORITY = (
     "background",
     "music",
 )
+_HISTORY_RECIPE_LIMIT = 24
+_MIN_CANDIDATE_SCAN = 64
+_CANDIDATE_SCAN_MULTIPLIER = 24
+_MAX_CANDIDATE_SCAN = 4096
+_SELECTION_ROLE_WEIGHTS = {
+    "voice": 8.0,
+    "hook": 5.0,
+    "problem": 4.0,
+    "benefit": 4.0,
+    "proof": 4.0,
+    "cta": 4.0,
+    "background": 3.0,
+    "music": 1.5,
+}
 
 
 class AutoFactoryPlanningError(ValueError):
@@ -48,6 +64,34 @@ class AutoFactoryUnknownProductError(AutoFactoryPlanningError):
 
 class AutoFactoryCapacityError(AutoFactoryPlanningError):
     """Raised when the planner cannot fulfill an order exactly."""
+
+
+@dataclass(slots=True, frozen=True)
+class _VariantBlueprint:
+    target_platform: str | None
+    target_ratio: str | None
+    duration_sec: float | None
+    duration_source: str
+    fingerprint: str
+    assignments: tuple[PlannedBatchAssetAssignmentDTO, ...]
+    assignment_signature: tuple[tuple[str, int], ...]
+    foreground_sequence: tuple[int, ...]
+    variant_index: int
+
+
+@dataclass(slots=True, frozen=True)
+class _PlanningHistory:
+    exact_signature_weights: Counter
+    foreground_sequence_weights: Counter
+    role_asset_weights: Counter
+
+    @classmethod
+    def empty(cls) -> _PlanningHistory:
+        return cls(
+            exact_signature_weights=Counter(),
+            foreground_sequence_weights=Counter(),
+            role_asset_weights=Counter(),
+        )
 
 
 class AutoFactoryBatchService:
@@ -259,6 +303,7 @@ class AutoFactoryBatchService:
             seed_key=f"{batch_code}|{product.product_code}|music",
             item_key=lambda asset: asset.asset_code or str(asset.asset_id),
         )
+        planning_history = self._load_planning_history(product_id=product.product_id)
 
         if not foreground_assets and not background_assets:
             limiting_reason = "no ready renderable visual assets"
@@ -287,19 +332,27 @@ class AutoFactoryBatchService:
         feasible_count = foreground_sequence_count * background_count * music_count * voice_count
         planned_count = min(product_request.requested_output_count, feasible_count)
 
+        planned_variants = self._select_planned_variants(
+            product=product,
+            product_request=product_request,
+            planned_count=planned_count,
+            feasible_count=feasible_count,
+            foreground_assets=foreground_assets,
+            foreground_sequences=foreground_sequences,
+            background_assets=background_assets,
+            music_assets=music_assets,
+            voice_assets=voice_assets,
+            planning_history=planning_history,
+        )
         recipes = tuple(
-            self._build_planned_recipe(
+            _blueprint_to_planned_recipe(
+                blueprint,
+                product_id=product.product_id,
+                product_code=product.product_code,
                 batch_code=batch_code,
-                product_request=product_request,
-                product=product,
                 request_index=index + 1,
-                foreground_assets=foreground_assets,
-                foreground_sequences=foreground_sequences,
-                background_assets=background_assets,
-                music_assets=music_assets,
-                voice_assets=voice_assets,
             )
-            for index in range(planned_count)
+            for index, blueprint in enumerate(planned_variants)
         )
         summary = ProductBatchPlanSummaryDTO(
             product_id=product.product_id,
@@ -313,25 +366,60 @@ class AutoFactoryBatchService:
         )
         return {"summary": summary, "recipes": recipes}
 
-    def _build_planned_recipe(
+    def _select_planned_variants(
         self,
         *,
-        batch_code: str,
-        product_request: AutoFactoryProductRequestDTO,
         product,
-        request_index: int,
+        product_request: AutoFactoryProductRequestDTO,
+        planned_count: int,
+        feasible_count: int,
         foreground_assets: tuple[AssetSummaryDTO, ...],
         foreground_sequences: tuple[tuple[int, ...], ...],
         background_assets: tuple[AssetSummaryDTO, ...],
         music_assets: tuple[AssetSummaryDTO, ...],
         voice_assets: tuple[AssetSummaryDTO, ...],
-    ) -> PlannedBatchRecipeDTO:
+        planning_history: _PlanningHistory,
+    ) -> tuple[_VariantBlueprint, ...]:
+        if planned_count <= 0:
+            return ()
+        candidate_scan_limit = _resolve_candidate_scan_limit(planned_count=planned_count, feasible_count=feasible_count)
+        candidate_blueprints = tuple(
+            self._build_variant_blueprint(
+                variant_index=variant_index,
+                product=product,
+                product_request=product_request,
+                foreground_assets=foreground_assets,
+                foreground_sequences=foreground_sequences,
+                background_assets=background_assets,
+                music_assets=music_assets,
+                voice_assets=voice_assets,
+            )
+            for variant_index in range(candidate_scan_limit)
+        )
+        return _select_blueprints_greedily(
+            candidate_blueprints,
+            planned_count=planned_count,
+            planning_history=planning_history,
+        )
+
+    def _build_variant_blueprint(
+        self,
+        *,
+        variant_index: int,
+        product,
+        product_request: AutoFactoryProductRequestDTO,
+        foreground_assets: tuple[AssetSummaryDTO, ...],
+        foreground_sequences: tuple[tuple[int, ...], ...],
+        background_assets: tuple[AssetSummaryDTO, ...],
+        music_assets: tuple[AssetSummaryDTO, ...],
+        voice_assets: tuple[AssetSummaryDTO, ...],
+    ) -> _VariantBlueprint:
         sequence_options = foreground_sequences if foreground_sequences else ((),)
         background_options = background_assets if background_assets else (None,)
         music_options = music_assets if music_assets else (None,)
         voice_options = voice_assets if voice_assets else (None,)
         selected_dimensions = _select_variant_dimensions(
-            variant_index=request_index - 1,
+            variant_index=variant_index,
             sequence_options=sequence_options,
             background_options=background_options,
             music_options=music_options,
@@ -363,18 +451,48 @@ class AutoFactoryBatchService:
             duration_sec=duration_sec,
             assignments=assignments,
         )
-        recipe_code = f"{product.product_code}_{batch_code}_{request_index:03d}"
-        return PlannedBatchRecipeDTO(
-            product_id=product.product_id,
-            product_code=product.product_code,
-            recipe_code=recipe_code,
-            request_index=request_index,
+        return _VariantBlueprint(
             target_platform=target_platform,
             target_ratio=product_request.target_ratio,
             duration_sec=duration_sec,
             duration_source=duration_source,
             fingerprint=fingerprint,
             assignments=tuple(assignments),
+            assignment_signature=_assignment_signature_from_assignments(tuple(assignments)),
+            foreground_sequence=tuple(sequence),
+            variant_index=variant_index,
+        )
+
+    def _load_planning_history(self, *, product_id: int) -> _PlanningHistory:
+        recipe_summaries = sorted(
+            self._video_assembly_factory_service.list_recipes(product_id=product_id),
+            key=lambda summary: summary.recipe_id,
+            reverse=True,
+        )
+        if not recipe_summaries:
+            return _PlanningHistory.empty()
+
+        exact_signature_weights: Counter = Counter()
+        foreground_sequence_weights: Counter = Counter()
+        role_asset_weights: Counter = Counter()
+        for history_index, recipe_summary in enumerate(recipe_summaries[:_HISTORY_RECIPE_LIMIT]):
+            recipe_details = self._video_assembly_factory_service.get_recipe(recipe_summary.recipe_id)
+            history_weight = _history_weight(history_index)
+            exact_signature = _assignment_signature_from_recipe_items(recipe_details.items)
+            if exact_signature:
+                exact_signature_weights[exact_signature] += history_weight
+            foreground_sequence = _foreground_sequence_from_recipe_items(recipe_details.items)
+            if foreground_sequence:
+                foreground_sequence_weights[foreground_sequence] += history_weight
+            for item in recipe_details.items:
+                normalized_role = item.role.strip().lower()
+                if not normalized_role:
+                    continue
+                role_asset_weights[(normalized_role, item.asset_id)] += history_weight
+        return _PlanningHistory(
+            exact_signature_weights=exact_signature_weights,
+            foreground_sequence_weights=foreground_sequence_weights,
+            role_asset_weights=role_asset_weights,
         )
 
     def _get_preview_job_summary(self, job_id: int) -> PreviewJobSummaryDTO:
@@ -391,6 +509,11 @@ class AutoFactoryBatchService:
 def _slugify(value: str) -> str:
     normalized = re.sub(r"[^a-z0-9]+", "_", value.strip().lower())
     return normalized.strip("_")
+
+
+def _resolve_candidate_scan_limit(*, planned_count: int, feasible_count: int) -> int:
+    bounded_scan = max(_MIN_CANDIDATE_SCAN, planned_count * _CANDIDATE_SCAN_MULTIPLIER, planned_count)
+    return min(feasible_count, _MAX_CANDIDATE_SCAN, bounded_scan)
 
 
 def _select_variant_dimensions(
@@ -430,6 +553,80 @@ def _build_foreground_sequences(asset_ids: tuple[int, ...], *, role_count: int) 
     return tuple(sequences)
 
 
+def _select_blueprints_greedily(
+    candidate_blueprints: tuple[_VariantBlueprint, ...],
+    *,
+    planned_count: int,
+    planning_history: _PlanningHistory,
+) -> tuple[_VariantBlueprint, ...]:
+    remaining = list(candidate_blueprints)
+    selected: list[_VariantBlueprint] = []
+    selected_exact_signature_counts: Counter = Counter()
+    selected_foreground_sequence_counts: Counter = Counter()
+    selected_role_asset_counts: Counter = Counter()
+
+    while remaining and len(selected) < planned_count:
+        best_index, best_blueprint = min(
+            enumerate(remaining),
+            key=lambda entry: _selection_score(
+                entry[1],
+                planning_history=planning_history,
+                selected_exact_signature_counts=selected_exact_signature_counts,
+                selected_foreground_sequence_counts=selected_foreground_sequence_counts,
+                selected_role_asset_counts=selected_role_asset_counts,
+            ),
+        )
+        remaining.pop(best_index)
+        selected.append(best_blueprint)
+        selected_exact_signature_counts[best_blueprint.assignment_signature] += 1
+        if best_blueprint.foreground_sequence:
+            selected_foreground_sequence_counts[best_blueprint.foreground_sequence] += 1
+        for assignment in best_blueprint.assignments:
+            selected_role_asset_counts[(assignment.role, assignment.asset_id)] += 1
+
+    return tuple(selected)
+
+
+def _selection_score(
+    blueprint: _VariantBlueprint,
+    *,
+    planning_history: _PlanningHistory,
+    selected_exact_signature_counts: Counter,
+    selected_foreground_sequence_counts: Counter,
+    selected_role_asset_counts: Counter,
+) -> tuple[float, int]:
+    history_exact_penalty = float(planning_history.exact_signature_weights[blueprint.assignment_signature]) * 400.0
+    selected_exact_penalty = float(selected_exact_signature_counts[blueprint.assignment_signature]) * 1000.0
+    history_foreground_penalty = float(planning_history.foreground_sequence_weights[blueprint.foreground_sequence]) * 40.0
+    selected_foreground_penalty = float(selected_foreground_sequence_counts[blueprint.foreground_sequence]) * 120.0
+    history_role_penalty = 0.0
+    selected_role_penalty = 0.0
+    for assignment in blueprint.assignments:
+        role_weight = _SELECTION_ROLE_WEIGHTS.get(assignment.role, 1.0)
+        history_role_penalty += (
+            float(planning_history.role_asset_weights[(assignment.role, assignment.asset_id)]) * role_weight
+        )
+        selected_role_penalty += (
+            float(selected_role_asset_counts[(assignment.role, assignment.asset_id)]) * role_weight
+        )
+    internal_repeat_penalty = float(_foreground_internal_repeat_count(blueprint.foreground_sequence)) * 25.0
+    total_penalty = (
+        selected_exact_penalty
+        + history_exact_penalty
+        + selected_foreground_penalty
+        + history_foreground_penalty
+        + (selected_role_penalty * 20.0)
+        + (history_role_penalty * 6.0)
+        + internal_repeat_penalty
+    )
+    return total_penalty, blueprint.variant_index
+
+
+def _foreground_internal_repeat_count(sequence: tuple[int, ...]) -> int:
+    counts = Counter(sequence)
+    return sum(max(0, count - 1) for count in counts.values())
+
+
 def _require_asset(assets: tuple[AssetSummaryDTO, ...], asset_id: int) -> AssetSummaryDTO:
     for asset in assets:
         if asset.asset_id == asset_id:
@@ -443,6 +640,29 @@ def _to_assignment(asset: AssetSummaryDTO, *, role: str) -> PlannedBatchAssetAss
         asset_code=asset.asset_code,
         asset_type=asset.asset_type,
         role=role,
+    )
+
+
+def _blueprint_to_planned_recipe(
+    blueprint: _VariantBlueprint,
+    *,
+    product_id: int,
+    product_code: str,
+    batch_code: str,
+    request_index: int,
+) -> PlannedBatchRecipeDTO:
+    recipe_code = f"{product_code}_{batch_code}_{request_index:03d}"
+    return PlannedBatchRecipeDTO(
+        product_id=product_id,
+        product_code=product_code,
+        recipe_code=recipe_code,
+        request_index=request_index,
+        target_platform=blueprint.target_platform,
+        target_ratio=blueprint.target_ratio,
+        duration_sec=blueprint.duration_sec,
+        duration_source=blueprint.duration_source,
+        fingerprint=blueprint.fingerprint,
+        assignments=blueprint.assignments,
     )
 
 
@@ -490,6 +710,42 @@ def _build_fingerprint(
         *grouped_assignments,
     )
     return "|".join(fingerprint_parts)
+
+
+def _assignment_signature_from_assignments(
+    assignments: tuple[PlannedBatchAssetAssignmentDTO, ...],
+) -> tuple[tuple[str, int], ...]:
+    return tuple(sorted((assignment.role, assignment.asset_id) for assignment in assignments))
+
+
+def _assignment_signature_from_recipe_items(recipe_items) -> tuple[tuple[str, int], ...]:
+    return tuple(
+        sorted(
+            (
+                item.role.strip().lower(),
+                item.asset_id,
+            )
+            for item in recipe_items
+            if item.role.strip()
+        )
+    )
+
+
+def _foreground_sequence_from_recipe_items(recipe_items) -> tuple[int, ...]:
+    role_to_asset_id = {
+        item.role.strip().lower(): item.asset_id
+        for item in recipe_items
+        if item.role.strip().lower() in _SEMANTIC_VISUAL_ROLES
+    }
+    return tuple(role_to_asset_id[role] for role in _SEMANTIC_VISUAL_ROLES if role in role_to_asset_id)
+
+
+def _history_weight(history_index: int) -> float:
+    if history_index < 3:
+        return 4.0
+    if history_index < 8:
+        return 2.0
+    return 1.0
 
 
 def _filter_assets_by_required_tags(

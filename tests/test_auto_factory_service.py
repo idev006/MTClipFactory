@@ -15,6 +15,7 @@ from mt_clip_factory.factory.auto_factory_dto import (
     AutoFactoryBatchOrderDTO,
     AutoFactoryProductRequestDTO,
 )
+from mt_clip_factory.factory.dto import AssignAssetToRecipeCommand, CreateRecipeCommand
 from mt_clip_factory.factory.preview_composition import PreviewSegmentClip
 from mt_clip_factory.factory.preview_artifacts import PreviewManifestBuilder
 from mt_clip_factory.factory.renderers import RenderedPreviewOutput
@@ -155,6 +156,65 @@ def _build_auto_factory_service(unit_of_work_factory, tmp_path: Path, durations_
     )
 
 
+def _materialize_history_recipe(
+    factory_service: VideoAssemblyFactoryService,
+    *,
+    product_id: int,
+    recipe_code: str,
+    planned_recipe,
+) -> int:  # noqa: ANN001
+    recipe_id = factory_service.create_recipe(
+        CreateRecipeCommand(
+            product_id=product_id,
+            recipe_code=recipe_code,
+            target_platform=planned_recipe.target_platform,
+            target_ratio=planned_recipe.target_ratio,
+            duration_sec=planned_recipe.duration_sec,
+        )
+    )
+    for assignment in planned_recipe.assignments:
+        factory_service.assign_asset_to_recipe(
+            AssignAssetToRecipeCommand(
+                recipe_id=recipe_id,
+                asset_id=assignment.asset_id,
+                role=assignment.role,
+            )
+        )
+    return recipe_id
+
+
+def _assignment_signature(planned_recipe) -> tuple[tuple[str, str], ...]:  # noqa: ANN001
+    return tuple(sorted((assignment.role, assignment.asset_code) for assignment in planned_recipe.assignments))
+
+
+def _replace_assignment_role(planned_recipe, *, role: str, asset_id: int, asset_code: str, asset_type: str):  # noqa: ANN001
+    replaced = []
+    for assignment in planned_recipe.assignments:
+        if assignment.role == role:
+            replaced.append(
+                type(assignment)(
+                    asset_id=asset_id,
+                    asset_code=asset_code,
+                    asset_type=asset_type,
+                    role=role,
+                )
+            )
+        else:
+            replaced.append(assignment)
+    return type(planned_recipe)(
+        product_id=planned_recipe.product_id,
+        product_code=planned_recipe.product_code,
+        recipe_code=planned_recipe.recipe_code,
+        request_index=planned_recipe.request_index,
+        target_platform=planned_recipe.target_platform,
+        target_ratio=planned_recipe.target_ratio,
+        duration_sec=planned_recipe.duration_sec,
+        duration_source=planned_recipe.duration_source,
+        fingerprint=planned_recipe.fingerprint,
+        assignments=tuple(replaced),
+    )
+
+
 def test_auto_factory_plans_batch_unique_variants(unit_of_work_factory, tmp_path) -> None:
     product_service = ProductApplicationService(unit_of_work_factory=unit_of_work_factory)
     product_id = product_service.create_product(CreateProductCommand(product_code="honey", product_name="Honey"))
@@ -265,6 +325,114 @@ def test_auto_factory_diversifies_voice_early_within_batch(unit_of_work_factory,
     ]
 
     assert len(set(voice_codes)) == 2
+
+
+def test_auto_factory_avoids_historically_repeated_exact_combo_when_alternative_exists(unit_of_work_factory, tmp_path) -> None:
+    product_service = ProductApplicationService(unit_of_work_factory=unit_of_work_factory)
+    product_id = product_service.create_product(CreateProductCommand(product_code="repeatfix", product_name="Repeat Fix"))
+    asset_service = _build_asset_service(
+        unit_of_work_factory,
+        tmp_path / "media_library",
+        {"voice_01.mp3": 12.0, "voice_02.mp3": 13.0},
+    )
+    _register_asset(asset_service, product_id=product_id, tmp_path=tmp_path, asset_type="foreground_video", asset_code="fg_01", file_name="fg01.mp4")
+    _register_asset(asset_service, product_id=product_id, tmp_path=tmp_path, asset_type="foreground_video", asset_code="fg_02", file_name="fg02.mp4")
+    _register_asset(asset_service, product_id=product_id, tmp_path=tmp_path, asset_type="background_video", asset_code="bg_01", file_name="bg01.mp4")
+    _register_asset(asset_service, product_id=product_id, tmp_path=tmp_path, asset_type="voiceover", asset_code="voice_01", file_name="voice_01.mp3")
+    _register_asset(asset_service, product_id=product_id, tmp_path=tmp_path, asset_type="voiceover", asset_code="voice_02", file_name="voice_02.mp3")
+    factory_service = _build_factory_service(unit_of_work_factory, tmp_path / "previews")
+    service = AutoFactoryBatchService(
+        product_service=product_service,
+        asset_intake_service=asset_service,
+        video_assembly_factory_service=factory_service,
+    )
+    order = AutoFactoryBatchOrderDTO(
+        batch_code="repeatfix_batch",
+        product_requests=(AutoFactoryProductRequestDTO(product_code="repeatfix", requested_output_count=1),),
+    )
+
+    baseline_plan = service.plan_batch(order)
+    baseline_recipe = baseline_plan.planned_recipes[0]
+    _materialize_history_recipe(
+        factory_service,
+        product_id=product_id,
+        recipe_code="repeatfix_history_001",
+        planned_recipe=baseline_recipe,
+    )
+
+    rerun_plan = service.plan_batch(order)
+
+    assert _assignment_signature(rerun_plan.planned_recipes[0]) != _assignment_signature(baseline_recipe)
+
+
+def test_auto_factory_deprioritizes_historically_overused_voice_even_when_combo_changes(unit_of_work_factory, tmp_path) -> None:
+    product_service = ProductApplicationService(unit_of_work_factory=unit_of_work_factory)
+    product_id = product_service.create_product(CreateProductCommand(product_code="voicecool", product_name="Voice Cool"))
+    asset_service = _build_asset_service(
+        unit_of_work_factory,
+        tmp_path / "media_library",
+        {"voice_01.mp3": 12.0, "voice_02.mp3": 13.0},
+    )
+    _register_asset(asset_service, product_id=product_id, tmp_path=tmp_path, asset_type="foreground_video", asset_code="fg_01", file_name="fg01.mp4")
+    _register_asset(asset_service, product_id=product_id, tmp_path=tmp_path, asset_type="foreground_video", asset_code="fg_02", file_name="fg02.mp4")
+    _register_asset(asset_service, product_id=product_id, tmp_path=tmp_path, asset_type="foreground_video", asset_code="fg_03", file_name="fg03.mp4")
+    bg_01 = _register_asset(asset_service, product_id=product_id, tmp_path=tmp_path, asset_type="background_video", asset_code="bg_01", file_name="bg01.mp4")
+    bg_02 = _register_asset(asset_service, product_id=product_id, tmp_path=tmp_path, asset_type="background_video", asset_code="bg_02", file_name="bg02.mp4")
+    music_01 = _register_asset(asset_service, product_id=product_id, tmp_path=tmp_path, asset_type="background_music", asset_code="music_01", file_name="music01.mp3")
+    music_02 = _register_asset(asset_service, product_id=product_id, tmp_path=tmp_path, asset_type="background_music", asset_code="music_02", file_name="music02.mp3")
+    voice_01 = _register_asset(asset_service, product_id=product_id, tmp_path=tmp_path, asset_type="voiceover", asset_code="voice_01", file_name="voice_01.mp3")
+    voice_02 = _register_asset(asset_service, product_id=product_id, tmp_path=tmp_path, asset_type="voiceover", asset_code="voice_02", file_name="voice_02.mp3")
+    factory_service = _build_factory_service(unit_of_work_factory, tmp_path / "previews")
+    service = AutoFactoryBatchService(
+        product_service=product_service,
+        asset_intake_service=asset_service,
+        video_assembly_factory_service=factory_service,
+    )
+    order = AutoFactoryBatchOrderDTO(
+        batch_code="voicecool_batch",
+        product_requests=(AutoFactoryProductRequestDTO(product_code="voicecool", requested_output_count=1),),
+    )
+
+    baseline_plan = service.plan_batch(order)
+    baseline_recipe = baseline_plan.planned_recipes[0]
+    baseline_voice = next(assignment for assignment in baseline_recipe.assignments if assignment.role == "voice")
+    other_background = (bg_02, "bg_02") if bg_01 != bg_02 else (bg_01, "bg_01")
+    other_music = (music_02, "music_02") if music_01 != music_02 else (music_01, "music_01")
+    overused_voice_id = voice_01 if baseline_voice.asset_id == voice_01 else voice_02
+    overused_voice_code = "voice_01" if overused_voice_id == voice_01 else "voice_02"
+    alternative_recipe = _replace_assignment_role(
+        baseline_recipe,
+        role="voice",
+        asset_id=overused_voice_id,
+        asset_code=overused_voice_code,
+        asset_type="voiceover",
+    )
+    alternative_recipe = _replace_assignment_role(
+        alternative_recipe,
+        role="background",
+        asset_id=other_background[0],
+        asset_code=other_background[1],
+        asset_type="background_video",
+    )
+    alternative_recipe = _replace_assignment_role(
+        alternative_recipe,
+        role="music",
+        asset_id=other_music[0],
+        asset_code=other_music[1],
+        asset_type="background_music",
+    )
+    for history_index in range(3):
+        _materialize_history_recipe(
+            factory_service,
+            product_id=product_id,
+            recipe_code=f"voicecool_history_{history_index + 1:03d}",
+            planned_recipe=alternative_recipe,
+        )
+
+    rerun_plan = service.plan_batch(order)
+    rerun_voice = next(assignment for assignment in rerun_plan.planned_recipes[0].assignments if assignment.role == "voice")
+
+    assert rerun_voice.asset_id != overused_voice_id
 
 
 def test_auto_factory_reports_shortfall_and_blocks_strict_materialization(unit_of_work_factory, tmp_path) -> None:

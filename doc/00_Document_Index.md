@@ -82,6 +82,7 @@ When code changes, the related Markdown documents in this folder must be updated
 74. [74_Thai_Script_Safe_Line_Advance_Workflow_2026-06-20.md](/F:/programming/python/MTClipFactory/doc/74_Thai_Script_Safe_Line_Advance_Workflow_2026-06-20.md)
 75. [75_Thai_Pair_Aware_Line_Spacing_Workflow_2026-06-20.md](/F:/programming/python/MTClipFactory/doc/75_Thai_Pair_Aware_Line_Spacing_Workflow_2026-06-20.md)
 76. [76_Auto_Factory_Default_Batch_Code_Traceability_Workflow_2026-06-21.md](/F:/programming/python/MTClipFactory/doc/76_Auto_Factory_Default_Batch_Code_Traceability_Workflow_2026-06-21.md)
+77. [77_Auto_Factory_History_Aware_Anti_Duplicate_Selection_Workflow_2026-06-21.md](/F:/programming/python/MTClipFactory/doc/77_Auto_Factory_History_Aware_Anti_Duplicate_Selection_Workflow_2026-06-21.md)
 
 ## Governance
 
