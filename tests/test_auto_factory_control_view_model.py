@@ -13,6 +13,7 @@ from mt_clip_factory.factory.auto_factory_folder_dto import (
 )
 from mt_clip_factory.factory.production_order_dto import (
     ProductionOrderDetailsDTO,
+    ProductionOrderEventDTO,
     ProductionOrderItemDTO,
     ProductionOrderStageDTO,
     ProductionOrderSummaryDTO,
@@ -145,8 +146,11 @@ class FakeAutoFactoryFolderService:
 class FakeProductionOrderService:
     def __init__(self) -> None:
         self.create_calls: list[tuple[str, str | None, bool]] = []
-        self.create_order_calls: list[tuple[str, str | None]] = []
+        self.create_order_calls: list[tuple[str, str | None, bool, str | None, str | None]] = []
         self.run_order_calls: list[tuple[int, bool]] = []
+        self.resume_order_calls: list[int] = []
+        self.pause_calls: list[int] = []
+        self.stop_calls: list[int] = []
         self.get_calls: list[int] = []
         self._details = ProductionOrderDetailsDTO(
             production_order_id=41,
@@ -155,7 +159,15 @@ class FakeProductionOrderService:
             source_mode="folder_control_surface",
             requested_by=None,
             strict_fulfillment=True,
+            preview_generation_enabled=True,
+            run_mode="materialize_and_build_previews",
+            source_root="F:\\batch_root",
             status="succeeded",
+            lease_owner=None,
+            lease_acquired_at=None,
+            lease_heartbeat_at=None,
+            lease_expires_at=None,
+            blocking_reason=None,
             created_at="2026-06-13 12:00:00",
             started_at="2026-06-13 12:00:01",
             finished_at="2026-06-13 12:00:05",
@@ -189,6 +201,20 @@ class FakeProductionOrderService:
                     detail_json='{"recipe_code":"tea_r0001"}',
                     created_at="2026-06-13 12:00:02",
                     updated_at="2026-06-13 12:00:02",
+                ),
+            ),
+            events=(
+                ProductionOrderEventDTO(
+                    production_order_event_id=21,
+                    sequence_index=1,
+                    event_type="run_completed",
+                    status="succeeded",
+                    message="Completed production order uat_batch_20260613_120000_000001 with status succeeded.",
+                    production_order_item_id=None,
+                    stage_name=None,
+                    worker_id=None,
+                    detail_json=None,
+                    created_at="2026-06-13 12:00:05",
                 ),
             ),
         )
@@ -229,12 +255,27 @@ class FakeProductionOrderService:
         source_mode: str,
         order_code: str | None = None,
         requested_by: str | None = None,
+        build_previews: bool = True,
+        run_mode: str | None = None,
+        source_root: str | None = None,
     ) -> int:
-        self.create_order_calls.append((order.batch_code, order_code))
+        self.create_order_calls.append((order.batch_code, order_code, build_previews, run_mode, source_root))
         return self._details.production_order_id
 
     def run_order(self, production_order_id: int, *, build_previews: bool = True) -> ProductionOrderDetailsDTO:
         self.run_order_calls.append((production_order_id, build_previews))
+        return self._details
+
+    def resume_order(self, production_order_id: int) -> ProductionOrderDetailsDTO:
+        self.resume_order_calls.append(production_order_id)
+        return self._details
+
+    def request_pause(self, production_order_id: int) -> ProductionOrderDetailsDTO:
+        self.pause_calls.append(production_order_id)
+        return self._details
+
+    def request_stop(self, production_order_id: int) -> ProductionOrderDetailsDTO:
+        self.stop_calls.append(production_order_id)
         return self._details
 
     def get_order(self, production_order_id: int) -> ProductionOrderDetailsDTO:
@@ -298,6 +339,9 @@ def test_auto_factory_control_view_model_runs_materialization_with_preview_mode(
     assert len(view_model.recent_orders) == 1
     assert folder_service.calls == [("F:\\batch_root", "campaign_launch", 1, False)]
     assert order_service.create_order_calls[0][0] == "campaign_launch"
+    assert order_service.create_order_calls[0][2] is True
+    assert order_service.create_order_calls[0][3] == AutoFactoryControlViewModel.RUN_MODE_MATERIALIZE_AND_PREVIEWS
+    assert order_service.create_order_calls[0][4] == "F:\\batch_root"
     assert order_service.run_order_calls == [(41, True)]
     assert "Production order" in view_model.feedback
     assert "succeeded" in view_model.feedback

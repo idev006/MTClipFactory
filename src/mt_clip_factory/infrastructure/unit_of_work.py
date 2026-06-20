@@ -15,6 +15,7 @@ from mt_clip_factory.infrastructure.factory_repositories import SqlAlchemyRecipe
 from mt_clip_factory.infrastructure.job_repositories import SqlAlchemyJobRepository
 from mt_clip_factory.infrastructure.output_repositories import SqlAlchemyOutputRepository
 from mt_clip_factory.infrastructure.production_order_repositories import (
+    SqlAlchemyProductionOrderEventRepository,
     SqlAlchemyProductionOrderRepository,
     SqlAlchemyProductionOrderStageRepository,
 )
@@ -41,6 +42,7 @@ class SqlAlchemyUnitOfWork:
         timeline_segment_repository_type: type[SqlAlchemyTimelineSegmentRepository] = SqlAlchemyTimelineSegmentRepository,
         production_order_repository_type: type[SqlAlchemyProductionOrderRepository] = SqlAlchemyProductionOrderRepository,
         production_order_stage_repository_type: type[SqlAlchemyProductionOrderStageRepository] = SqlAlchemyProductionOrderStageRepository,
+        production_order_event_repository_type: type[SqlAlchemyProductionOrderEventRepository] = SqlAlchemyProductionOrderEventRepository,
     ) -> None:
         self._session_factory = session_factory
         self._product_repository_type = product_repository_type
@@ -55,6 +57,7 @@ class SqlAlchemyUnitOfWork:
         self._timeline_segment_repository_type = timeline_segment_repository_type
         self._production_order_repository_type = production_order_repository_type
         self._production_order_stage_repository_type = production_order_stage_repository_type
+        self._production_order_event_repository_type = production_order_event_repository_type
         self.session: Session | None = None
         self.products: SqlAlchemyProductRepository
         self.assets: SqlAlchemyAssetRepository
@@ -68,6 +71,7 @@ class SqlAlchemyUnitOfWork:
         self.timeline_segments: SqlAlchemyTimelineSegmentRepository
         self.production_orders: SqlAlchemyProductionOrderRepository
         self.production_order_stages: SqlAlchemyProductionOrderStageRepository
+        self.production_order_events: SqlAlchemyProductionOrderEventRepository
 
     def __enter__(self) -> "SqlAlchemyUnitOfWork":
         self.session = self._session_factory()
@@ -83,6 +87,7 @@ class SqlAlchemyUnitOfWork:
         self.timeline_segments = self._timeline_segment_repository_type(self.session)
         self.production_orders = self._production_order_repository_type(self.session)
         self.production_order_stages = self._production_order_stage_repository_type(self.session)
+        self.production_order_events = self._production_order_event_repository_type(self.session)
         return self
 
     def __exit__(

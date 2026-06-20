@@ -4,6 +4,8 @@ This document is the SSOT for the first live-progress execution slice of the des
 
 It extends [63_Auto_Factory_Operations_Control_Requirements_2026-06-19.md](/F:/programming/python/MTClipFactory/doc/63_Auto_Factory_Operations_Control_Requirements_2026-06-19.md), [69_Auto_Factory_Tabbed_Workspace_Layout_2026-06-20.md](/F:/programming/python/MTClipFactory/doc/69_Auto_Factory_Tabbed_Workspace_Layout_2026-06-20.md), and [35_Production_Order_And_Orchestration_Workflow_2026-06-13.md](/F:/programming/python/MTClipFactory/doc/35_Production_Order_And_Orchestration_Workflow_2026-06-13.md).
 
+Historical note: this document remains the SSOT for the background-worker plus live-progress groundwork slice only. Backend-functional local-worker `Pause Run`, `Stop Run`, and `Resume Run` semantics are now defined in [71_Auto_Factory_Persisted_Run_Control_Local_Worker_Baseline_2026-06-20.md](/F:/programming/python/MTClipFactory/doc/71_Auto_Factory_Persisted_Run_Control_Local_Worker_Baseline_2026-06-20.md).
+
 ## Purpose
 
 - let operators press `Run Auto Factory` without freezing the desktop window
@@ -63,7 +65,7 @@ The `Overview` tab now includes a dedicated `Run Progress` panel that reports:
 
 - `Refresh Progress` is active and truthful
 - `Pause Run`, `Stop Run`, and `Resume Run` are now visible as the intended operator command surface
-- those three controls still report `pending backend support` because the system does not yet persist safe-checkpoint operator intents or worker leases
+- in this groundwork-only slice, those three controls still report `pending backend support` because the system does not yet persist safe-checkpoint operator intents or worker leases
 
 ## Workflow
 
@@ -111,7 +113,7 @@ sequenceDiagram
 - current active-worker truth is still `single local worker` only
 - progress is derived from persisted production-order state plus current run context
 - `Pause`, `Stop`, and `Resume` are not claimed as safe or functional yet
-- the UI must continue to say `pending backend support` until persisted lease and safe-checkpoint semantics are delivered
+- in this groundwork-only slice, the UI must continue to say `pending backend support` until persisted lease and safe-checkpoint semantics are delivered
 
 ## Acceptance Criteria
 

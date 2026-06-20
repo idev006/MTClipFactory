@@ -50,6 +50,20 @@ class ProductionOrderSummaryDTO:
 
 
 @dataclass(slots=True, frozen=True)
+class ProductionOrderEventDTO:
+    production_order_event_id: int
+    sequence_index: int
+    event_type: str
+    status: str
+    message: str
+    production_order_item_id: int | None
+    stage_name: str | None
+    worker_id: str | None
+    detail_json: str | None
+    created_at: str
+
+
+@dataclass(slots=True, frozen=True)
 class ProductionOrderDetailsDTO:
     production_order_id: int
     order_code: str
@@ -57,9 +71,18 @@ class ProductionOrderDetailsDTO:
     source_mode: str
     requested_by: str | None
     strict_fulfillment: bool
+    preview_generation_enabled: bool
+    run_mode: str | None
+    source_root: str | None
     status: str
+    lease_owner: str | None
+    lease_acquired_at: str | None
+    lease_heartbeat_at: str | None
+    lease_expires_at: str | None
+    blocking_reason: str | None
     created_at: str
     started_at: str | None
     finished_at: str | None
     items: tuple[ProductionOrderItemDTO, ...]
     stages: tuple[ProductionOrderStageDTO, ...]
+    events: tuple[ProductionOrderEventDTO, ...]

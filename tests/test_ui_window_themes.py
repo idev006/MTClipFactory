@@ -264,6 +264,9 @@ class FakeAutoFactoryControlViewModel(QObject):
             monitored_order_code=None,
             order_status=None,
             current_stage="running_intake",
+            lease_owner=None,
+            lease_expires_at=None,
+            lease_heartbeat_at=None,
             total_products=0,
             products_with_stage_activity=0,
             total_requested_outputs=0,
@@ -316,9 +319,17 @@ class FakeAutoFactoryControlViewModel(QObject):
         self.feedback = "stop pending"
         self.feedback_changed.emit()
 
-    def request_resume(self) -> None:
-        self.feedback = "resume pending"
-        self.feedback_changed.emit()
+    def get_resume_order_id(self) -> int:
+        return 1
+
+    def mark_resume_started(self, production_order_id: int) -> None:
+        self.monitored_order_id = production_order_id
+        self.run_active = True
+        self.run_active_changed.emit()
+
+    def execute_resume_order(self, production_order_id: int):  # noqa: ANN001
+        del production_order_id
+        return object()
 
 
 def test_primary_windows_apply_app_theme(qapp: QApplication) -> None:

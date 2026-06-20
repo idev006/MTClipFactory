@@ -7,12 +7,14 @@ from sqlalchemy.orm import Session
 
 from mt_clip_factory.domain.enums import OrchestrationStatus
 from mt_clip_factory.domain.production_orders import (
+    ProductionOrderEvent,
     ProductionOrder,
     ProductionOrderItem,
     ProductionOrderStage,
     ProductionOrderSummary,
 )
 from mt_clip_factory.infrastructure.models import (
+    ProductionOrderEventModel,
     ProductionOrderItemModel,
     ProductionOrderModel,
     ProductionOrderStageModel,
@@ -30,7 +32,15 @@ class SqlAlchemyProductionOrderRepository:
             source_mode=order.source_mode,
             requested_by=order.requested_by,
             strict_fulfillment=order.strict_fulfillment,
+            preview_generation_enabled=order.preview_generation_enabled,
+            run_mode=order.run_mode,
+            source_root=order.source_root,
             status=order.status.value,
+            lease_owner=order.lease_owner,
+            lease_acquired_at=order.lease_acquired_at,
+            lease_heartbeat_at=order.lease_heartbeat_at,
+            lease_expires_at=order.lease_expires_at,
+            blocking_reason=order.blocking_reason,
             created_at=order.created_at,
             started_at=order.started_at,
             finished_at=order.finished_at,
@@ -57,6 +67,14 @@ class SqlAlchemyProductionOrderRepository:
             raise ValueError(f"Unknown production order id: {order.id}")
         model.status = order.status.value
         model.requested_by = order.requested_by
+        model.preview_generation_enabled = order.preview_generation_enabled
+        model.run_mode = order.run_mode
+        model.source_root = order.source_root
+        model.lease_owner = order.lease_owner
+        model.lease_acquired_at = order.lease_acquired_at
+        model.lease_heartbeat_at = order.lease_heartbeat_at
+        model.lease_expires_at = order.lease_expires_at
+        model.blocking_reason = order.blocking_reason
         model.started_at = order.started_at
         model.finished_at = order.finished_at
         self._session.flush()
@@ -196,6 +214,38 @@ class SqlAlchemyProductionOrderStageRepository:
         return [_to_stage(row) for row in rows]
 
 
+class SqlAlchemyProductionOrderEventRepository:
+    def __init__(self, session: Session) -> None:
+        self._session = session
+
+    def add(self, event: ProductionOrderEvent) -> ProductionOrderEvent:
+        model = ProductionOrderEventModel(
+            production_order_id=event.production_order_id,
+            production_order_item_id=event.production_order_item_id,
+            sequence_index=event.sequence_index,
+            event_type=event.event_type,
+            status=event.status.value,
+            message=event.message,
+            stage_name=event.stage_name,
+            worker_id=event.worker_id,
+            detail_json=event.detail_json,
+            created_at=event.created_at,
+        )
+        self._session.add(model)
+        self._session.flush()
+        event.id = model.id
+        return event
+
+    def list_by_order(self, production_order_id: int) -> Sequence[ProductionOrderEvent]:
+        statement = (
+            select(ProductionOrderEventModel)
+            .where(ProductionOrderEventModel.production_order_id == production_order_id)
+            .order_by(ProductionOrderEventModel.sequence_index.asc(), ProductionOrderEventModel.id.asc())
+        )
+        rows = self._session.execute(statement).scalars().all()
+        return [_to_event(row) for row in rows]
+
+
 def _to_order(model: ProductionOrderModel) -> ProductionOrder:
     return ProductionOrder(
         id=model.id,
@@ -204,7 +254,15 @@ def _to_order(model: ProductionOrderModel) -> ProductionOrder:
         source_mode=model.source_mode,
         requested_by=model.requested_by,
         strict_fulfillment=model.strict_fulfillment,
+        preview_generation_enabled=model.preview_generation_enabled,
+        run_mode=model.run_mode,
+        source_root=model.source_root,
         status=OrchestrationStatus(model.status),
+        lease_owner=model.lease_owner,
+        lease_acquired_at=model.lease_acquired_at,
+        lease_heartbeat_at=model.lease_heartbeat_at,
+        lease_expires_at=model.lease_expires_at,
+        blocking_reason=model.blocking_reason,
         created_at=model.created_at,
         started_at=model.started_at,
         finished_at=model.finished_at,
@@ -244,4 +302,20 @@ def _to_stage(model: ProductionOrderStageModel) -> ProductionOrderStage:
         detail_json=model.detail_json,
         created_at=model.created_at,
         updated_at=model.updated_at,
+    )
+
+
+def _to_event(model: ProductionOrderEventModel) -> ProductionOrderEvent:
+    return ProductionOrderEvent(
+        id=model.id,
+        production_order_id=model.production_order_id,
+        production_order_item_id=model.production_order_item_id,
+        sequence_index=model.sequence_index,
+        event_type=model.event_type,
+        status=OrchestrationStatus(model.status),
+        message=model.message,
+        stage_name=model.stage_name,
+        worker_id=model.worker_id,
+        detail_json=model.detail_json,
+        created_at=model.created_at,
     )

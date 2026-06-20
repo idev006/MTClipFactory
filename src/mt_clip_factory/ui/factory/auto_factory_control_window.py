@@ -367,9 +367,17 @@ class AutoFactoryControlWindow(QMainWindow):
             stretch_columns=(1, 7),
             interactive_widths={4: 90, 5: 90, 6: 90},
         )
+        self.order_events_table = QTableWidget(0, 5)
+        self._configure_table(
+            self.order_events_table,
+            ["Seq", "Event", "Status", "Stage", "Message"],
+            stretch_columns=(4,),
+            interactive_widths={4: 360},
+        )
         layout.addWidget(self.order_summary_text)
         layout.addWidget(self.order_product_progress_table)
         layout.addWidget(self.order_stages_table)
+        layout.addWidget(self.order_events_table)
         return group
 
     def _build_recent_orders_group(self) -> QGroupBox:
@@ -426,6 +434,8 @@ class AutoFactoryControlWindow(QMainWindow):
     def _refresh_run_controls(self) -> None:
         run_active = self._view_model.run_active
         has_order_context = self._view_model.monitored_order_id is not None or self._view_model.selected_order is not None
+        order_status = None if self._view_model.selected_order is None else self._view_model.selected_order.status
+        active_worker_count = self._view_model.progress_snapshot.active_worker_count
         self.run_button.setEnabled(not run_active)
         self.browse_button.setEnabled(not run_active)
         self.batch_code_input.setEnabled(not run_active)
@@ -433,9 +443,18 @@ class AutoFactoryControlWindow(QMainWindow):
         self.run_mode_combo.setEnabled(not run_active)
         self.refresh_orders_button.setEnabled(not run_active)
         self.refresh_progress_button.setEnabled(has_order_context or run_active)
-        self.pause_button.setEnabled(has_order_context)
-        self.stop_button.setEnabled(has_order_context)
-        self.resume_button.setEnabled(has_order_context)
+        self.pause_button.setEnabled(has_order_context and order_status in {"leased", "processing", "resume_requested"})
+        self.stop_button.setEnabled(
+            has_order_context and order_status in {"leased", "processing", "pause_requested", "paused", "resume_requested"}
+        )
+        self.resume_button.setEnabled(
+            has_order_context
+            and not run_active
+            and (
+                order_status in {"paused", "stopped", "failed_retryable", "review_required", "blocked"}
+                or (order_status in {"processing", "pause_requested", "stop_requested"} and active_worker_count == 0)
+            )
+        )
 
     def _refresh_run_mode_hint(self) -> None:
         run_mode = str(self.run_mode_combo.currentData())
@@ -569,6 +588,7 @@ class AutoFactoryControlWindow(QMainWindow):
             self.order_summary_text.setPlainText("No production order selected.")
             self.order_product_progress_table.setRowCount(0)
             self.order_stages_table.setRowCount(0)
+            self.order_events_table.setRowCount(0)
             self._refresh_run_controls()
             return
 
@@ -593,6 +613,17 @@ class AutoFactoryControlWindow(QMainWindow):
             ]
             for column_index, value in enumerate(values):
                 self.order_stages_table.setItem(row_index, column_index, QTableWidgetItem(value))
+        self.order_events_table.setRowCount(len(selected_order.events))
+        for row_index, event in enumerate(selected_order.events):
+            values = [
+                str(event.sequence_index),
+                event.event_type,
+                event.status,
+                event.stage_name or "",
+                event.message,
+            ]
+            for column_index, value in enumerate(values):
+                self.order_events_table.setItem(row_index, column_index, QTableWidgetItem(value))
         self._refresh_run_controls()
 
     def _refresh_recent_orders(self) -> None:
@@ -643,7 +674,34 @@ class AutoFactoryControlWindow(QMainWindow):
         self._view_model.mark_run_started(request)
         self.monitor_timer.start()
         self._run_thread = QThread(self)
-        self._run_worker = AutoFactoryRunWorker(self._view_model, request)
+        self._run_worker = AutoFactoryRunWorker(
+            self._view_model,
+            mode=AutoFactoryRunWorker.MODE_RUN_REQUEST,
+            request=request,
+        )
+        self._run_worker.moveToThread(self._run_thread)
+        self._run_thread.started.connect(self._run_worker.run)
+        self._run_worker.progress_changed.connect(self._view_model.update_progress_snapshot)
+        self._run_worker.completed.connect(self._handle_run_completed)
+        self._run_worker.failed.connect(self._handle_run_failed)
+        self._run_worker.finished.connect(self._finish_run_worker)
+        self._run_worker.finished.connect(self._run_thread.quit)
+        self._run_thread.finished.connect(self._cleanup_run_thread)
+        self._run_thread.finished.connect(self._run_thread.deleteLater)
+        self._run_thread.start()
+
+    def _start_resume_worker(self, production_order_id: int) -> None:
+        if self._run_thread is not None:
+            QMessageBox.information(self, "Auto Factory", "A run is already in progress.")
+            return
+        self._view_model.mark_resume_started(production_order_id)
+        self.monitor_timer.start()
+        self._run_thread = QThread(self)
+        self._run_worker = AutoFactoryRunWorker(
+            self._view_model,
+            mode=AutoFactoryRunWorker.MODE_RESUME_ORDER,
+            production_order_id=production_order_id,
+        )
         self._run_worker.moveToThread(self._run_thread)
         self._run_thread.started.connect(self._run_worker.run)
         self._run_worker.progress_changed.connect(self._view_model.update_progress_snapshot)
@@ -693,13 +751,24 @@ class AutoFactoryControlWindow(QMainWindow):
             set_feedback_message(self, str(exc))
 
     def _request_pause(self) -> None:
-        self._view_model.request_pause()
+        try:
+            self._view_model.request_pause()
+        except Exception as exc:
+            QMessageBox.warning(self, "Auto Factory", str(exc))
 
     def _request_stop(self) -> None:
-        self._view_model.request_stop()
+        try:
+            self._view_model.request_stop()
+        except Exception as exc:
+            QMessageBox.warning(self, "Auto Factory", str(exc))
 
     def _request_resume(self) -> None:
-        self._view_model.request_resume()
+        try:
+            production_order_id = self._view_model.get_resume_order_id()
+        except Exception as exc:
+            QMessageBox.warning(self, "Auto Factory", str(exc))
+            return
+        self._start_resume_worker(production_order_id)
 
     def _select_recent_order(self) -> None:
         selected_items = self.recent_orders_table.selectedItems()

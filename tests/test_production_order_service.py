@@ -1,11 +1,14 @@
 from __future__ import annotations
 
 from pathlib import Path
+from datetime import timedelta
 
 import pytest
 
 from mt_clip_factory.application.dto import CreateProductCommand
 from mt_clip_factory.application.services import ProductApplicationService
+from mt_clip_factory.domain.entities import utc_now
+from mt_clip_factory.domain.enums import OrchestrationStatus
 from mt_clip_factory.factory.audio_composition import PreviewAudioMixPlan
 from mt_clip_factory.factory.auto_factory import AutoFactoryBatchService
 from mt_clip_factory.factory.auto_factory_dto import AutoFactoryBatchOrderDTO, AutoFactoryProductRequestDTO
@@ -349,3 +352,95 @@ def test_production_order_service_records_terminal_materialization_failure(unit_
     assert details.stages[0].stage_name == "materialize"
     assert details.stages[0].status == "failed_terminal"
     assert details.stages[0].failure_class == "planning_capacity_shortfall"
+
+
+def test_production_order_service_pauses_at_safe_checkpoint(unit_of_work_factory, tmp_path) -> None:
+    product_service, _, _, service = _build_services(unit_of_work_factory, tmp_path)
+    product_service.create_product(CreateProductCommand(product_code="pauseable", product_name="Pauseable"))
+
+    order_id = service.create_order(
+        AutoFactoryBatchOrderDTO(
+            batch_code="pause_batch",
+            product_requests=(AutoFactoryProductRequestDTO(product_code="pauseable", requested_output_count=1),),
+        ),
+        source_mode="manual_batch",
+        order_code="pause_order_001",
+    )
+
+    with unit_of_work_factory() as uow:
+        order = uow.production_orders.get_by_id(order_id)
+        assert order is not None
+        now = utc_now()
+        order.status = OrchestrationStatus.PROCESSING
+        order.started_at = now
+        order.lease_owner = "worker_a"
+        order.lease_acquired_at = now
+        order.lease_heartbeat_at = now
+        order.lease_expires_at = now + timedelta(seconds=60)
+        uow.production_orders.update(order)
+        uow.commit()
+
+    requested = service.request_pause(order_id)
+
+    assert requested.status == "pause_requested"
+    assert service._consume_control_checkpoint(order_id, worker_id="worker_a") == OrchestrationStatus.PAUSED
+
+    paused = service.get_order(order_id)
+
+    assert paused.status == "paused"
+    assert paused.lease_owner is None
+    assert [event.event_type for event in paused.events][-2:] == ["pause_requested", "paused"]
+
+
+def test_production_order_service_resume_reuses_materialized_recipes_after_retryable_failure(
+    unit_of_work_factory,
+    tmp_path,
+) -> None:
+    fail_preview_stems = {"resume_resume_batch_001"}
+    product_service, asset_service, _, service = _build_services(
+        unit_of_work_factory,
+        tmp_path,
+        fail_preview_stems=fail_preview_stems,
+    )
+    product_id = product_service.create_product(CreateProductCommand(product_code="resume", product_name="Resume"))
+    _register_asset(
+        asset_service,
+        product_id=product_id,
+        tmp_path=tmp_path,
+        asset_type="foreground_video",
+        asset_code="fg_01",
+        file_name="fg01.mp4",
+    )
+    _register_asset(
+        asset_service,
+        product_id=product_id,
+        tmp_path=tmp_path,
+        asset_type="background_video",
+        asset_code="bg_01",
+        file_name="bg01.mp4",
+    )
+
+    first_run = service.create_and_run_order(
+        AutoFactoryBatchOrderDTO(
+            batch_code="resume_batch",
+            product_requests=(
+                AutoFactoryProductRequestDTO(
+                    product_code="resume",
+                    requested_output_count=1,
+                    fixed_duration_sec=15.0,
+                ),
+            ),
+        ),
+        source_mode="manual_batch",
+        order_code="resume_order_001",
+    )
+
+    assert first_run.status == "failed_retryable"
+
+    fail_preview_stems.clear()
+    resumed = service.resume_order(first_run.production_order_id)
+
+    assert resumed.status == "succeeded"
+    assert sum(1 for stage in resumed.stages if stage.stage_name == "materialize") == 1
+    assert sum(1 for stage in resumed.stages if stage.stage_name == "preview") == 2
+    assert any(event.event_type == "resume_requested" for event in resumed.events)

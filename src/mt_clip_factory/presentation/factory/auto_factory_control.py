@@ -3,6 +3,7 @@ from __future__ import annotations
 from dataclasses import dataclass
 from datetime import UTC, datetime
 from pathlib import Path
+import json
 
 from PySide6.QtCore import QObject, Property, Signal
 
@@ -11,10 +12,16 @@ from mt_clip_factory.factory.auto_factory_folder_dto import (
     AutoFactoryFolderPreflightReportDTO,
     AutoFactoryFolderRunReportDTO,
 )
-from mt_clip_factory.factory.production_order_dto import ProductionOrderDetailsDTO, ProductionOrderSummaryDTO
+from mt_clip_factory.factory.production_order_dto import (
+    ProductionOrderDetailsDTO,
+    ProductionOrderStageDTO,
+    ProductionOrderSummaryDTO,
+)
 from mt_clip_factory.factory.production_order_service import ProductionOrderService
 
 TERMINAL_STAGE_STATUSES = {"succeeded", "review_required", "failed_retryable", "failed_terminal", "cancelled"}
+ACTIVE_ORDER_STATUSES = {"leased", "processing", "pause_requested", "stop_requested", "resume_requested"}
+RESUMABLE_ORDER_STATUSES = {"paused", "stopped", "failed_retryable", "review_required", "blocked"}
 
 
 @dataclass(slots=True, frozen=True)
@@ -46,6 +53,9 @@ class AutoFactoryControlProgressSnapshot:
     monitored_order_code: str | None
     order_status: str | None
     current_stage: str | None
+    lease_owner: str | None
+    lease_expires_at: str | None
+    lease_heartbeat_at: str | None
     total_products: int
     products_with_stage_activity: int
     total_requested_outputs: int
@@ -72,6 +82,9 @@ class AutoFactoryControlProgressSnapshot:
             monitored_order_code=None,
             order_status=None,
             current_stage=None,
+            lease_owner=None,
+            lease_expires_at=None,
+            lease_heartbeat_at=None,
             total_products=0,
             products_with_stage_activity=0,
             total_requested_outputs=0,
@@ -84,7 +97,7 @@ class AutoFactoryControlProgressSnapshot:
             blocking_reason=None,
             started_at=None,
             finished_at=None,
-            command_note=_build_command_note(run_active=False),
+            command_note=_build_command_note(order_status=None, run_active=False),
         )
 
 
@@ -217,6 +230,30 @@ class AutoFactoryControlViewModel(QObject):
         self._set_feedback("Auto Factory run started.")
         self.update_progress_snapshot(_build_initial_progress_snapshot(request))
 
+    def mark_resume_started(self, production_order_id: int) -> None:
+        self._set_run_active(True)
+        self._set_status("running")
+        self._monitored_order_id = production_order_id
+        self._set_feedback(f"Resuming production order #{production_order_id}.")
+        try:
+            selected_order = self._production_order_service.get_order(production_order_id)
+        except Exception:
+            return
+        self._selected_order = selected_order
+        self.selected_order_changed.emit()
+        self.update_progress_snapshot(
+            _build_order_progress_snapshot(
+                selected_order,
+                request=_request_from_order(selected_order, fallback=self._run_request),
+                run_state="running",
+                phase="resuming_order",
+                command_note=_build_command_note(
+                    order_status=selected_order.status,
+                    run_active=True,
+                ),
+            )
+        )
+
     def execute_run_request(
         self,
         request: AutoFactoryControlRunRequest,
@@ -257,6 +294,9 @@ class AutoFactoryControlViewModel(QObject):
             run_report.order,
             source_mode="folder_control_surface",
             order_code=order_code,
+            build_previews=request.run_mode == self.RUN_MODE_MATERIALIZE_AND_PREVIEWS,
+            run_mode=request.run_mode,
+            source_root=request.root_folder,
         )
         if progress_callback is not None:
             progress_callback(
@@ -278,6 +318,18 @@ class AutoFactoryControlViewModel(QObject):
             selected_order=selected_order,
             created_order_id=order_id,
             created_order_code=order_code,
+        )
+
+    def execute_resume_order(self, production_order_id: int) -> AutoFactoryControlExecutionResult:
+        selected_order = self._production_order_service.resume_order(production_order_id)
+        request = _request_from_order(selected_order, fallback=self._run_request)
+        return AutoFactoryControlExecutionResult(
+            request=request,
+            preflight_report=None,
+            run_report=self._run_report,
+            selected_order=selected_order,
+            created_order_id=selected_order.production_order_id,
+            created_order_code=selected_order.order_code,
         )
 
     def apply_execution_result(self, result: AutoFactoryControlExecutionResult) -> None:
@@ -302,9 +354,12 @@ class AutoFactoryControlViewModel(QObject):
                 _build_order_progress_snapshot(
                     result.selected_order,
                     request=result.request,
-                    run_state="completed",
-                    phase="completed",
-                    command_note=_build_command_note(run_active=False),
+                    run_state=_snapshot_run_state(result.selected_order.status, run_active=False),
+                    phase="completed" if result.selected_order.status in TERMINAL_STAGE_STATUSES else "order_controlled",
+                    command_note=_build_command_note(
+                        order_status=result.selected_order.status,
+                        run_active=False,
+                    ),
                 )
             )
             self._set_feedback(_build_run_feedback(result.run_report, result.selected_order))
@@ -326,6 +381,9 @@ class AutoFactoryControlViewModel(QObject):
                 monitored_order_code=None,
                 order_status="failed_terminal",
                 current_stage=self._progress_snapshot.current_stage,
+                lease_owner=None,
+                lease_expires_at=None,
+                lease_heartbeat_at=None,
                 total_products=self._progress_snapshot.total_products,
                 products_with_stage_activity=self._progress_snapshot.products_with_stage_activity,
                 total_requested_outputs=self._progress_snapshot.total_requested_outputs,
@@ -338,7 +396,7 @@ class AutoFactoryControlViewModel(QObject):
                 blocking_reason=error_message,
                 started_at=self._progress_snapshot.started_at,
                 finished_at=None,
-                command_note=_build_command_note(run_active=False),
+                command_note=_build_command_note(order_status="failed_terminal", run_active=False),
             )
         )
         self._set_run_active(False)
@@ -360,9 +418,9 @@ class AutoFactoryControlViewModel(QObject):
             _build_order_progress_snapshot(
                 selected_order,
                 request=self._run_request,
-                run_state="running" if self._run_active else "ready",
+                run_state=_snapshot_run_state(selected_order.status, run_active=self._run_active),
                 phase="monitoring_order",
-                command_note=_build_command_note(run_active=self._run_active),
+                command_note=_build_command_note(order_status=selected_order.status, run_active=self._run_active),
             )
         )
 
@@ -384,23 +442,49 @@ class AutoFactoryControlViewModel(QObject):
         self.update_progress_snapshot(
             _build_order_progress_snapshot(
                 self._selected_order,
-                request=self._run_request,
-                run_state="running" if self._run_active else "ready",
+                request=_request_from_order(self._selected_order, fallback=self._run_request),
+                run_state=_snapshot_run_state(self._selected_order.status, run_active=self._run_active),
                 phase="selected_order",
-                command_note=_build_command_note(run_active=self._run_active),
+                command_note=_build_command_note(order_status=self._selected_order.status, run_active=self._run_active),
             )
         )
         self._set_feedback(f"Loaded production order #{production_order_id}.")
         self._set_status("ready")
 
     def request_pause(self) -> None:
-        self._set_feedback(_build_pending_control_feedback("Pause"))
+        order = self._require_order_context()
+        updated = self._production_order_service.request_pause(order.production_order_id)
+        self._selected_order = updated
+        self.selected_order_changed.emit()
+        self.update_progress_snapshot(
+            _build_order_progress_snapshot(
+                updated,
+                request=_request_from_order(updated, fallback=self._run_request),
+                run_state=_snapshot_run_state(updated.status, run_active=self._run_active),
+                phase="pause_requested",
+                command_note=_build_command_note(order_status=updated.status, run_active=self._run_active),
+            )
+        )
+        self._set_feedback(f"Pause requested for production order {updated.order_code}.")
 
     def request_stop(self) -> None:
-        self._set_feedback(_build_pending_control_feedback("Stop"))
+        order = self._require_order_context()
+        updated = self._production_order_service.request_stop(order.production_order_id)
+        self._selected_order = updated
+        self.selected_order_changed.emit()
+        self.update_progress_snapshot(
+            _build_order_progress_snapshot(
+                updated,
+                request=_request_from_order(updated, fallback=self._run_request),
+                run_state=_snapshot_run_state(updated.status, run_active=self._run_active),
+                phase="stop_requested" if updated.status == "stop_requested" else "stopped",
+                command_note=_build_command_note(order_status=updated.status, run_active=self._run_active),
+            )
+        )
+        self._set_feedback(f"Stop requested for production order {updated.order_code}.")
 
-    def request_resume(self) -> None:
-        self._set_feedback(_build_pending_control_feedback("Resume"))
+    def get_resume_order_id(self) -> int:
+        return self._require_order_context().production_order_id
 
     def run_batch_root(
         self,
@@ -433,6 +517,16 @@ class AutoFactoryControlViewModel(QObject):
             return
         self._run_active = value
         self.run_active_changed.emit()
+
+    def _require_order_context(self) -> ProductionOrderDetailsDTO:
+        if self._selected_order is not None:
+            return self._selected_order
+        if self._monitored_order_id is not None:
+            order = self._production_order_service.get_order(self._monitored_order_id)
+            self._selected_order = order
+            self.selected_order_changed.emit()
+            return order
+        raise ValueError("Select or start a production order first.")
 
 
 def _build_order_code(batch_code: str) -> str:
@@ -486,6 +580,9 @@ def _build_initial_progress_snapshot(request: AutoFactoryControlRunRequest) -> A
         monitored_order_code=None,
         order_status=None,
         current_stage=resolved_phase,
+        lease_owner=None,
+        lease_expires_at=None,
+        lease_heartbeat_at=None,
         total_products=0,
         products_with_stage_activity=0,
         total_requested_outputs=0,
@@ -498,7 +595,7 @@ def _build_initial_progress_snapshot(request: AutoFactoryControlRunRequest) -> A
         blocking_reason=None,
         started_at=None,
         finished_at=None,
-        command_note=_build_command_note(run_active=True),
+        command_note=_build_command_note(order_status="processing", run_active=True),
     )
 
 
@@ -516,6 +613,9 @@ def _build_preflight_progress_snapshot(
         monitored_order_code=None,
         order_status=preflight_report.status,
         current_stage="audit_complete",
+        lease_owner=None,
+        lease_expires_at=None,
+        lease_heartbeat_at=None,
         total_products=len(preflight_report.product_reports),
         products_with_stage_activity=len(preflight_report.product_reports),
         total_requested_outputs=sum(report.requested_output_count or 0 for report in preflight_report.product_reports),
@@ -528,7 +628,7 @@ def _build_preflight_progress_snapshot(
         blocking_reason=None if preflight_report.error_count == 0 else "Blocking preflight issues detected.",
         started_at=None,
         finished_at=None,
-        command_note=_build_command_note(run_active=False),
+        command_note=_build_command_note(order_status=preflight_report.status, run_active=False),
     )
 
 
@@ -547,6 +647,9 @@ def _build_intake_progress_snapshot(
         monitored_order_code=None,
         order_status="intake_complete",
         current_stage="intake_complete",
+        lease_owner=None,
+        lease_expires_at=None,
+        lease_heartbeat_at=None,
         total_products=len(run_report.order.product_requests),
         products_with_stage_activity=len(run_report.product_reports),
         total_requested_outputs=total_requested_outputs,
@@ -559,7 +662,7 @@ def _build_intake_progress_snapshot(
         blocking_reason=None,
         started_at=None,
         finished_at=None,
-        command_note=_build_command_note(run_active=False),
+        command_note=_build_command_note(order_status="intake_complete", run_active=False),
     )
 
 
@@ -581,6 +684,9 @@ def _build_order_bootstrap_progress_snapshot(
         monitored_order_code=order_code,
         order_status="processing",
         current_stage="order_created",
+        lease_owner=None,
+        lease_expires_at=None,
+        lease_heartbeat_at=None,
         total_products=len(run_report.order.product_requests),
         products_with_stage_activity=0,
         total_requested_outputs=total_requested_outputs,
@@ -593,7 +699,7 @@ def _build_order_bootstrap_progress_snapshot(
         blocking_reason=None,
         started_at=None,
         finished_at=None,
-        command_note=_build_command_note(run_active=True),
+        command_note=_build_command_note(order_status="processing", run_active=True),
     )
 
 
@@ -605,50 +711,55 @@ def _build_order_progress_snapshot(
     phase: str,
     command_note: str,
 ) -> AutoFactoryControlProgressSnapshot:
-    latest_stage = None if not order.stages else max(order.stages, key=lambda stage: stage.sequence_index)
+    effective_stages = _effective_order_stages(order.stages)
+    latest_stage = None if not effective_stages else max(effective_stages, key=lambda stage: stage.sequence_index)
     product_ids_with_stage_activity = {
-        stage.production_order_item_id for stage in order.stages if stage.production_order_item_id is not None
+        stage.production_order_item_id for stage in effective_stages if stage.production_order_item_id is not None
     }
     materialized_recipe_count = len(
         {
             stage.recipe_id
-            for stage in order.stages
+            for stage in effective_stages
             if stage.stage_name == "materialize" and stage.status == "succeeded" and stage.recipe_id is not None
         }
     )
     preview_completed_count = sum(
-        1 for stage in order.stages if stage.stage_name == "preview" and stage.status == "succeeded"
+        1 for stage in effective_stages if stage.stage_name == "preview" and stage.status == "succeeded"
     )
     review_required_count = sum(
-        1 for stage in order.stages if stage.stage_name == "review" and stage.status == "review_required"
+        1 for stage in effective_stages if stage.stage_name == "review" and stage.status == "review_required"
     )
     total_requested_outputs = sum(item.requested_output_count for item in order.items)
-    blocking_reason = None
-    if latest_stage is not None and latest_stage.failure_class:
+    blocking_reason = order.blocking_reason
+    if blocking_reason is None and latest_stage is not None and latest_stage.failure_class:
         blocking_reason = latest_stage.failure_class
-    elif "failed" in order.status:
-        blocking_reason = order.status
+
+    latest_event = order.events[-1].message if order.events else None
 
     return AutoFactoryControlProgressSnapshot(
         run_state=run_state,
         phase=phase,
-        run_mode=None if request is None else request.run_mode,
-        root_folder=None if request is None else request.root_folder,
+        run_mode=(None if request is None else request.run_mode) or order.run_mode,
+        root_folder=(None if request is None else request.root_folder) or order.source_root,
         batch_code=order.batch_code,
         monitored_order_id=order.production_order_id,
         monitored_order_code=order.order_code,
         order_status=order.status,
         current_stage="queued" if latest_stage is None else latest_stage.stage_name,
+        lease_owner=order.lease_owner,
+        lease_expires_at=order.lease_expires_at,
+        lease_heartbeat_at=order.lease_heartbeat_at,
         total_products=len(order.items),
         products_with_stage_activity=len(product_ids_with_stage_activity),
         total_requested_outputs=total_requested_outputs,
         materialized_recipe_count=materialized_recipe_count,
         preview_completed_count=preview_completed_count,
         review_required_count=review_required_count,
-        stage_count=len(order.stages),
-        active_worker_count=1 if order.status == "processing" else 0,
+        stage_count=len(effective_stages),
+        active_worker_count=1 if order.lease_owner and order.status in ACTIVE_ORDER_STATUSES else 0,
         last_event=(
-            "Order created; waiting for first recorded stage."
+            latest_event
+            or "Order created; waiting for first recorded stage."
             if latest_stage is None
             else f"Last Stage #{latest_stage.sequence_index}: {latest_stage.stage_name} -> {latest_stage.status}"
         ),
@@ -659,21 +770,89 @@ def _build_order_progress_snapshot(
     )
 
 
-def _build_command_note(*, run_active: bool) -> str:
-    if run_active:
+def _build_command_note(*, order_status: str | None, run_active: bool) -> str:
+    if order_status in {"processing", "leased", "resume_requested"}:
         return (
-            "Live monitoring is active. Manual Refresh Progress is available. "
-            "Pause/Stop/Resume remain pending until persisted safe-checkpoint worker control is implemented."
+            "Live monitoring is active. Pause and Stop are persisted requests that apply at the next recipe-boundary "
+            "safe checkpoint. Resume is used after pause, stop, or stale-lease recovery."
         )
-    return (
-        "You can inspect order truth and refresh progress snapshots here. "
-        "Pause/Stop/Resume controls are intentionally not active yet because the backend does not yet persist "
-        "safe-checkpoint operator intents."
+    if order_status == "pause_requested":
+        return "Pause has been requested. The worker will drain the current recipe-boundary unit and then mark the run paused."
+    if order_status == "paused":
+        return "This run is paused. Resume continues remaining eligible work without redoing succeeded stages."
+    if order_status in {"stop_requested", "stopped"}:
+        return "This run is stopping or stopped. Resume continues remaining eligible work; completed work is preserved."
+    if order_status in RESUMABLE_ORDER_STATUSES:
+        return "This run can be resumed from persisted order, stage, and lease truth."
+    if run_active:
+        return "Live monitoring is active. Refresh Progress reads persisted order truth."
+    return "You can inspect persisted order truth here and refresh the latest run snapshot."
+
+
+def _snapshot_run_state(order_status: str, *, run_active: bool) -> str:
+    if run_active:
+        return "running"
+    if order_status in {"succeeded", "failed_retryable", "failed_terminal", "review_required", "cancelled"}:
+        return "completed"
+    if order_status in ACTIVE_ORDER_STATUSES:
+        return "ready"
+    return order_status
+
+
+def _request_from_order(
+    order: ProductionOrderDetailsDTO,
+    *,
+    fallback: AutoFactoryControlRunRequest | None,
+) -> AutoFactoryControlRunRequest:
+    if order.source_root and order.run_mode:
+        return AutoFactoryControlRunRequest(
+            root_folder=order.source_root,
+            batch_code=order.batch_code,
+            scan_depth=0 if fallback is None else fallback.scan_depth,
+            run_mode=order.run_mode,
+        )
+    if fallback is not None:
+        return fallback
+    return AutoFactoryControlRunRequest(
+        root_folder="",
+        batch_code=order.batch_code,
+        scan_depth=0,
+        run_mode=AutoFactoryControlViewModel.RUN_MODE_MATERIALIZE_AND_PREVIEWS
+        if order.preview_generation_enabled
+        else AutoFactoryControlViewModel.RUN_MODE_MATERIALIZE,
     )
 
 
-def _build_pending_control_feedback(command_name: str) -> str:
+def _effective_order_stages(stages: tuple[ProductionOrderStageDTO, ...]) -> tuple[ProductionOrderStageDTO, ...]:
+    latest_by_key: dict[tuple[object, ...], ProductionOrderStageDTO] = {}
+    for stage in stages:
+        latest_by_key[_effective_stage_key(stage)] = stage
+    return tuple(sorted(latest_by_key.values(), key=lambda item: (item.sequence_index, item.production_order_stage_id)))
+
+
+def _effective_stage_key(stage: ProductionOrderStageDTO) -> tuple[object, ...]:
+    recipe_code = _stage_detail_value(stage.detail_json, "recipe_code")
+    if stage.stage_name == "materialize":
+        return (stage.stage_name, stage.production_order_item_id, stage.recipe_id or recipe_code)
+    if stage.stage_name in {"preview", "review"}:
+        return (stage.stage_name, stage.recipe_id or stage.production_order_item_id)
     return (
-        f"{command_name} is not active yet. "
-        "The UI surface exists, but persisted pause/stop/resume semantics still need worker-lease and safe-checkpoint backend support."
+        stage.stage_name,
+        stage.stage_scope,
+        stage.production_order_item_id,
+        stage.recipe_id,
+        stage.output_id,
+        recipe_code,
     )
+
+
+def _stage_detail_value(detail_json: str | None, key: str) -> object | None:
+    if not detail_json:
+        return None
+    try:
+        payload = json.loads(detail_json)
+    except json.JSONDecodeError:
+        return None
+    if not isinstance(payload, dict):
+        return None
+    return payload.get(key)

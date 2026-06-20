@@ -32,9 +32,16 @@ class JobStatus(StrEnum):
 
 class OrchestrationStatus(StrEnum):
     QUEUED = "queued"
+    LEASED = "leased"
     PROCESSING = "processing"
+    PAUSE_REQUESTED = "pause_requested"
+    PAUSED = "paused"
+    STOP_REQUESTED = "stop_requested"
+    STOPPED = "stopped"
+    RESUME_REQUESTED = "resume_requested"
     SUCCEEDED = "succeeded"
     FAILED_RETRYABLE = "failed_retryable"
     FAILED_TERMINAL = "failed_terminal"
     REVIEW_REQUIRED = "review_required"
+    BLOCKED = "blocked"
     CANCELLED = "cancelled"

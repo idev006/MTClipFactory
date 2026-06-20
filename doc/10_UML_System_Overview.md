@@ -149,9 +149,12 @@ classDiagram
         +create_order(order,...)
         +run_order(order_id,...)
         +create_and_run_order(order,...)
+        +request_pause(order_id)
+        +request_stop(order_id)
+        +resume_order(order_id)
         +get_order(order_id)
         +list_orders(...)
-        +persist control-plane orchestration truth
+        +persist lease + heartbeat + event truth
     }
 
     class ReviewGateEvaluator {
@@ -264,7 +267,14 @@ classDiagram
         +order_code
         +batch_code
         +source_mode
+        +run_mode
+        +source_root
+        +preview_generation_enabled
         +status
+        +lease_owner
+        +lease_heartbeat_at
+        +lease_expires_at
+        +blocking_reason
     }
 
     class ProductionOrderStage {
@@ -274,6 +284,15 @@ classDiagram
         +job_id
         +recipe_id
         +output_id
+    }
+
+    class ProductionOrderEvent {
+        +sequence_index
+        +event_type
+        +status
+        +message
+        +stage_name
+        +worker_id
     }
 
     class MigrationGuard {
@@ -307,8 +326,13 @@ classDiagram
     class AutoFactoryControlViewModel {
         +load()
         +run_batch_root(...)
+        +refresh_progress()
+        +request_pause()
+        +request_stop()
+        +execute_resume_order(order_id)
         +select_order(production_order_id)
         +recent_orders
+        +progress_snapshot
         +run_report
         +selected_order
     }
@@ -380,8 +404,11 @@ classDiagram
     class AutoFactoryControlWindow {
         +browse root folder
         +run auto factory
+        +pause run
+        +stop run
+        +resume run
         +select recent order
-        +show intake and order truth
+        +show intake, order, lease, and event truth
     }
 
     class SqlAlchemyUnitOfWork {
@@ -394,6 +421,10 @@ classDiagram
         +composition_plans
         +render_decisions
         +timeline_segments
+        +production_orders
+        +production_order_items
+        +production_order_stages
+        +production_order_events
         +commit()
         +rollback()
     }
@@ -414,6 +445,11 @@ classDiagram
     class SqlAlchemyDecisionEventRepository {
         +add(event)
         +list_by_recipe(recipe_id)
+    }
+
+    class SqlAlchemyProductionOrderEventRepository {
+        +add(event)
+        +list_by_order(order_id)
     }
 
     class SqlAlchemyCompositionPlanRepository {
@@ -511,11 +547,13 @@ classDiagram
     SqlAlchemyUnitOfWork --> SqlAlchemyRecipeRepository
     SqlAlchemyUnitOfWork --> SqlAlchemyOutputRepository
     SqlAlchemyUnitOfWork --> SqlAlchemyDecisionEventRepository
+    SqlAlchemyUnitOfWork --> SqlAlchemyProductionOrderEventRepository
     SqlAlchemyUnitOfWork --> SqlAlchemyCompositionPlanRepository
     SqlAlchemyUnitOfWork --> SqlAlchemyRenderDecisionRepository
     SqlAlchemyUnitOfWork --> SqlAlchemyTimelineSegmentRepository
     SqlAlchemyRecipeRepository --> Recipe
     SqlAlchemyUnitOfWork --> Job
+    ProductionOrder --> ProductionOrderEvent
 ```
 
 ## Asset Artifact Sequence
@@ -695,29 +733,42 @@ sequenceDiagram
     participant View as AutoFactoryControlWindow
     participant VM as AutoFactoryControlViewModel
     participant OrderSvc as ProductionOrderService
-    participant Dispatch as Dispatch Controller
-    participant Worker as Execution Worker
+    participant Worker as AutoFactoryRunWorker
     participant State as State Plane
 
     Operator->>View: start auto run for selected root folder
-    View->>VM: start_auto_run(...)
-    VM->>OrderSvc: create order + persist run intent
-    VM->>Dispatch: dispatch order work
-    Dispatch->>State: claim leases
-    Worker->>State: heartbeat + progress + stage events
-    State-->>VM: persisted run/stage/job truth
-    VM-->>View: refresh live progress
+    View->>VM: prepare_run_request(...) + mark_run_started(...)
+    View->>Worker: start background run worker
+    Worker->>VM: execute_run_request(...)
+    VM->>OrderSvc: create_order(..., run_mode, source_root, build_previews)
+    VM->>OrderSvc: run_order(order_id)
+    loop while run is active
+        OrderSvc->>State: claim lease + heartbeat + stage/event truth
+        View->>VM: refresh_progress()
+        VM->>OrderSvc: get_order(order_id)
+        State-->>VM: persisted order, lease, and event truth
+        VM-->>View: refresh live progress + orders table + event history
+    end
     alt pause requested
-        Operator->>View: Pause
+        Operator->>View: Pause Run
         View->>VM: request_pause(order_id)
-        VM->>State: persist pause_requested
-        Dispatch->>State: stop new claims
-        Worker->>State: complete safe checkpoint
+        VM->>OrderSvc: request_pause(order_id)
+        OrderSvc->>State: persist pause_requested
+        OrderSvc->>State: settle to paused at next safe checkpoint
         State-->>VM: paused
+    else stop requested
+        Operator->>View: Stop Run
+        View->>VM: request_stop(order_id)
+        VM->>OrderSvc: request_stop(order_id)
+        OrderSvc->>State: persist stop_requested
+        OrderSvc->>State: settle to stopped at next safe checkpoint
+        State-->>VM: stopped
     else resume after interruption
-        Operator->>View: Resume
-        View->>VM: resume_order(order_id)
-        VM->>Dispatch: recover stale work and continue
+        Operator->>View: Resume Run
+        View->>Worker: start resume worker
+        Worker->>VM: execute_resume_order(order_id)
+        VM->>OrderSvc: resume_order(order_id)
+        OrderSvc->>State: recover stale lease + continue remaining eligible work
     end
 ```
 

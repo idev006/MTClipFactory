@@ -100,36 +100,47 @@ class AutoFactoryBatchService:
 
         created_recipes: list[MaterializedBatchRecipeDTO] = []
         for planned_recipe in plan.planned_recipes:
-            recipe_id = self._video_assembly_factory_service.create_recipe(
-                CreateRecipeCommand(
-                    product_id=planned_recipe.product_id,
-                    recipe_code=planned_recipe.recipe_code,
-                    target_platform=planned_recipe.target_platform,
-                    target_ratio=planned_recipe.target_ratio,
-                    duration_sec=planned_recipe.duration_sec,
-                )
-            )
-            for assignment in planned_recipe.assignments:
-                self._video_assembly_factory_service.assign_asset_to_recipe(
-                    AssignAssetToRecipeCommand(
-                        recipe_id=recipe_id,
-                        asset_id=assignment.asset_id,
-                        role=assignment.role,
-                    )
-                )
-            created_recipes.append(
-                MaterializedBatchRecipeDTO(
-                    recipe_id=recipe_id,
-                    product_id=planned_recipe.product_id,
-                    product_code=planned_recipe.product_code,
-                    recipe_code=planned_recipe.recipe_code,
-                    assignment_count=len(planned_recipe.assignments),
-                )
-            )
+            created_recipes.append(self.materialize_planned_recipe(planned_recipe))
 
         return AutoFactoryBatchMaterializationDTO(
             batch_code=plan.batch_code,
             created_recipes=tuple(created_recipes),
+        )
+
+    def materialize_planned_recipe(self, planned_recipe: PlannedBatchRecipeDTO) -> MaterializedBatchRecipeDTO:
+        existing_recipe = self._video_assembly_factory_service.get_recipe_by_code(planned_recipe.recipe_code)
+        if existing_recipe is not None:
+            return MaterializedBatchRecipeDTO(
+                recipe_id=existing_recipe.recipe_id,
+                product_id=planned_recipe.product_id,
+                product_code=planned_recipe.product_code,
+                recipe_code=planned_recipe.recipe_code,
+                assignment_count=len(existing_recipe.items),
+            )
+
+        recipe_id = self._video_assembly_factory_service.create_recipe(
+            CreateRecipeCommand(
+                product_id=planned_recipe.product_id,
+                recipe_code=planned_recipe.recipe_code,
+                target_platform=planned_recipe.target_platform,
+                target_ratio=planned_recipe.target_ratio,
+                duration_sec=planned_recipe.duration_sec,
+            )
+        )
+        for assignment in planned_recipe.assignments:
+            self._video_assembly_factory_service.assign_asset_to_recipe(
+                AssignAssetToRecipeCommand(
+                    recipe_id=recipe_id,
+                    asset_id=assignment.asset_id,
+                    role=assignment.role,
+                )
+            )
+        return MaterializedBatchRecipeDTO(
+            recipe_id=recipe_id,
+            product_id=planned_recipe.product_id,
+            product_code=planned_recipe.product_code,
+            recipe_code=planned_recipe.recipe_code,
+            assignment_count=len(planned_recipe.assignments),
         )
 
     def build_previews_for_materialized_batch(
@@ -138,34 +149,11 @@ class AutoFactoryBatchService:
     ) -> AutoFactoryBatchPreviewProductionDTO:
         recipe_results: list[AutoFactoryPreviewRecipeResultDTO] = []
         for created_recipe in materialization.created_recipes:
-            preview_job_id = self._video_assembly_factory_service.enqueue_preview_job(
-                created_recipe.recipe_id,
-                batch_code=materialization.batch_code,
-                source_mode="auto_factory_folder",
-            )
-            error_message: str | None = None
-            try:
-                self._video_assembly_factory_service.run_preview_job(preview_job_id)
-            except Exception as exc:
-                error_message = str(exc)
-
-            job_summary = self._get_preview_job_summary(preview_job_id)
-            recipe = self._video_assembly_factory_service.get_recipe(created_recipe.recipe_id)
-            output = self._latest_output_for_recipe(created_recipe.recipe_id) if job_summary.status == "done" else None
             recipe_results.append(
-                AutoFactoryPreviewRecipeResultDTO(
-                    recipe_id=created_recipe.recipe_id,
-                    product_id=created_recipe.product_id,
-                    product_code=created_recipe.product_code,
-                    recipe_code=created_recipe.recipe_code,
-                    preview_job_id=preview_job_id,
-                    job_status=job_summary.status,
-                    recipe_status=recipe.status,
-                    review_required=recipe.status == "needs_review",
-                    output_id=None if output is None else output.output_id,
-                    output_code=None if output is None else output.output_code,
-                    output_path=job_summary.output_path,
-                    error_message=job_summary.error_message or error_message,
+                self.build_preview_for_materialized_recipe(
+                    created_recipe,
+                    batch_code=materialization.batch_code,
+                    source_mode="auto_factory_folder",
                 )
             )
 
@@ -175,6 +163,42 @@ class AutoFactoryBatchService:
             recipe_results=tuple(recipe_results),
             succeeded_recipe_count=succeeded_recipe_count,
             failed_recipe_count=len(recipe_results) - succeeded_recipe_count,
+        )
+
+    def build_preview_for_materialized_recipe(
+        self,
+        created_recipe: MaterializedBatchRecipeDTO,
+        *,
+        batch_code: str,
+        source_mode: str = "auto_factory_folder",
+    ) -> AutoFactoryPreviewRecipeResultDTO:
+        preview_job_id = self._video_assembly_factory_service.enqueue_preview_job(
+            created_recipe.recipe_id,
+            batch_code=batch_code,
+            source_mode=source_mode,
+        )
+        error_message: str | None = None
+        try:
+            self._video_assembly_factory_service.run_preview_job(preview_job_id)
+        except Exception as exc:
+            error_message = str(exc)
+
+        job_summary = self._get_preview_job_summary(preview_job_id)
+        recipe = self._video_assembly_factory_service.get_recipe(created_recipe.recipe_id)
+        output = self._latest_output_for_recipe(created_recipe.recipe_id) if job_summary.status == "done" else None
+        return AutoFactoryPreviewRecipeResultDTO(
+            recipe_id=created_recipe.recipe_id,
+            product_id=created_recipe.product_id,
+            product_code=created_recipe.product_code,
+            recipe_code=created_recipe.recipe_code,
+            preview_job_id=preview_job_id,
+            job_status=job_summary.status,
+            recipe_status=recipe.status,
+            review_required=recipe.status == "needs_review",
+            output_id=None if output is None else output.output_id,
+            output_code=None if output is None else output.output_code,
+            output_path=job_summary.output_path,
+            error_message=job_summary.error_message or error_message,
         )
 
     def materialize_batch_and_build_previews(self, order: AutoFactoryBatchOrderDTO) -> AutoFactoryBatchExecutionDTO:

@@ -190,6 +190,42 @@ class VideoAssemblyFactoryService:
                 duplicate_risk=recipe.duplicate_risk,
             )
 
+    def get_recipe_by_code(self, recipe_code: str) -> RecipeDetailsDTO | None:
+        with self._unit_of_work_factory() as uow:
+            recipe = uow.recipes.get_by_code(_slugify_recipe_code(recipe_code))
+            if recipe is None or recipe.id is None:
+                return None
+            items = tuple(
+                RecipeItemDTO(
+                    recipe_item_id=item.id or 0,
+                    asset_id=item.asset_id,
+                    asset_code=item.asset_code,
+                    asset_type=item.asset_type,
+                    role=item.role,
+                )
+                for item in uow.recipes.list_items(recipe.id)
+            )
+            return RecipeDetailsDTO(
+                recipe_id=recipe.id,
+                product_id=recipe.product_id,
+                recipe_code=recipe.recipe_code,
+                target_platform=recipe.target_platform,
+                target_ratio=recipe.target_ratio,
+                duration_sec=recipe.duration_sec,
+                mood=recipe.mood,
+                script_angle=recipe.script_angle,
+                target_audience=recipe.target_audience,
+                hook_text=recipe.hook_text,
+                cta_text=recipe.cta_text,
+                status=recipe.status.value,
+                decision_actor=recipe.decision_actor,
+                decision_at=_format_optional_timestamp(recipe.decision_at),
+                decision_reason=recipe.decision_reason,
+                items=items,
+                recipe_score=recipe.recipe_score,
+                duplicate_risk=recipe.duplicate_risk,
+            )
+
     def assign_asset_to_recipe(self, command: AssignAssetToRecipeCommand) -> int:
         role = command.role.strip().lower()
         if not role:

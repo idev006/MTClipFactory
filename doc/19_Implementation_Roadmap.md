@@ -39,6 +39,7 @@ The project now uses two roadmap layers:
 - `IR-17` Auto Factory preview production baseline: complete on 2026-06-13
 - `IR-18` Enterprise factory pipeline review and architecture blueprint: complete on 2026-06-13
 - `IR-19` Production-order and shared job-state orchestration baseline: complete on 2026-06-13
+- `IR-20` Worker lease, heartbeat, and retry-policy baseline: complete on 2026-06-20
 - `IR-21` Folder discovery depth and assisted tagging ergonomics: complete on 2026-06-13
 - `IR-22` Auto Factory desktop control surface baseline: complete on 2026-06-13
 - `IR-23` Tag-aware auto-factory selection baseline: complete on 2026-06-13
@@ -55,14 +56,14 @@ The project now uses two roadmap layers:
 
 ## Current Execution Stream
 
-The next mandatory implementation stream should build worker lease, heartbeat, and retry semantics on top of the new production-order control-plane baseline.
+The next mandatory implementation stream should validate and harden the newly delivered `IR-20` local-worker baseline through broader operator use, recovery-facing event visibility, and clearer active-worker reporting.
 
-The newly delivered auto-factory desktop control surface is intentionally additive and does not change the mandatory priority of `IR-20`.
+The newly delivered `IR-20` slice makes `Pause Run`, `Stop Run`, and `Resume Run` backend-functional for the current desktop local-worker model, but it does not yet remove the need for proof before distributed execution begins.
 
 Backlog activation rules:
 
 1. Further recipe-score calibration only activates if the delivered metadata, asset-diversity, and runtime-evidence baseline stops being operationally useful.
-2. Distributed worker execution does not activate before lease, heartbeat, and retry semantics are implemented on the new control-plane baseline.
+2. Distributed worker execution does not activate before the delivered local-worker lease, heartbeat, and retry semantics are validated under broader operator use.
 
 ## IR-01 | Composition Data Model
 
@@ -631,7 +632,7 @@ Turn the documented factory architecture into a real control-plane baseline by m
 
 Make the new control-plane baseline safe for future multi-worker execution by introducing explicit worker-ownership and retry semantics.
 
-### Planned Scope
+### Scope
 
 - define lease ownership fields and expiration policy
 - define worker heartbeat persistence and visibility
@@ -643,7 +644,7 @@ Make the new control-plane baseline safe for future multi-worker execution by in
 - keep worker concurrency bounded and configurable instead of ad hoc
 - keep the baseline compatible with the current local runtime before remote workers arrive
 
-### Planned Acceptance Criteria
+### Acceptance Criteria
 
 - queueable work can be claimed through explicit ownership semantics
 - stale work can be identified without guessing from timestamps alone
@@ -651,6 +652,14 @@ Make the new control-plane baseline safe for future multi-worker execution by in
 - operators can tell whether a run is running, pausing, paused, stopped, blocked, resumable, or complete
 - interrupted auto-factory runs can be reopened and continued from persisted state without duplicating already-completed work
 - docs, UML, issues, Kanban, and tests stay aligned to the new worker-control seam
+
+### Delivery Result
+
+- delivered Alembic migration `20260620_0007` plus persistence support for order-level run mode, source root, preview-enabled flag, lease ownership, heartbeat timestamps, lease expiry, blocking reason, and append-only `production_order_events`
+- delivered `ProductionOrderService` local-worker lease claim, background heartbeat, persisted pause/stop intent, safe-checkpoint pause/stop settlement, and restart-safe `resume_order(...)`
+- delivered effective-stage resume behavior that reuses already-succeeded materialize/preview units and retries only remaining eligible `failed_retryable` work
+- delivered `Auto Factory` UI/view-model wiring for real `Pause Run`, `Stop Run`, and `Resume Run` actions, lease visibility, active-worker truth, and order-event inspection
+- covered migration, service, view-model, and UI seams with pytest, and reverified the full suite at `253 passed, 4 warnings`
 
 ## IR-21 | Folder Discovery Depth And Assisted Tagging Ergonomics
 

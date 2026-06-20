@@ -14,7 +14,15 @@ class ProductionOrder:
     source_mode: str
     requested_by: str | None = None
     strict_fulfillment: bool = True
+    preview_generation_enabled: bool = True
+    run_mode: str | None = None
+    source_root: str | None = None
     status: OrchestrationStatus = OrchestrationStatus.QUEUED
+    lease_owner: str | None = None
+    lease_acquired_at: datetime | None = None
+    lease_heartbeat_at: datetime | None = None
+    lease_expires_at: datetime | None = None
+    blocking_reason: str | None = None
     created_at: datetime = field(default_factory=utc_now)
     started_at: datetime | None = None
     finished_at: datetime | None = None
@@ -52,6 +60,21 @@ class ProductionOrderStage:
     detail_json: str | None = None
     created_at: datetime = field(default_factory=utc_now)
     updated_at: datetime = field(default_factory=utc_now)
+    id: int | None = None
+
+
+@dataclass(slots=True)
+class ProductionOrderEvent:
+    production_order_id: int
+    sequence_index: int
+    event_type: str
+    status: OrchestrationStatus
+    message: str
+    production_order_item_id: int | None = None
+    stage_name: str | None = None
+    worker_id: str | None = None
+    detail_json: str | None = None
+    created_at: datetime = field(default_factory=utc_now)
     id: int | None = None
 
 

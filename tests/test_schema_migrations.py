@@ -72,6 +72,8 @@ def test_ensure_schema_current_upgrades_legacy_database(tmp_path: Path) -> None:
         "20260606_0003_decision_event_history.py",
         "20260606_0004_composition_plan_models.py",
         "20260606_0005_timeline_segments.py",
+        "20260613_0006_production_orders_and_stages.py",
+        "20260620_0007_production_order_run_control.py",
     ):
         source = repo_root / "alembic" / "versions" / migration_name
         target = versions_dir / migration_name
@@ -124,6 +126,8 @@ def test_ensure_schema_current_upgrades_legacy_database(tmp_path: Path) -> None:
     composition_plan_columns = {column["name"] for column in inspector.get_columns("composition_plans")}
     render_decision_columns = {column["name"] for column in inspector.get_columns("render_decisions")}
     timeline_segment_columns = {column["name"] for column in inspector.get_columns("timeline_segments")}
+    production_order_columns = {column["name"] for column in inspector.get_columns("production_orders")}
+    production_order_event_columns = {column["name"] for column in inspector.get_columns("production_order_events")}
     assert "decision_actor" in recipe_columns
     assert "decision_at" in recipe_columns
     assert "decision_reason" in recipe_columns
@@ -134,4 +138,15 @@ def test_ensure_schema_current_upgrades_legacy_database(tmp_path: Path) -> None:
     assert {"recipe_id", "duration_source", "resolved_duration_sec", "layer_assignments_json"} <= composition_plan_columns
     assert {"composition_plan_id", "recipe_id", "decision_type", "action", "details_json"} <= render_decision_columns
     assert {"composition_plan_id", "recipe_id", "segment_type", "sequence_index", "preferred_layers_json"} <= timeline_segment_columns
+    assert {
+        "preview_generation_enabled",
+        "run_mode",
+        "source_root",
+        "lease_owner",
+        "lease_acquired_at",
+        "lease_heartbeat_at",
+        "lease_expires_at",
+        "blocking_reason",
+    } <= production_order_columns
+    assert {"production_order_id", "sequence_index", "event_type", "status", "message", "created_at"} <= production_order_event_columns
     assert "alembic_version" in inspector.get_table_names()

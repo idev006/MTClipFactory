@@ -215,3 +215,8 @@
 
 - introducing `Production Order` and orchestration stage records as additive persistence was safer than trying to replace every existing `JobStatus` path in one milestone
 - the dedicated control-plane state made review-needed and terminal-versus-retryable outcomes easier to explain than if the system kept depending only on low-level job rows
+
+## LL-044 | 2026-06-20 | Operator Control Must Start At Safe Checkpoints, Not Fake Instant Preemption
+
+- turning `Pause Run`, `Stop Run`, and `Resume Run` into truthful controls was much safer once the project accepted recipe-boundary checkpoints and explicit lease/heartbeat state instead of pretending FFmpeg work could be interrupted cleanly everywhere
+- adding an append-only `production_order_events` ledger made restart recovery and operator trust easier because the latest order status alone is not enough to explain how the run reached its current state

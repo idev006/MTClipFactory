@@ -11,6 +11,7 @@ from mt_clip_factory.domain.entities import Product, ProductSummary
 from mt_clip_factory.domain.jobs import Job, JobSummary
 from mt_clip_factory.domain.outputs import Output, OutputSummary
 from mt_clip_factory.domain.production_orders import (
+    ProductionOrderEvent,
     ProductionOrder,
     ProductionOrderItem,
     ProductionOrderStage,
@@ -242,6 +243,14 @@ class ProductionOrderStageRepository(Protocol):
         ...
 
 
+class ProductionOrderEventRepository(Protocol):
+    def add(self, event: ProductionOrderEvent) -> ProductionOrderEvent:
+        ...
+
+    def list_by_order(self, production_order_id: int) -> Sequence[ProductionOrderEvent]:
+        ...
+
+
 class UnitOfWork(AbstractContextManager["UnitOfWork"], Protocol):
     products: ProductRepository
     assets: AssetRepository
@@ -255,6 +264,7 @@ class UnitOfWork(AbstractContextManager["UnitOfWork"], Protocol):
     timeline_segments: TimelineSegmentRepository
     production_orders: ProductionOrderRepository
     production_order_stages: ProductionOrderStageRepository
+    production_order_events: ProductionOrderEventRepository
 
     def commit(self) -> None:
         ...

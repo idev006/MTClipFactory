@@ -4,7 +4,7 @@
 
 - Report date: 2026-06-20
 - Overall status: In Progress
-- Current phase: Phase 6, production-order plus operator-friendly auto-factory and bulk-tagging baselines delivered; worker-lease and distributed execution still pending
+- Current phase: Phase 6, operator-grade local-worker auto-factory control baseline delivered; distributed execution and deeper recovery-facing UX still pending
 - Delivery mode: document-led SSOT with code and tests kept in sync
 
 ## What Is Done
@@ -94,7 +94,7 @@
 - caption runtime now treats multi-line rendering as explicit author intent only, so captions without `\n` stay single-line and use box-aware best-fit font sizing instead of automatic runtime wrapping
 - caption runtime now also interprets `seed_scope = "batch"` as deterministic caption cycling across output ordinals inside the same batch, reducing early-batch caption repetition without losing rerun safety
 - built-in promo presets are now tuned toward lighter presenter-safe headline banners and stronger lower-third readability defaults before product-specific contract overrides are applied
-- the next auto-factory operations requirements slice is now documented in SSOT, locking operator-visible progress, multi-worker gating, pause/stop/resume semantics, and restart recovery expectations before `IR-20` implementation begins
+- the next auto-factory operations requirements slice is now documented in SSOT, locking operator-visible progress, multi-worker gating, pause/stop/resume semantics, and restart recovery expectations before deeper distributed execution begins
 - caption runtime can now also compact grouped manual-break promo headlines toward a preferred line count, helping top-band cards stay more face-safe without giving up deterministic multi-line authoring
 - grouped manual-break promo cards now also keep one shared resolved font size across all rendered lines, while `per_line` cards retain independent line fitting for operator-authored stacked labels
 - preview and final render now also write a versioned manifest envelope with stable `manifest_meta`, `artifact`, `run`, `composition`, `render`, and `quality` sections while preserving backward-safe reader behavior for older manifests
@@ -105,7 +105,9 @@
 - the desktop `Auto Factory` control surface now also exposes one selected-product contract/runtime detail surface so operators can inspect product contract fields, pipeline duration and tag rules, caption preset/font intent, and per-folder tag readiness without leaving the app
 - the desktop `Auto Factory` control surface now also exposes operator shortcuts from that selected-product panel, including `Open Product Folder`, `Open Contracts`, `Open Runs Folder`, and `Copy Summary`
 - the desktop `Auto Factory` control surface now also uses a tabbed operator workspace so overview, audit, intake, and order-stage truth stay readable without crushing buttons, headers, or recent-order history
-- the desktop `Auto Factory` control surface now also runs in a background worker, shows live progress in-screen, and polls monitored production-order truth while keeping pause/stop/resume explicitly marked as pending backend support
+- the desktop `Auto Factory` control surface now also runs in a background worker, shows live progress in-screen, and polls monitored production-order truth without freezing the UI
+- the desktop `Auto Factory` control surface now also persists local-worker lease owner, heartbeat, lease expiry, run mode, source root, and append-only order events so pause/stop/resume become truthful backend-backed controls for the current local-worker baseline
+- `Pause Run` and `Stop Run` now persist operator intent and settle at the next recipe-boundary safe checkpoint, while `Resume Run` reuses already-completed materialize/preview work and continues only the remaining eligible units
 - assets can now be safely renamed or deleted from the `Assets` screen, with repository checks that block deletion when recipe-item or artifact-job references still exist
 - the `Assets` screen now supports `Show References`, `Retire Selected`, and `Purge Media` so referenced assets can leave active use and disk without destroying audit truth
 - the `Assets` screen now also supports `Replace In Recipes...` with recipe-safe validation, recipe reset-to-candidate behavior, and approval guards that prevent stale pre-replacement outputs from being reused as evidence for changed recipes
@@ -138,7 +140,7 @@
 
 ## Verification Baseline
 
-- `python -m pytest` via `.venv`: `248 passed, 4 warnings`
+- `python -m pytest` via `.venv`: `253 passed, 4 warnings`
 - targeted `QT_QPA_PLATFORM=offscreen` UI coverage for the new `Auto Factory` window and existing themed windows: passed
 
 ## Current Focus
@@ -159,7 +161,7 @@
 - validate whether the new tag-aware planner rules are expressive enough before adding richer weighted or role-specific selection logic
 - validate whether the new bulk asset tagging flow reduces repetitive operator work without causing accidental over-tagging
 - validate whether the new folder-driven additive tag sync is sufficient before implementing tag-removal sync behavior
-- validate whether the new production-order orchestration model remains stable enough to carry future lease and multi-worker execution semantics
+- validate whether the new local-worker lease, heartbeat, and checkpoint-resume baseline remains stable enough before multi-worker dispatch work begins
 - keep project documents truthful through per-milestone revision checkpoints
 - validate the same product-local auto-mode audit seam across additional products beyond `Biothentic0001`
 - validate the new pixel-based caption layout and seeded clip diversity seam on additional products beyond `Biothentic0001`
@@ -178,22 +180,22 @@
 - validate whether the new selected-product contract detail surface is sufficient for operator self-checks or whether inline fix/open shortcuts are needed later
 - validate whether the new review-surface shortcuts are enough or whether direct `Open captions.toml` / `Open pipeline.toml` actions are needed next
 - validate whether operators prefer the new tabbed `Auto Factory` workspace or still want some audit/intake surfaces visible side by side in later revisions
-- implement persisted worker-lease plus safe-checkpoint backend semantics so the already-visible pause/stop/resume control surface can become authoritative instead of `pending support`
+- validate whether the new append-only order-event history is sufficient for operator recovery and whether filtering or richer event summaries are needed next
 
 ## Next Steps
 
-1. Implement worker lease, heartbeat, and retry-policy semantics on top of the new production-order orchestration baseline.
-   This slice must now also carry live progress visibility plus persisted pause/stop/resume and restart recovery semantics for Auto Factory operations.
-2. Run broader controlled operator use on additional real campaign media, including the new `Auto Factory` screen and bulk tagging flow, without service-side assistance.
-3. Extend the auto-factory baseline from automated preview production into controlled final-render automation only after operators accept the current planner, tag-aware selection flow, control-surface flow, review-gate truth, and the new product-local run audit seam.
-4. Decide whether production-order orchestration should surface on the dashboard before multi-node execution begins.
-5. Clean the Alembic `path_separator=os` warning in a maintenance pass.
-6. Validate whether product-local `runs/<batch_code>` artifacts remain sufficient across multiple products and whether journal detail is enough for recovery-facing operator use.
-7. Run another live end-to-end preview/final audit on `Biothentic0001` after the new policy-aware voice-loop, loop-authority, and promo-caption contract slice.
-8. Validate whether product-level voice looping should surface an operator-facing repetition warning or max-repeat policy after more live runs.
-9. Run another live `Biothentic0001` audit on the versioned manifest envelope and verify that output-detail surfaces remain readable from the new sectioned contract.
-10. Run a live folder-intake audit on one real product folder arranged in the new `contracts/` plus `assets/` layout and verify that ambiguity failures are understandable to operators.
-11. Validate the new `Audit Only` control-surface mode with operators and decide whether issue grouping/export needs to be added.
+1. Run broader controlled operator use on additional real campaign media, including the now-backend-functional local-worker `Auto Factory` pause/stop/resume controls, without service-side assistance.
+2. Validate restart-safe recovery behavior after real interruptions, including stale-lease recovery, paused-order resume, stopped-order resume, and retryable preview reruns.
+3. Decide whether the append-only order-event journal should grow into a richer operator-facing event view with filtering, grouping, or export.
+4. Extend the auto-factory baseline from automated preview production into controlled final-render automation only after operators accept the current planner, tag-aware selection flow, control-surface flow, review-gate truth, and the new product-local run audit seam.
+5. Decide whether production-order orchestration plus active worker truth should surface on the dashboard before multi-node execution begins.
+6. Clean the Alembic `path_separator=os` warning in a maintenance pass.
+7. Validate whether product-local `runs/<batch_code>` artifacts remain sufficient across multiple products and whether journal detail is enough for recovery-facing operator use.
+8. Run another live end-to-end preview/final audit on `Biothentic0001` after the new policy-aware voice-loop, loop-authority, and promo-caption contract slice.
+9. Validate whether product-level voice looping should surface an operator-facing repetition warning or max-repeat policy after more live runs.
+10. Run another live `Biothentic0001` audit on the versioned manifest envelope and verify that output-detail surfaces remain readable from the new sectioned contract.
+11. Run a live folder-intake audit on one real product folder arranged in the new `contracts/` plus `assets/` layout and verify that ambiguity failures are understandable to operators.
+12. Validate the new `Audit Only` control-surface mode with operators and decide whether issue grouping/export needs to be added.
 
 ## Direction Locked In This Documentation Revision
 

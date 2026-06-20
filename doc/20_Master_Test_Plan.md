@@ -37,7 +37,9 @@ It complements [07_Testing_Strategy.md](/F:/programming/python/MTClipFactory/doc
 - folder-driven batch intake using `product.toml` and `pipeline.toml`
 - automatic preview production from materialized auto-factory batches
 - persisted production-order and orchestration-stage tracking
+- persisted production-order lease, heartbeat, and append-only order-event tracking
 - desktop `Auto Factory` control-surface workflow for root selection, scan depth, run mode, intake reporting, and recent-order inspection
+- desktop `Auto Factory` pause/stop/resume workflow for the local-worker safe-checkpoint baseline
 - desktop `Auto Factory` `Audit Only` workflow for preflight summary and issue visibility
 - tag-aware auto-factory asset-pool filtering from normalized asset labels
 - asset-first tagging workflow for selected-asset details, tag search, and create-and-attach behavior
@@ -71,6 +73,7 @@ It complements [07_Testing_Strategy.md](/F:/programming/python/MTClipFactory/doc
 
 - migration guard behavior
 - persisted jobs and retry flows
+- stale-lease recovery and resume behavior for interrupted local-worker production orders
 - runtime/configured path truthfulness
 - filesystem-path safety across media, preview, and outputs roots
 
@@ -199,6 +202,11 @@ It complements [07_Testing_Strategy.md](/F:/programming/python/MTClipFactory/doc
 21. Confirm the desktop `Auto Factory` screen can browse/select a root folder, set `scan_depth`, and complete `Intake Only` mode with truthful discovered-folder, product, and asset-action reporting.
 22. Confirm `Intake + Materialize` creates a persisted `Production Order` and shows stage truth in the screen's recent-order surfaces.
 23. Confirm `Intake + Materialize + Build Previews` records preview and review stages while still stopping at the human approval boundary.
+- Confirm `Pause Run` persists `pause_requested` during active local-worker execution and settles to `paused` at the next safe checkpoint.
+- Confirm `Stop Run` persists `stop_requested` during active local-worker execution and settles to `stopped` at the next safe checkpoint.
+- Confirm `Resume Run` can continue a paused or stopped order without rematerializing or rebuilding already-succeeded units.
+- Confirm a retryable preview failure can be resumed and only the remaining eligible retryable units rerun.
+- Confirm stale-lease recovery works after a simulated worker interruption once the lease timeout elapses.
 24. Confirm `pipeline.toml [selection_tags]` can restrict foreground/background/music/voice pools by normalized `group:name` labels.
 25. Confirm planner shortfalls caused by tag filters remain truthful and do not silently fall back to untagged visual assets.
 26. Confirm the `Tags` screen shows current asset tag labels and supports `Asset Type` filtering during assignment work.

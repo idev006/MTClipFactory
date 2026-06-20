@@ -1,5 +1,7 @@
 from __future__ import annotations
 
+import json
+
 
 def format_product_request_summary(request) -> str:
     summary = (
@@ -185,6 +187,9 @@ def build_progress_summary_text(snapshot) -> str:
         f"Monitored Order Code: {snapshot.monitored_order_code or '-'}",
         f"Order Status: {snapshot.order_status or '-'}",
         f"Current Stage: {snapshot.current_stage or '-'}",
+        f"Lease Owner: {snapshot.lease_owner or '-'}",
+        f"Lease Heartbeat: {snapshot.lease_heartbeat_at or '-'}",
+        f"Lease Expires: {snapshot.lease_expires_at or '-'}",
         f"Products Requested: {snapshot.total_products}",
         f"Products With Stage Activity: {snapshot.products_with_stage_activity}",
         f"Requested Outputs: {snapshot.total_requested_outputs}",
@@ -210,7 +215,14 @@ def build_order_summary_text(order) -> str:
             f"Order Code: {order.order_code}",
             f"Batch Code: {order.batch_code}",
             f"Source Mode: {order.source_mode}",
+            f"Run Mode: {order.run_mode or '-'}",
+            f"Source Root: {order.source_root or '-'}",
+            f"Build Previews: {'yes' if order.preview_generation_enabled else 'no'}",
             f"Status: {order.status}",
+            f"Lease Owner: {order.lease_owner or '-'}",
+            f"Lease Heartbeat: {order.lease_heartbeat_at or '-'}",
+            f"Lease Expires: {order.lease_expires_at or '-'}",
+            f"Blocking Reason: {order.blocking_reason or '-'}",
             f"Strict Fulfillment: {order.strict_fulfillment}",
             f"Created At: {order.created_at}",
             f"Started At: {order.started_at or 'not started'}",
@@ -221,7 +233,7 @@ def build_order_summary_text(order) -> str:
 
 def build_order_product_rows(order) -> list[tuple[str, str, str, str]]:
     latest_stage_by_item_id: dict[int, object] = {}
-    for stage in order.stages:
+    for stage in _effective_order_stages(order.stages):
         if stage.production_order_item_id is None:
             continue
         latest_stage_by_item_id[stage.production_order_item_id] = stage
@@ -238,6 +250,41 @@ def build_order_product_rows(order) -> list[tuple[str, str, str, str]]:
             )
         )
     return rows
+
+
+def _effective_order_stages(stages: tuple[object, ...]) -> tuple[object, ...]:
+    latest_by_key: dict[tuple[object, ...], object] = {}
+    for stage in stages:
+        latest_by_key[_effective_stage_key(stage)] = stage
+    return tuple(sorted(latest_by_key.values(), key=lambda item: (item.sequence_index, item.production_order_stage_id)))
+
+
+def _effective_stage_key(stage) -> tuple[object, ...]:  # noqa: ANN001
+    recipe_code = _stage_detail_value(stage.detail_json, "recipe_code")
+    if stage.stage_name == "materialize":
+        return (stage.stage_name, stage.production_order_item_id, stage.recipe_id or recipe_code)
+    if stage.stage_name in {"preview", "review"}:
+        return (stage.stage_name, stage.recipe_id or stage.production_order_item_id)
+    return (
+        stage.stage_name,
+        stage.stage_scope,
+        stage.production_order_item_id,
+        stage.recipe_id,
+        stage.output_id,
+        recipe_code,
+    )
+
+
+def _stage_detail_value(detail_json: str | None, key: str) -> object | None:
+    if not detail_json:
+        return None
+    try:
+        payload = json.loads(detail_json)
+    except json.JSONDecodeError:
+        return None
+    if not isinstance(payload, dict):
+        return None
+    return payload.get(key)
 
 
 def format_selection_tag_summary(config) -> str:

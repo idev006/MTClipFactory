@@ -203,7 +203,15 @@ class ProductionOrderModel(Base):
     source_mode: Mapped[str] = mapped_column(String(64), nullable=False)
     requested_by: Mapped[str | None] = mapped_column(String(255), nullable=True)
     strict_fulfillment: Mapped[bool] = mapped_column(Boolean, nullable=False, default=True)
+    preview_generation_enabled: Mapped[bool] = mapped_column(Boolean, nullable=False, default=True)
+    run_mode: Mapped[str | None] = mapped_column(String(64), nullable=True)
+    source_root: Mapped[str | None] = mapped_column(String(1024), nullable=True)
     status: Mapped[str] = mapped_column(String(32), nullable=False, default="queued")
+    lease_owner: Mapped[str | None] = mapped_column(String(128), nullable=True)
+    lease_acquired_at: Mapped[datetime | None] = mapped_column(DateTime, nullable=True)
+    lease_heartbeat_at: Mapped[datetime | None] = mapped_column(DateTime, nullable=True)
+    lease_expires_at: Mapped[datetime | None] = mapped_column(DateTime, nullable=True)
+    blocking_reason: Mapped[str | None] = mapped_column(Text, nullable=True)
     created_at: Mapped[datetime] = mapped_column(DateTime, nullable=False, default=func.now())
     started_at: Mapped[datetime | None] = mapped_column(DateTime, nullable=True)
     finished_at: Mapped[datetime | None] = mapped_column(DateTime, nullable=True)
@@ -243,3 +251,22 @@ class ProductionOrderStageModel(Base):
     detail_json: Mapped[str | None] = mapped_column(Text, nullable=True)
     created_at: Mapped[datetime] = mapped_column(DateTime, nullable=False, default=func.now())
     updated_at: Mapped[datetime] = mapped_column(DateTime, nullable=False, default=func.now(), onupdate=func.now())
+
+
+class ProductionOrderEventModel(Base):
+    __tablename__ = "production_order_events"
+    __table_args__ = (
+        UniqueConstraint("production_order_id", "sequence_index", name="uq_production_order_events_order_seq"),
+    )
+
+    id: Mapped[int] = mapped_column(Integer, primary_key=True, autoincrement=True)
+    production_order_id: Mapped[int] = mapped_column(ForeignKey("production_orders.id"), nullable=False)
+    production_order_item_id: Mapped[int | None] = mapped_column(ForeignKey("production_order_items.id"), nullable=True)
+    sequence_index: Mapped[int] = mapped_column(Integer, nullable=False)
+    event_type: Mapped[str] = mapped_column(String(64), nullable=False)
+    status: Mapped[str] = mapped_column(String(32), nullable=False)
+    message: Mapped[str] = mapped_column(Text, nullable=False)
+    stage_name: Mapped[str | None] = mapped_column(String(64), nullable=True)
+    worker_id: Mapped[str | None] = mapped_column(String(128), nullable=True)
+    detail_json: Mapped[str | None] = mapped_column(Text, nullable=True)
+    created_at: Mapped[datetime] = mapped_column(DateTime, nullable=False, default=func.now())
