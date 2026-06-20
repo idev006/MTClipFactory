@@ -17,7 +17,10 @@ from mt_clip_factory.factory.production_order_dto import (
     ProductionOrderStageDTO,
     ProductionOrderSummaryDTO,
 )
-from mt_clip_factory.presentation.factory.auto_factory_control import AutoFactoryControlViewModel
+from mt_clip_factory.presentation.factory.auto_factory_control import (
+    AutoFactoryControlProgressSnapshot,
+    AutoFactoryControlViewModel,
+)
 
 
 class FakeAutoFactoryFolderService:
@@ -142,6 +145,8 @@ class FakeAutoFactoryFolderService:
 class FakeProductionOrderService:
     def __init__(self) -> None:
         self.create_calls: list[tuple[str, str | None, bool]] = []
+        self.create_order_calls: list[tuple[str, str | None]] = []
+        self.run_order_calls: list[tuple[int, bool]] = []
         self.get_calls: list[int] = []
         self._details = ProductionOrderDetailsDTO(
             production_order_id=41,
@@ -217,6 +222,21 @@ class FakeProductionOrderService:
         self.create_calls.append((order.batch_code, order_code, build_previews))
         return self._details
 
+    def create_order(
+        self,
+        order: AutoFactoryBatchOrderDTO,
+        *,
+        source_mode: str,
+        order_code: str | None = None,
+        requested_by: str | None = None,
+    ) -> int:
+        self.create_order_calls.append((order.batch_code, order_code))
+        return self._details.production_order_id
+
+    def run_order(self, production_order_id: int, *, build_previews: bool = True) -> ProductionOrderDetailsDTO:
+        self.run_order_calls.append((production_order_id, build_previews))
+        return self._details
+
     def get_order(self, production_order_id: int) -> ProductionOrderDetailsDTO:
         self.get_calls.append(production_order_id)
         return self._details
@@ -277,8 +297,8 @@ def test_auto_factory_control_view_model_runs_materialization_with_preview_mode(
     assert view_model.selected_order.production_order_id == 41
     assert len(view_model.recent_orders) == 1
     assert folder_service.calls == [("F:\\batch_root", "campaign_launch", 1, False)]
-    assert order_service.create_calls[0][0] == "campaign_launch"
-    assert order_service.create_calls[0][2] is True
+    assert order_service.create_order_calls[0][0] == "campaign_launch"
+    assert order_service.run_order_calls == [(41, True)]
     assert "Production order" in view_model.feedback
     assert "succeeded" in view_model.feedback
 
@@ -295,3 +315,39 @@ def test_auto_factory_control_view_model_can_load_recent_orders_and_select_one()
     assert view_model.selected_order is not None
     assert view_model.selected_order.order_code == "uat_batch_20260613_120000_000001"
     assert order_service.get_calls == [41]
+
+
+def test_auto_factory_control_view_model_tracks_progress_snapshot_for_completed_order() -> None:
+    folder_service = FakeAutoFactoryFolderService()
+    order_service = FakeProductionOrderService()
+    view_model = AutoFactoryControlViewModel(folder_service, order_service)
+
+    view_model.run_batch_root(
+        root_folder="F:\\batch_root",
+        batch_code="campaign_launch",
+        scan_depth=1,
+        run_mode=AutoFactoryControlViewModel.RUN_MODE_MATERIALIZE_AND_PREVIEWS,
+    )
+
+    snapshot = view_model.progress_snapshot
+    assert isinstance(snapshot, AutoFactoryControlProgressSnapshot)
+    assert snapshot.run_state == "ready" or snapshot.run_state == "completed"
+    assert snapshot.monitored_order_id == 41
+    assert snapshot.monitored_order_code == "uat_batch_20260613_120000_000001"
+    assert snapshot.total_products == 1
+    assert snapshot.total_requested_outputs == 2
+    assert snapshot.materialized_recipe_count == 1
+    assert snapshot.stage_count == 1
+    assert snapshot.active_worker_count == 0
+
+
+def test_auto_factory_control_view_model_refreshes_monitored_order_progress() -> None:
+    order_service = FakeProductionOrderService()
+    view_model = AutoFactoryControlViewModel(FakeAutoFactoryFolderService(), order_service)
+
+    view_model.select_order(41)
+    view_model.refresh_progress()
+
+    assert view_model.progress_snapshot.monitored_order_id == 41
+    assert view_model.progress_snapshot.order_status == "succeeded"
+    assert order_service.get_calls == [41, 41]

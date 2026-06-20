@@ -105,6 +105,7 @@
 - the desktop `Auto Factory` control surface now also exposes one selected-product contract/runtime detail surface so operators can inspect product contract fields, pipeline duration and tag rules, caption preset/font intent, and per-folder tag readiness without leaving the app
 - the desktop `Auto Factory` control surface now also exposes operator shortcuts from that selected-product panel, including `Open Product Folder`, `Open Contracts`, `Open Runs Folder`, and `Copy Summary`
 - the desktop `Auto Factory` control surface now also uses a tabbed operator workspace so overview, audit, intake, and order-stage truth stay readable without crushing buttons, headers, or recent-order history
+- the desktop `Auto Factory` control surface now also runs in a background worker, shows live progress in-screen, and polls monitored production-order truth while keeping pause/stop/resume explicitly marked as pending backend support
 - assets can now be safely renamed or deleted from the `Assets` screen, with repository checks that block deletion when recipe-item or artifact-job references still exist
 - the `Assets` screen now supports `Show References`, `Retire Selected`, and `Purge Media` so referenced assets can leave active use and disk without destroying audit truth
 - the `Assets` screen now also supports `Replace In Recipes...` with recipe-safe validation, recipe reset-to-candidate behavior, and approval guards that prevent stale pre-replacement outputs from being reused as evidence for changed recipes
@@ -177,7 +178,7 @@
 - validate whether the new selected-product contract detail surface is sufficient for operator self-checks or whether inline fix/open shortcuts are needed later
 - validate whether the new review-surface shortcuts are enough or whether direct `Open captions.toml` / `Open pipeline.toml` actions are needed next
 - validate whether operators prefer the new tabbed `Auto Factory` workspace or still want some audit/intake surfaces visible side by side in later revisions
-- implement the newly locked auto-factory operations-control requirements so operators can see live run progress and safely pause, stop, resume, or recover interrupted runs
+- implement persisted worker-lease plus safe-checkpoint backend semantics so the already-visible pause/stop/resume control surface can become authoritative instead of `pending support`
 
 ## Next Steps
 

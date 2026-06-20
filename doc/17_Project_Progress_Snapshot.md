@@ -135,6 +135,8 @@
 - delivered selected-product contract/runtime detail inspection inside the desktop `Auto Factory` screen so operators can review product metadata, pipeline policy, caption preset/font intent, and tag-readiness evidence from the currently highlighted product row
 - delivered selected-product operator actions inside that same `Auto Factory` panel so operators can open the product folder, contracts location, batch-local runs folder, or copy the current summary without leaving the app
 - delivered a tabbed `Auto Factory` workspace layout so overview, audit, intake, and order-stage surfaces no longer collapse into one over-compressed vertical stack
+- delivered background-run execution plus live progress polling for the desktop `Auto Factory` screen so operators can monitor production-order stage truth without freezing the window
+- delivered truthful operator-control groundwork in that same screen, with active `Refresh Progress` and explicitly pending `Pause/Stop/Resume` controls
 - delivered a policy-aware duration fix so loopable background music no longer stretches auto-mode previews past the intended ad timeline while non-loop music can still remain duration-authoritative when explicitly configured
 - delivered product-policy voice-loop support all the way through parser, composition persistence, renderer application, and manifest truth
 - tuned the live `Biothentic0001` contract toward promo-card captions with stronger `main`/`sub` sizing and explicit loop behavior for voice and foreground assets
@@ -155,6 +157,7 @@
 9. validate whether the new selected-product contract inspection pane should grow operator actions such as `Open Contract`, `Copy Path`, or `Open Runs Folder`
 10. validate whether operators want direct file-level shortcuts for `captions.toml`, `pipeline.toml`, and `product.toml` after using the new folder-level actions
 11. validate whether the new tabbed `Auto Factory` workspace gives operators enough at-a-glance context or needs split-view refinements after live use
+12. implement persisted lease ownership and safe-checkpoint worker control so the visible `Pause Run`, `Stop Run`, and `Resume Run` controls can become truly operational
 
 ## Verification Baseline
 

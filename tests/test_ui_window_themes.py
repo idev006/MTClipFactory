@@ -22,6 +22,10 @@ from mt_clip_factory.factory.auto_factory_folder_dto import (
     AutoFactoryFolderRunReportDTO,
 )
 from mt_clip_factory.factory.dto import CompositionPlanDTO, DecisionEventDTO, OutputSummaryDTO, RecipeItemDTO, TimelineSegmentDTO
+from mt_clip_factory.presentation.factory.auto_factory_control import (
+    AutoFactoryControlProgressSnapshot,
+    AutoFactoryControlRunRequest,
+)
 from mt_clip_factory.ui.control_center.dashboard_window import DashboardWindow
 from mt_clip_factory.ui.factory.auto_factory_control_window import AutoFactoryControlWindow
 from mt_clip_factory.ui.factory.recipe_builder_window import RecipeBuilderWindow
@@ -210,6 +214,8 @@ class FakeAutoFactoryControlViewModel(QObject):
     selected_order_changed = Signal()
     feedback_changed = Signal()
     status_changed = Signal()
+    progress_changed = Signal()
+    run_active_changed = Signal()
 
     RUN_MODE_AUDIT_ONLY = "audit_only"
     RUN_MODE_INTAKE_ONLY = "intake_only"
@@ -224,6 +230,9 @@ class FakeAutoFactoryControlViewModel(QObject):
         self.selected_order = None
         self.feedback = ""
         self.status = "ready"
+        self.progress_snapshot = AutoFactoryControlProgressSnapshot.idle()
+        self.run_active = False
+        self.monitored_order_id = None
 
     def load(self) -> None:
         self.recent_orders_changed.emit()
@@ -232,13 +241,84 @@ class FakeAutoFactoryControlViewModel(QObject):
         self.selected_order_changed.emit()
         self.feedback_changed.emit()
         self.status_changed.emit()
+        self.progress_changed.emit()
+        self.run_active_changed.emit()
 
-    def run_batch_root(self, **kwargs) -> None:  # noqa: ANN003
-        self.feedback = "ran"
+    def prepare_run_request(self, *, root_folder: str, batch_code=None, scan_depth=1, run_mode=RUN_MODE_INTAKE_ONLY):  # noqa: ANN001
+        return AutoFactoryControlRunRequest(
+            root_folder=root_folder,
+            batch_code=batch_code,
+            scan_depth=scan_depth,
+            run_mode=run_mode,
+        )
+
+    def mark_run_started(self, request: AutoFactoryControlRunRequest) -> None:
+        self.run_active = True
+        self.progress_snapshot = AutoFactoryControlProgressSnapshot(
+            run_state="running",
+            phase="running_intake",
+            run_mode=request.run_mode,
+            root_folder=request.root_folder,
+            batch_code=request.batch_code,
+            monitored_order_id=None,
+            monitored_order_code=None,
+            order_status=None,
+            current_stage="running_intake",
+            total_products=0,
+            products_with_stage_activity=0,
+            total_requested_outputs=0,
+            materialized_recipe_count=0,
+            preview_completed_count=0,
+            review_required_count=0,
+            stage_count=0,
+            active_worker_count=1,
+            last_event="started",
+            blocking_reason=None,
+            started_at=None,
+            finished_at=None,
+            command_note="monitoring",
+        )
+        self.progress_changed.emit()
+        self.run_active_changed.emit()
+
+    def update_progress_snapshot(self, snapshot) -> None:  # noqa: ANN001
+        self.progress_snapshot = snapshot
+        self.monitored_order_id = snapshot.monitored_order_id
+        self.progress_changed.emit()
+
+    def apply_execution_result(self, result) -> None:  # noqa: ANN001
+        self.run_active = False
+        self.run_active_changed.emit()
+
+    def handle_run_failure(self, error_message: str) -> None:
+        self.feedback = error_message
         self.feedback_changed.emit()
+        self.run_active = False
+        self.run_active_changed.emit()
+
+    def execute_run_request(self, request, *, progress_callback=None):  # noqa: ANN001
+        if progress_callback is not None:
+            progress_callback(self.progress_snapshot)
+        return object()
+
+    def refresh_progress(self) -> None:
+        self.progress_changed.emit()
 
     def select_order(self, production_order_id: int | None) -> None:
+        self.monitored_order_id = production_order_id
         self.selected_order_changed.emit()
+
+    def request_pause(self) -> None:
+        self.feedback = "pause pending"
+        self.feedback_changed.emit()
+
+    def request_stop(self) -> None:
+        self.feedback = "stop pending"
+        self.feedback_changed.emit()
+
+    def request_resume(self) -> None:
+        self.feedback = "resume pending"
+        self.feedback_changed.emit()
 
 
 def test_primary_windows_apply_app_theme(qapp: QApplication) -> None:
@@ -305,10 +385,17 @@ def test_auto_factory_window_exposes_guided_run_controls(qapp: QApplication) -> 
     assert auto_factory_window.browse_button.text() == "Browse..."
     assert auto_factory_window.run_button.text() == "Run Auto Factory"
     assert auto_factory_window.refresh_orders_button.text() == "Refresh Orders"
+    assert auto_factory_window.refresh_progress_button.text() == "Refresh Progress"
+    assert auto_factory_window.pause_button.text() == "Pause Run"
+    assert auto_factory_window.stop_button.text() == "Stop Run"
+    assert auto_factory_window.resume_button.text() == "Resume Run"
     assert auto_factory_window.run_mode_hint_label.text().startswith("Run Mode Guide:")
     assert "runs/<batch_code>" in auto_factory_window.run_mode_hint_label.text()
+    assert auto_factory_window.progress_text.isReadOnly() is True
+    assert "No active run." in auto_factory_window.progress_text.toPlainText()
     assert auto_factory_window.preflight_products_table.columnCount() == 5
     assert auto_factory_window.preflight_issues_table.columnCount() == 5
+    assert auto_factory_window.order_product_progress_table.columnCount() == 4
     assert auto_factory_window.selected_product_text.isReadOnly() is True
     assert auto_factory_window.selected_product_text.minimumHeight() == auto_factory_window.SELECTED_PRODUCT_MIN_HEIGHT - 90
     assert auto_factory_window.recent_orders_table.minimumHeight() == auto_factory_window.RECENT_ORDERS_MIN_HEIGHT - 50
@@ -320,6 +407,7 @@ def test_auto_factory_window_exposes_guided_run_controls(qapp: QApplication) -> 
     assert auto_factory_window.preflight_products_table.horizontalHeader().sectionResizeMode(0) == QHeaderView.Stretch
     assert auto_factory_window.preflight_issues_table.horizontalHeader().sectionResizeMode(4) == QHeaderView.Stretch
     assert auto_factory_window.asset_actions_table.horizontalHeader().sectionResizeMode(4) == QHeaderView.Stretch
+    assert auto_factory_window.refresh_progress_button.isEnabled() is False
     auto_factory_window.close()
 
 
@@ -448,16 +536,16 @@ def test_auto_factory_window_can_open_selected_preflight_product_paths_and_copy_
 
     opened_paths: list[str] = []
     monkeypatch.setattr(
-        "mt_clip_factory.ui.factory.auto_factory_control_window.QDesktopServices.openUrl",
+        "mt_clip_factory.ui.factory.auto_factory_control_actions.QDesktopServices.openUrl",
         lambda url: opened_paths.append(url.toLocalFile()) or True,
     )
 
     assert auto_factory_window.open_product_folder_button.isEnabled() is True
     assert auto_factory_window.open_runs_button.isEnabled() is True
-    auto_factory_window._open_selected_product_folder()
-    auto_factory_window._open_selected_contracts_folder()
-    auto_factory_window._open_selected_runs_folder()
-    auto_factory_window._copy_selected_product_summary()
+    auto_factory_window.open_product_folder_button.click()
+    auto_factory_window.open_contracts_button.click()
+    auto_factory_window.open_runs_button.click()
+    auto_factory_window.copy_summary_button.click()
 
     assert [Path(path) for path in opened_paths] == [product_dir, contracts_dir, runs_dir]
     assert "Product Folder:" in qapp.clipboard().text()
@@ -515,11 +603,11 @@ def test_auto_factory_window_opens_batch_specific_runs_folder_for_intake_rows(
 
     opened_paths: list[str] = []
     monkeypatch.setattr(
-        "mt_clip_factory.ui.factory.auto_factory_control_window.QDesktopServices.openUrl",
+        "mt_clip_factory.ui.factory.auto_factory_control_actions.QDesktopServices.openUrl",
         lambda url: opened_paths.append(url.toLocalFile()) or True,
     )
 
-    auto_factory_window._open_selected_runs_folder()
+    auto_factory_window.open_runs_button.click()
 
     assert [Path(path) for path in opened_paths] == [batch_runs_dir]
     auto_factory_window.close()

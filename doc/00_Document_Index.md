@@ -75,6 +75,7 @@ When code changes, the related Markdown documents in this folder must be updated
 67. [67_Auto_Factory_Review_Surface_Operator_Actions_2026-06-20.md](/F:/programming/python/MTClipFactory/doc/67_Auto_Factory_Review_Surface_Operator_Actions_2026-06-20.md)
 68. [68_Caption_Batch_Cycling_And_Preset_Tuning_Workflow_2026-06-20.md](/F:/programming/python/MTClipFactory/doc/68_Caption_Batch_Cycling_And_Preset_Tuning_Workflow_2026-06-20.md)
 69. [69_Auto_Factory_Tabbed_Workspace_Layout_2026-06-20.md](/F:/programming/python/MTClipFactory/doc/69_Auto_Factory_Tabbed_Workspace_Layout_2026-06-20.md)
+70. [70_Auto_Factory_Live_Progress_And_Control_Groundwork_2026-06-20.md](/F:/programming/python/MTClipFactory/doc/70_Auto_Factory_Live_Progress_And_Control_Groundwork_2026-06-20.md)
 
 ## Governance
 

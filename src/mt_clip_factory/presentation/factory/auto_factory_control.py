@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+from dataclasses import dataclass
 from datetime import UTC, datetime
 from pathlib import Path
 
@@ -13,6 +14,79 @@ from mt_clip_factory.factory.auto_factory_folder_dto import (
 from mt_clip_factory.factory.production_order_dto import ProductionOrderDetailsDTO, ProductionOrderSummaryDTO
 from mt_clip_factory.factory.production_order_service import ProductionOrderService
 
+TERMINAL_STAGE_STATUSES = {"succeeded", "review_required", "failed_retryable", "failed_terminal", "cancelled"}
+
+
+@dataclass(slots=True, frozen=True)
+class AutoFactoryControlRunRequest:
+    root_folder: str
+    batch_code: str | None
+    scan_depth: int
+    run_mode: str
+
+
+@dataclass(slots=True, frozen=True)
+class AutoFactoryControlExecutionResult:
+    request: AutoFactoryControlRunRequest
+    preflight_report: AutoFactoryFolderPreflightReportDTO | None
+    run_report: AutoFactoryFolderRunReportDTO | None
+    selected_order: ProductionOrderDetailsDTO | None
+    created_order_id: int | None = None
+    created_order_code: str | None = None
+
+
+@dataclass(slots=True, frozen=True)
+class AutoFactoryControlProgressSnapshot:
+    run_state: str
+    phase: str
+    run_mode: str | None
+    root_folder: str | None
+    batch_code: str | None
+    monitored_order_id: int | None
+    monitored_order_code: str | None
+    order_status: str | None
+    current_stage: str | None
+    total_products: int
+    products_with_stage_activity: int
+    total_requested_outputs: int
+    materialized_recipe_count: int
+    preview_completed_count: int
+    review_required_count: int
+    stage_count: int
+    active_worker_count: int
+    last_event: str
+    blocking_reason: str | None
+    started_at: str | None
+    finished_at: str | None
+    command_note: str
+
+    @classmethod
+    def idle(cls) -> AutoFactoryControlProgressSnapshot:
+        return cls(
+            run_state="idle",
+            phase="idle",
+            run_mode=None,
+            root_folder=None,
+            batch_code=None,
+            monitored_order_id=None,
+            monitored_order_code=None,
+            order_status=None,
+            current_stage=None,
+            total_products=0,
+            products_with_stage_activity=0,
+            total_requested_outputs=0,
+            materialized_recipe_count=0,
+            preview_completed_count=0,
+            review_required_count=0,
+            stage_count=0,
+            active_worker_count=0,
+            last_event="No active run.",
+            blocking_reason=None,
+            started_at=None,
+            finished_at=None,
+            command_note=_build_command_note(run_active=False),
+        )
+
 
 class AutoFactoryControlViewModel(QObject):
     recent_orders_changed = Signal()
@@ -21,6 +95,8 @@ class AutoFactoryControlViewModel(QObject):
     selected_order_changed = Signal()
     status_changed = Signal()
     feedback_changed = Signal()
+    progress_changed = Signal()
+    run_active_changed = Signal()
 
     RUN_MODE_AUDIT_ONLY = "audit_only"
     RUN_MODE_INTAKE_ONLY = "intake_only"
@@ -47,6 +123,10 @@ class AutoFactoryControlViewModel(QObject):
         self._selected_order: ProductionOrderDetailsDTO | None = None
         self._status = "idle"
         self._feedback = ""
+        self._progress_snapshot = AutoFactoryControlProgressSnapshot.idle()
+        self._run_active = False
+        self._run_request: AutoFactoryControlRunRequest | None = None
+        self._monitored_order_id: int | None = None
 
     def _get_status(self) -> str:
         return self._status
@@ -85,25 +165,36 @@ class AutoFactoryControlViewModel(QObject):
     def selected_order(self) -> ProductionOrderDetailsDTO | None:
         return self._selected_order
 
+    @property
+    def progress_snapshot(self) -> AutoFactoryControlProgressSnapshot:
+        return self._progress_snapshot
+
+    @property
+    def run_active(self) -> bool:
+        return self._run_active
+
+    @property
+    def monitored_order_id(self) -> int | None:
+        return self._monitored_order_id
+
     def load(self) -> None:
         self._set_status("loading")
         try:
-            self._recent_orders = self._production_order_service.list_orders()
+            self._refresh_recent_orders()
         except Exception as exc:
             self._set_feedback(str(exc))
             self._set_status("error")
             raise
-        self.recent_orders_changed.emit()
         self._set_status("ready")
 
-    def run_batch_root(
+    def prepare_run_request(
         self,
         *,
         root_folder: str,
         batch_code: str | None = None,
         scan_depth: int = 1,
         run_mode: str = RUN_MODE_INTAKE_ONLY,
-    ) -> None:
+    ) -> AutoFactoryControlRunRequest:
         if run_mode not in self.RUN_MODES:
             raise ValueError(f"Unsupported run_mode: {run_mode}")
 
@@ -111,48 +202,169 @@ class AutoFactoryControlViewModel(QObject):
         if not normalized_root:
             raise ValueError("Root folder is required.")
 
-        self._set_status("running")
-        try:
-            preflight_report = None
-            run_report = None
-            selected_order = None
-            if run_mode == self.RUN_MODE_AUDIT_ONLY:
-                preflight_report = self._auto_factory_folder_service.audit_batch_root(
-                    Path(normalized_root),
-                    scan_depth=scan_depth,
-                )
-            else:
-                run_report = self._auto_factory_folder_service.run_batch_root(
-                    Path(normalized_root),
-                    batch_code=batch_code or None,
-                    scan_depth=scan_depth,
-                    materialize=False,
-                )
-            if run_report is not None and run_mode != self.RUN_MODE_INTAKE_ONLY:
-                selected_order = self._production_order_service.create_and_run_order(
-                    run_report.order,
-                    source_mode="folder_control_surface",
-                    order_code=_build_order_code(run_report.batch_code),
-                    build_previews=run_mode == self.RUN_MODE_MATERIALIZE_AND_PREVIEWS,
-                )
-            self._run_report = run_report
-            self._preflight_report = preflight_report
-            self._selected_order = selected_order
-            self.run_report_changed.emit()
-            self.preflight_report_changed.emit()
-            self.selected_order_changed.emit()
-            self._recent_orders = self._production_order_service.list_orders()
-            self.recent_orders_changed.emit()
-        except Exception as exc:
-            self._set_feedback(str(exc))
-            self._set_status("error")
-            raise
+        normalized_batch_code = None if batch_code is None or not batch_code.strip() else batch_code.strip()
+        return AutoFactoryControlRunRequest(
+            root_folder=normalized_root,
+            batch_code=normalized_batch_code,
+            scan_depth=scan_depth,
+            run_mode=run_mode,
+        )
 
-        if preflight_report is not None:
-            self._set_feedback(_build_preflight_feedback(preflight_report))
-        elif run_report is not None:
-            self._set_feedback(_build_run_feedback(run_report, selected_order))
+    def mark_run_started(self, request: AutoFactoryControlRunRequest) -> None:
+        self._run_request = request
+        self._set_run_active(True)
+        self._set_status("running")
+        self._set_feedback("Auto Factory run started.")
+        self.update_progress_snapshot(_build_initial_progress_snapshot(request))
+
+    def execute_run_request(
+        self,
+        request: AutoFactoryControlRunRequest,
+        *,
+        progress_callback=None,
+    ) -> AutoFactoryControlExecutionResult:
+        if progress_callback is not None:
+            progress_callback(_build_initial_progress_snapshot(request))
+
+        if request.run_mode == self.RUN_MODE_AUDIT_ONLY:
+            preflight_report = self._auto_factory_folder_service.audit_batch_root(
+                Path(request.root_folder),
+                scan_depth=request.scan_depth,
+            )
+            return AutoFactoryControlExecutionResult(
+                request=request,
+                preflight_report=preflight_report,
+                run_report=None,
+                selected_order=None,
+            )
+
+        run_report = self._auto_factory_folder_service.run_batch_root(
+            Path(request.root_folder),
+            batch_code=request.batch_code,
+            scan_depth=request.scan_depth,
+            materialize=False,
+        )
+        if request.run_mode == self.RUN_MODE_INTAKE_ONLY:
+            return AutoFactoryControlExecutionResult(
+                request=request,
+                preflight_report=None,
+                run_report=run_report,
+                selected_order=None,
+            )
+
+        order_code = _build_order_code(run_report.batch_code)
+        order_id = self._production_order_service.create_order(
+            run_report.order,
+            source_mode="folder_control_surface",
+            order_code=order_code,
+        )
+        if progress_callback is not None:
+            progress_callback(
+                _build_order_bootstrap_progress_snapshot(
+                    request=request,
+                    run_report=run_report,
+                    order_id=order_id,
+                    order_code=order_code,
+                )
+            )
+        selected_order = self._production_order_service.run_order(
+            order_id,
+            build_previews=request.run_mode == self.RUN_MODE_MATERIALIZE_AND_PREVIEWS,
+        )
+        return AutoFactoryControlExecutionResult(
+            request=request,
+            preflight_report=None,
+            run_report=run_report,
+            selected_order=selected_order,
+            created_order_id=order_id,
+            created_order_code=order_code,
+        )
+
+    def apply_execution_result(self, result: AutoFactoryControlExecutionResult) -> None:
+        self._run_report = result.run_report
+        self._preflight_report = result.preflight_report
+        self._selected_order = result.selected_order
+        self._run_request = result.request
+        self._monitored_order_id = result.created_order_id
+        self.run_report_changed.emit()
+        self.preflight_report_changed.emit()
+        self.selected_order_changed.emit()
+        self._refresh_recent_orders()
+
+        if result.preflight_report is not None:
+            self.update_progress_snapshot(_build_preflight_progress_snapshot(result.request, result.preflight_report))
+            self._set_feedback(_build_preflight_feedback(result.preflight_report))
+        elif result.run_report is not None and result.selected_order is None:
+            self.update_progress_snapshot(_build_intake_progress_snapshot(result.request, result.run_report))
+            self._set_feedback(_build_run_feedback(result.run_report, result.selected_order))
+        elif result.selected_order is not None:
+            self.update_progress_snapshot(
+                _build_order_progress_snapshot(
+                    result.selected_order,
+                    request=result.request,
+                    run_state="completed",
+                    phase="completed",
+                    command_note=_build_command_note(run_active=False),
+                )
+            )
+            self._set_feedback(_build_run_feedback(result.run_report, result.selected_order))
+
+        self._set_run_active(False)
         self._set_status("ready")
+
+    def handle_run_failure(self, error_message: str) -> None:
+        self._set_feedback(error_message)
+        self._set_status("error")
+        self.update_progress_snapshot(
+            AutoFactoryControlProgressSnapshot(
+                run_state="failed",
+                phase="failed",
+                run_mode=None if self._run_request is None else self._run_request.run_mode,
+                root_folder=None if self._run_request is None else self._run_request.root_folder,
+                batch_code=None if self._run_request is None else self._run_request.batch_code,
+                monitored_order_id=self._monitored_order_id,
+                monitored_order_code=None,
+                order_status="failed_terminal",
+                current_stage=self._progress_snapshot.current_stage,
+                total_products=self._progress_snapshot.total_products,
+                products_with_stage_activity=self._progress_snapshot.products_with_stage_activity,
+                total_requested_outputs=self._progress_snapshot.total_requested_outputs,
+                materialized_recipe_count=self._progress_snapshot.materialized_recipe_count,
+                preview_completed_count=self._progress_snapshot.preview_completed_count,
+                review_required_count=self._progress_snapshot.review_required_count,
+                stage_count=self._progress_snapshot.stage_count,
+                active_worker_count=0,
+                last_event=error_message,
+                blocking_reason=error_message,
+                started_at=self._progress_snapshot.started_at,
+                finished_at=None,
+                command_note=_build_command_note(run_active=False),
+            )
+        )
+        self._set_run_active(False)
+
+    def update_progress_snapshot(self, snapshot: AutoFactoryControlProgressSnapshot) -> None:
+        self._progress_snapshot = snapshot
+        if snapshot.monitored_order_id is not None:
+            self._monitored_order_id = snapshot.monitored_order_id
+        self.progress_changed.emit()
+
+    def refresh_progress(self) -> None:
+        self._refresh_recent_orders()
+        if self._monitored_order_id is None:
+            return
+        selected_order = self._production_order_service.get_order(self._monitored_order_id)
+        self._selected_order = selected_order
+        self.selected_order_changed.emit()
+        self.update_progress_snapshot(
+            _build_order_progress_snapshot(
+                selected_order,
+                request=self._run_request,
+                run_state="running" if self._run_active else "ready",
+                phase="monitoring_order",
+                command_note=_build_command_note(run_active=self._run_active),
+            )
+        )
 
     def select_order(self, production_order_id: int | None) -> None:
         if production_order_id is None:
@@ -167,9 +379,60 @@ class AutoFactoryControlViewModel(QObject):
             self._set_feedback(str(exc))
             self._set_status("error")
             raise
+        self._monitored_order_id = production_order_id
         self.selected_order_changed.emit()
+        self.update_progress_snapshot(
+            _build_order_progress_snapshot(
+                self._selected_order,
+                request=self._run_request,
+                run_state="running" if self._run_active else "ready",
+                phase="selected_order",
+                command_note=_build_command_note(run_active=self._run_active),
+            )
+        )
         self._set_feedback(f"Loaded production order #{production_order_id}.")
         self._set_status("ready")
+
+    def request_pause(self) -> None:
+        self._set_feedback(_build_pending_control_feedback("Pause"))
+
+    def request_stop(self) -> None:
+        self._set_feedback(_build_pending_control_feedback("Stop"))
+
+    def request_resume(self) -> None:
+        self._set_feedback(_build_pending_control_feedback("Resume"))
+
+    def run_batch_root(
+        self,
+        *,
+        root_folder: str,
+        batch_code: str | None = None,
+        scan_depth: int = 1,
+        run_mode: str = RUN_MODE_INTAKE_ONLY,
+    ) -> None:
+        request = self.prepare_run_request(
+            root_folder=root_folder,
+            batch_code=batch_code,
+            scan_depth=scan_depth,
+            run_mode=run_mode,
+        )
+        self.mark_run_started(request)
+        try:
+            result = self.execute_run_request(request)
+        except Exception as exc:
+            self.handle_run_failure(str(exc))
+            raise
+        self.apply_execution_result(result)
+
+    def _refresh_recent_orders(self) -> None:
+        self._recent_orders = self._production_order_service.list_orders()
+        self.recent_orders_changed.emit()
+
+    def _set_run_active(self, value: bool) -> None:
+        if self._run_active == value:
+            return
+        self._run_active = value
+        self.run_active_changed.emit()
 
 
 def _build_order_code(batch_code: str) -> str:
@@ -178,9 +441,11 @@ def _build_order_code(batch_code: str) -> str:
 
 
 def _build_run_feedback(
-    run_report: AutoFactoryFolderRunReportDTO,
+    run_report: AutoFactoryFolderRunReportDTO | None,
     selected_order: ProductionOrderDetailsDTO | None,
 ) -> str:
+    if run_report is None:
+        return "Auto Factory run completed."
     product_count = len(run_report.product_reports)
     registered_count = sum(report.registered_asset_count for report in run_report.product_reports)
     skipped_count = sum(report.skipped_existing_asset_count for report in run_report.product_reports)
@@ -207,3 +472,208 @@ def _build_preflight_feedback(preflight_report: AutoFactoryFolderPreflightReport
     if preflight_report.warning_count > 0:
         return f"{base} Automation can proceed, but cleanup is recommended."
     return f"{base} Product folders are ready for automation."
+
+
+def _build_initial_progress_snapshot(request: AutoFactoryControlRunRequest) -> AutoFactoryControlProgressSnapshot:
+    resolved_phase = "running_preflight" if request.run_mode == AutoFactoryControlViewModel.RUN_MODE_AUDIT_ONLY else "running_intake"
+    return AutoFactoryControlProgressSnapshot(
+        run_state="running",
+        phase=resolved_phase,
+        run_mode=request.run_mode,
+        root_folder=request.root_folder,
+        batch_code=request.batch_code,
+        monitored_order_id=None,
+        monitored_order_code=None,
+        order_status=None,
+        current_stage=resolved_phase,
+        total_products=0,
+        products_with_stage_activity=0,
+        total_requested_outputs=0,
+        materialized_recipe_count=0,
+        preview_completed_count=0,
+        review_required_count=0,
+        stage_count=0,
+        active_worker_count=1,
+        last_event=f"Started {resolved_phase.replace('_', ' ')}.",
+        blocking_reason=None,
+        started_at=None,
+        finished_at=None,
+        command_note=_build_command_note(run_active=True),
+    )
+
+
+def _build_preflight_progress_snapshot(
+    request: AutoFactoryControlRunRequest,
+    preflight_report: AutoFactoryFolderPreflightReportDTO,
+) -> AutoFactoryControlProgressSnapshot:
+    return AutoFactoryControlProgressSnapshot(
+        run_state="completed",
+        phase="audit_complete",
+        run_mode=request.run_mode,
+        root_folder=request.root_folder,
+        batch_code=request.batch_code,
+        monitored_order_id=None,
+        monitored_order_code=None,
+        order_status=preflight_report.status,
+        current_stage="audit_complete",
+        total_products=len(preflight_report.product_reports),
+        products_with_stage_activity=len(preflight_report.product_reports),
+        total_requested_outputs=sum(report.requested_output_count or 0 for report in preflight_report.product_reports),
+        materialized_recipe_count=0,
+        preview_completed_count=0,
+        review_required_count=preflight_report.warning_count,
+        stage_count=0,
+        active_worker_count=0,
+        last_event=f"Audit completed with {preflight_report.error_count} error(s) and {preflight_report.warning_count} warning(s).",
+        blocking_reason=None if preflight_report.error_count == 0 else "Blocking preflight issues detected.",
+        started_at=None,
+        finished_at=None,
+        command_note=_build_command_note(run_active=False),
+    )
+
+
+def _build_intake_progress_snapshot(
+    request: AutoFactoryControlRunRequest,
+    run_report: AutoFactoryFolderRunReportDTO,
+) -> AutoFactoryControlProgressSnapshot:
+    total_requested_outputs = sum(product_request.requested_output_count for product_request in run_report.order.product_requests)
+    return AutoFactoryControlProgressSnapshot(
+        run_state="completed",
+        phase="intake_complete",
+        run_mode=request.run_mode,
+        root_folder=request.root_folder,
+        batch_code=run_report.batch_code,
+        monitored_order_id=None,
+        monitored_order_code=None,
+        order_status="intake_complete",
+        current_stage="intake_complete",
+        total_products=len(run_report.order.product_requests),
+        products_with_stage_activity=len(run_report.product_reports),
+        total_requested_outputs=total_requested_outputs,
+        materialized_recipe_count=0,
+        preview_completed_count=0,
+        review_required_count=0,
+        stage_count=0,
+        active_worker_count=0,
+        last_event=f"Intake completed for batch {run_report.batch_code}.",
+        blocking_reason=None,
+        started_at=None,
+        finished_at=None,
+        command_note=_build_command_note(run_active=False),
+    )
+
+
+def _build_order_bootstrap_progress_snapshot(
+    *,
+    request: AutoFactoryControlRunRequest,
+    run_report: AutoFactoryFolderRunReportDTO,
+    order_id: int,
+    order_code: str,
+) -> AutoFactoryControlProgressSnapshot:
+    total_requested_outputs = sum(product_request.requested_output_count for product_request in run_report.order.product_requests)
+    return AutoFactoryControlProgressSnapshot(
+        run_state="running",
+        phase="running_order",
+        run_mode=request.run_mode,
+        root_folder=request.root_folder,
+        batch_code=run_report.batch_code,
+        monitored_order_id=order_id,
+        monitored_order_code=order_code,
+        order_status="processing",
+        current_stage="order_created",
+        total_products=len(run_report.order.product_requests),
+        products_with_stage_activity=0,
+        total_requested_outputs=total_requested_outputs,
+        materialized_recipe_count=0,
+        preview_completed_count=0,
+        review_required_count=0,
+        stage_count=0,
+        active_worker_count=1,
+        last_event=f"Created production order {order_code}; monitoring stage execution.",
+        blocking_reason=None,
+        started_at=None,
+        finished_at=None,
+        command_note=_build_command_note(run_active=True),
+    )
+
+
+def _build_order_progress_snapshot(
+    order: ProductionOrderDetailsDTO,
+    *,
+    request: AutoFactoryControlRunRequest | None,
+    run_state: str,
+    phase: str,
+    command_note: str,
+) -> AutoFactoryControlProgressSnapshot:
+    latest_stage = None if not order.stages else max(order.stages, key=lambda stage: stage.sequence_index)
+    product_ids_with_stage_activity = {
+        stage.production_order_item_id for stage in order.stages if stage.production_order_item_id is not None
+    }
+    materialized_recipe_count = len(
+        {
+            stage.recipe_id
+            for stage in order.stages
+            if stage.stage_name == "materialize" and stage.status == "succeeded" and stage.recipe_id is not None
+        }
+    )
+    preview_completed_count = sum(
+        1 for stage in order.stages if stage.stage_name == "preview" and stage.status == "succeeded"
+    )
+    review_required_count = sum(
+        1 for stage in order.stages if stage.stage_name == "review" and stage.status == "review_required"
+    )
+    total_requested_outputs = sum(item.requested_output_count for item in order.items)
+    blocking_reason = None
+    if latest_stage is not None and latest_stage.failure_class:
+        blocking_reason = latest_stage.failure_class
+    elif "failed" in order.status:
+        blocking_reason = order.status
+
+    return AutoFactoryControlProgressSnapshot(
+        run_state=run_state,
+        phase=phase,
+        run_mode=None if request is None else request.run_mode,
+        root_folder=None if request is None else request.root_folder,
+        batch_code=order.batch_code,
+        monitored_order_id=order.production_order_id,
+        monitored_order_code=order.order_code,
+        order_status=order.status,
+        current_stage="queued" if latest_stage is None else latest_stage.stage_name,
+        total_products=len(order.items),
+        products_with_stage_activity=len(product_ids_with_stage_activity),
+        total_requested_outputs=total_requested_outputs,
+        materialized_recipe_count=materialized_recipe_count,
+        preview_completed_count=preview_completed_count,
+        review_required_count=review_required_count,
+        stage_count=len(order.stages),
+        active_worker_count=1 if order.status == "processing" else 0,
+        last_event=(
+            "Order created; waiting for first recorded stage."
+            if latest_stage is None
+            else f"Last Stage #{latest_stage.sequence_index}: {latest_stage.stage_name} -> {latest_stage.status}"
+        ),
+        blocking_reason=blocking_reason,
+        started_at=order.started_at,
+        finished_at=order.finished_at,
+        command_note=command_note,
+    )
+
+
+def _build_command_note(*, run_active: bool) -> str:
+    if run_active:
+        return (
+            "Live monitoring is active. Manual Refresh Progress is available. "
+            "Pause/Stop/Resume remain pending until persisted safe-checkpoint worker control is implemented."
+        )
+    return (
+        "You can inspect order truth and refresh progress snapshots here. "
+        "Pause/Stop/Resume controls are intentionally not active yet because the backend does not yet persist "
+        "safe-checkpoint operator intents."
+    )
+
+
+def _build_pending_control_feedback(command_name: str) -> str:
+    return (
+        f"{command_name} is not active yet. "
+        "The UI surface exists, but persisted pause/stop/resume semantics still need worker-lease and safe-checkpoint backend support."
+    )
