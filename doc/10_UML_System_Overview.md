@@ -142,6 +142,8 @@ classDiagram
         +manual newline preservation
         +font-file resolution from workspace fonts
         +config-driven promo line-advance compression
+        +top-band face-safe band clamp
+        +support helpers split below 800-line guardrail
         +overflow risk reporting
     }
 
@@ -154,7 +156,7 @@ classDiagram
         +resume_order(order_id)
         +get_order(order_id)
         +list_orders(...)
-        +persist lease + heartbeat + event truth
+        +persist order + stage/event truth
     }
 
     class ReviewGateEvaluator {
@@ -743,32 +745,23 @@ sequenceDiagram
     VM->>OrderSvc: create_order(..., run_mode, source_root, build_previews)
     VM->>OrderSvc: run_order(order_id)
     loop while run is active
-        OrderSvc->>State: claim lease + heartbeat + stage/event truth
+        OrderSvc->>State: persist order + stage/event truth
         View->>VM: refresh_progress()
         VM->>OrderSvc: get_order(order_id)
-        State-->>VM: persisted order, lease, and event truth
+        State-->>VM: persisted order and event truth
         VM-->>View: refresh live progress + orders table + event history
     end
     alt pause requested
         Operator->>View: Pause Run
         View->>VM: request_pause(order_id)
-        VM->>OrderSvc: request_pause(order_id)
-        OrderSvc->>State: persist pause_requested
-        OrderSvc->>State: settle to paused at next safe checkpoint
-        State-->>VM: paused
+        VM-->>View: pending backend support until persisted safe-checkpoint semantics exist
     else stop requested
         Operator->>View: Stop Run
         View->>VM: request_stop(order_id)
-        VM->>OrderSvc: request_stop(order_id)
-        OrderSvc->>State: persist stop_requested
-        OrderSvc->>State: settle to stopped at next safe checkpoint
-        State-->>VM: stopped
+        VM-->>View: pending backend support until persisted safe-checkpoint semantics exist
     else resume after interruption
         Operator->>View: Resume Run
-        View->>Worker: start resume worker
-        Worker->>VM: execute_resume_order(order_id)
-        VM->>OrderSvc: resume_order(order_id)
-        OrderSvc->>State: recover stale lease + continue remaining eligible work
+        VM-->>View: pending backend support until persisted safe-checkpoint semantics exist
     end
 ```
 
@@ -1252,6 +1245,7 @@ sequenceDiagram
     Factory->>Caption: resolve_for_segments(product_code, recipe_code, segments)
     Caption->>Meta: load_caption_contract(product_code)
     Caption->>Caption: choose main/sub with stable seed
+    Caption->>Caption: clamp top-band headline height before eye-line overlap
     Caption-->>Factory: resolved caption instructions + overflow evidence
     Factory->>Render: render_output(..., segment_clips with captions)
     Render->>Render: draw main/sub caption overlays

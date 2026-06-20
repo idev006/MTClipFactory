@@ -37,9 +37,9 @@ It complements [07_Testing_Strategy.md](/F:/programming/python/MTClipFactory/doc
 - folder-driven batch intake using `product.toml` and `pipeline.toml`
 - automatic preview production from materialized auto-factory batches
 - persisted production-order and orchestration-stage tracking
-- persisted production-order lease, heartbeat, and append-only order-event tracking
+- persisted production-order and append-only order-event tracking
 - desktop `Auto Factory` control-surface workflow for root selection, scan depth, run mode, intake reporting, and recent-order inspection
-- desktop `Auto Factory` pause/stop/resume workflow for the local-worker safe-checkpoint baseline
+- desktop `Auto Factory` live-progress workflow plus truthful `Pause/Stop/Resume` groundwork that remains pending backend support
 - desktop `Auto Factory` `Audit Only` workflow for preflight summary and issue visibility
 - tag-aware auto-factory asset-pool filtering from normalized asset labels
 - asset-first tagging workflow for selected-asset details, tag search, and create-and-attach behavior
@@ -47,6 +47,7 @@ It complements [07_Testing_Strategy.md](/F:/programming/python/MTClipFactory/doc
 - folder-driven tag metadata sync from `tags.toml`
 - caption runtime sync and render behavior from product-level `captions.toml`
 - caption safe-band defaults and role-specific vertical placement overrides from product-level `captions.toml`
+- top-band face-safe caption clamp behavior for grouped presenter-led promo headlines
 - textbox-based caption geometry, including independent textbox placement and text alignment
 - product-local run artifact layout, order snapshot, and run journal behavior
 - product-folder preflight audit behavior for contracts, assets, tags, and `selection_tags` viability
@@ -202,11 +203,7 @@ It complements [07_Testing_Strategy.md](/F:/programming/python/MTClipFactory/doc
 21. Confirm the desktop `Auto Factory` screen can browse/select a root folder, set `scan_depth`, and complete `Intake Only` mode with truthful discovered-folder, product, and asset-action reporting.
 22. Confirm `Intake + Materialize` creates a persisted `Production Order` and shows stage truth in the screen's recent-order surfaces.
 23. Confirm `Intake + Materialize + Build Previews` records preview and review stages while still stopping at the human approval boundary.
-- Confirm `Pause Run` persists `pause_requested` during active local-worker execution and settles to `paused` at the next safe checkpoint.
-- Confirm `Stop Run` persists `stop_requested` during active local-worker execution and settles to `stopped` at the next safe checkpoint.
-- Confirm `Resume Run` can continue a paused or stopped order without rematerializing or rebuilding already-succeeded units.
-- Confirm a retryable preview failure can be resumed and only the remaining eligible retryable units rerun.
-- Confirm stale-lease recovery works after a simulated worker interruption once the lease timeout elapses.
+- Confirm `Pause Run`, `Stop Run`, and `Resume Run` continue to display truthful `pending backend support` messaging until persisted safe-checkpoint and worker-lease semantics exist.
 24. Confirm `pipeline.toml [selection_tags]` can restrict foreground/background/music/voice pools by normalized `group:name` labels.
 25. Confirm planner shortfalls caused by tag filters remain truthful and do not silently fall back to untagged visual assets.
 26. Confirm the `Tags` screen shows current asset tag labels and supports `Asset Type` filtering during assignment work.
@@ -235,6 +232,8 @@ It complements [07_Testing_Strategy.md](/F:/programming/python/MTClipFactory/doc
 49. Confirm caption contracts can render one textbox per line for advertising-style captions and that FFmpeg emits one `drawbox` per rendered line.
 50. Confirm product-folder preflight reports `ready`, `warning`, and `error` truthfully, including missing recommended contracts and `selection_tags` that do not match any current ingestible asset files.
 51. Confirm the desktop `Auto Factory` screen can run `Audit Only` and show dedicated preflight product summaries plus actionable issue rows without creating a production order.
+52. Confirm grouped top-band promo headlines respect `max_safe_band_height_ratio` and shrink before covering the presenter eye line.
+53. Confirm grouped multi-line captions do not grow above the requested contract font size, while short single-line best-fit captions may still upscale intentionally.
 
 ### C. Review And Approval Flow
 

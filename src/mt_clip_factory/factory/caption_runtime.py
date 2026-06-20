@@ -7,12 +7,20 @@ import tomllib
 
 from mt_clip_factory.domain.timeline_segments import TimelineSegment
 from mt_clip_factory.factory.caption_layout import CaptionFrameContext, resolve_caption_layout
-from mt_clip_factory.factory.caption_style_presets import resolve_caption_style_preset
+from mt_clip_factory.factory.caption_runtime_support import (
+    CaptionContractError,
+    _bounded_float,
+    _boolean,
+    _choice_text,
+    _escape_toml_string,
+    _non_negative_int,
+    _optional_text,
+    _positive_int,
+    _resolve_font,
+    _resolve_style_preset_defaults,
+    _text_list,
+)
 from mt_clip_factory.factory.visual_selection import seeded_choice, seeded_cycled_choice
-
-
-class CaptionContractError(ValueError):
-    """Raised when a product caption contract is invalid."""
 
 
 @dataclass(slots=True, frozen=True)
@@ -61,6 +69,7 @@ class CaptionRoleStyle:
     line_advance_ratio: float
     safe_top_ratio: float
     safe_bottom_ratio: float
+    max_safe_band_height_ratio: float
     overflow_policy: str
     enter_animation: str | None
     review_required_if_overflow: bool
@@ -123,6 +132,8 @@ class ResolvedCaptionRole:
     line_advance_ratio: float
     safe_top_ratio: float
     safe_bottom_ratio: float
+    max_safe_band_height_ratio: float
+    effective_safe_bottom_ratio: float
     line_spacing_px: int
     line_font_sizes_px: tuple[int, ...]
     line_widths_px: tuple[int, ...]
@@ -394,6 +405,7 @@ class CaptionRuntimeService:
             stroke_width=style.stroke_width,
             safe_top_ratio=style.safe_top_ratio,
             safe_bottom_ratio=style.safe_bottom_ratio,
+            max_safe_band_height_ratio=style.max_safe_band_height_ratio,
             overflow_policy=style.overflow_policy,
             review_required_if_overflow=style.review_required_if_overflow,
         )
@@ -446,6 +458,8 @@ class CaptionRuntimeService:
             line_advance_ratio=style.line_advance_ratio,
             safe_top_ratio=style.safe_top_ratio,
             safe_bottom_ratio=style.safe_bottom_ratio,
+            max_safe_band_height_ratio=style.max_safe_band_height_ratio,
+            effective_safe_bottom_ratio=layout.effective_safe_bottom_ratio,
             line_spacing_px=layout.line_spacing_px,
             line_font_sizes_px=layout.line_font_sizes_px,
             line_widths_px=layout.line_widths_px,
@@ -538,8 +552,10 @@ def _parse_role_style(value, *, role: str) -> CaptionRoleStyle:
             context=f"[caption_properties.{role}].preferred_line_count",
         ),
     )
+    resolved_position = _optional_text(value_for("position")) or default_position
+    default_max_safe_band_height = 0.18 if role == "main" and resolved_position.casefold() == "top" else 0.0
     return CaptionRoleStyle(
-        position=_optional_text(value_for("position")) or default_position,
+        position=resolved_position,
         alignment=_optional_text(value_for("alignment")) or "center",
         vertical_alignment=_optional_text(value_for("vertical_alignment")) or "top",
         textbox_alignment=_optional_text(value_for("textbox_alignment")) or "center",
@@ -635,6 +651,13 @@ def _parse_role_style(value, *, role: str) -> CaptionRoleStyle:
             maximum=1.0,
             context=f"[caption_properties.{role}].safe_bottom_ratio",
         ),
+        max_safe_band_height_ratio=_bounded_float(
+            value_for("max_safe_band_height_ratio"),
+            default=default_max_safe_band_height,
+            minimum=0.0,
+            maximum=1.0,
+            context=f"[caption_properties.{role}].max_safe_band_height_ratio",
+        ),
         overflow_policy=_optional_text(value_for("overflow_policy")) or default_overflow_policy,
         enter_animation=_optional_text(value_for("enter_animation")) or default_animation,
         review_required_if_overflow=_boolean(
@@ -643,15 +666,6 @@ def _parse_role_style(value, *, role: str) -> CaptionRoleStyle:
             context=f"[caption_properties.{role}].review_required_if_overflow",
         ),
     )
-
-
-def _resolve_style_preset_defaults(*, style_preset: str | None, role: str) -> dict[str, object]:
-    if not style_preset:
-        return {}
-    try:
-        return resolve_caption_style_preset(preset_name=style_preset, role=role)
-    except ValueError as exc:
-        raise CaptionContractError(str(exc)) from exc
 
 
 def _select_index(
@@ -720,124 +734,3 @@ def _split_batch_recipe_code(recipe_code: str) -> tuple[str, int]:
     if separator and suffix.isdigit():
         return prefix, max(0, int(suffix) - 1)
     return recipe_code, 0
-
-
-def _resolve_font(
-    *,
-    fonts_root: Path,
-    font_family: str,
-    fallbacks: tuple[str, ...],
-) -> tuple[Path | None, str, str]:
-    for requested_name, resolution_mode in ((font_family, "workspace_primary"), *[(item, "workspace_fallback") for item in fallbacks]):
-        resolved_file = _find_font_file(fonts_root, requested_name)
-        if resolved_file is not None:
-            return resolved_file, requested_name, resolution_mode
-    if fallbacks:
-        return None, fallbacks[0], "system_fallback"
-    return None, font_family, "system_primary"
-
-
-def _find_font_file(fonts_root: Path, requested_name: str) -> Path | None:
-    if not fonts_root.exists():
-        return None
-    requested = _normalize_font_name(requested_name)
-    if not requested:
-        return None
-    direct_matches: list[Path] = []
-    loose_matches: list[Path] = []
-    for file_path in sorted(path for path in fonts_root.iterdir() if path.is_file() and path.suffix.lower() in {".ttf", ".otf"}):
-        candidate = _normalize_font_name(file_path.stem)
-        if candidate == requested:
-            direct_matches.append(file_path)
-        elif requested in candidate or candidate in requested:
-            loose_matches.append(file_path)
-    if direct_matches:
-        return direct_matches[0]
-    if loose_matches:
-        return loose_matches[0]
-    return None
-
-
-def _normalize_font_name(value: str) -> str:
-    return "".join(character for character in value.casefold() if character.isalnum())
-
-
-def _text_list(value, *, context: str) -> tuple[str, ...]:
-    if value is None:
-        return ()
-    if not isinstance(value, list):
-        raise CaptionContractError(f"Expected text list for {context}.")
-    result: list[str] = []
-    for item in value:
-        text = _optional_text(item)
-        if text is None:
-            continue
-        result.append(text)
-    return tuple(result)
-
-
-def _optional_text(value) -> str | None:
-    if value is None:
-        return None
-    text = str(value).strip()
-    return text or None
-
-
-def _positive_int(value, *, default: int, context: str) -> int:
-    if value is None:
-        return default
-    try:
-        parsed = int(value)
-    except (TypeError, ValueError) as exc:
-        raise CaptionContractError(f"Expected positive integer for {context}.") from exc
-    if parsed <= 0:
-        raise CaptionContractError(f"Expected positive integer for {context}.")
-    return parsed
-
-
-def _non_negative_int(value, *, default: int, context: str) -> int:
-    if value is None:
-        return default
-    try:
-        parsed = int(value)
-    except (TypeError, ValueError) as exc:
-        raise CaptionContractError(f"Expected non-negative integer for {context}.") from exc
-    if parsed < 0:
-        raise CaptionContractError(f"Expected non-negative integer for {context}.")
-    return parsed
-
-
-def _bounded_float(value, *, default: float, minimum: float, maximum: float, context: str) -> float:
-    if value is None:
-        return default
-    try:
-        parsed = float(value)
-    except (TypeError, ValueError) as exc:
-        raise CaptionContractError(f"Expected numeric value for {context}.") from exc
-    if parsed < minimum or parsed > maximum:
-        raise CaptionContractError(f"Expected {context} to stay within {minimum}..{maximum}.")
-    return parsed
-
-
-def _choice_text(value, *, default: str, allowed: tuple[str, ...], context: str) -> str:
-    if value is None:
-        return default
-    text = _optional_text(value)
-    if text is None:
-        return default
-    normalized = text.casefold()
-    if normalized not in allowed:
-        raise CaptionContractError(f"Expected {context} to be one of: {', '.join(allowed)}.")
-    return normalized
-
-
-def _boolean(value, *, default: bool, context: str) -> bool:
-    if value is None:
-        return default
-    if isinstance(value, bool):
-        return value
-    raise CaptionContractError(f"Expected boolean for {context}.")
-
-
-def _escape_toml_string(value: str) -> str:
-    return value.replace("\\", "\\\\").replace('"', '\\"')

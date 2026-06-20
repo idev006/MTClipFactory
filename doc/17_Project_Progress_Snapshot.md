@@ -84,8 +84,8 @@
 - The `Tags` screen now provides guided group reuse plus product/status/search filtering so operators can narrow the asset list before assigning labels.
 - The first controlled operator/UAT run has now completed end to end and produced a real final output from the current workspace.
 - A second controlled operator/UAT run has now validated runtime voice/music mixing, richer visual coverage, and a no-review-gate path on a stronger recipe.
-- The roadmap is now split into strategic and implementation layers, and `IR-20` local-worker lease, heartbeat, and retry semantics are now delivered as the current production-order run-control baseline.
-- The auto-factory operations slice defined in SSOT now has a backend-functional local-worker implementation for live progress, pause/stop/resume safe-checkpoint control, append-only order events, and restart-safe recovery, while bounded multi-worker execution remains open.
+- The roadmap is now split into strategic and implementation layers, and the next major control-plane gap remains persisted worker-lease plus safe-checkpoint semantics for truthful `Pause/Stop/Resume`.
+- The auto-factory operations slice defined in SSOT now has a delivered background-worker plus live-progress baseline, while backend-functional pause/stop/resume and restart-safe recovery remain open.
 - A new corrective execution slice is now active for safer default caption placement bands and longest-contributing-layer duration resolution after real auto-mode preview feedback exposed layout and timeline quality gaps.
 
 ## Delivered In The Latest Loop
@@ -137,10 +137,12 @@
 - delivered a tabbed `Auto Factory` workspace layout so overview, audit, intake, and order-stage surfaces no longer collapse into one over-compressed vertical stack
 - delivered background-run execution plus live progress polling for the desktop `Auto Factory` screen so operators can monitor production-order stage truth without freezing the window
 - delivered truthful operator-control groundwork in that same screen, with active `Refresh Progress` and a visible control seam for `Pause/Stop/Resume`
-- delivered persisted local-worker lease ownership, heartbeat, lease-expiry, run-mode, source-root, and blocking-reason truth on `Production Order`
-- delivered append-only `production_order_events` journaling so run start, stage activity, pause/stop/resume intent, stale-lease recovery, and completion/blocking history remain inspectable
-- delivered backend-functional `Pause Run` and `Stop Run` commands that settle at recipe-boundary safe checkpoints instead of pretending instant mid-render preemption
-- delivered backend-functional `Resume Run` plus stale-lease recovery so paused, stopped, retryable-failed, or interrupted orders can continue remaining eligible work without duplicating successful units
+- delivered background-run execution plus live progress polling for the desktop `Auto Factory` screen so operators can monitor production-order stage truth without freezing the window
+- delivered truthful operator-control groundwork in that same screen, with active `Refresh Progress` and a visible control seam for `Pause/Stop/Resume`
+- kept `Pause Run`, `Stop Run`, and `Resume Run` explicitly at `pending backend support` until persisted safe-checkpoint and worker-lease semantics exist
+- delivered a new caption runtime guard for presenter-led top headline cards through `max_safe_band_height_ratio`, so grouped top-band promo boxes shrink before covering the presenter eye line
+- stopped grouped multi-line caption layouts from growing above the requested contract font size, while preserving single-line best-fit upscaling for deliberately short hooks
+- split caption runtime/layout support helpers into dedicated modules so the core orchestrators stay below the repo `800`-line guardrail
 - delivered a policy-aware duration fix so loopable background music no longer stretches auto-mode previews past the intended ad timeline while non-loop music can still remain duration-authoritative when explicitly configured
 - delivered product-policy voice-loop support all the way through parser, composition persistence, renderer application, and manifest truth
 - tuned the live `Biothentic0001` contract toward promo-card captions with stronger `main`/`sub` sizing and explicit loop behavior for voice and foreground assets
@@ -151,7 +153,7 @@
 ## Still Open
 
 1. run broader controlled operator use on real campaign media and capture operator notes without service-side intervention
-2. validate restart-safe recovery on the new local-worker lease baseline, including stale-lease recovery, paused-order resume, stopped-order resume, and retryable preview reruns
+2. implement and validate persisted worker-lease plus safe-checkpoint semantics so `Pause/Stop/Resume` can become truthful backend-backed controls instead of groundwork-only buttons
 3. extend the new auto-preview factory baseline into controlled final-render automation only after operators accept the current planner, tag-aware selection rules, and review-gate truth
 4. repeat the new live auto-mode audit seam on more products so `Biothentic0001` does not remain the only proof point
 5. rerun a live `Biothentic0001` preview/final audit after the new policy-aware voice-loop and music-duration-authority slice
@@ -162,8 +164,9 @@
 10. validate whether operators want direct file-level shortcuts for `captions.toml`, `pipeline.toml`, and `product.toml` after using the new folder-level actions
 11. validate whether the new tabbed `Auto Factory` workspace gives operators enough at-a-glance context or needs split-view refinements after live use
 12. decide whether the append-only order-event journal should grow into a richer operator-facing event view with filtering, grouping, or export
+13. validate the new top-band face-safe clamp on more presenter-led products and decide whether future work should add subject-aware or face-detection-driven placement beyond the current contract-only geometry model
 
 ## Verification Baseline
 
-- `python -m pytest` in `.venv`: `253 passed, 4 warnings`
+- `python -m pytest` in `.venv`: `254 passed, 4 warnings`
 - targeted `QT_QPA_PLATFORM=offscreen` UI/theme coverage for the new `Auto Factory` window and existing app windows: passed

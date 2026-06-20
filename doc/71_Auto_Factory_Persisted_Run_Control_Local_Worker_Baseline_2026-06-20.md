@@ -1,6 +1,6 @@
 # Auto Factory Persisted Run Control Local Worker Baseline 2026-06-20
 
-This document is the SSOT for the first backend-functional `IR-20` slice.
+Status note: as of 2026-06-20 this document describes the target `IR-20` design only. Persisted worker-lease, safe-checkpoint, and backend-functional `Pause Run` / `Stop Run` / `Resume Run` behavior are not implemented in code yet, so the UI must continue to report `pending backend support`.
 
 It extends [63_Auto_Factory_Operations_Control_Requirements_2026-06-19.md](/F:/programming/python/MTClipFactory/doc/63_Auto_Factory_Operations_Control_Requirements_2026-06-19.md), [70_Auto_Factory_Live_Progress_And_Control_Groundwork_2026-06-20.md](/F:/programming/python/MTClipFactory/doc/70_Auto_Factory_Live_Progress_And_Control_Groundwork_2026-06-20.md), and [34_Enterprise_Factory_Architecture_Blueprint_2026-06-13.md](/F:/programming/python/MTClipFactory/doc/34_Enterprise_Factory_Architecture_Blueprint_2026-06-13.md).
 
@@ -30,7 +30,7 @@ Out of scope for this slice:
 
 ## Core Decision
 
-The first backend-functional control slice uses `Production Order` as both:
+The target backend-functional control slice uses `Production Order` as both:
 
 1. the persisted operator intent record
 2. the current lease owner and heartbeat truth

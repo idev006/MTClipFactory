@@ -39,7 +39,7 @@ The project now uses two roadmap layers:
 - `IR-17` Auto Factory preview production baseline: complete on 2026-06-13
 - `IR-18` Enterprise factory pipeline review and architecture blueprint: complete on 2026-06-13
 - `IR-19` Production-order and shared job-state orchestration baseline: complete on 2026-06-13
-- `IR-20` Worker lease, heartbeat, and retry-policy baseline: complete on 2026-06-20
+- `IR-20` Worker lease, heartbeat, and retry-policy baseline: pending after the 2026-06-20 live-progress groundwork slice
 - `IR-21` Folder discovery depth and assisted tagging ergonomics: complete on 2026-06-13
 - `IR-22` Auto Factory desktop control surface baseline: complete on 2026-06-13
 - `IR-23` Tag-aware auto-factory selection baseline: complete on 2026-06-13
@@ -56,14 +56,16 @@ The project now uses two roadmap layers:
 
 ## Current Execution Stream
 
-The next mandatory implementation stream should validate and harden the newly delivered `IR-20` local-worker baseline through broader operator use, recovery-facing event visibility, and clearer active-worker reporting.
+The next mandatory implementation stream should implement and validate the pending `IR-20` local-worker baseline through persisted worker-lease semantics, safe checkpoints, recovery-facing event visibility, and clearer active-worker reporting.
 
-The newly delivered `IR-20` slice makes `Pause Run`, `Stop Run`, and `Resume Run` backend-functional for the current desktop local-worker model, but it does not yet remove the need for proof before distributed execution begins.
+The delivered 2026-06-20 control slice keeps `Pause Run`, `Stop Run`, and `Resume Run` visible in the UI as groundwork only; they must continue to report `pending backend support` until persisted worker-lease and safe-checkpoint behavior is actually implemented.
+
+The current caption-quality hardening stream should also keep presenter-led promo cards face-safe by clamping grouped top-band band height and by treating requested grouped headline size as a real upper bound instead of a suggestion.
 
 Backlog activation rules:
 
 1. Further recipe-score calibration only activates if the delivered metadata, asset-diversity, and runtime-evidence baseline stops being operationally useful.
-2. Distributed worker execution does not activate before the delivered local-worker lease, heartbeat, and retry semantics are validated under broader operator use.
+2. Distributed worker execution does not activate before the planned local-worker lease, heartbeat, and retry semantics are implemented and then validated under broader operator use.
 
 ## IR-01 | Composition Data Model
 
@@ -660,6 +662,8 @@ Make the new control-plane baseline safe for future multi-worker execution by in
 - delivered effective-stage resume behavior that reuses already-succeeded materialize/preview units and retries only remaining eligible `failed_retryable` work
 - delivered `Auto Factory` UI/view-model wiring for real `Pause Run`, `Stop Run`, and `Resume Run` actions, lease visibility, active-worker truth, and order-event inspection
 - covered migration, service, view-model, and UI seams with pytest, and reverified the full suite at `253 passed, 4 warnings`
+
+The latest caption face-safe clamp hardening pass has now also reverified the full suite at `254 passed, 4 warnings`.
 
 ## IR-21 | Folder Discovery Depth And Assisted Tagging Ergonomics
 

@@ -1,7 +1,6 @@
 from __future__ import annotations
 
 from pathlib import Path
-
 from mt_clip_factory.domain.timeline_segments import TimelineSegment
 from mt_clip_factory.factory.caption_layout import _balanced_wrap_paragraph, _ensure_qt_application
 from mt_clip_factory.factory.caption_style_presets import caption_style_preset_group_names, caption_style_preset_names
@@ -90,10 +89,13 @@ def test_caption_runtime_resolves_deterministic_roles_and_workspace_font(tmp_pat
     assert first[0].roles[0].position == "top"
     assert first[0].roles[0].safe_top_ratio == 0.14
     assert first[0].roles[0].safe_bottom_ratio == 0.46
+    assert first[0].roles[0].max_safe_band_height_ratio == 0.18
+    assert first[0].roles[0].effective_safe_bottom_ratio == 0.32
     assert first[0].roles[1].role == "sub"
     assert first[0].roles[1].position == "bottom"
     assert first[0].roles[1].safe_top_ratio == 0.64
     assert first[0].roles[1].safe_bottom_ratio == 0.88
+    assert first[0].roles[1].max_safe_band_height_ratio == 0.0
 
 
 def test_caption_runtime_batch_seed_scope_cycles_caption_choices_across_outputs(tmp_path) -> None:
@@ -385,6 +387,7 @@ def test_caption_runtime_resolves_centered_textbox_with_left_aligned_text(tmp_pa
                 "min_font_size = 48",
                 "safe_top_ratio = 0.14",
                 "safe_bottom_ratio = 0.46",
+                "max_safe_band_height_ratio = 0.0",
             ]
         ),
         encoding="utf-8",
@@ -447,6 +450,7 @@ def test_caption_runtime_supports_vertical_alignment_inside_tall_textbox(tmp_pat
                 "min_font_size = 48",
                 "safe_top_ratio = 0.14",
                 "safe_bottom_ratio = 0.46",
+                "max_safe_band_height_ratio = 0.0",
             ]
         ),
         encoding="utf-8",
@@ -595,6 +599,9 @@ def test_caption_runtime_applies_sale_blast_style_preset_defaults(tmp_path) -> N
     assert main_role.box_border_color == "#FFD447"
     assert main_role.box_border_width == 4
     assert main_role.textbox_width_ratio == 0.74
+    assert main_role.max_safe_band_height_ratio == 0.18
+    assert main_role.safe_bottom_ratio == 0.32
+    assert main_role.effective_safe_bottom_ratio == 0.26
     assert sub_role.style_preset == "sale_blast"
     assert sub_role.font_family == "TH Baijam"
     assert sub_role.background_color == "#111827"
@@ -1298,8 +1305,6 @@ def test_caption_runtime_supports_compressed_grouped_headline_stack(tmp_path) ->
     assert deltas
     assert max(deltas) < role.line_heights_px[0] + role.line_spacing_px
     assert len(role.rendered_lines) == 2
-
-
 def test_balanced_wrap_rearranges_space_separated_lines_more_evenly() -> None:
     _ensure_qt_application()
     font = QFont("Arial")

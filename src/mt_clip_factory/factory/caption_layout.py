@@ -3,6 +3,13 @@ from __future__ import annotations
 from dataclasses import dataclass
 from pathlib import Path
 
+from mt_clip_factory.factory.caption_layout_math import (
+    _bounded_ratio,
+    _font_size_to_pixels,
+    _layout_balance_badness,
+    _line_balance_score,
+    _needs_balance_adjustment,
+)
 from mt_clip_factory.factory.caption_layout_support import (
     _RawLayout,
     _balanced_wrap_paragraph,
@@ -57,6 +64,7 @@ class CaptionLayoutResult:
     line_heights_px: tuple[int, ...]
     line_spacing_px: int
     line_advance_ratio: float
+    effective_safe_bottom_ratio: float
     text_block_width_px: int
     text_block_height_px: int
     max_text_width_px: int
@@ -123,6 +131,7 @@ def resolve_caption_layout(
     stroke_width: int,
     safe_top_ratio: float,
     safe_bottom_ratio: float,
+    max_safe_band_height_ratio: float,
     overflow_policy: str,
     review_required_if_overflow: bool,
 ) -> CaptionLayoutResult:
@@ -143,11 +152,19 @@ def resolve_caption_layout(
     )
     textbox_width_px = textbox_width(frame_context.width_px, textbox_width_ratio=textbox_width_ratio)
     max_text_width_px = textbox_content_width(textbox_width_px=textbox_width_px, padding=padding)
-    safe_top_px = round(frame_context.height_px * _bounded_ratio(safe_top_ratio))
-    safe_bottom_px = round(frame_context.height_px * _bounded_ratio(safe_bottom_ratio))
+    normalized_safe_top_ratio = _bounded_ratio(safe_top_ratio)
+    normalized_safe_bottom_ratio = _bounded_ratio(safe_bottom_ratio)
+    if max_safe_band_height_ratio > 0:
+        normalized_safe_bottom_ratio = min(
+            normalized_safe_bottom_ratio,
+            normalized_safe_top_ratio + _bounded_ratio(max_safe_band_height_ratio),
+        )
+    safe_top_px = round(frame_context.height_px * normalized_safe_top_ratio)
+    safe_bottom_px = round(frame_context.height_px * normalized_safe_bottom_ratio)
     if safe_bottom_px <= safe_top_px:
         safe_top_px = round(frame_context.height_px * 0.12)
         safe_bottom_px = round(frame_context.height_px * 0.86)
+        normalized_safe_bottom_ratio = safe_bottom_px / frame_context.height_px
     band_height_px = max(0, safe_bottom_px - safe_top_px)
     candidate = _solve_best_fit_layout(
         text=normalized_text,
@@ -240,6 +257,7 @@ def resolve_caption_layout(
         line_heights_px=candidate.line_heights_px,
         line_spacing_px=candidate.line_spacing_px,
         line_advance_ratio=candidate.line_advance_ratio,
+        effective_safe_bottom_ratio=normalized_safe_bottom_ratio,
         text_block_width_px=candidate.text_block_width_px,
         text_block_height_px=candidate.text_block_height_px,
         max_text_width_px=max_text_width_px,
@@ -281,6 +299,7 @@ def _solve_best_fit_layout(
     line_spacing_ratio: float,
     line_advance_ratio: float,
 ) -> _LayoutCandidate:
+    allow_growth_above_requested = (not manual_breaks) and max_lines == 1
     max_content_height_capacity_px = _resolve_max_content_height_capacity_px(
         frame_height_px=frame_height_px,
         textbox_height_mode=textbox_height_mode,
@@ -293,6 +312,7 @@ def _solve_best_fit_layout(
         min_font_size_px=min_font_size_px,
         max_width_px=max_width_px,
         max_content_height_capacity_px=max_content_height_capacity_px,
+        allow_growth_above_requested=allow_growth_above_requested,
     )
     best_candidate: _LayoutCandidate | None = None
     for candidate_font_size_px in range(candidate_font_ceiling_px, min_font_size_px - 1, -1):
@@ -317,6 +337,7 @@ def _solve_best_fit_layout(
             band_height_px=band_height_px,
             line_spacing_ratio=line_spacing_ratio,
             line_advance_ratio=line_advance_ratio,
+            allow_growth_above_requested=allow_growth_above_requested,
         )
         if best_candidate is None or _candidate_sort_key(candidate) < _candidate_sort_key(best_candidate):
             best_candidate = candidate
@@ -350,8 +371,12 @@ def _resolve_candidate_font_ceiling_px(
     min_font_size_px: int,
     max_width_px: int,
     max_content_height_capacity_px: int,
+    allow_growth_above_requested: bool,
 ) -> int:
     baseline_px = max(requested_font_size_px, min_font_size_px)
+    if not allow_growth_above_requested:
+        del max_width_px, max_content_height_capacity_px
+        return baseline_px
     growth_headroom_px = max(
         baseline_px * 3,
         baseline_px + 96,
@@ -383,6 +408,7 @@ def _evaluate_layout_candidate(
     band_height_px: int,
     line_spacing_ratio: float,
     line_advance_ratio: float,
+    allow_growth_above_requested: bool,
 ) -> _LayoutCandidate:
     normalized_textbox_mode = textbox_mode.strip().casefold()
     allow_per_line_scale = manual_breaks and normalized_textbox_mode == "per_line"
@@ -468,6 +494,7 @@ def _evaluate_layout_candidate(
                 min_font_size_px=min_font_size_px,
                 max_width_px=max_width_px,
                 max_content_height_capacity_px=content_height_capacity_px,
+                allow_growth_above_requested=allow_growth_above_requested,
             ),
             max_width_px=max_width_px,
             content_height_capacity_px=content_height_capacity_px,
@@ -751,53 +778,3 @@ def _grow_manual_line_sizes_to_fill_textbox(
         if not progress:
             final_widths, final_heights, final_spacing, _ = measure(line_sizes)
             return tuple(line_sizes), final_widths, final_heights, final_spacing, any_line_grown
-
-def _line_balance_score(widths: list[int], *, target_width_px: float) -> float:
-    if not widths:
-        return float("inf")
-    score = 0.0
-    for width in widths:
-        score += abs(target_width_px - width)
-    if len(widths) >= 2:
-        last_width = widths[-1]
-        previous_width = widths[-2]
-        if last_width < (target_width_px * 0.42):
-            score += (target_width_px * 2.5)
-        score += abs(previous_width - last_width) * 0.5
-    return score
-
-
-def _layout_balance_badness(layout: _RawLayout, *, max_width_px: int) -> float:
-    if not layout.line_widths_px:
-        return 0.0
-    badness = 0.0
-    if len(layout.line_widths_px) >= 2:
-        last_width = layout.line_widths_px[-1]
-        previous_width = layout.line_widths_px[-2]
-        orphan_threshold = max(120, round(max_width_px * 0.2))
-        if last_width < orphan_threshold and previous_width > round(max_width_px * 0.7):
-            badness += (orphan_threshold - last_width) * 12
-        badness += abs(previous_width - last_width) * 0.3
-    badness += max(layout.line_widths_px, default=0) * 0.01
-    badness += len(layout.line_widths_px) * 5
-    return badness
-
-
-def _needs_balance_adjustment(layout: _RawLayout, *, max_width_px: int) -> bool:
-    if len(layout.line_widths_px) < 2:
-        return False
-    last_width = layout.line_widths_px[-1]
-    previous_width = layout.line_widths_px[-2]
-    orphan_threshold = max(120, round(max_width_px * 0.2))
-    return last_width < orphan_threshold and previous_width > round(max_width_px * 0.7)
-
-
-def _bounded_ratio(value: float) -> float:
-    return min(1.0, max(0.0, value))
-
-
-def _font_size_to_pixels(*, requested_font_size: int, font_size_unit: str, dpi: int) -> int:
-    normalized = font_size_unit.strip().casefold()
-    if normalized == "pt":
-        return max(1, round(requested_font_size * dpi / 72))
-    return max(1, int(requested_font_size))

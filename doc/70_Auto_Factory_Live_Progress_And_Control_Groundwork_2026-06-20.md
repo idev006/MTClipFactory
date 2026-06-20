@@ -4,7 +4,7 @@ This document is the SSOT for the first live-progress execution slice of the des
 
 It extends [63_Auto_Factory_Operations_Control_Requirements_2026-06-19.md](/F:/programming/python/MTClipFactory/doc/63_Auto_Factory_Operations_Control_Requirements_2026-06-19.md), [69_Auto_Factory_Tabbed_Workspace_Layout_2026-06-20.md](/F:/programming/python/MTClipFactory/doc/69_Auto_Factory_Tabbed_Workspace_Layout_2026-06-20.md), and [35_Production_Order_And_Orchestration_Workflow_2026-06-13.md](/F:/programming/python/MTClipFactory/doc/35_Production_Order_And_Orchestration_Workflow_2026-06-13.md).
 
-Historical note: this document remains the SSOT for the background-worker plus live-progress groundwork slice only. Backend-functional local-worker `Pause Run`, `Stop Run`, and `Resume Run` semantics are now defined in [71_Auto_Factory_Persisted_Run_Control_Local_Worker_Baseline_2026-06-20.md](/F:/programming/python/MTClipFactory/doc/71_Auto_Factory_Persisted_Run_Control_Local_Worker_Baseline_2026-06-20.md).
+Historical note: this document remains the SSOT for the background-worker plus live-progress groundwork slice only. `Pause Run`, `Stop Run`, and `Resume Run` are still pending backend support, and any future persisted worker-lease plus safe-checkpoint design must not be treated as delivered behavior until code and tests verify it.
 
 ## Purpose
 

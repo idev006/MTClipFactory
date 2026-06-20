@@ -220,3 +220,8 @@
 
 - turning `Pause Run`, `Stop Run`, and `Resume Run` into truthful controls was much safer once the project accepted recipe-boundary checkpoints and explicit lease/heartbeat state instead of pretending FFmpeg work could be interrupted cleanly everywhere
 - adding an append-only `production_order_events` ledger made restart recovery and operator trust easier because the latest order status alone is not enough to explain how the run reached its current state
+
+## LL-045 | 2026-06-20 | Requested Caption Size Must Stay A Real Ceiling For Grouped Headlines
+
+- allowing grouped promo cards to grow above the requested contract font size made presenter-led previews look unpredictable and helped top-band boxes drift into the eye line even when the contract already looked conservative on paper
+- the runtime is safer when grouped or multi-line headline cards treat requested size as the true ceiling, then scale downward or trigger review, while short single-line best-fit captions may still upscale intentionally for readability

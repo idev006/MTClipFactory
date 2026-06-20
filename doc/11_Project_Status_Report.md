@@ -106,8 +106,11 @@
 - the desktop `Auto Factory` control surface now also exposes operator shortcuts from that selected-product panel, including `Open Product Folder`, `Open Contracts`, `Open Runs Folder`, and `Copy Summary`
 - the desktop `Auto Factory` control surface now also uses a tabbed operator workspace so overview, audit, intake, and order-stage truth stay readable without crushing buttons, headers, or recent-order history
 - the desktop `Auto Factory` control surface now also runs in a background worker, shows live progress in-screen, and polls monitored production-order truth without freezing the UI
-- the desktop `Auto Factory` control surface now also persists local-worker lease owner, heartbeat, lease expiry, run mode, source root, and append-only order events so pause/stop/resume become truthful backend-backed controls for the current local-worker baseline
-- `Pause Run` and `Stop Run` now persist operator intent and settle at the next recipe-boundary safe checkpoint, while `Resume Run` reuses already-completed materialize/preview work and continues only the remaining eligible units
+- the desktop `Auto Factory` control surface now also runs long automation through a background worker, persists production-order stage/event truth, and keeps live progress visible without freezing the UI
+- `Pause Run`, `Stop Run`, and `Resume Run` remain visible operator-control groundwork only; the UI must continue to say `pending backend support` until persisted safe-checkpoint and worker-lease semantics are actually implemented
+- caption runtime now also clamps grouped top-band headline height through a new `max_safe_band_height_ratio` rule so presenter-led promo cards shrink before covering the eye line, while still keeping overflow review-visible when the safer band cannot contain the text
+- grouped multi-line caption solving no longer grows above the requested contract font size, while short single-line best-fit cards may still upscale when that is the intended readability behavior
+- caption runtime/layout support helpers are now split into dedicated modules so the core orchestrators stay below the repo `800`-line guardrail without changing rendered behavior
 - assets can now be safely renamed or deleted from the `Assets` screen, with repository checks that block deletion when recipe-item or artifact-job references still exist
 - the `Assets` screen now supports `Show References`, `Retire Selected`, and `Purge Media` so referenced assets can leave active use and disk without destroying audit truth
 - the `Assets` screen now also supports `Replace In Recipes...` with recipe-safe validation, recipe reset-to-candidate behavior, and approval guards that prevent stale pre-replacement outputs from being reused as evidence for changed recipes
@@ -140,7 +143,7 @@
 
 ## Verification Baseline
 
-- `python -m pytest` via `.venv`: `253 passed, 4 warnings`
+- `python -m pytest` via `.venv`: `254 passed, 4 warnings`
 - targeted `QT_QPA_PLATFORM=offscreen` UI coverage for the new `Auto Factory` window and existing themed windows: passed
 
 ## Current Focus
@@ -161,7 +164,7 @@
 - validate whether the new tag-aware planner rules are expressive enough before adding richer weighted or role-specific selection logic
 - validate whether the new bulk asset tagging flow reduces repetitive operator work without causing accidental over-tagging
 - validate whether the new folder-driven additive tag sync is sufficient before implementing tag-removal sync behavior
-- validate whether the new local-worker lease, heartbeat, and checkpoint-resume baseline remains stable enough before multi-worker dispatch work begins
+- keep the `Pause/Stop/Resume` surface truthful as pending backend support until persisted safe-checkpoint and worker-lease semantics are actually delivered
 - keep project documents truthful through per-milestone revision checkpoints
 - validate the same product-local auto-mode audit seam across additional products beyond `Biothentic0001`
 - validate the new pixel-based caption layout and seeded clip diversity seam on additional products beyond `Biothentic0001`
@@ -181,10 +184,11 @@
 - validate whether the new review-surface shortcuts are enough or whether direct `Open captions.toml` / `Open pipeline.toml` actions are needed next
 - validate whether operators prefer the new tabbed `Auto Factory` workspace or still want some audit/intake surfaces visible side by side in later revisions
 - validate whether the new append-only order-event history is sufficient for operator recovery and whether filtering or richer event summaries are needed next
+- validate whether the new top-band face-safe clamp plus no-growth grouped headline rule is sufficient across more presenter-led products beyond the current Biothentic preview samples
 
 ## Next Steps
 
-1. Run broader controlled operator use on additional real campaign media, including the now-backend-functional local-worker `Auto Factory` pause/stop/resume controls, without service-side assistance.
+1. Run broader controlled operator use on additional real campaign media on the delivered background-worker plus live-progress baseline, while keeping `Pause/Stop/Resume` explicitly marked as pending backend support.
 2. Validate restart-safe recovery behavior after real interruptions, including stale-lease recovery, paused-order resume, stopped-order resume, and retryable preview reruns.
 3. Decide whether the append-only order-event journal should grow into a richer operator-facing event view with filtering, grouping, or export.
 4. Extend the auto-factory baseline from automated preview production into controlled final-render automation only after operators accept the current planner, tag-aware selection flow, control-surface flow, review-gate truth, and the new product-local run audit seam.
