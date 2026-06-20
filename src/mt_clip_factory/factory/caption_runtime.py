@@ -455,7 +455,7 @@ class CaptionRuntimeService:
             textbox_width_ratio=style.textbox_width_ratio,
             textbox_height_ratio=style.textbox_height_ratio,
             line_spacing_ratio=style.line_spacing_ratio,
-            line_advance_ratio=style.line_advance_ratio,
+            line_advance_ratio=layout.line_advance_ratio,
             safe_top_ratio=style.safe_top_ratio,
             safe_bottom_ratio=style.safe_bottom_ratio,
             max_safe_band_height_ratio=style.max_safe_band_height_ratio,

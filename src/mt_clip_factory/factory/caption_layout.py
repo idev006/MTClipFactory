@@ -20,6 +20,7 @@ from mt_clip_factory.factory.caption_layout_support import (
     _measure_line_width,
     _resolve_line_metrics,
     _resolve_line_spacing_px,
+    _text_requires_script_safe_line_spacing,
 )
 from mt_clip_factory.factory.caption_textbox_geometry import (
     effective_wrap_width,
@@ -454,6 +455,8 @@ def _evaluate_layout_candidate(
         line_heights_px=line_heights_px,
         use_uniform_line_height=use_uniform_line_height,
     )
+    if use_uniform_line_height and any(_text_requires_script_safe_line_spacing(line) for line in raw_layout.lines if line):
+        effective_line_advance_ratio = max(effective_line_advance_ratio, 1.0)
     line_spacing_px = _resolve_line_spacing_px(
         base_font_size_px=candidate_font_size_px,
         line_heights_px=line_heights_px,

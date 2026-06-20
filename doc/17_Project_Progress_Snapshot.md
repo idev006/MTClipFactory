@@ -138,6 +138,7 @@
 - delivered background-run execution plus live progress polling for the desktop `Auto Factory` screen so operators can monitor production-order stage truth without freezing the window
 - delivered truthful operator-control groundwork in that same screen, with active `Refresh Progress` and a visible control seam for `Pause/Stop/Resume`
 - delivered background-run execution plus live progress polling for the desktop `Auto Factory` screen so operators can monitor production-order stage truth without freezing the window
+- delivered a Thai script-safe grouped-caption spacing correction so multi-line Thai promo stacks now clamp compressed `line_advance_ratio` back to a safe runtime floor and manifest evidence reports the effective resolved ratio instead of the unsafe requested value
 - delivered truthful operator-control groundwork in that same screen, with active `Refresh Progress` and a visible control seam for `Pause/Stop/Resume`
 - kept `Pause Run`, `Stop Run`, and `Resume Run` explicitly at `pending backend support` until persisted safe-checkpoint and worker-lease semantics exist
 - delivered a new caption runtime guard for presenter-led top headline cards through `max_safe_band_height_ratio`, so grouped top-band promo boxes shrink before covering the presenter eye line

@@ -79,6 +79,7 @@ When code changes, the related Markdown documents in this folder must be updated
 71. [71_Auto_Factory_Persisted_Run_Control_Local_Worker_Baseline_2026-06-20.md](/F:/programming/python/MTClipFactory/doc/71_Auto_Factory_Persisted_Run_Control_Local_Worker_Baseline_2026-06-20.md)
 72. [72_Top_Band_Face_Safe_Caption_Clamp_Workflow_2026-06-20.md](/F:/programming/python/MTClipFactory/doc/72_Top_Band_Face_Safe_Caption_Clamp_Workflow_2026-06-20.md)
 73. [73_Thai_Safe_Caption_Bitmap_Overlay_Workflow_2026-06-20.md](/F:/programming/python/MTClipFactory/doc/73_Thai_Safe_Caption_Bitmap_Overlay_Workflow_2026-06-20.md)
+74. [74_Thai_Script_Safe_Line_Advance_Workflow_2026-06-20.md](/F:/programming/python/MTClipFactory/doc/74_Thai_Script_Safe_Line_Advance_Workflow_2026-06-20.md)
 
 ## Governance
 

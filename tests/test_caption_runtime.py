@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 from pathlib import Path
+import pytest
 from mt_clip_factory.domain.timeline_segments import TimelineSegment
 from mt_clip_factory.factory.caption_layout import _balanced_wrap_paragraph, _ensure_qt_application
 from mt_clip_factory.factory.caption_style_presets import caption_style_preset_group_names, caption_style_preset_names
@@ -1241,7 +1242,7 @@ def test_caption_runtime_scales_manual_break_lines_independently_to_fit_width(tm
     assert role.overflowed is True
 
 
-def test_caption_runtime_supports_compressed_grouped_headline_stack(tmp_path) -> None:
+def test_caption_runtime_raises_thai_grouped_headline_stack_to_script_safe_line_advance(tmp_path) -> None:
     media_root = tmp_path / "media_library"
     fonts_root = tmp_path / "fonts"
     fonts_root.mkdir(parents=True, exist_ok=True)
@@ -1297,14 +1298,74 @@ def test_caption_runtime_supports_compressed_grouped_headline_stack(tmp_path) ->
         for index in range(len(role.line_top_positions_px) - 1)
     )
 
-    assert role.line_advance_ratio == 0.80
+    assert role.line_advance_ratio == pytest.approx(1.0)
     assert role.line_break_mode == "manual_compacted"
     assert role.textbox_mode == "grouped"
     assert len(set(role.line_font_sizes_px)) == 1
     assert role.fit_strategy in {"manual_breaks", "manual_best_fit", "scaled_to_fit"}
     assert deltas
-    assert max(deltas) < role.line_heights_px[0] + role.line_spacing_px
+    assert min(deltas) >= role.line_heights_px[0]
     assert len(role.rendered_lines) == 2
+
+
+def test_caption_runtime_keeps_configured_compressed_line_advance_for_latin_grouped_headlines(tmp_path) -> None:
+    media_root = tmp_path / "media_library"
+    fonts_root = tmp_path / "fonts"
+    fonts_root.mkdir(parents=True, exist_ok=True)
+    (fonts_root / "TH Chakra Petch.ttf").write_bytes(b"font")
+    product_dir = tmp_path / "product_latin_headline_compression"
+    product_dir.mkdir(parents=True, exist_ok=True)
+    caption_file = product_dir / "captions.toml"
+    caption_file.write_text(
+        "\n".join(
+            [
+                "[caption_pools.hook]",
+                'main = ["special launch\\nstart today\\nkeep going"]',
+                "",
+                "[caption_properties.main]",
+                'font_family = "TH Chakra Petch"',
+                'textbox_mode = "grouped"',
+                "font_size = 120",
+                "min_font_size = 72",
+                "padding = 20",
+                "textbox_width_ratio = 0.84",
+                "line_spacing_ratio = 0.02",
+                "line_advance_ratio = 0.80",
+                "preferred_line_count = 2",
+                "max_lines = 3",
+            ]
+        ),
+        encoding="utf-8",
+    )
+    store = ProductAutomationMetadataStore(media_root)
+    store.sync_caption_contract(product_code="product_latin_headline_compression", source_file=caption_file)
+    service = CaptionRuntimeService(metadata_store=store, fonts_root=fonts_root)
+    segments = (
+        TimelineSegment(
+            recipe_id=1,
+            segment_type="hook",
+            sequence_index=1,
+            start_sec=0.0,
+            end_sec=3.0,
+            target_duration_sec=3.0,
+        ),
+    )
+
+    resolved = service.resolve_for_segments(
+        product_code="product_latin_headline_compression",
+        recipe_code="product_latin_headline_compression_batch_001",
+        segments=segments,
+        frame_width_px=1080,
+        frame_height_px=1920,
+    )
+    role = resolved[0].roles[0]
+
+    assert role.line_advance_ratio == pytest.approx(0.80)
+    assert role.line_break_mode == "manual_compacted"
+    assert role.textbox_mode == "grouped"
+    assert len(role.rendered_lines) == 2
+
+
 def test_balanced_wrap_rearranges_space_separated_lines_more_evenly() -> None:
     _ensure_qt_application()
     font = QFont("Arial")
