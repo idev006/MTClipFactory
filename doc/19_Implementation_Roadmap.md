@@ -62,6 +62,8 @@ The delivered 2026-06-20 control slice keeps `Pause Run`, `Stop Run`, and `Resum
 
 The current caption-quality hardening stream should also keep presenter-led promo cards face-safe by clamping grouped top-band band height and by treating requested grouped headline size as a real upper bound instead of a suggestion.
 
+The same caption-quality stream now also hardens Thai rendering by compositing a Qt-rendered caption bitmap in FFmpeg instead of asking FFmpeg `drawtext` to redraw already-measured caption glyphs.
+
 Backlog activation rules:
 
 1. Further recipe-score calibration only activates if the delivered metadata, asset-diversity, and runtime-evidence baseline stops being operationally useful.
@@ -663,7 +665,7 @@ Make the new control-plane baseline safe for future multi-worker execution by in
 - delivered `Auto Factory` UI/view-model wiring for real `Pause Run`, `Stop Run`, and `Resume Run` actions, lease visibility, active-worker truth, and order-event inspection
 - covered migration, service, view-model, and UI seams with pytest, and reverified the full suite at `253 passed, 4 warnings`
 
-The latest caption face-safe clamp hardening pass has now also reverified the full suite at `254 passed, 4 warnings`.
+The latest caption hardening pass, including the Thai-safe bitmap overlay path, has now also reverified the full suite at `257 passed, 4 warnings`.
 
 ## IR-21 | Folder Discovery Depth And Assisted Tagging Ergonomics
 

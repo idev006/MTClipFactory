@@ -77,6 +77,7 @@ This Markdown board is the SSOT Kanban for the repository.
 - auto-factory operations control requirements slice for progress visibility, pause/stop/resume, and restart recovery
 - `IR-20` queue lease, worker heartbeat, and retry-policy baseline
 - top-band face-safe caption clamp baseline
+- Thai-safe caption bitmap overlay baseline
 - `IR-21` folder discovery depth and assisted tagging ergonomics
 - `IR-22` auto-factory desktop control surface baseline
 - `IR-23` tag-aware auto-factory selection baseline

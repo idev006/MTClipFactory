@@ -6,6 +6,7 @@ from pathlib import Path
 from tempfile import TemporaryDirectory
 
 from mt_clip_factory.control_center.dto import SystemSettingsDTO
+from mt_clip_factory.factory.caption_bitmap_overlay import render_segment_caption_bitmap
 from mt_clip_factory.factory.preview_composition import PreviewSegmentClip
 from mt_clip_factory.factory.video_frame_normalization import build_visual_filter
 from mt_clip_factory.visual_keying import KEY_COLOR_PRESETS, normalize_visual_key_color, normalize_visual_key_profile, resolve_profile_key_color
@@ -254,30 +255,52 @@ def _render_single_layer_segment(
     target_duration_sec: float,
     run_ffmpeg,
 ) -> None:
-    visual_filter = _layer_fill_filter(
+    caption_bitmap_path = render_segment_caption_bitmap(temp_dir=temp_dir, segment=segment)
+    base_filter = _layer_fill_filter(
         fill_mode=segment.fill_mode,
-        base_filter=_captioned_visual_filter(
-            base_filter=build_visual_filter(target_ratio=target_ratio, output_resolution=output_resolution),
-            temp_dir=temp_dir,
-            segment=segment,
-        ),
+        base_filter=build_visual_filter(target_ratio=target_ratio, output_resolution=output_resolution),
     )
-    arguments = [
-        "-y",
-        *_looping_input_arguments(fill_mode=segment.fill_mode),
-        "-i",
-        str(source_file),
-        "-t",
-        str(target_duration_sec),
-        "-vf",
-        visual_filter,
-        "-c:v",
-        "libx264",
-        "-preset",
-        "veryfast",
-        "-crf",
-        "30",
-    ]
+    if caption_bitmap_path is None:
+        visual_filter = base_filter
+        arguments = [
+            "-y",
+            *_looping_input_arguments(fill_mode=segment.fill_mode),
+            "-i",
+            str(source_file),
+            "-t",
+            str(target_duration_sec),
+            "-vf",
+            visual_filter,
+            "-c:v",
+            "libx264",
+            "-preset",
+            "veryfast",
+            "-crf",
+            "30",
+        ]
+    else:
+        arguments = [
+            "-y",
+            *_looping_input_arguments(fill_mode=segment.fill_mode),
+            "-i",
+            str(source_file),
+            "-loop",
+            "1",
+            "-i",
+            str(caption_bitmap_path),
+            "-t",
+            str(target_duration_sec),
+            "-filter_complex",
+            _caption_bitmap_filter_graph(base_filter=base_filter),
+            "-map",
+            "[vout]",
+            "-c:v",
+            "libx264",
+            "-preset",
+            "veryfast",
+            "-crf",
+            "30",
+        ]
     if include_audio:
         arguments.extend(["-c:a", "aac", "-b:a", "96k", "-shortest"])
     else:
@@ -302,6 +325,7 @@ def _render_green_screen_overlay_segment(
         raise ValueError("Background layer is required for green-screen overlay rendering.")
     if analysis.key_color is None:
         raise ValueError("Resolved key color is required for chroma-key overlay rendering.")
+    caption_bitmap_path = render_segment_caption_bitmap(temp_dir=temp_dir, segment=segment)
     arguments = [
         "-y",
         *_looping_input_arguments(fill_mode=segment.background_layer.fill_mode),
@@ -310,16 +334,28 @@ def _render_green_screen_overlay_segment(
         *_looping_input_arguments(fill_mode=segment.fill_mode),
         "-i",
         str(segment.source_file),
+    ]
+    if caption_bitmap_path is not None:
+        arguments.extend(
+            [
+                "-loop",
+                "1",
+                "-i",
+                str(caption_bitmap_path),
+            ]
+        )
+    arguments.extend(
+        [
         "-t",
         str(segment.target_duration_sec),
         "-filter_complex",
         _overlay_filter_graph(
-            temp_dir=temp_dir,
             segment=segment,
             target_ratio=target_ratio,
             output_resolution=output_resolution,
             key_color=analysis.key_color,
             key_profile=analysis.key_profile,
+            include_caption_bitmap=caption_bitmap_path is not None,
         ),
         "-map",
         "[vout]",
@@ -329,7 +365,8 @@ def _render_green_screen_overlay_segment(
         "veryfast",
         "-crf",
         "30",
-    ]
+        ]
+    )
     if include_audio:
         arguments.extend(["-map", "1:a:0?", "-c:a", "aac", "-b:a", "96k", "-shortest"])
     else:
@@ -340,12 +377,12 @@ def _render_green_screen_overlay_segment(
 
 def _overlay_filter_graph(
     *,
-    temp_dir: Path,
     segment: PreviewSegmentClip,
     target_ratio: str | None,
     output_resolution: str | None,
     key_color: str,
     key_profile: str | None,
+    include_caption_bitmap: bool,
 ) -> str:
     background_filter = _layer_fill_filter(
         fill_mode=segment.background_layer.fill_mode if segment.background_layer is not None else "trim_to_segment",
@@ -356,16 +393,15 @@ def _overlay_filter_graph(
         base_filter=build_visual_filter(target_ratio=target_ratio, output_resolution=output_resolution),
     )
     despill_filter = ",despill=green" if key_profile == "green" else ""
-    caption_filters = _caption_drawtext_filters(temp_dir=temp_dir, segment=segment)
-    output_label = "[vbase]" if caption_filters else "[vout]"
+    output_label = "[vbase]" if include_caption_bitmap else "[vout]"
     overlay_graph = (
         f"[0:v]{background_filter}[bg];"
         f"[1:v]{foreground_filter},colorkey={key_color}:{_GREEN_SCREEN_SIMILARITY}:{_GREEN_SCREEN_BLEND}{despill_filter}[fg];"
         f"[bg][fg]overlay=0:0:format=auto{output_label}"
     )
-    if not caption_filters:
+    if not include_caption_bitmap:
         return overlay_graph
-    return f"{overlay_graph};{_caption_overlay_chain(input_label='[vbase]', caption_filters=caption_filters)}"
+    return f"{overlay_graph};[2:v]format=rgba[cap];[vbase][cap]overlay=0:0:format=auto[vout]"
 
 
 def _segment_summary(
@@ -414,11 +450,8 @@ def _composite_mode_for_profile(profile: str | None) -> str:
             return "chroma_key_overlay"
 
 
-def _captioned_visual_filter(*, base_filter: str, temp_dir: Path, segment: PreviewSegmentClip) -> str:
-    caption_filters = _caption_drawtext_filters(temp_dir=temp_dir, segment=segment)
-    if not caption_filters:
-        return base_filter
-    return ",".join((base_filter, *caption_filters))
+def _caption_bitmap_filter_graph(*, base_filter: str) -> str:
+    return f"[0:v]{base_filter}[vbase];[1:v]format=rgba[cap];[vbase][cap]overlay=0:0:format=auto[vout]"
 
 
 def _looping_input_arguments(*, fill_mode: str) -> list[str]:
@@ -432,140 +465,3 @@ def _layer_fill_filter(*, fill_mode: str, base_filter: str) -> str:
         return ",".join((base_filter, "tpad=stop_mode=clone:stop_duration=3600"))
     return base_filter
 
-
-def _caption_overlay_chain(*, input_label: str, caption_filters: list[str]) -> str:
-    if not caption_filters:
-        return ""
-    chain_parts: list[str] = []
-    current_label = input_label
-    for index, filter_text in enumerate(caption_filters, start=1):
-        next_label = "[vout]" if index == len(caption_filters) else f"[vcap{index}]"
-        chain_parts.append(f"{current_label}{filter_text}{next_label}")
-        current_label = next_label
-    return ";".join(chain_parts)
-
-
-def _caption_drawtext_filters(*, temp_dir: Path, segment: PreviewSegmentClip) -> list[str]:
-    filters: list[str] = []
-    for role in segment.captions:
-        filters.extend(_caption_drawbox_filters(role))
-        for line_index, line_text in enumerate(role.rendered_lines, start=1):
-            text_file = temp_dir / f"caption_{segment.sequence_index:02d}_{role.role}_{line_index:02d}.txt"
-            text_file.write_text(line_text, encoding="utf-8")
-            line_font_size = role.line_font_sizes_px[line_index - 1] if role.line_font_sizes_px else role.font_size
-            drawtext_parts = [
-                f"textfile='{_escape_filter_path(text_file)}'",
-                f"fontcolor={role.text_color}",
-                f"fontsize={line_font_size}",
-                f"x={role.line_left_positions_px[line_index - 1]}",
-                f"y={role.line_top_positions_px[line_index - 1]}",
-                "fix_bounds=1",
-            ]
-            if role.font_file is not None:
-                drawtext_parts.append(f"fontfile='{_escape_filter_path(role.font_file)}'")
-            else:
-                drawtext_parts.append(f"font='{_escape_filter_text(role.font_source)}'")
-            if role.stroke_width > 0:
-                drawtext_parts.append(f"borderw={role.stroke_width}")
-                drawtext_parts.append(f"bordercolor={role.stroke_color}")
-            filters.append(f"drawtext={':'.join(drawtext_parts)}")
-    return filters
-
-
-def _caption_drawbox_filters(role) -> list[str]:
-    if role.textbox_mode == "per_line":
-        drawboxes: list[str] = []
-        for box_left_px, box_top_px, box_width_px, box_height_px in zip(
-            role.line_box_left_positions_px,
-            role.line_box_top_positions_px,
-            role.line_box_widths_px,
-            role.line_box_heights_px,
-            strict=False,
-        ):
-            if box_width_px <= 0 or box_height_px <= 0:
-                continue
-            drawboxes.extend(
-                _build_box_filters(
-                    left_px=box_left_px,
-                    top_px=box_top_px,
-                    width_px=box_width_px,
-                    height_px=box_height_px,
-                    background_color=role.background_color,
-                    background_opacity=role.background_opacity,
-                    box_border_color=role.box_border_color,
-                    box_border_opacity=role.box_border_opacity,
-                    box_border_width=role.box_border_width,
-                )
-            )
-        return drawboxes
-    if role.box_width_px <= 0 or role.box_height_px <= 0:
-        return []
-    return _build_box_filters(
-        left_px=role.box_left_px,
-        top_px=role.box_top_px,
-        width_px=role.box_width_px,
-        height_px=role.box_height_px,
-        background_color=role.background_color,
-        background_opacity=role.background_opacity,
-        box_border_color=role.box_border_color,
-        box_border_opacity=role.box_border_opacity,
-        box_border_width=role.box_border_width,
-    )
-
-
-def _build_box_filters(
-    *,
-    left_px: int,
-    top_px: int,
-    width_px: int,
-    height_px: int,
-    background_color: str | None,
-    background_opacity: float,
-    box_border_color: str | None,
-    box_border_opacity: float,
-    box_border_width: int,
-) -> list[str]:
-    filters: list[str] = []
-    if background_color and background_opacity > 0:
-        filters.append(
-            "drawbox="
-            + ":".join(
-                (
-                    f"x={left_px}",
-                    f"y={top_px}",
-                    f"w={width_px}",
-                    f"h={height_px}",
-                    f"color={background_color}@{background_opacity}",
-                    "t=fill",
-                )
-            )
-        )
-    if box_border_color and box_border_opacity > 0 and box_border_width > 0:
-        filters.append(
-            "drawbox="
-            + ":".join(
-                (
-                    f"x={left_px}",
-                    f"y={top_px}",
-                    f"w={width_px}",
-                    f"h={height_px}",
-                    f"color={box_border_color}@{box_border_opacity}",
-                    f"t={box_border_width}",
-                )
-            )
-        )
-    return filters
-
-
-def _escape_filter_path(file_path: Path) -> str:
-    return (
-        str(file_path)
-        .replace("\\", "/")
-        .replace(":", r"\:")
-        .replace(" ", r"\ ")
-        .replace("'", r"\'")
-    )
-
-
-def _escape_filter_text(value: str) -> str:
-    return value.replace(":", r"\:").replace("'", r"\'")

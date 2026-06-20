@@ -143,8 +143,15 @@ classDiagram
         +font-file resolution from workspace fonts
         +config-driven promo line-advance compression
         +top-band face-safe band clamp
+        +Qt-measured caption geometry
         +support helpers split below 800-line guardrail
         +overflow risk reporting
+    }
+
+    class CaptionBitmapRenderer {
+        +render transparent segment bitmap
+        +draw grouped/per-line boxes
+        +draw Thai-safe glyphs in Qt
     }
 
     class ProductionOrderService {
@@ -196,7 +203,7 @@ classDiagram
         +runtime audio mix
         +target-frame normalization
         +layered visual compositing
-        +caption overlay rendering
+        +caption bitmap overlay compositing
         +visual composite evidence
         +operator-configured exact output resolution
         +configurable duck mode
@@ -531,6 +538,7 @@ classDiagram
     AutoFactoryFolderService --> AutoFactoryBatchService
     AutoFactoryFolderService --> ProductAutomationMetadataStore
     VideoAssemblyFactoryService --> CaptionRuntimeService
+    FFmpegPreviewRenderer --> CaptionBitmapRenderer
     CaptionRuntimeService --> ProductAutomationMetadataStore
     VideoAssemblyFactoryService --> FFmpegPreviewRenderer
     FFmpegPreviewRenderer --> VideoFrameNormalization
@@ -1248,7 +1256,8 @@ sequenceDiagram
     Caption->>Caption: clamp top-band headline height before eye-line overlap
     Caption-->>Factory: resolved caption instructions + overflow evidence
     Factory->>Render: render_output(..., segment_clips with captions)
-    Render->>Render: draw main/sub caption overlays
+    Render->>Bitmap: render transparent caption bitmap in Qt
+    Render->>Render: overlay caption bitmap on the segment video
     Factory->>Manifest: write caption selection + font/fallback + fit evidence
 ```
 

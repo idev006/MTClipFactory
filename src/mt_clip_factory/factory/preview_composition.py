@@ -379,6 +379,7 @@ def _build_caption_manifest_payload(resolved_captions: dict[int, ResolvedSegment
     all_roles = [role for segment in caption_segments for role in segment.roles]
     return {
         "enabled": bool(caption_segments),
+        "render_engine": "qt_bitmap_overlay" if caption_segments else None,
         "segment_count": len(caption_segments),
         "role_count": len(all_roles),
         "overflow_role_count": sum(1 for role in all_roles if role.overflowed),
@@ -403,6 +404,7 @@ def _build_caption_manifest_payload(resolved_captions: dict[int, ResolvedSegment
                         "font_resolution_mode": role.font_resolution_mode,
                         "font_resolution_target": role.font_resolution_target,
                         "font_file": None if role.font_file is None else str(role.font_file),
+                        "render_engine": "qt_bitmap_overlay",
                         "font_size": role.font_size,
                         "requested_font_size": role.requested_font_size,
                         "font_size_unit": role.font_size_unit,

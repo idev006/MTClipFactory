@@ -219,6 +219,7 @@
 ## LL-044 | 2026-06-20 | Operator Control Must Start At Safe Checkpoints, Not Fake Instant Preemption
 
 - turning `Pause Run`, `Stop Run`, and `Resume Run` into truthful controls was much safer once the project accepted recipe-boundary checkpoints and explicit lease/heartbeat state instead of pretending FFmpeg work could be interrupted cleanly everywhere
+- Thai caption rendering is more reliable when the same Qt stack both measures and draws the glyphs; asking FFmpeg to redraw already-measured Thai text later reintroduces shaping drift that the layout solver cannot control
 - adding an append-only `production_order_events` ledger made restart recovery and operator trust easier because the latest order status alone is not enough to explain how the run reached its current state
 
 ## LL-045 | 2026-06-20 | Requested Caption Size Must Stay A Real Ceiling For Grouped Headlines

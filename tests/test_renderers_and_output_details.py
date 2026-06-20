@@ -442,7 +442,7 @@ def test_ffmpeg_renderer_honors_blue_key_policy_for_non_green_backgrounds(tmp_pa
     assert any("colorkey=0x0000FF" in " ".join(command) for command in renderer.commands)
 
 
-def test_ffmpeg_renderer_builds_drawtext_filters_for_caption_layers(tmp_path) -> None:
+def test_ffmpeg_renderer_uses_caption_bitmap_overlay_for_caption_layers(tmp_path) -> None:
     settings = _settings(tmp_path)
     renderer = InspectableFFmpegPreviewRenderer(StaticSettingsService(settings), tmp_path / "preview_root")
     source_file = tmp_path / "visual.mp4"
@@ -550,9 +550,12 @@ def test_ffmpeg_renderer_builds_drawtext_filters_for_caption_layers(tmp_path) ->
         target_ratio="9:16",
     )
 
-    assert any("drawtext=" in " ".join(command) for command in renderer.commands)
-    assert any("drawbox=" in " ".join(command) for command in renderer.commands)
-    assert any("fontfile='" in " ".join(command) for command in renderer.commands)
+    command_text = "\n".join(" ".join(command) for command in renderer.commands)
+
+    assert "caption_overlay_01.png" in command_text
+    assert "-loop 1 -i" in command_text
+    assert "overlay=0:0:format=auto[vout]" in command_text
+    assert "drawtext=" not in command_text
 
 
 def test_ffmpeg_renderer_can_target_textbox_only_caption_geometry_without_full_pipeline(tmp_path) -> None:
@@ -609,11 +612,9 @@ def test_ffmpeg_renderer_can_target_textbox_only_caption_geometry_without_full_p
 
     command_text = "\n".join(" ".join(command) for command in renderer.commands)
 
-    assert "drawbox=x=108:y=396:w=864:h=270:color=#000000@0.15:t=fill" in command_text
-    assert command_text.count("drawtext=") >= 3
-    assert "fontsize=72:x=132:y=420" in command_text
-    assert "fontsize=60:x=132:y=510" in command_text
-    assert "fontsize=56:x=132:y=600" in command_text
+    assert "caption_overlay_01.png" in command_text
+    assert "overlay=0:0:format=auto[vout]" in command_text
+    assert "drawtext=" not in command_text
 
 
 def test_ffmpeg_renderer_can_draw_grouped_textbox_border(tmp_path) -> None:
@@ -673,8 +674,8 @@ def test_ffmpeg_renderer_can_draw_grouped_textbox_border(tmp_path) -> None:
 
     command_text = "\n".join(" ".join(command) for command in renderer.commands)
 
-    assert "drawbox=x=108:y=396:w=864:h=160:color=#000000@0.15:t=fill" in command_text
-    assert "drawbox=x=108:y=396:w=864:h=160:color=#FFD447@0.96:t=4" in command_text
+    assert "caption_overlay_01.png" in command_text
+    assert "overlay=0:0:format=auto[vout]" in command_text
 
 
 def test_ffmpeg_renderer_can_draw_one_textbox_per_caption_line(tmp_path) -> None:
@@ -736,10 +737,8 @@ def test_ffmpeg_renderer_can_draw_one_textbox_per_caption_line(tmp_path) -> None
 
     command_text = "\n".join(" ".join(command) for command in renderer.commands)
 
-    assert command_text.count("drawbox=") >= 3
-    assert "drawbox=x=276:y=396:w=168:h=126:color=#000000@0.15:t=fill" in command_text
-    assert "drawbox=x=196:y=486:w=328:h=126:color=#000000@0.15:t=fill" in command_text
-    assert "drawbox=x=236:y=576:w=228:h=126:color=#000000@0.15:t=fill" in command_text
+    assert "caption_overlay_01.png" in command_text
+    assert "overlay=0:0:format=auto[vout]" in command_text
 
 
 def test_ffmpeg_renderer_can_draw_one_textbox_border_per_caption_line(tmp_path) -> None:
@@ -804,9 +803,8 @@ def test_ffmpeg_renderer_can_draw_one_textbox_border_per_caption_line(tmp_path) 
 
     command_text = "\n".join(" ".join(command) for command in renderer.commands)
 
-    assert "drawbox=x=276:y=396:w=168:h=126:color=#FFFFFF@0.9:t=3" in command_text
-    assert "drawbox=x=196:y=486:w=328:h=126:color=#FFFFFF@0.9:t=3" in command_text
-    assert "drawbox=x=236:y=576:w=228:h=126:color=#FFFFFF@0.9:t=3" in command_text
+    assert "caption_overlay_01.png" in command_text
+    assert "overlay=0:0:format=auto[vout]" in command_text
 
 
 def test_ffmpeg_renderer_uses_freeze_last_frame_for_short_visual_segments(tmp_path) -> None:

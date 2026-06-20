@@ -111,6 +111,7 @@
 - caption runtime now also clamps grouped top-band headline height through a new `max_safe_band_height_ratio` rule so presenter-led promo cards shrink before covering the eye line, while still keeping overflow review-visible when the safer band cannot contain the text
 - grouped multi-line caption solving no longer grows above the requested contract font size, while short single-line best-fit cards may still upscale when that is the intended readability behavior
 - caption runtime/layout support helpers are now split into dedicated modules so the core orchestrators stay below the repo `800`-line guardrail without changing rendered behavior
+- caption rendering now also rasterizes a transparent Qt bitmap per segment before FFmpeg compositing, so Thai glyph shaping and textbox rendering stay on one measured-vs-drawn engine path instead of depending on FFmpeg `drawtext`
 - assets can now be safely renamed or deleted from the `Assets` screen, with repository checks that block deletion when recipe-item or artifact-job references still exist
 - the `Assets` screen now supports `Show References`, `Retire Selected`, and `Purge Media` so referenced assets can leave active use and disk without destroying audit truth
 - the `Assets` screen now also supports `Replace In Recipes...` with recipe-safe validation, recipe reset-to-candidate behavior, and approval guards that prevent stale pre-replacement outputs from being reused as evidence for changed recipes
@@ -143,7 +144,7 @@
 
 ## Verification Baseline
 
-- `python -m pytest` via `.venv`: `254 passed, 4 warnings`
+- `python -m pytest` via `.venv`: `257 passed, 4 warnings`
 - targeted `QT_QPA_PLATFORM=offscreen` UI coverage for the new `Auto Factory` window and existing themed windows: passed
 
 ## Current Focus
@@ -169,6 +170,7 @@
 - validate the same product-local auto-mode audit seam across additional products beyond `Biothentic0001`
 - validate the new pixel-based caption layout and seeded clip diversity seam on additional products beyond `Biothentic0001`
 - validate the new safe-band caption defaults on more real presenter shots and product compositions beyond the current sample
+- validate the new Qt caption bitmap overlay path on more Thai-heavy products before adding any further language-specific contract knobs
 - validate longest-layer duration resolution against more real product mixes so longer visual or music extents do not get clipped early
 - validate the new persistent visual-layer selection and per-line manual caption sizing on more live product folders beyond the current sample
 - validate the new textbox-first caption geometry on more live product folders, especially cases that need centered boxes with left-aligned text or stable lower-third card widths

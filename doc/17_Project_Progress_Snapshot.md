@@ -143,6 +143,7 @@
 - delivered a new caption runtime guard for presenter-led top headline cards through `max_safe_band_height_ratio`, so grouped top-band promo boxes shrink before covering the presenter eye line
 - stopped grouped multi-line caption layouts from growing above the requested contract font size, while preserving single-line best-fit upscaling for deliberately short hooks
 - split caption runtime/layout support helpers into dedicated modules so the core orchestrators stay below the repo `800`-line guardrail
+- replaced direct FFmpeg caption glyph drawing with a Qt-rendered transparent bitmap overlay path so Thai caption shaping and textbox rendering stay on the same measured-vs-drawn engine
 - delivered a policy-aware duration fix so loopable background music no longer stretches auto-mode previews past the intended ad timeline while non-loop music can still remain duration-authoritative when explicitly configured
 - delivered product-policy voice-loop support all the way through parser, composition persistence, renderer application, and manifest truth
 - tuned the live `Biothentic0001` contract toward promo-card captions with stronger `main`/`sub` sizing and explicit loop behavior for voice and foreground assets
@@ -165,8 +166,9 @@
 11. validate whether the new tabbed `Auto Factory` workspace gives operators enough at-a-glance context or needs split-view refinements after live use
 12. decide whether the append-only order-event journal should grow into a richer operator-facing event view with filtering, grouping, or export
 13. validate the new top-band face-safe clamp on more presenter-led products and decide whether future work should add subject-aware or face-detection-driven placement beyond the current contract-only geometry model
+14. validate the new Qt caption bitmap overlay on more Thai-heavy products and decide whether any remaining issues are font-specific rather than render-path-specific
 
 ## Verification Baseline
 
-- `python -m pytest` in `.venv`: `254 passed, 4 warnings`
+- `python -m pytest` in `.venv`: `257 passed, 4 warnings`
 - targeted `QT_QPA_PLATFORM=offscreen` UI/theme coverage for the new `Auto Factory` window and existing app windows: passed
