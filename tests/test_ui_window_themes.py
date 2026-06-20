@@ -4,7 +4,7 @@ from pathlib import Path
 
 import pytest
 from PySide6.QtCore import QObject, Qt, Signal
-from PySide6.QtWidgets import QApplication, QAbstractItemView, QComboBox, QScrollArea, QSplitter
+from PySide6.QtWidgets import QApplication, QAbstractItemView, QComboBox, QHeaderView, QScrollArea, QSplitter, QTabWidget
 
 from mt_clip_factory.control_center.dto import SystemSettingsDTO
 from mt_clip_factory.factory.auto_factory_dto import AutoFactoryBatchOrderDTO, AutoFactoryProductRequestDTO
@@ -287,6 +287,17 @@ def test_auto_factory_window_exposes_guided_run_controls(qapp: QApplication) -> 
     auto_factory_window = AutoFactoryControlWindow(FakeAutoFactoryControlViewModel())
 
     assert isinstance(auto_factory_window.run_mode_combo, QComboBox)
+    assert isinstance(auto_factory_window.results_tabs, QTabWidget)
+    assert isinstance(auto_factory_window.workspace_splitter, QSplitter)
+    assert isinstance(auto_factory_window.page_splitter, QSplitter)
+    assert auto_factory_window.workspace_splitter.orientation() == Qt.Horizontal
+    assert auto_factory_window.page_splitter.orientation() == Qt.Vertical
+    assert [auto_factory_window.results_tabs.tabText(index) for index in range(auto_factory_window.results_tabs.count())] == [
+        "Overview",
+        "Audit",
+        "Intake",
+        "Orders",
+    ]
     assert auto_factory_window.run_mode_combo.itemText(0) == "Audit Only"
     assert auto_factory_window.run_mode_combo.itemText(1) == "Intake Only"
     assert auto_factory_window.run_mode_combo.itemText(3) == "Intake + Materialize + Build Previews"
@@ -299,11 +310,57 @@ def test_auto_factory_window_exposes_guided_run_controls(qapp: QApplication) -> 
     assert auto_factory_window.preflight_products_table.columnCount() == 5
     assert auto_factory_window.preflight_issues_table.columnCount() == 5
     assert auto_factory_window.selected_product_text.isReadOnly() is True
+    assert auto_factory_window.selected_product_text.minimumHeight() == auto_factory_window.SELECTED_PRODUCT_MIN_HEIGHT - 90
+    assert auto_factory_window.recent_orders_table.minimumHeight() == auto_factory_window.RECENT_ORDERS_MIN_HEIGHT - 50
     assert auto_factory_window.open_product_folder_button.text() == "Open Product Folder"
     assert auto_factory_window.open_contracts_button.text() == "Open Contracts"
     assert auto_factory_window.open_runs_button.text() == "Open Runs Folder"
     assert auto_factory_window.copy_summary_button.text() == "Copy Summary"
     assert auto_factory_window.open_product_folder_button.isEnabled() is False
+    assert auto_factory_window.preflight_products_table.horizontalHeader().sectionResizeMode(0) == QHeaderView.Stretch
+    assert auto_factory_window.preflight_issues_table.horizontalHeader().sectionResizeMode(4) == QHeaderView.Stretch
+    assert auto_factory_window.asset_actions_table.horizontalHeader().sectionResizeMode(4) == QHeaderView.Stretch
+    auto_factory_window.close()
+
+
+def test_auto_factory_window_switches_tabs_by_runtime_context(qapp: QApplication) -> None:
+    auto_factory_window = AutoFactoryControlWindow(FakeAutoFactoryControlViewModel())
+
+    assert auto_factory_window.results_tabs.currentWidget() is auto_factory_window.overview_splitter
+
+    auto_factory_window._view_model.preflight_report = AutoFactoryFolderPreflightReportDTO(
+        root_folder="F:\\batch_root",
+        scan_depth=1,
+        discovered_product_dirs=("F:\\batch_root\\tea",),
+        status="ready",
+        error_count=0,
+        warning_count=0,
+        product_reports=(),
+    )
+    auto_factory_window._refresh_preflight_report()
+    assert auto_factory_window.results_tabs.currentWidget() is auto_factory_window.audit_splitter
+
+    auto_factory_window._view_model.preflight_report = None
+    auto_factory_window._view_model.run_report = AutoFactoryFolderRunReportDTO(
+        batch_code="launch_batch",
+        scan_depth=1,
+        order=AutoFactoryBatchOrderDTO(
+            batch_code="launch_batch",
+            product_requests=(
+                AutoFactoryProductRequestDTO(
+                    product_code="tea",
+                    requested_output_count=1,
+                    target_platform="tiktok",
+                    target_ratio="9:16",
+                ),
+            ),
+        ),
+        discovered_product_dirs=("F:\\batch_root\\tea",),
+        product_reports=(),
+        asset_actions=(),
+    )
+    auto_factory_window._refresh_run_report()
+    assert auto_factory_window.results_tabs.currentWidget() is auto_factory_window.intake_splitter
     auto_factory_window.close()
 
 
