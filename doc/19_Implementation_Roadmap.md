@@ -64,6 +64,7 @@ The project now uses two roadmap layers:
 - `IR-42` Auto Factory frontier option-pool diversity hardening baseline: complete on 2026-06-21
 - `IR-43` Auto Factory segment-aware foreground assignment rendering baseline: complete on 2026-06-21
 - `IR-44` Auto Factory local-time truth baseline: complete on 2026-06-21
+- `IR-45` Auto Factory persistent foreground/background clip policy baseline: complete on 2026-06-21
 
 ## Current Execution Stream
 
@@ -81,11 +82,13 @@ The same operator-triage stream now also surfaces persisted duplicate-risk summa
 
 The same anti-duplicate stream now also hardens `background_video` diversity by surfacing alternate backgrounds earlier in candidate generation instead of letting a large foreground search space hide them.
 
-The same anti-duplicate stream now also moves from one linear dimension scan to a deterministic candidate frontier so fresh `foreground_sequence` and `music` alternatives can surface earlier when the search space grows large.
+The same anti-duplicate stream now also moves from one linear dimension scan to a deterministic candidate frontier so fresh persistent-foreground and `music` alternatives can surface earlier when the search space grows large.
 
 The same anti-duplicate stream now also reorders large seeded option pools by historical underuse before frontier enumeration so broader low-history backgrounds, music tracks, voices, and sequence families surface earlier.
 
 The same anti-duplicate stream now also corrects one deeper render-truth gap by using semantic foreground assignments on the matching timeline segments instead of collapsing all foreground roles into one persistent recipe-wide pick.
+
+The same operator-grade publishing stream now also locks Auto Factory materialization to one persistent foreground plus one persistent background per clip, with the foreground looping when needed instead of switching assets mid-clip.
 
 The same operator-truth stream now also converts persisted Auto Factory order timestamps into local desktop display time, moves new automatic run labels onto local timestamp tokens, and keeps run-journal artifact timestamps timezone-explicit in UTC.
 
@@ -1105,6 +1108,34 @@ Make Auto Factory foreground-sequence planning affect actual rendered segment vi
 - delivered segment-aware semantic foreground resolution in preview/final composition
 - preserved recipe-wide foreground fallback for non-semantic manual roles
 - delivered regression coverage for semantic per-segment rendering while preserving the older persistent fallback path
+- reverified the full suite at `302 passed, 4 warnings`
+
+## IR-45 | Auto Factory Persistent Foreground Background Clip Policy Baseline
+
+### Goal
+
+Align Auto Factory with operator-grade short-form ad publishing by keeping one coherent foreground/background pair per generated clip.
+
+### Scope
+
+- require at least one ready `foreground_video` and one ready `background_video` for Auto Factory planning
+- materialize exactly one `foreground` assignment and one `background` assignment per Auto Factory recipe
+- keep the foreground fixed for the whole clip and loop that same foreground when timeline fill is needed
+- preserve semantic per-segment foreground rendering only for explicit/manual recipe paths and backward-safe composition support
+
+### Acceptance Criteria
+
+- Auto Factory planned recipes expose one `foreground` assignment plus one `background` assignment per clip
+- Auto Factory clips do not switch foreground mid-clip
+- missing foreground or background assets produce truthful planning shortfall instead of partial visual fallback
+- docs and pytest stay aligned to the delivered behavior
+
+### Delivery Result
+
+- delivered persistent-foreground sequence planning that now represents one clip-level foreground asset instead of semantic per-segment foreground swaps
+- delivered default foreground loop policy for Auto Factory-safe timeline fill using the same foreground asset
+- delivered folder-intake and production-order truth updates so missing background media no longer pretends to be a review-only case
+- delivered targeted regression coverage for planner, folder-intake, automation-policy, and production-order behavior under the new policy
 - reverified the full suite at `302 passed, 4 warnings`
 
 ## Cross-Milestone Rules

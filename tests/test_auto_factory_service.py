@@ -192,6 +192,9 @@ def _assignment_signature(planned_recipe) -> tuple[tuple[str, str], ...]:  # noq
 
 
 def _foreground_sequence_signature(planned_recipe) -> tuple[str, ...]:  # noqa: ANN001
+    foreground_codes = [assignment.asset_code for assignment in planned_recipe.assignments if assignment.role == "foreground"]
+    if foreground_codes:
+        return tuple(foreground_codes)
     role_order = ("hook", "problem", "benefit", "proof", "cta")
     role_to_code = {assignment.role: assignment.asset_code for assignment in planned_recipe.assignments}
     return tuple(role_to_code[role] for role in role_order if role in role_to_code)
@@ -279,11 +282,7 @@ def test_auto_factory_plans_batch_unique_variants(unit_of_work_factory, tmp_path
     assert plan.planned_recipes[0].duration_sec == 18.2
     assert [assignment.role for assignment in plan.planned_recipes[0].assignments] == [
         "background",
-        "hook",
-        "problem",
-        "benefit",
-        "proof",
-        "cta",
+        "foreground",
         "voice",
         "music",
     ]
@@ -843,6 +842,7 @@ def test_auto_factory_reports_shortfall_and_blocks_strict_materialization(unit_o
     asset_service = _build_asset_service(unit_of_work_factory, tmp_path / "media_library", {"voice_01.mp3": 16.0})
     _register_asset(asset_service, product_id=product_id, tmp_path=tmp_path, asset_type="foreground_video", asset_code="fg_01", file_name="fg01.mp4")
     _register_asset(asset_service, product_id=product_id, tmp_path=tmp_path, asset_type="foreground_video", asset_code="fg_02", file_name="fg02.mp4")
+    _register_asset(asset_service, product_id=product_id, tmp_path=tmp_path, asset_type="background_video", asset_code="bg_01", file_name="bg01.mp4")
     _register_asset(asset_service, product_id=product_id, tmp_path=tmp_path, asset_type="voiceover", asset_code="voice_01", file_name="voice_01.mp3")
     service = _build_auto_factory_service(unit_of_work_factory, tmp_path, {"voice_01.mp3": 16.0})
     order = AutoFactoryBatchOrderDTO(
@@ -913,10 +913,6 @@ def test_auto_factory_filters_asset_pools_by_required_tag_labels(unit_of_work_fa
     assert [assignment.asset_code for assignment in plan.planned_recipes[0].assignments] == [
         "bg_studio",
         "fg_proof",
-        "fg_proof",
-        "fg_proof",
-        "fg_proof",
-        "fg_proof",
     ]
 
 
@@ -949,7 +945,10 @@ def test_auto_factory_reports_truthful_shortfall_when_tag_filters_remove_visual_
     )
 
     assert plan.summaries[0].planner_feasible_unique_count == 0
-    assert plan.summaries[0].limiting_reason == "no ready renderable visual assets matched required tag filters"
+    assert plan.summaries[0].limiting_reason == (
+        "no ready foreground assets matched required tag filters; "
+        "no ready background assets for persistent foreground/background clip policy"
+    )
 
 
 def test_auto_factory_materializes_internal_recipes(unit_of_work_factory, tmp_path) -> None:
@@ -986,7 +985,7 @@ def test_auto_factory_materializes_internal_recipes(unit_of_work_factory, tmp_pa
     recipes = sorted(factory_service.list_recipes(product_id=product_id), key=lambda recipe: recipe.recipe_code)
     assert [recipe.recipe_code for recipe in recipes] == ["soap_soap_batch_001", "soap_soap_batch_002"]
     first_recipe = factory_service.get_recipe(materialized.created_recipes[0].recipe_id)
-    assert len(first_recipe.items) == 8
+    assert len(first_recipe.items) == 4
     assert first_recipe.target_platform == "tiktok"
     assert first_recipe.target_ratio == "9:16"
     assert first_recipe.duration_sec == 14.0

@@ -63,8 +63,8 @@ def default_fill_policies() -> ProductAutomationFillPolicies:
         ),
         foreground_video=AssetFillPolicy(
             asset_type="foreground_video",
-            loop_enabled=False,
-            shortfall_mode="freeze_last_frame",
+            loop_enabled=True,
+            shortfall_mode="loop_to_segment",
         ),
     )
 

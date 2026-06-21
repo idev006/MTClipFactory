@@ -109,11 +109,13 @@
 - the desktop `Auto Factory` control surface now also runs long automation through a background worker, persists production-order stage/event truth, and keeps live progress visible without freezing the UI
 - blank `Batch Code` input in the desktop `Auto Factory` control surface now auto-generates a unique root-folder-based batch code so repeated runs do not collapse into one ambiguous product-local `runs/<batch_code>` folder
 - auto-factory planning now also uses recent same-product recipe history to deprioritize repeated exact combos, repeated foreground sequences, and overused voice assets before materialization
-- auto-factory planning now also scores each planned recipe for near-duplicate risk and records concise machine-readable reasons such as exact-combo reuse, foreground-sequence reuse, and voice/background/music overuse
+- auto-factory planning now also scores each planned recipe for near-duplicate risk and records concise machine-readable reasons such as exact-combo reuse, foreground-asset reuse, and voice/background/music overuse
 - auto-factory planning now also interleaves `background_video` alternatives earlier and penalizes repeated background reuse more strongly, so one batch is less likely to reuse the same background across many clips when fresh alternatives exist
-- auto-factory planning now also enumerates a frontier across `voice`, `foreground_sequence`, `background`, and `music`, and penalizes repeated foreground/music reuse more strongly so fresh sequence and music alternatives are surfaced earlier when feasible
-- auto-factory planning now also reorders `voice`, `background`, `music`, and `foreground_sequence` option pools by historical underuse before frontier enumeration, so broader low-history assets can surface earlier instead of one seeded subset dominating a large ready pool
-- preview/final rendering now also uses semantic foreground assignments such as `hook`, `problem`, `benefit`, `proof`, and `cta` on the matching timeline segments instead of collapsing all foreground roles into one recipe-wide selected presenter asset
+- auto-factory planning now also enumerates a frontier across `voice`, internal persistent-foreground signatures, `background`, and `music`, and penalizes repeated foreground/music reuse more strongly so fresh alternatives are surfaced earlier when feasible
+- auto-factory planning now also reorders `voice`, `background`, `music`, and internal persistent-foreground option pools by historical underuse before frontier enumeration, so broader low-history assets can surface earlier instead of one seeded subset dominating a large ready pool
+- Auto Factory now also follows an operator-grade persistent-visual clip policy: each materialized clip uses exactly one `foreground_video` plus one `background_video`, keeps the foreground fixed for the whole clip, and loops that same foreground when timeline fill is needed
+- folder-driven Auto Factory runs now also treat missing ready `foreground` or `background` media as a truthful planning shortfall instead of pretending a clip can still be produced under the new persistent-visual policy
+- preview/final rendering still supports semantic foreground assignments such as `hook`, `problem`, `benefit`, `proof`, and `cta` for explicit/manual recipe paths, while Auto Factory operator-grade planning now materializes one persistent foreground asset per clip instead of switching foreground mid-clip
 - Auto Factory now also converts persisted order timestamps into local operator display time before populating recent-order and selected-order UI surfaces, so live monitoring no longer looks several hours behind the actual desktop session
 - new blank-`Batch Code` defaults and derived auto-generated order labels now also use local operator timestamp tokens, while product-local run journals keep explicit UTC `Z` timestamps for audit truth
 - successful auto-factory `materialize` stages now also persist planner duplicate-risk evidence, and the desktop `Auto Factory` `Orders` tab now surfaces that persisted risk truth for operators
@@ -189,7 +191,7 @@
 - validate whether the new background-diversity hardening is strong enough on real campaign batches or whether future policy needs per-product cooldown knobs for backgrounds
 - validate whether the new foreground/music diversity hardening is strong enough on real campaign batches or whether product-level cooldown knobs are needed for sequence families or music reuse
 - validate whether the new frontier option-pool reordering is strong enough on real large-pool products or whether future policy needs explicit per-role cooldown windows or operator-tunable diversity budgets
-- validate whether the new segment-aware foreground rendering makes persisted planner foreground-sequence diversity visible enough in real preview batches or whether future work should expose segment-level diversity evidence more explicitly in the UI
+- validate whether the new persistent foreground/background clip policy lowers same-clip repetition risk enough on real Shopee/TikTok batches or whether future policy still needs stronger pair-cooldown tuning
 - validate whether local operator time display is sufficient across more locales or whether a future visible timezone badge is needed in the `Auto Factory` screen
 - validate whether the new exact `fingerprint_hash` guard basis is commercially strict enough or whether future policy should expand the canonical basis with caption/runtime contract dimensions
 - validate whether the new bulk asset tagging flow reduces repetitive operator work without causing accidental over-tagging
@@ -230,9 +232,9 @@
 9. Validate whether the new `Orders`-tab risk filter, sort, and level emphasis actually reduce operator triage time on real campaign batches.
 10. Validate whether the new recent-orders risk summary strip reduces operator click-through time when scanning recent production history.
 11. Validate whether the new background-diversity hardening actually reduces same-background repetition on real Shopee/TikTok publishing batches.
-12. Validate whether the new foreground/music diversity hardening actually lowers repeated-sequence and repeated-music risk on real Shopee/TikTok publishing batches.
+12. Validate whether the new foreground/music diversity hardening actually lowers repeated-foreground and repeated-music risk on real Shopee/TikTok publishing batches.
 13. Validate whether the new frontier option-pool reordering actually broadens large-pool background/music usage on real campaign batches such as `Biothentic0001`.
-14. Validate whether the new segment-aware foreground rendering actually reduces visible same-presenter repetition inside one Auto Factory clip when semantic foreground roles differ.
+14. Validate whether the new persistent foreground/background clip policy actually reduces same-clip duplicate feel on real operator batches while still preserving enough cross-output variety.
 15. Run another live end-to-end preview/final audit on `Biothentic0001` after the new policy-aware voice-loop, loop-authority, and promo-caption contract slice.
 16. Validate whether product-level voice looping should surface an operator-facing repetition warning or max-repeat policy after more live runs.
 17. Run another live `Biothentic0001` audit on the versioned manifest envelope and verify that output-detail surfaces remain readable from the new sectioned contract.

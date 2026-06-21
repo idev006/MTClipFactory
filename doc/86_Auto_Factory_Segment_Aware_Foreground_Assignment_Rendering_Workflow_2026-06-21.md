@@ -2,6 +2,8 @@
 
 This document is the SSOT for the next Auto Factory anti-duplicate correction slice that makes semantic foreground assignments render truthfully per segment instead of collapsing to one foreground asset across the whole recipe.
 
+For operator-grade Auto Factory materialization, this behavior is now superseded by [88_Auto_Factory_Persistent_Foreground_Background_Clip_Policy_2026-06-21.md](/F:/programming/python/MTClipFactory/doc/88_Auto_Factory_Persistent_Foreground_Background_Clip_Policy_2026-06-21.md): Auto Factory now plans one persistent foreground asset plus one persistent background asset per clip, while the semantic per-segment path remains available for explicit/manual recipe flows and backward-safe rendering support.
+
 It extends [85_Auto_Factory_Frontier_Option_Pool_Diversity_Hardening_Workflow_2026-06-21.md](/F:/programming/python/MTClipFactory/doc/85_Auto_Factory_Frontier_Option_Pool_Diversity_Hardening_Workflow_2026-06-21.md).
 
 ## Purpose

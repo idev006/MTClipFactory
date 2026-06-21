@@ -354,7 +354,6 @@ def test_folder_service_propagates_capacity_shortfall(unit_of_work_factory, tmp_
         product_code="product_a",
         product_name="Product A",
         requested_output_count=3,
-        with_background=False,
         with_music=False,
         with_voice=True,
     )

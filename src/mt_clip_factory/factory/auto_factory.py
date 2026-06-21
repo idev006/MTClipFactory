@@ -2,7 +2,6 @@ from __future__ import annotations
 
 from collections import Counter
 from collections import deque
-import math
 import re
 
 from mt_clip_factory.application.services import ProductApplicationService
@@ -23,6 +22,11 @@ from mt_clip_factory.factory.auto_factory_fingerprint import (
     build_history_recipe_fingerprint_hash,
     build_planned_recipe_fingerprint,
     build_planned_recipe_fingerprint_hash,
+)
+from mt_clip_factory.factory.auto_factory_pool_support import (
+    _filter_assets_by_required_tags,
+    _foreground_sequence_from_recipe_items,
+    _resolve_required_visual_shortfall_reason,
 )
 from mt_clip_factory.factory.auto_factory_planning_support import (
     _PlanningHistory,
@@ -307,10 +311,14 @@ class AutoFactoryBatchService:
             excluded_recipe_ids=history_excluded_recipe_ids,
         )
 
-        if not foreground_assets and not background_assets:
-            limiting_reason = "no ready renderable visual assets"
-            if (all_foreground_assets or all_background_assets) and _has_any_required_tag_filters(product_request):
-                limiting_reason = "no ready renderable visual assets matched required tag filters"
+        if not foreground_assets or not background_assets:
+            limiting_reason = _resolve_required_visual_shortfall_reason(
+                foreground_assets=foreground_assets,
+                background_assets=background_assets,
+                all_foreground_assets=all_foreground_assets,
+                all_background_assets=all_background_assets,
+                product_request=product_request,
+            )
             summary = ProductBatchPlanSummaryDTO(
                 product_id=product.product_id,
                 product_code=product.product_code,
@@ -324,7 +332,7 @@ class AutoFactoryBatchService:
             return {"summary": summary, "recipes": ()}
 
         foreground_sequences = _order_foreground_sequences_for_diversity_frontier(
-            _build_foreground_sequences(
+            _build_persistent_foreground_sequences(
                 tuple(asset.asset_id for asset in foreground_assets),
                 role_count=len(_SEMANTIC_VISUAL_ROLES),
             ),
@@ -452,9 +460,9 @@ class AutoFactoryBatchService:
         assignments: list[PlannedBatchAssetAssignmentDTO] = []
         if background_asset is not None:
             assignments.append(_to_assignment(background_asset, role="background"))
-        for role, asset_id in zip(_SEMANTIC_VISUAL_ROLES, sequence, strict=False):
-            foreground_asset = _require_asset(foreground_assets, asset_id)
-            assignments.append(_to_assignment(foreground_asset, role=role))
+        if sequence:
+            foreground_asset = _require_asset(foreground_assets, sequence[0])
+            assignments.append(_to_assignment(foreground_asset, role="foreground"))
         if voice_asset is not None:
             assignments.append(_to_assignment(voice_asset, role="voice"))
         if music_asset is not None:
@@ -651,22 +659,20 @@ def _foreground_sequence_role_reuse_pressure(
 
 
 def _foreground_sequence_internal_repeat_count(sequence: tuple[int, ...]) -> int:
+    if len(set(sequence)) <= 1:
+        return 0
     counts = Counter(sequence)
     return sum(max(0, count - 1) for count in counts.values())
 
 
-def _build_foreground_sequences(asset_ids: tuple[int, ...], *, role_count: int) -> tuple[tuple[int, ...], ...]:
+def _build_persistent_foreground_sequences(
+    asset_ids: tuple[int, ...],
+    *,
+    role_count: int,
+) -> tuple[tuple[int, ...], ...]:
     if not asset_ids:
         return ()
-    sequences: dict[tuple[int, ...], None] = {}
-    total_assets = len(asset_ids)
-    for step in range(1, total_assets + 1):
-        if math.gcd(step, total_assets) != 1:
-            continue
-        for start in range(total_assets):
-            sequence = tuple(asset_ids[(start + (step * offset)) % total_assets] for offset in range(role_count))
-            sequences.setdefault(sequence, None)
-    return tuple(sequences)
+    return tuple(tuple(asset_id for _ in range(role_count)) for asset_id in asset_ids)
 
 
 def _require_asset(assets: tuple[AssetSummaryDTO, ...], asset_id: int) -> AssetSummaryDTO:
@@ -752,49 +758,12 @@ def _assignment_signature_from_recipe_items(recipe_items) -> tuple[tuple[str, in
     )
 
 
-def _foreground_sequence_from_recipe_items(recipe_items) -> tuple[int, ...]:
-    role_to_asset_id = {
-        item.role.strip().lower(): item.asset_id
-        for item in recipe_items
-        if item.role.strip().lower() in _SEMANTIC_VISUAL_ROLES
-    }
-    return tuple(role_to_asset_id[role] for role in _SEMANTIC_VISUAL_ROLES if role in role_to_asset_id)
-
-
 def _history_weight(history_index: int) -> float:
     if history_index < 3:
         return 4.0
     if history_index < 8:
         return 2.0
     return 1.0
-
-
-def _filter_assets_by_required_tags(
-    assets: tuple[AssetSummaryDTO, ...],
-    required_tag_labels: tuple[str, ...],
-) -> tuple[AssetSummaryDTO, ...]:
-    if not required_tag_labels:
-        return assets
-    required = {label.strip().casefold() for label in required_tag_labels if label.strip()}
-    if not required:
-        return assets
-    filtered_assets: list[AssetSummaryDTO] = []
-    for asset in assets:
-        asset_tags = {label.strip().casefold() for label in asset.tag_labels if label.strip()}
-        if required.issubset(asset_tags):
-            filtered_assets.append(asset)
-    return tuple(filtered_assets)
-
-
-def _has_any_required_tag_filters(product_request: AutoFactoryProductRequestDTO) -> bool:
-    return any(
-        (
-            product_request.foreground_required_tag_labels,
-            product_request.background_required_tag_labels,
-            product_request.music_required_tag_labels,
-            product_request.voice_required_tag_labels,
-        )
-    )
 
 
 def _resolve_planner_shortfall_reason(*, planned_count: int, feasible_count: int) -> str:

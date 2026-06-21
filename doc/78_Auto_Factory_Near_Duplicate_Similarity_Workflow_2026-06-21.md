@@ -4,6 +4,8 @@ This document is the SSOT for the first explicit near-duplicate similarity layer
 
 It extends [32_Auto_Factory_Batch_Production_Workflow.md](/F:/programming/python/MTClipFactory/doc/32_Auto_Factory_Batch_Production_Workflow.md) and [77_Auto_Factory_History_Aware_Anti_Duplicate_Selection_Workflow_2026-06-21.md](/F:/programming/python/MTClipFactory/doc/77_Auto_Factory_History_Aware_Anti_Duplicate_Selection_Workflow_2026-06-21.md).
 
+For operator-grade Auto Factory clips after [88_Auto_Factory_Persistent_Foreground_Background_Clip_Policy_2026-06-21.md](/F:/programming/python/MTClipFactory/doc/88_Auto_Factory_Persistent_Foreground_Background_Clip_Policy_2026-06-21.md), the internal planner still uses a repeated `foreground_sequence` signature for compatibility, but the operator-visible meaning is now clip-level persistent foreground-asset reuse.
+
 ## Purpose
 
 - make anti-duplicate planning explainable instead of only penalty-based
@@ -27,7 +29,7 @@ That left one important gap:
 - add one explicit `near_duplicate_reasons` list in the planner result DTO
 - compute similarity from the same internal evidence the planner already trusts:
   - exact combo reuse
-  - foreground-sequence reuse
+  - clip-level foreground-asset reuse
   - role-asset reuse with heavier `voice` weighting
   - internal foreground repetition
 
@@ -81,7 +83,7 @@ sequenceDiagram
 The first explicit reasons should include signals such as:
 
 - `exact_combo_reused`
-- `foreground_sequence_reused`
+- `foreground_asset_reused`
 - `voice_asset_overused`
 - `background_asset_reused`
 - `music_asset_reused`

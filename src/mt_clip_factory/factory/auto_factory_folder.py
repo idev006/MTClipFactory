@@ -61,7 +61,7 @@ _PIPELINE_SELECTION_TAG_FIELDS = {
     "music": "music_required_tag_labels",
     "voice": "voice_required_tag_labels",
 }
-_REQUIRED_ASSET_FOLDERS = {"foreground"}
+_REQUIRED_ASSET_FOLDERS = {"foreground", "background"}
 
 
 class AutoFactoryFolderContractError(ValueError):

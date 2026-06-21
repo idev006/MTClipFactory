@@ -293,7 +293,10 @@ def test_production_order_service_runs_order_and_records_successful_stages(unit_
     assert summary.max_near_duplicate_score == pytest.approx(materialize_detail["near_duplicate_score"])
 
 
-def test_production_order_service_records_review_required_state(unit_of_work_factory, tmp_path) -> None:
+def test_production_order_service_succeeds_for_minimal_persistent_foreground_background_clip(
+    unit_of_work_factory,
+    tmp_path,
+) -> None:
     product_service, asset_service, _, service = _build_services(unit_of_work_factory, tmp_path)
     product_id = product_service.create_product(CreateProductCommand(product_code="toner", product_name="Toner"))
     _register_asset(
@@ -303,6 +306,14 @@ def test_production_order_service_records_review_required_state(unit_of_work_fac
         asset_type="foreground_video",
         asset_code="fg_01",
         file_name="fg01.mp4",
+    )
+    _register_asset(
+        asset_service,
+        product_id=product_id,
+        tmp_path=tmp_path,
+        asset_type="background_video",
+        asset_code="bg_01",
+        file_name="bg01.mp4",
     )
 
     details = service.create_and_run_order(
@@ -320,8 +331,8 @@ def test_production_order_service_records_review_required_state(unit_of_work_fac
         order_code="toner_order_001",
     )
 
-    assert details.status == "review_required"
-    assert [stage.status for stage in details.stages] == ["succeeded", "succeeded", "review_required"]
+    assert details.status == "succeeded"
+    assert [stage.status for stage in details.stages] == ["succeeded", "succeeded", "succeeded"]
 
 
 def test_production_order_service_records_retryable_preview_failure(unit_of_work_factory, tmp_path) -> None:

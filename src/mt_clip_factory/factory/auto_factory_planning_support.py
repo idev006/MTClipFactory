@@ -8,6 +8,7 @@ from mt_clip_factory.factory.auto_factory_dto import PlannedBatchAssetAssignment
 _SEMANTIC_VISUAL_ROLES = ("hook", "problem", "benefit", "proof", "cta")
 _SELECTION_ROLE_WEIGHTS = {
     "voice": 8.0,
+    "foreground": 5.0,
     "hook": 5.0,
     "problem": 4.0,
     "benefit": 4.0,
@@ -181,7 +182,7 @@ def _assess_near_duplicate(
     )
     if blueprint.foreground_sequence and foreground_sequence_reuse > 0:
         score += min(0.34 + (0.09 * max(0.0, foreground_sequence_reuse - 1.0)), 0.55)
-        reasons.append("foreground_sequence_reused")
+        reasons.append("foreground_asset_reused")
 
     voice_reuse = _role_reuse_count(
         blueprint,
@@ -269,5 +270,7 @@ def _foreground_role_reuse_count(
 
 
 def _foreground_internal_repeat_count(sequence: tuple[int, ...]) -> int:
+    if len(set(sequence)) <= 1:
+        return 0
     counts = Counter(sequence)
     return sum(max(0, count - 1) for count in counts.values())

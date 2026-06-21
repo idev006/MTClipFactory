@@ -6,6 +6,8 @@ It extends [32_Auto_Factory_Batch_Production_Workflow.md](/F:/programming/python
 
 The next explainability layer for this same anti-duplicate stream is now defined in [78_Auto_Factory_Near_Duplicate_Similarity_Workflow_2026-06-21.md](/F:/programming/python/MTClipFactory/doc/78_Auto_Factory_Near_Duplicate_Similarity_Workflow_2026-06-21.md).
 
+Operator-grade Auto Factory clips now follow the persistent one-foreground-plus-one-background policy defined in [88_Auto_Factory_Persistent_Foreground_Background_Clip_Policy_2026-06-21.md](/F:/programming/python/MTClipFactory/doc/88_Auto_Factory_Persistent_Foreground_Background_Clip_Policy_2026-06-21.md). The internal `foreground_sequence` concept remains as planner compatibility state, but it now represents repeated use of one clip-level foreground asset for Auto Factory materialization.
+
 ## Purpose
 
 - reduce repeated clip structures that platforms may interpret as duplicate content
@@ -29,7 +31,7 @@ That gap is operationally important because platforms such as Shopee Video and T
 - keep the current `batch-only` uniqueness fingerprint rule
 - add one new history-aware ranking layer before recipe materialization
 - use recent recipe history for the same product as the first anti-duplicate evidence source
-- penalize historically repeated exact assignment signatures, repeated foreground sequences, and overused role-specific assets
+- penalize historically repeated exact assignment signatures, repeated clip-level foreground assets, and overused role-specific assets
 - weight `voice` more heavily than `background` or `music` because repeated spoken copy makes ad outputs feel duplicate faster
 
 This slice stays intentionally local to MTClipFactory truth:
@@ -43,7 +45,7 @@ This slice stays intentionally local to MTClipFactory truth:
 When multiple batch-feasible variants exist, the planner should prefer candidates that:
 
 1. were not used as the exact same assignment combination in recent recipe history
-2. do not repeat the same foreground semantic sequence too often
+2. do not repeat the same clip-level foreground asset too often
 3. avoid overused `voice`, `hook`, `problem`, `benefit`, `proof`, `cta`, `background`, and `music` assets
 4. still remain deterministic under the same batch code and same persisted history
 
@@ -53,7 +55,7 @@ When multiple batch-feasible variants exist, the planner should prefer candidate
 flowchart LR
     A["Load product request + ready asset pools"] --> B["Generate batch-feasible candidate variants"]
     B --> C["Load recent recipe history for the same product"]
-    C --> D["Score candidates by exact-combo reuse, foreground-sequence reuse, and role-asset reuse"]
+    C --> D["Score candidates by exact-combo reuse, foreground-asset reuse, and role-asset reuse"]
     D --> E["Greedy-select the lowest-penalty variants for this batch"]
     E --> F["Materialize internal recipes in the chosen order"]
 ```
@@ -73,7 +75,7 @@ sequenceDiagram
     Planner->>Factory: list_recipes(product_id)
     loop recent product recipes
         Planner->>Factory: get_recipe(recipe_id)
-        Planner->>Planner: accumulate history penalties by exact combo, foreground sequence, and role asset
+        Planner->>Planner: accumulate history penalties by exact combo, clip-level foreground asset, and role asset
     end
     Planner->>Planner: greedily choose the lowest-penalty variants
     Planner-->>Operator: deterministic anti-duplicate batch plan

@@ -90,9 +90,10 @@
 - Auto Factory planning now also uses recent same-product recipe history to reduce repeated exact combos and overused voice-led reruns before recipes are materialized.
 - Auto Factory planning now also emits per-recipe `near_duplicate_score` plus concise `near_duplicate_reasons`, creating a machine-readable seam for future operator-facing duplicate-risk review before publishing.
 - Auto Factory planning now also surfaces alternate `background_video` candidates earlier and penalizes repeated background reuse more strongly, reducing the chance that one batch uses the same background across most clips when fresh options exist.
-- Auto Factory planning now also uses a deterministic candidate frontier across `voice`, `foreground_sequence`, `background`, and `music`, helping fresh music and foreground patterns appear early instead of being hidden behind a large search space.
-- Auto Factory planning now also reorders those frontier option pools by historical underuse pressure, helping broader low-history background/music/voice choices surface earlier on products with large ready pools.
-- Preview/final rendering now also respects semantic foreground roles on matching timeline segments, so planned Auto Factory foreground sequences influence the actual rendered clip instead of collapsing into one persistent foreground pick.
+- Auto Factory planning now also uses a deterministic candidate frontier across `voice`, internal persistent-foreground signatures, `background`, and `music`, helping fresh music and foreground choices appear early instead of being hidden behind a large search space.
+- Auto Factory planning now also reorders those frontier option pools by historical underuse pressure, helping broader low-history background/music/voice/foreground choices surface earlier on products with large ready pools.
+- Auto Factory now also follows a persistent visual clip policy: each materialized clip uses exactly one `foreground_video` plus one `background_video`, keeps the foreground fixed for the full clip, and loops that same foreground when timeline fill is needed.
+- Preview/final rendering still respects semantic foreground roles on matching timeline segments for explicit/manual recipe paths, while Auto Factory operator-grade planning now materializes one persistent foreground pick per clip instead of mid-clip foreground swaps.
 - Auto Factory now also displays recent-order and selected-order timestamps in local operator time instead of raw persisted UTC wall-clock values, so order monitoring aligns with the real desktop session.
 - Blank `Batch Code` defaults and derived order labels now also use local operator timestamp tokens, while product-local run journals keep explicit UTC `Z` event timestamps for audit truth.
 - Auto Factory now also persists that duplicate-risk evidence on successful `materialize` stages and shows it in the `Orders` tab so operators can inspect order truth instead of relying on memory-only planner output.
@@ -160,7 +161,7 @@
 - delivered a safer blank-`Batch Code` behavior so the desktop `Auto Factory` screen now generates a unique root-folder-based batch code instead of reusing the bare folder name alone
 - delivered product-local traceability hardening so repeated runs from the same root now default into distinct `runs/<batch_code>` folders without requiring manual operator typing every time
 - delivered history-aware anti-duplicate planning so recent same-product recipe history now penalizes repeated exact combos, repeated foreground sequences, and overused voice assets before Auto Factory materializes a new batch
-- delivered an explicit near-duplicate similarity layer so each planned recipe now carries a bounded `near_duplicate_score` plus machine-readable reasons such as `exact_combo_reused`, `foreground_sequence_reused`, and `voice_asset_overused`
+- delivered an explicit near-duplicate similarity layer so each planned recipe now carries a bounded `near_duplicate_score` plus machine-readable reasons such as `exact_combo_reused`, `foreground_asset_reused`, and `voice_asset_overused`
 - delivered an operator-facing duplicate-risk surface so persisted `materialize` stages now retain planner risk evidence and the desktop `Auto Factory` `Orders` tab can display per-product and per-stage duplicate-risk truth
 - delivered a canonical exact-duplicate guard so persisted same-product recipe history now blocks exact `fingerprint_hash` repeats during planning instead of only surfacing risk after selection
 - delivered persisted `fingerprint_hash` evidence on successful `materialize` stages so future audit and publishing policy can point to one stable exact-duplicate key
@@ -170,7 +171,8 @@
 - delivered background-diversity hardening so early Auto Factory candidate scans no longer hide alternate backgrounds behind a large foreground search space
 - delivered foreground/music diversity hardening so candidate coverage and scoring now push fresh music and foreground sequences earlier when feasible
 - delivered frontier option-pool diversity hardening so large seeded pools are reordered by historical underuse before frontier enumeration
-- delivered segment-aware foreground assignment rendering so semantic Auto Factory foreground roles are now used on their matching segments during preview/final composition
+- preserved semantic foreground assignment rendering for explicit/manual recipe paths while shifting Auto Factory operator-grade materialization onto one persistent foreground plus one persistent background per clip
+- delivered truthful shortfall handling for missing ready `foreground` or `background` media under that persistent-visual Auto Factory policy
 - delivered local-time truth for Auto Factory monitoring so persisted order `Started` / `Finished` values now render in operator-local time while journal artifact timestamps stay explicit in UTC `Z`
 - delivered operator-readable local timestamp tokens for new default `batch_code` and derived order labels, preventing fresh runs from appearing several hours behind the current session
 - delivered a new caption runtime guard for presenter-led top headline cards through `max_safe_band_height_ratio`, so grouped top-band promo boxes shrink before covering the presenter eye line
@@ -205,9 +207,9 @@
 17. validate whether the new `Orders`-tab emphasis thresholds and row-highlighting choices are strong enough on real operator sessions or need tuning
 18. validate whether the new recent-orders duplicate-risk summary is sufficient for top-level order triage or whether the strip also needs quick filters next
 19. validate whether the new background-diversity hardening is enough for real publishing batches or whether operator-tunable background cooldown policy is needed next
-20. validate whether the new foreground/music diversity hardening is enough for real publishing batches or whether operator-tunable sequence/music cooldown policy is needed next
+20. validate whether the new foreground/music diversity hardening is enough for real publishing batches or whether operator-tunable foreground/music cooldown policy is needed next
 21. validate whether the new frontier option-pool reordering is enough for large-pool products or whether explicit per-role cooldown windows are still needed next
-22. validate whether the new segment-aware foreground rendering is enough to make planned foreground diversity visually obvious on real campaign outputs
+22. validate whether the new persistent foreground/background clip policy is enough to reduce same-clip duplicate feel on real campaign outputs without sacrificing cross-output diversity
 23. validate whether Auto Factory should also expose an explicit timezone badge in-screen after the new local-time display correction
 
 ## Verification Baseline

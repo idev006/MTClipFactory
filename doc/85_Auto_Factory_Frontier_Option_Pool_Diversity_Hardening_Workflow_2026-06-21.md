@@ -2,6 +2,8 @@
 
 This document is the SSOT for the next Auto Factory anti-duplicate hardening slice that improves which `voice`, `background`, `music`, and `foreground_sequence` options are surfaced early inside the deterministic frontier.
 
+After [88_Auto_Factory_Persistent_Foreground_Background_Clip_Policy_2026-06-21.md](/F:/programming/python/MTClipFactory/doc/88_Auto_Factory_Persistent_Foreground_Background_Clip_Policy_2026-06-21.md), the internal `foreground_sequence` option pool remains as planner compatibility state, but it represents clip-level persistent foreground choices for Auto Factory materialization rather than mid-clip foreground switching.
+
 It extends [84_Auto_Factory_Foreground_And_Music_Diversity_Hardening_Workflow_2026-06-21.md](/F:/programming/python/MTClipFactory/doc/84_Auto_Factory_Foreground_And_Music_Diversity_Hardening_Workflow_2026-06-21.md).
 
 ## Purpose
@@ -34,7 +36,7 @@ When a product has a larger ready pool than one batch can consume:
 - underused `background_video` assets should surface before heavily reused ones
 - underused `background_music` assets should surface before heavily reused ones
 - underused `voiceover` assets should surface before heavily reused ones
-- underused `foreground_sequence` candidates should surface before historically repeated sequence families
+- underused persistent-foreground candidates should surface before historically repeated foreground families
 
 When multiple options have the same historical pressure:
 
