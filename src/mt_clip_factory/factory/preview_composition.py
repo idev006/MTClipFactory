@@ -12,6 +12,7 @@ from mt_clip_factory.domain.timeline_segments import TimelineSegment
 from mt_clip_factory.factory.audio_composition import PreviewAudioMixPlan, build_audio_mix_plan
 from mt_clip_factory.factory.automation_policy import ProductAutomationPolicyService, default_fill_policies
 from mt_clip_factory.factory.caption_runtime import CaptionRuntimeService, ResolvedCaptionRole, ResolvedSegmentCaptions
+from mt_clip_factory.factory.segment_inventory import build_segment_inventory_payload
 from mt_clip_factory.factory.visual_selection import seeded_choice
 
 
@@ -26,6 +27,7 @@ class PreviewLayerClip:
     asset_code: str
     source_file: Path
     fill_mode: str
+    source_duration_sec: float | None
 
 
 @dataclass(slots=True, frozen=True)
@@ -40,6 +42,7 @@ class PreviewSegmentClip:
     end_sec: float
     target_duration_sec: float
     fill_mode: str
+    source_duration_sec: float | None = None
     message_text: str | None = None
     text_rule: str | None = None
     audio_policy: str | None = None
@@ -208,6 +211,7 @@ def _build_segment_clip(
         end_sec=segment.end_sec,
         target_duration_sec=segment.target_duration_sec,
         fill_mode=primary_layer.fill_mode,
+        source_duration_sec=primary_layer.source_duration_sec,
         message_text=segment.message_text,
         text_rule=segment.text_rule,
         audio_policy=segment.audio_policy,
@@ -268,6 +272,7 @@ def _build_layer_clip(*, layer_name: str, asset: Asset, target_duration_sec: flo
         asset_code=asset.asset_code,
         source_file=Path(asset.file_path),
         fill_mode=_resolve_fill_mode(asset.duration_sec, target_duration_sec, fill_policy=fill_policy),
+        source_duration_sec=asset.duration_sec,
     )
 
 
@@ -306,6 +311,10 @@ def _build_manifest_payload(
     resolved_captions: dict[int, ResolvedSegmentCaptions],
     fill_policies: dict[str, dict[str, object]],
 ) -> dict:
+    segment_inventory = build_segment_inventory_payload(
+        segments=segments,
+        resolved_duration_sec=plan.resolved_duration_sec,
+    )
     return {
         "composition_plan": {
             "duration_source": plan.duration_source,
@@ -322,6 +331,7 @@ def _build_manifest_payload(
             }
             for item in items
         ],
+        "segment_inventory": segment_inventory,
         "product_code": product_code,
         "recipe_code": recipe.recipe_code,
         "segments": [
@@ -336,6 +346,7 @@ def _build_manifest_payload(
                 "segment_type": segment.segment_type,
                 "sequence_index": segment.sequence_index,
                 "source_file": str(segment.source_file),
+                "source_duration_sec": segment.source_duration_sec,
                 "start_sec": segment.start_sec,
                 "target_duration_sec": segment.target_duration_sec,
                 "text_rule": segment.text_rule,
@@ -346,6 +357,7 @@ def _build_manifest_payload(
                         "fill_mode": segment.background_layer.fill_mode,
                         "layer_name": segment.background_layer.layer_name,
                         "source_file": str(segment.background_layer.source_file),
+                        "source_duration_sec": segment.background_layer.source_duration_sec,
                     }
                     if segment.background_layer is not None
                     else None

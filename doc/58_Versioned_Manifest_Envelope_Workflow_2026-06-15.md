@@ -65,6 +65,7 @@ This makes expansion risky, especially now that captions, visual compositing, ru
   "composition": {
     "plan": {},
     "segments": [],
+    "segment_inventory": {},
     "items": [],
     "fill_policy": {},
     "captions": {}
@@ -118,6 +119,7 @@ Holds input and planning truth:
 - composition plan summary
 - recipe items used
 - segment selection results
+- segment-inventory summary and segment-formula evidence
 - fill-policy evidence
 - resolved caption evidence
 

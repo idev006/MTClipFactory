@@ -155,6 +155,7 @@ def build_output_detail_lines(
     lines.extend(_build_manifest_review_lines(output.manifest_path))
     lines.extend(_build_manifest_audio_lines(output.manifest_path))
     lines.extend(_build_manifest_visual_lines(output.manifest_path))
+    lines.extend(_build_manifest_segment_inventory_lines(output.manifest_path))
     lines.extend(_build_manifest_caption_lines(output.manifest_path))
     return lines
 
@@ -252,6 +253,45 @@ def _build_manifest_visual_lines(manifest_path: str | None) -> list[str]:
                 )
         if len(segments) > 5:
             lines.append(f"- More Segment Composites: {len(segments) - 5}")
+    return lines
+
+
+def _build_manifest_segment_inventory_lines(manifest_path: str | None) -> list[str]:
+    payload = _read_manifest_payload(manifest_path)
+    segment_inventory = read_manifest_section(payload, section_name="composition", legacy_key="segment_inventory")
+    if not segment_inventory or not segment_inventory.get("enabled"):
+        return []
+    lines = [
+        "",
+        "Segment Inventory:",
+        f"- Segment Count: {segment_inventory.get('segment_count', '-')}",
+        f"- Resolved Clip Duration (s): {segment_inventory.get('resolved_clip_duration_sec', '-')}",
+        f"- Distinct Primary Assets: {segment_inventory.get('distinct_primary_asset_count', '-')}",
+        f"- Distinct Background Assets: {segment_inventory.get('distinct_background_asset_count', '-')}",
+        f"- Clip Formula Hash: {segment_inventory.get('clip_formula_hash', '-')}",
+    ]
+    segments = segment_inventory.get("segments")
+    if isinstance(segments, list):
+        for segment in segments[:5]:
+            if not isinstance(segment, dict):
+                continue
+            primary_layer = segment.get("primary_layer")
+            background_layer = segment.get("background_layer")
+            if not isinstance(primary_layer, dict):
+                continue
+            background_asset_code = "-"
+            background_fill_mode = "-"
+            if isinstance(background_layer, dict):
+                background_asset_code = str(background_layer.get("asset_code", "-"))
+                background_fill_mode = str(background_layer.get("fill_mode", "-"))
+            lines.append(
+                f"- Segment Asset: #{segment.get('sequence_index', '-')} {segment.get('segment_type', '-')} "
+                f"| {segment.get('start_sec', '-')}-{segment.get('end_sec', '-')}s "
+                f"| primary={primary_layer.get('asset_code', '-')} ({primary_layer.get('fill_mode', '-')}) "
+                f"| background={background_asset_code} ({background_fill_mode})"
+            )
+        if len(segments) > 5:
+            lines.append(f"- More Inventory Segments: {len(segments) - 5}")
     return lines
 
 

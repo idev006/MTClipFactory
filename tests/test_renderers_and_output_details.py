@@ -10,7 +10,11 @@ from mt_clip_factory.factory.caption_runtime import ResolvedCaptionRole
 from mt_clip_factory.factory.preview_composition import PreviewLayerClip, PreviewSegmentClip
 from mt_clip_factory.factory.renderers import FFmpegPreviewRenderer, LocalPreviewRenderer
 from mt_clip_factory.factory.visual_compositing import GreenscreenAnalysis, dominant_green_ratio
-from mt_clip_factory.ui.factory.recipe_builder_aftercare import _build_manifest_caption_lines, _build_manifest_visual_lines
+from mt_clip_factory.ui.factory.recipe_builder_aftercare import (
+    _build_manifest_caption_lines,
+    _build_manifest_segment_inventory_lines,
+    _build_manifest_visual_lines,
+)
 from mt_clip_factory.ui.factory.recipe_builder_window import _build_manifest_audio_lines, _build_manifest_review_lines
 
 
@@ -383,15 +387,16 @@ def test_ffmpeg_renderer_builds_green_screen_overlay_when_background_layer_exist
                 end_sec=3.0,
                 target_duration_sec=3.0,
                 fill_mode="trim_to_segment",
-                background_layer=PreviewLayerClip(
-                    layer_name="background_visual",
-                    asset_id=22,
-                    asset_code="background_asset",
-                    source_file=background_source,
-                    fill_mode="trim_to_segment",
+                    background_layer=PreviewLayerClip(
+                        layer_name="background_visual",
+                        asset_id=22,
+                        asset_code="background_asset",
+                        source_file=background_source,
+                        fill_mode="trim_to_segment",
+                        source_duration_sec=3.0,
+                    ),
                 ),
             ),
-        ),
         target_ratio="9:16",
     )
 
@@ -426,15 +431,16 @@ def test_ffmpeg_renderer_honors_blue_key_policy_for_non_green_backgrounds(tmp_pa
                 end_sec=3.0,
                 target_duration_sec=3.0,
                 fill_mode="trim_to_segment",
-                background_layer=PreviewLayerClip(
-                    layer_name="background_visual",
-                    asset_id=22,
-                    asset_code="background_asset",
-                    source_file=background_source,
-                    fill_mode="trim_to_segment",
+                    background_layer=PreviewLayerClip(
+                        layer_name="background_visual",
+                        asset_id=22,
+                        asset_code="background_asset",
+                        source_file=background_source,
+                        fill_mode="trim_to_segment",
+                        source_duration_sec=3.0,
+                    ),
                 ),
             ),
-        ),
         target_ratio="9:16",
     )
 
@@ -913,7 +919,31 @@ def test_output_detail_helper_reads_versioned_manifest_sections(tmp_path) -> Non
                                 ],
                             }
                         ],
-                    }
+                    },
+                    "segment_inventory": {
+                        "enabled": True,
+                        "segment_count": 1,
+                        "resolved_clip_duration_sec": 3.0,
+                        "distinct_primary_asset_count": 1,
+                        "distinct_background_asset_count": 1,
+                        "clip_formula_hash": "abc123",
+                        "segments": [
+                            {
+                                "sequence_index": 1,
+                                "segment_type": "hook",
+                                "start_sec": 0.0,
+                                "end_sec": 3.0,
+                                "primary_layer": {
+                                    "asset_code": "fg_asset",
+                                    "fill_mode": "trim_to_segment",
+                                },
+                                "background_layer": {
+                                    "asset_code": "bg_asset",
+                                    "fill_mode": "trim_to_segment",
+                                },
+                            }
+                        ],
+                    },
                 },
                 "render": {
                     "audio_mix": {
@@ -955,11 +985,14 @@ def test_output_detail_helper_reads_versioned_manifest_sections(tmp_path) -> Non
     review_lines = _build_manifest_review_lines(str(manifest_path))
     audio_lines = _build_manifest_audio_lines(str(manifest_path))
     visual_lines = _build_manifest_visual_lines(str(manifest_path))
+    segment_inventory_lines = _build_manifest_segment_inventory_lines(str(manifest_path))
     caption_lines = _build_manifest_caption_lines(str(manifest_path))
 
     assert "- Required: False" in review_lines
     assert "- Mode: runtime_audio_mix" in audio_lines
     assert "- Mode: layered_visual_stack" in visual_lines
+    assert "- Clip Formula Hash: abc123" in segment_inventory_lines
+    assert "- Segment Asset: #1 hook | 0.0-3.0s | primary=fg_asset (trim_to_segment) | background=bg_asset (trim_to_segment)" in segment_inventory_lines
     assert "- Caption Role: main | fit=single_line_best_fit | font=TH Chakra Petch | review=False" in caption_lines
 
 

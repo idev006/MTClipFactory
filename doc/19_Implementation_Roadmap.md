@@ -65,6 +65,7 @@ The project now uses two roadmap layers:
 - `IR-43` Auto Factory segment-aware foreground assignment rendering baseline: complete on 2026-06-21
 - `IR-44` Auto Factory local-time truth baseline: complete on 2026-06-21
 - `IR-45` Auto Factory persistent foreground/background clip policy baseline: complete on 2026-06-21
+- `IR-46` Auto Factory segment-inventory manifest baseline: complete on 2026-06-21
 
 ## Current Execution Stream
 
@@ -89,6 +90,8 @@ The same anti-duplicate stream now also reorders large seeded option pools by hi
 The same anti-duplicate stream now also corrects one deeper render-truth gap by using semantic foreground assignments on the matching timeline segments instead of collapsing all foreground roles into one persistent recipe-wide pick.
 
 The same operator-grade publishing stream now also locks Auto Factory materialization to one persistent foreground plus one persistent background per clip, with the foreground looping when needed instead of switching assets mid-clip.
+
+The same audit stream now also adds clip-level `segment_inventory` manifest evidence so operators and future duplicate-hardening tooling can read per-segment asset/time composition truth from one stable section.
 
 The same operator-truth stream now also converts persisted Auto Factory order timestamps into local desktop display time, moves new automatic run labels onto local timestamp tokens, and keeps run-journal artifact timestamps timezone-explicit in UTC.
 
@@ -1136,6 +1139,34 @@ Align Auto Factory with operator-grade short-form ad publishing by keeping one c
 - delivered default foreground loop policy for Auto Factory-safe timeline fill using the same foreground asset
 - delivered folder-intake and production-order truth updates so missing background media no longer pretends to be a review-only case
 - delivered targeted regression coverage for planner, folder-intake, automation-policy, and production-order behavior under the new policy
+- reverified the full suite at `302 passed, 4 warnings`
+
+## IR-46 | Auto Factory Segment-Inventory Manifest Baseline
+
+### Goal
+
+Expose one operator-readable clip-composition audit seam that summarizes segment assets, timings, and deterministic clip formula evidence.
+
+### Scope
+
+- add `composition.segment_inventory` to preview/final manifests
+- keep one backward-safe top-level `segment_inventory` alias
+- expose primary/background layer identity, fill modes, and source durations per segment
+- compute deterministic segment and clip formula hashes from the resolved segment inventory
+
+### Acceptance Criteria
+
+- preview/final manifests expose segment inventory in a stable sectioned shape
+- segment inventory shows enough detail for operators to answer which assets appear where and for how long
+- output-detail helper surfaces can summarize the new inventory evidence
+- docs and pytest stay aligned to the delivered behavior
+
+### Delivery Result
+
+- delivered manifest segment-inventory payload generation from resolved preview segment clips
+- delivered per-segment primary/background layer evidence plus source-duration truth
+- delivered deterministic clip formula hashing for future duplicate-hardening support
+- delivered pytest coverage for manifest-writing and output-detail helper reading of the new inventory section
 - reverified the full suite at `302 passed, 4 warnings`
 
 ## Cross-Milestone Rules

@@ -116,6 +116,7 @@
 - Auto Factory now also follows an operator-grade persistent-visual clip policy: each materialized clip uses exactly one `foreground_video` plus one `background_video`, keeps the foreground fixed for the whole clip, and loops that same foreground when timeline fill is needed
 - folder-driven Auto Factory runs now also treat missing ready `foreground` or `background` media as a truthful planning shortfall instead of pretending a clip can still be produced under the new persistent-visual policy
 - preview/final rendering still supports semantic foreground assignments such as `hook`, `problem`, `benefit`, `proof`, and `cta` for explicit/manual recipe paths, while Auto Factory operator-grade planning now materializes one persistent foreground asset per clip instead of switching foreground mid-clip
+- preview and final manifests now also expose `composition.segment_inventory`, including per-segment asset/timing evidence, distinct visual-asset counts, and a deterministic clip formula hash for audit and future duplicate hardening
 - Auto Factory now also converts persisted order timestamps into local operator display time before populating recent-order and selected-order UI surfaces, so live monitoring no longer looks several hours behind the actual desktop session
 - new blank-`Batch Code` defaults and derived auto-generated order labels now also use local operator timestamp tokens, while product-local run journals keep explicit UTC `Z` timestamps for audit truth
 - successful auto-factory `materialize` stages now also persist planner duplicate-risk evidence, and the desktop `Auto Factory` `Orders` tab now surfaces that persisted risk truth for operators
@@ -192,6 +193,7 @@
 - validate whether the new foreground/music diversity hardening is strong enough on real campaign batches or whether product-level cooldown knobs are needed for sequence families or music reuse
 - validate whether the new frontier option-pool reordering is strong enough on real large-pool products or whether future policy needs explicit per-role cooldown windows or operator-tunable diversity budgets
 - validate whether the new persistent foreground/background clip policy lowers same-clip repetition risk enough on real Shopee/TikTok batches or whether future policy still needs stronger pair-cooldown tuning
+- validate whether the new manifest `segment_inventory` and clip formula hash are sufficient for operator audit and future duplicate-hardening tooling or whether a dedicated UI surface is needed next
 - validate whether local operator time display is sufficient across more locales or whether a future visible timezone badge is needed in the `Auto Factory` screen
 - validate whether the new exact `fingerprint_hash` guard basis is commercially strict enough or whether future policy should expand the canonical basis with caption/runtime contract dimensions
 - validate whether the new bulk asset tagging flow reduces repetitive operator work without causing accidental over-tagging
@@ -235,11 +237,12 @@
 12. Validate whether the new foreground/music diversity hardening actually lowers repeated-foreground and repeated-music risk on real Shopee/TikTok publishing batches.
 13. Validate whether the new frontier option-pool reordering actually broadens large-pool background/music usage on real campaign batches such as `Biothentic0001`.
 14. Validate whether the new persistent foreground/background clip policy actually reduces same-clip duplicate feel on real operator batches while still preserving enough cross-output variety.
-15. Run another live end-to-end preview/final audit on `Biothentic0001` after the new policy-aware voice-loop, loop-authority, and promo-caption contract slice.
-16. Validate whether product-level voice looping should surface an operator-facing repetition warning or max-repeat policy after more live runs.
-17. Run another live `Biothentic0001` audit on the versioned manifest envelope and verify that output-detail surfaces remain readable from the new sectioned contract.
-18. Run a live folder-intake audit on one real product folder arranged in the new `contracts/` plus `assets/` layout and verify that ambiguity failures are understandable to operators.
-19. Validate the new `Audit Only` control-surface mode with operators and decide whether issue grouping/export needs to be added.
+15. Validate whether the new segment-inventory manifest evidence is enough for operator review or whether `Orders` / output-detail UI should surface more of it directly.
+16. Run another live end-to-end preview/final audit on `Biothentic0001` after the new policy-aware voice-loop, loop-authority, and promo-caption contract slice.
+17. Validate whether product-level voice looping should surface an operator-facing repetition warning or max-repeat policy after more live runs.
+18. Run another live `Biothentic0001` audit on the versioned manifest envelope and verify that output-detail surfaces remain readable from the new sectioned contract.
+19. Run a live folder-intake audit on one real product folder arranged in the new `contracts/` plus `assets/` layout and verify that ambiguity failures are understandable to operators.
+20. Validate the new `Audit Only` control-surface mode with operators and decide whether issue grouping/export needs to be added.
 
 ## Direction Locked In This Documentation Revision
 

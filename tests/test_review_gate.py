@@ -159,6 +159,7 @@ def test_review_gate_counts_background_and_foreground_assets_for_visual_diversit
                         asset_code="background_asset",
                         source_file=Path("background.mp4"),
                         fill_mode="trim_to_segment",
+                        source_duration_sec=3.0,
                     ),
                 ),
                 PreviewSegmentClip(
@@ -178,6 +179,7 @@ def test_review_gate_counts_background_and_foreground_assets_for_visual_diversit
                         asset_code="background_asset",
                         source_file=Path("background.mp4"),
                         fill_mode="trim_to_segment",
+                        source_duration_sec=3.0,
                     ),
                 ),
             ),
@@ -214,6 +216,7 @@ def test_review_gate_allows_persistent_primary_asset_when_recipe_uses_single_sel
                         asset_code="background_asset",
                         source_file=Path("background.mp4"),
                         fill_mode="loop_to_segment",
+                        source_duration_sec=2.0,
                     ),
                 ),
                 PreviewSegmentClip(
@@ -233,6 +236,7 @@ def test_review_gate_allows_persistent_primary_asset_when_recipe_uses_single_sel
                         asset_code="background_asset",
                         source_file=Path("background.mp4"),
                         fill_mode="loop_to_segment",
+                        source_duration_sec=2.0,
                     ),
                 ),
                 PreviewSegmentClip(
@@ -252,6 +256,7 @@ def test_review_gate_allows_persistent_primary_asset_when_recipe_uses_single_sel
                         asset_code="background_asset",
                         source_file=Path("background.mp4"),
                         fill_mode="loop_to_segment",
+                        source_duration_sec=2.0,
                     ),
                 ),
                 PreviewSegmentClip(
@@ -271,6 +276,7 @@ def test_review_gate_allows_persistent_primary_asset_when_recipe_uses_single_sel
                         asset_code="background_asset",
                         source_file=Path("background.mp4"),
                         fill_mode="loop_to_segment",
+                        source_duration_sec=2.0,
                     ),
                 ),
             ),

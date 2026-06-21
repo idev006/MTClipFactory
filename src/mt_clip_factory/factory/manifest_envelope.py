@@ -29,6 +29,7 @@ def build_manifest_envelope(
     items = _list_section(payload.get("items"))
     fill_policy = _dict_section(payload.get("fill_policy"))
     captions = _dict_section(payload.get("captions"))
+    segment_inventory = _dict_section(payload.get("segment_inventory"))
     review_gate = _dict_section(payload.get("review_gate"))
     audio_mix = _dict_section(payload.get("audio_mix"))
     visual_composite = _dict_section(payload.get("visual_composite"))
@@ -62,6 +63,7 @@ def build_manifest_envelope(
         "items": items,
         "fill_policy": fill_policy,
         "captions": captions,
+        "segment_inventory": segment_inventory,
     }
     envelope["render"] = {
         "audio_mix": audio_mix,

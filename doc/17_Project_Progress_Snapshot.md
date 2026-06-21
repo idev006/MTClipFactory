@@ -94,6 +94,7 @@
 - Auto Factory planning now also reorders those frontier option pools by historical underuse pressure, helping broader low-history background/music/voice/foreground choices surface earlier on products with large ready pools.
 - Auto Factory now also follows a persistent visual clip policy: each materialized clip uses exactly one `foreground_video` plus one `background_video`, keeps the foreground fixed for the full clip, and loops that same foreground when timeline fill is needed.
 - Preview/final rendering still respects semantic foreground roles on matching timeline segments for explicit/manual recipe paths, while Auto Factory operator-grade planning now materializes one persistent foreground pick per clip instead of mid-clip foreground swaps.
+- Preview/final manifests now also expose `composition.segment_inventory`, giving each clip an operator-readable segment asset/time inventory plus a deterministic clip formula hash.
 - Auto Factory now also displays recent-order and selected-order timestamps in local operator time instead of raw persisted UTC wall-clock values, so order monitoring aligns with the real desktop session.
 - Blank `Batch Code` defaults and derived order labels now also use local operator timestamp tokens, while product-local run journals keep explicit UTC `Z` event timestamps for audit truth.
 - Auto Factory now also persists that duplicate-risk evidence on successful `materialize` stages and shows it in the `Orders` tab so operators can inspect order truth instead of relying on memory-only planner output.
@@ -173,6 +174,7 @@
 - delivered frontier option-pool diversity hardening so large seeded pools are reordered by historical underuse before frontier enumeration
 - preserved semantic foreground assignment rendering for explicit/manual recipe paths while shifting Auto Factory operator-grade materialization onto one persistent foreground plus one persistent background per clip
 - delivered truthful shortfall handling for missing ready `foreground` or `background` media under that persistent-visual Auto Factory policy
+- delivered clip-level segment-inventory manifest evidence with per-segment asset/time detail, distinct visual-asset counts, and deterministic clip formula hashing
 - delivered local-time truth for Auto Factory monitoring so persisted order `Started` / `Finished` values now render in operator-local time while journal artifact timestamps stay explicit in UTC `Z`
 - delivered operator-readable local timestamp tokens for new default `batch_code` and derived order labels, preventing fresh runs from appearing several hours behind the current session
 - delivered a new caption runtime guard for presenter-led top headline cards through `max_safe_band_height_ratio`, so grouped top-band promo boxes shrink before covering the presenter eye line
@@ -210,7 +212,8 @@
 20. validate whether the new foreground/music diversity hardening is enough for real publishing batches or whether operator-tunable foreground/music cooldown policy is needed next
 21. validate whether the new frontier option-pool reordering is enough for large-pool products or whether explicit per-role cooldown windows are still needed next
 22. validate whether the new persistent foreground/background clip policy is enough to reduce same-clip duplicate feel on real campaign outputs without sacrificing cross-output diversity
-23. validate whether Auto Factory should also expose an explicit timezone badge in-screen after the new local-time display correction
+23. validate whether the new segment-inventory manifest evidence should surface more directly in operator UI beyond output-detail helper text
+24. validate whether Auto Factory should also expose an explicit timezone badge in-screen after the new local-time display correction
 
 ## Verification Baseline
 

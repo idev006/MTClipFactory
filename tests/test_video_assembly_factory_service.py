@@ -330,8 +330,11 @@ def test_factory_service_builds_preview_output_job(unit_of_work_factory, tmp_pat
     assert manifest_payload["composition"]["plan"]["resolved_duration_sec"] == 3.0
     assert manifest_payload["quality"]["review_gate"]["required"] is True
     assert manifest_payload["composition_plan"]["resolved_duration_sec"] == 3.0
+    assert manifest_payload["composition"]["segment_inventory"]["segment_count"] == 3
+    assert manifest_payload["segment_inventory"]["clip_formula_hash"] is not None
     assert [segment["segment_type"] for segment in manifest_payload["segments"]] == ["hook", "benefit", "cta"]
     assert all(segment["layer_name"] == "background_visual" for segment in manifest_payload["segments"])
+    assert all(segment["source_duration_sec"] == 3.0 for segment in manifest_payload["segments"])
     assert manifest_payload["review_gate"]["required"] is True
     assert manifest_payload["review_gate"]["signals"]
 
@@ -468,6 +471,16 @@ def test_factory_service_builds_layered_visual_stack_when_background_and_foregro
     assert manifest_payload["render"]["visual_composite"]["background_segment_count"] == 3
     assert manifest_payload["visual_composite"]["background_segment_count"] == 3
     assert manifest_payload["segments"][0]["background_layer"]["asset_code"] == "bg_asset"
+    assert manifest_payload["composition"]["segment_inventory"]["distinct_primary_asset_count"] == 1
+    assert manifest_payload["composition"]["segment_inventory"]["distinct_background_asset_count"] == 1
+    assert all(
+        segment["primary_layer"]["asset_code"] == "fg_asset"
+        for segment in manifest_payload["composition"]["segment_inventory"]["segments"]
+    )
+    assert all(
+        segment["background_layer"]["asset_code"] == "bg_asset"
+        for segment in manifest_payload["composition"]["segment_inventory"]["segments"]
+    )
 
 
 def test_factory_service_uses_semantic_foreground_assignments_per_segment(unit_of_work_factory, tmp_path) -> None:
@@ -536,6 +549,10 @@ def test_factory_service_uses_semantic_foreground_assignments_per_segment(unit_o
         for segment in manifest_payload["segments"]
     ]
     assert all(segment.background_layer is not None for segment in segment_clips)
+    assert [segment["primary_layer"]["asset_code"] for segment in manifest_payload["composition"]["segment_inventory"]["segments"]] == [
+        expected_codes[segment["segment_type"]]
+        for segment in manifest_payload["composition"]["segment_inventory"]["segments"]
+    ]
 
 
 def test_factory_service_keeps_selected_visual_asset_persistent_across_segments(unit_of_work_factory, tmp_path) -> None:
