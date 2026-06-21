@@ -211,6 +211,7 @@ def _replace_assignment_role(planned_recipe, *, role: str, asset_id: int, asset_
         duration_sec=planned_recipe.duration_sec,
         duration_source=planned_recipe.duration_source,
         fingerprint=planned_recipe.fingerprint,
+        fingerprint_hash=planned_recipe.fingerprint_hash,
         assignments=tuple(replaced),
     )
 
@@ -435,6 +436,43 @@ def test_auto_factory_deprioritizes_historically_overused_voice_even_when_combo_
     rerun_voice = next(assignment for assignment in rerun_plan.planned_recipes[0].assignments if assignment.role == "voice")
 
     assert rerun_voice.asset_id != overused_voice_id
+
+
+def test_auto_factory_blocks_historical_exact_fingerprint_during_strict_materialization(unit_of_work_factory, tmp_path) -> None:
+    product_service = ProductApplicationService(unit_of_work_factory=unit_of_work_factory)
+    product_id = product_service.create_product(CreateProductCommand(product_code="hashblock", product_name="Hash Block"))
+    asset_service = _build_asset_service(unit_of_work_factory, tmp_path / "media_library", {"voice_01.mp3": 12.0})
+    _register_asset(asset_service, product_id=product_id, tmp_path=tmp_path, asset_type="foreground_video", asset_code="fg_01", file_name="fg01.mp4")
+    _register_asset(asset_service, product_id=product_id, tmp_path=tmp_path, asset_type="background_video", asset_code="bg_01", file_name="bg01.mp4")
+    _register_asset(asset_service, product_id=product_id, tmp_path=tmp_path, asset_type="background_music", asset_code="music_01", file_name="music01.mp3")
+    _register_asset(asset_service, product_id=product_id, tmp_path=tmp_path, asset_type="voiceover", asset_code="voice_01", file_name="voice_01.mp3")
+    factory_service = _build_factory_service(unit_of_work_factory, tmp_path / "previews")
+    service = AutoFactoryBatchService(
+        product_service=product_service,
+        asset_intake_service=asset_service,
+        video_assembly_factory_service=factory_service,
+    )
+    order = AutoFactoryBatchOrderDTO(
+        batch_code="hashblock_batch",
+        product_requests=(AutoFactoryProductRequestDTO(product_code="hashblock", requested_output_count=1),),
+    )
+
+    baseline_plan = service.plan_batch(order)
+    _materialize_history_recipe(
+        factory_service,
+        product_id=product_id,
+        recipe_code="hashblock_history_001",
+        planned_recipe=baseline_plan.planned_recipes[0],
+    )
+
+    rerun_plan = service.plan_batch(order)
+
+    assert rerun_plan.summaries[0].planner_feasible_unique_count == 0
+    assert rerun_plan.summaries[0].planned_output_count == 0
+    assert rerun_plan.summaries[0].limiting_reason == "exact fingerprint history exhausted fresh variants"
+    assert rerun_plan.planned_recipes == ()
+    with pytest.raises(AutoFactoryCapacityError, match="requested=1, feasible=0"):
+        service.materialize_batch(order)
 
 
 def test_auto_factory_reports_shortfall_and_blocks_strict_materialization(unit_of_work_factory, tmp_path) -> None:

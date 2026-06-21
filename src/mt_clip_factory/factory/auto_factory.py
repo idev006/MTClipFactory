@@ -18,6 +18,11 @@ from mt_clip_factory.factory.auto_factory_dto import (
     PlannedBatchRecipeDTO,
     ProductBatchPlanSummaryDTO,
 )
+from mt_clip_factory.factory.auto_factory_fingerprint import (
+    build_history_recipe_fingerprint_hash,
+    build_planned_recipe_fingerprint,
+    build_planned_recipe_fingerprint_hash,
+)
 from mt_clip_factory.factory.auto_factory_planning_support import (
     _PlanningHistory,
     _SEMANTIC_VISUAL_ROLES,
@@ -72,7 +77,12 @@ class AutoFactoryBatchService:
         self._asset_intake_service = asset_intake_service
         self._video_assembly_factory_service = video_assembly_factory_service
 
-    def plan_batch(self, order: AutoFactoryBatchOrderDTO) -> AutoFactoryBatchPlanDTO:
+    def plan_batch(
+        self,
+        order: AutoFactoryBatchOrderDTO,
+        *,
+        history_excluded_recipe_ids: frozenset[int] = frozenset(),
+    ) -> AutoFactoryBatchPlanDTO:
         batch_code = _slugify(order.batch_code)
         if not batch_code:
             raise AutoFactoryPlanningError("Batch code is required.")
@@ -87,7 +97,12 @@ class AutoFactoryBatchService:
             product = products_by_code.get(product_request.product_code)
             if product is None:
                 raise AutoFactoryUnknownProductError(product_request.product_code)
-            planning = self._plan_product(batch_code=batch_code, product_request=product_request, product=product)
+            planning = self._plan_product(
+                batch_code=batch_code,
+                product_request=product_request,
+                product=product,
+                history_excluded_recipe_ids=history_excluded_recipe_ids,
+            )
             summaries.append(planning["summary"])
             planned_recipes.extend(planning["recipes"])
 
@@ -97,8 +112,13 @@ class AutoFactoryBatchService:
             planned_recipes=tuple(planned_recipes),
         )
 
-    def materialize_batch(self, order: AutoFactoryBatchOrderDTO) -> AutoFactoryBatchMaterializationDTO:
-        plan = self.plan_batch(order)
+    def materialize_batch(
+        self,
+        order: AutoFactoryBatchOrderDTO,
+        *,
+        history_excluded_recipe_ids: frozenset[int] = frozenset(),
+    ) -> AutoFactoryBatchMaterializationDTO:
+        plan = self.plan_batch(order, history_excluded_recipe_ids=history_excluded_recipe_ids)
         if order.strict_fulfillment:
             shortfalls = [summary for summary in plan.summaries if not summary.can_fulfill_exactly]
             if shortfalls:
@@ -211,8 +231,13 @@ class AutoFactoryBatchService:
             error_message=job_summary.error_message or error_message,
         )
 
-    def materialize_batch_and_build_previews(self, order: AutoFactoryBatchOrderDTO) -> AutoFactoryBatchExecutionDTO:
-        materialization = self.materialize_batch(order)
+    def materialize_batch_and_build_previews(
+        self,
+        order: AutoFactoryBatchOrderDTO,
+        *,
+        history_excluded_recipe_ids: frozenset[int] = frozenset(),
+    ) -> AutoFactoryBatchExecutionDTO:
+        materialization = self.materialize_batch(order, history_excluded_recipe_ids=history_excluded_recipe_ids)
         preview_production = self.build_previews_for_materialized_batch(materialization)
         return AutoFactoryBatchExecutionDTO(
             batch_code=materialization.batch_code,
@@ -220,7 +245,14 @@ class AutoFactoryBatchService:
             preview_production=preview_production,
         )
 
-    def _plan_product(self, *, batch_code: str, product_request: AutoFactoryProductRequestDTO, product) -> dict[str, object]:
+    def _plan_product(
+        self,
+        *,
+        batch_code: str,
+        product_request: AutoFactoryProductRequestDTO,
+        product,
+        history_excluded_recipe_ids: frozenset[int],
+    ) -> dict[str, object]:
         if product_request.requested_output_count <= 0:
             raise AutoFactoryPlanningError("Requested output count must be greater than zero.")
         if product_request.uniqueness_scope != "batch":
@@ -269,7 +301,10 @@ class AutoFactoryBatchService:
             seed_key=f"{batch_code}|{product.product_code}|music",
             item_key=lambda asset: asset.asset_code or str(asset.asset_id),
         )
-        planning_history = self._load_planning_history(product_id=product.product_id)
+        planning_history = self._load_planning_history(
+            product_id=product.product_id,
+            excluded_recipe_ids=history_excluded_recipe_ids,
+        )
 
         if not foreground_assets and not background_assets:
             limiting_reason = "no ready renderable visual assets"
@@ -296,12 +331,10 @@ class AutoFactoryBatchService:
         music_count = len(music_assets) if music_assets else 1
         voice_count = len(voice_assets) if voice_assets else 1
         feasible_count = foreground_sequence_count * background_count * music_count * voice_count
-        planned_count = min(product_request.requested_output_count, feasible_count)
-
         planned_variants = self._select_planned_variants(
             product=product,
             product_request=product_request,
-            planned_count=planned_count,
+            planned_count=product_request.requested_output_count,
             feasible_count=feasible_count,
             foreground_assets=foreground_assets,
             foreground_sequences=foreground_sequences,
@@ -320,15 +353,22 @@ class AutoFactoryBatchService:
             )
             for index, blueprint in enumerate(planned_variants)
         )
+        planned_count = len(recipes)
+        can_fulfill_exactly = planned_count == product_request.requested_output_count
+        fresh_feasible_count = planned_count if not can_fulfill_exactly else feasible_count
         summary = ProductBatchPlanSummaryDTO(
             product_id=product.product_id,
             product_code=product.product_code,
             requested_output_count=product_request.requested_output_count,
-            planner_feasible_unique_count=feasible_count,
+            planner_feasible_unique_count=fresh_feasible_count,
             planned_output_count=planned_count,
-            can_fulfill_exactly=planned_count == product_request.requested_output_count,
+            can_fulfill_exactly=can_fulfill_exactly,
             shortfall_count=max(0, product_request.requested_output_count - planned_count),
-            limiting_reason=None if planned_count == product_request.requested_output_count else "planner capacity exhausted",
+            limiting_reason=(
+                None
+                if can_fulfill_exactly
+                else _resolve_planner_shortfall_reason(planned_count=planned_count, feasible_count=feasible_count)
+            ),
         )
         return {"summary": summary, "recipes": recipes}
 
@@ -409,11 +449,18 @@ class AutoFactoryBatchService:
 
         duration_source, duration_sec = _resolve_duration(product_request, voice_asset)
         target_platform = product_request.target_platform or product.default_platform
-        fingerprint = _build_fingerprint(
+        fingerprint = build_planned_recipe_fingerprint(
             product_code=product.product_code,
             target_platform=target_platform,
             target_ratio=product_request.target_ratio,
             duration_source=duration_source,
+            duration_sec=duration_sec,
+            assignments=assignments,
+        )
+        fingerprint_hash = build_planned_recipe_fingerprint_hash(
+            product_code=product.product_code,
+            target_platform=target_platform,
+            target_ratio=product_request.target_ratio,
             duration_sec=duration_sec,
             assignments=assignments,
         )
@@ -423,15 +470,25 @@ class AutoFactoryBatchService:
             duration_sec=duration_sec,
             duration_source=duration_source,
             fingerprint=fingerprint,
+            fingerprint_hash=fingerprint_hash,
             assignments=tuple(assignments),
             assignment_signature=_assignment_signature_from_assignments(tuple(assignments)),
             foreground_sequence=tuple(sequence),
             variant_index=variant_index,
         )
 
-    def _load_planning_history(self, *, product_id: int) -> _PlanningHistory:
+    def _load_planning_history(
+        self,
+        *,
+        product_id: int,
+        excluded_recipe_ids: frozenset[int] = frozenset(),
+    ) -> _PlanningHistory:
         recipe_summaries = sorted(
-            self._video_assembly_factory_service.list_recipes(product_id=product_id),
+            [
+                summary
+                for summary in self._video_assembly_factory_service.list_recipes(product_id=product_id)
+                if summary.recipe_id not in excluded_recipe_ids
+            ],
             key=lambda summary: summary.recipe_id,
             reverse=True,
         )
@@ -439,10 +496,22 @@ class AutoFactoryBatchService:
             return _PlanningHistory.empty()
 
         exact_signature_weights: Counter = Counter()
+        exact_fingerprint_hashes: set[str] = set()
         foreground_sequence_weights: Counter = Counter()
         role_asset_weights: Counter = Counter()
-        for history_index, recipe_summary in enumerate(recipe_summaries[:_HISTORY_RECIPE_LIMIT]):
+        for history_index, recipe_summary in enumerate(recipe_summaries):
             recipe_details = self._video_assembly_factory_service.get_recipe(recipe_summary.recipe_id)
+            exact_fingerprint_hashes.add(
+                build_history_recipe_fingerprint_hash(
+                    product_code=recipe_summary.product_code,
+                    target_platform=recipe_details.target_platform,
+                    target_ratio=recipe_details.target_ratio,
+                    duration_sec=recipe_details.duration_sec,
+                    items=recipe_details.items,
+                )
+            )
+            if history_index >= _HISTORY_RECIPE_LIMIT:
+                continue
             history_weight = _history_weight(history_index)
             exact_signature = _assignment_signature_from_recipe_items(recipe_details.items)
             if exact_signature:
@@ -457,6 +526,7 @@ class AutoFactoryBatchService:
                 role_asset_weights[(normalized_role, item.asset_id)] += history_weight
         return _PlanningHistory(
             exact_signature_weights=exact_signature_weights,
+            exact_fingerprint_hashes=frozenset(exact_fingerprint_hashes),
             foreground_sequence_weights=foreground_sequence_weights,
             role_asset_weights=role_asset_weights,
         )
@@ -554,6 +624,7 @@ def _blueprint_to_planned_recipe(
         duration_sec=blueprint.duration_sec,
         duration_source=blueprint.duration_source,
         fingerprint=blueprint.fingerprint,
+        fingerprint_hash=blueprint.fingerprint_hash,
         assignments=blueprint.assignments,
         near_duplicate_score=blueprint.near_duplicate_score,
         near_duplicate_reasons=blueprint.near_duplicate_reasons,
@@ -580,30 +651,6 @@ def _resolve_duration(
 
     resolved = max(product_request.min_duration_sec, min(product_request.max_duration_sec, voice_asset.duration_sec))
     return "voice_with_bounds", round(float(resolved), 3)
-
-
-def _build_fingerprint(
-    *,
-    product_code: str,
-    target_platform: str | None,
-    target_ratio: str | None,
-    duration_source: str,
-    duration_sec: float | None,
-    assignments: list[PlannedBatchAssetAssignmentDTO],
-) -> str:
-    grouped_assignments = [
-        f"{assignment.role}:{assignment.asset_id}"
-        for assignment in sorted(assignments, key=lambda item: (item.role, item.asset_id, item.asset_code))
-    ]
-    fingerprint_parts = (
-        product_code,
-        target_platform or "",
-        target_ratio or "",
-        duration_source,
-        "" if duration_sec is None else f"{duration_sec:.3f}",
-        *grouped_assignments,
-    )
-    return "|".join(fingerprint_parts)
 
 
 def _assignment_signature_from_assignments(
@@ -668,3 +715,11 @@ def _has_any_required_tag_filters(product_request: AutoFactoryProductRequestDTO)
             product_request.voice_required_tag_labels,
         )
     )
+
+
+def _resolve_planner_shortfall_reason(*, planned_count: int, feasible_count: int) -> str:
+    if planned_count <= 0:
+        return "exact fingerprint history exhausted fresh variants"
+    if planned_count < feasible_count:
+        return "exact fingerprint history reduced fresh variants"
+    return "planner capacity exhausted"

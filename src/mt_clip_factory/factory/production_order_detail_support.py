@@ -125,6 +125,7 @@ def build_materialize_stage_detail(
         "near_duplicate_score": planned_recipe.near_duplicate_score,
         "near_duplicate_reasons": list(planned_recipe.near_duplicate_reasons),
         "fingerprint": planned_recipe.fingerprint,
+        "fingerprint_hash": planned_recipe.fingerprint_hash,
     }
 
 

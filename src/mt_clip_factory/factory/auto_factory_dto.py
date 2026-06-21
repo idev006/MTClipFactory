@@ -46,6 +46,7 @@ class PlannedBatchRecipeDTO:
     duration_sec: float | None
     duration_source: str
     fingerprint: str
+    fingerprint_hash: str
     assignments: tuple[PlannedBatchAssetAssignmentDTO, ...]
     near_duplicate_score: float = 0.0
     near_duplicate_reasons: tuple[str, ...] = ()

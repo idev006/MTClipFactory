@@ -85,6 +85,7 @@ When code changes, the related Markdown documents in this folder must be updated
 77. [77_Auto_Factory_History_Aware_Anti_Duplicate_Selection_Workflow_2026-06-21.md](/F:/programming/python/MTClipFactory/doc/77_Auto_Factory_History_Aware_Anti_Duplicate_Selection_Workflow_2026-06-21.md)
 78. [78_Auto_Factory_Near_Duplicate_Similarity_Workflow_2026-06-21.md](/F:/programming/python/MTClipFactory/doc/78_Auto_Factory_Near_Duplicate_Similarity_Workflow_2026-06-21.md)
 79. [79_Auto_Factory_Operator_Near_Duplicate_Risk_Surface_2026-06-21.md](/F:/programming/python/MTClipFactory/doc/79_Auto_Factory_Operator_Near_Duplicate_Risk_Surface_2026-06-21.md)
+80. [80_Auto_Factory_Exact_Fingerprint_Hash_Duplicate_Guard_2026-06-21.md](/F:/programming/python/MTClipFactory/doc/80_Auto_Factory_Exact_Fingerprint_Hash_Duplicate_Guard_2026-06-21.md)
 
 ## Governance
 

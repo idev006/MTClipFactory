@@ -170,6 +170,7 @@ def _replace_assignment_role(planned_recipe, *, role: str, asset_id: int, asset_
         duration_sec=planned_recipe.duration_sec,
         duration_source=planned_recipe.duration_source,
         fingerprint=planned_recipe.fingerprint,
+        fingerprint_hash=planned_recipe.fingerprint_hash,
         assignments=tuple(replaced),
     )
 
@@ -205,7 +206,7 @@ def test_auto_factory_reports_zero_near_duplicate_score_for_clean_first_recipe(u
     assert recipe.near_duplicate_reasons == ()
 
 
-def test_auto_factory_reports_exact_combo_reuse_when_history_forces_repeat(unit_of_work_factory, tmp_path) -> None:
+def test_auto_factory_blocks_exact_fingerprint_reuse_when_history_forces_repeat(unit_of_work_factory, tmp_path) -> None:
     product_service = ProductApplicationService(unit_of_work_factory=unit_of_work_factory)
     product_id = product_service.create_product(CreateProductCommand(product_code="forcedrepeat", product_name="Forced Repeat"))
     asset_service = _build_asset_service(unit_of_work_factory, tmp_path / "media_library", {"voice_01.mp3": 12.0})
@@ -233,10 +234,12 @@ def test_auto_factory_reports_exact_combo_reuse_when_history_forces_repeat(unit_
     )
 
     rerun_plan = service.plan_batch(order)
-    rerun_recipe = rerun_plan.planned_recipes[0]
 
-    assert rerun_recipe.near_duplicate_score == 1.0
-    assert "exact_combo_reused" in rerun_recipe.near_duplicate_reasons
+    assert rerun_plan.summaries[0].planner_feasible_unique_count == 0
+    assert rerun_plan.summaries[0].planned_output_count == 0
+    assert rerun_plan.summaries[0].shortfall_count == 1
+    assert rerun_plan.summaries[0].limiting_reason == "exact fingerprint history exhausted fresh variants"
+    assert rerun_plan.planned_recipes == ()
 
 
 def test_auto_factory_reports_voice_overuse_risk_when_voice_must_repeat(unit_of_work_factory, tmp_path) -> None:
@@ -292,3 +295,54 @@ def test_auto_factory_reports_voice_overuse_risk_when_voice_must_repeat(unit_of_
     assert rerun_recipe.near_duplicate_score > 0.0
     assert "voice_asset_overused" in rerun_recipe.near_duplicate_reasons
     assert "exact_combo_reused" not in rerun_recipe.near_duplicate_reasons
+
+
+def test_auto_factory_exact_fingerprint_guard_allows_same_assets_with_different_ratio(unit_of_work_factory, tmp_path) -> None:
+    product_service = ProductApplicationService(unit_of_work_factory=unit_of_work_factory)
+    product_id = product_service.create_product(CreateProductCommand(product_code="ratioflex", product_name="Ratio Flex"))
+    asset_service = _build_asset_service(unit_of_work_factory, tmp_path / "media_library", {"voice_01.mp3": 12.0})
+    _register_asset(asset_service, product_id=product_id, tmp_path=tmp_path, asset_type="foreground_video", asset_code="fg_01", file_name="fg01.mp4")
+    _register_asset(asset_service, product_id=product_id, tmp_path=tmp_path, asset_type="background_video", asset_code="bg_01", file_name="bg01.mp4")
+    _register_asset(asset_service, product_id=product_id, tmp_path=tmp_path, asset_type="background_music", asset_code="music_01", file_name="music01.mp3")
+    _register_asset(asset_service, product_id=product_id, tmp_path=tmp_path, asset_type="voiceover", asset_code="voice_01", file_name="voice_01.mp3")
+    factory_service = _build_factory_service(unit_of_work_factory, tmp_path / "previews")
+    service = AutoFactoryBatchService(
+        product_service=product_service,
+        asset_intake_service=asset_service,
+        video_assembly_factory_service=factory_service,
+    )
+    history_order = AutoFactoryBatchOrderDTO(
+        batch_code="ratioflex_history",
+        product_requests=(
+            AutoFactoryProductRequestDTO(
+                product_code="ratioflex",
+                requested_output_count=1,
+                target_platform="tiktok",
+                target_ratio="9:16",
+            ),
+        ),
+    )
+    rerun_order = AutoFactoryBatchOrderDTO(
+        batch_code="ratioflex_rerun",
+        product_requests=(
+            AutoFactoryProductRequestDTO(
+                product_code="ratioflex",
+                requested_output_count=1,
+                target_platform="tiktok",
+                target_ratio="1:1",
+            ),
+        ),
+    )
+
+    baseline_plan = service.plan_batch(history_order)
+    _materialize_history_recipe(
+        factory_service,
+        product_id=product_id,
+        recipe_code="ratioflex_history_001",
+        planned_recipe=baseline_plan.planned_recipes[0],
+    )
+
+    rerun_plan = service.plan_batch(rerun_order)
+
+    assert rerun_plan.summaries[0].planned_output_count == 1
+    assert len(rerun_plan.planned_recipes) == 1

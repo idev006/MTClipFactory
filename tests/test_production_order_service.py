@@ -245,6 +245,7 @@ def test_production_order_service_runs_order_and_records_successful_stages(unit_
     assert "near_duplicate_score" in materialize_detail
     assert "near_duplicate_reasons" in materialize_detail
     assert "fingerprint" in materialize_detail
+    assert "fingerprint_hash" in materialize_detail
 
 
 def test_production_order_service_records_review_required_state(unit_of_work_factory, tmp_path) -> None:

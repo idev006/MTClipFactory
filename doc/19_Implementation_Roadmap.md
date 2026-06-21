@@ -55,7 +55,8 @@ The project now uses two roadmap layers:
 - `IR-33` Auto Factory review-surface operator actions: complete on 2026-06-20
 - `IR-34` Auto Factory history-aware anti-duplicate selection baseline: complete on 2026-06-21
 - `IR-35` Auto Factory near-duplicate similarity scoring baseline: complete on 2026-06-21
-- `IR-36` Auto Factory operator near-duplicate risk surface: in progress on 2026-06-21
+- `IR-36` Auto Factory operator near-duplicate risk surface: complete on 2026-06-21
+- `IR-37` Auto Factory exact fingerprint hash duplicate guard baseline: complete on 2026-06-21
 
 ## Current Execution Stream
 
@@ -66,6 +67,8 @@ The delivered 2026-06-20 control slice keeps `Pause Run`, `Stop Run`, and `Resum
 The current caption-quality hardening stream should also keep presenter-led promo cards face-safe by clamping grouped top-band band height and by treating requested grouped headline size as a real upper bound instead of a suggestion.
 
 The same caption-quality stream now also hardens Thai rendering by compositing a Qt-rendered caption bitmap in FFmpeg instead of asking FFmpeg `drawtext` to redraw already-measured caption glyphs.
+
+The same anti-duplicate stream now also adds a hard exact-repeat guard through canonical recipe fingerprint hashes, while near-duplicate scoring remains the softer explainability layer on top.
 
 Backlog activation rules:
 

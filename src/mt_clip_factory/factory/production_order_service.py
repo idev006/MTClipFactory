@@ -361,9 +361,19 @@ class ProductionOrderService:
         batch_order = build_batch_order(order, items)
         item_by_product_code = {item.product_code_snapshot: item for item in items}
         stages = self._list_stages(production_order_id)
+        history_excluded_recipe_ids = frozenset(
+            stage.recipe_id
+            for stage in stages
+            if stage.stage_name == "materialize"
+            and stage.status == OrchestrationStatus.SUCCEEDED
+            and stage.recipe_id is not None
+        )
 
         try:
-            plan = self._auto_factory_service.plan_batch(batch_order)
+            plan = self._auto_factory_service.plan_batch(
+                batch_order,
+                history_excluded_recipe_ids=history_excluded_recipe_ids,
+            )
             if order.strict_fulfillment:
                 shortfalls = [summary for summary in plan.summaries if not summary.can_fulfill_exactly]
                 if shortfalls:

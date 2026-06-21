@@ -26,6 +26,7 @@ class _VariantBlueprint:
     duration_sec: float | None
     duration_source: str
     fingerprint: str
+    fingerprint_hash: str
     assignments: tuple[PlannedBatchAssetAssignmentDTO, ...]
     assignment_signature: tuple[tuple[str, int], ...]
     foreground_sequence: tuple[int, ...]
@@ -37,6 +38,7 @@ class _VariantBlueprint:
 @dataclass(slots=True, frozen=True)
 class _PlanningHistory:
     exact_signature_weights: Counter
+    exact_fingerprint_hashes: frozenset[str]
     foreground_sequence_weights: Counter
     role_asset_weights: Counter
 
@@ -44,6 +46,7 @@ class _PlanningHistory:
     def empty(cls) -> _PlanningHistory:
         return cls(
             exact_signature_weights=Counter(),
+            exact_fingerprint_hashes=frozenset(),
             foreground_sequence_weights=Counter(),
             role_asset_weights=Counter(),
         )
@@ -63,13 +66,22 @@ def _select_blueprints_greedily(
 ) -> tuple[_VariantBlueprint, ...]:
     remaining = list(candidate_blueprints)
     selected: list[_VariantBlueprint] = []
+    selected_fingerprint_hashes: set[str] = set()
     selected_exact_signature_counts: Counter = Counter()
     selected_foreground_sequence_counts: Counter = Counter()
     selected_role_asset_counts: Counter = Counter()
 
     while remaining and len(selected) < planned_count:
+        eligible = [
+            (index, blueprint)
+            for index, blueprint in enumerate(remaining)
+            if blueprint.fingerprint_hash not in planning_history.exact_fingerprint_hashes
+            and blueprint.fingerprint_hash not in selected_fingerprint_hashes
+        ]
+        if not eligible:
+            break
         best_index, best_blueprint = min(
-            enumerate(remaining),
+            eligible,
             key=lambda entry: _selection_score(
                 entry[1],
                 planning_history=planning_history,
@@ -92,6 +104,7 @@ def _select_blueprints_greedily(
             near_duplicate_reasons=similarity.reasons,
         )
         selected.append(selected_blueprint)
+        selected_fingerprint_hashes.add(selected_blueprint.fingerprint_hash)
         selected_exact_signature_counts[selected_blueprint.assignment_signature] += 1
         if selected_blueprint.foreground_sequence:
             selected_foreground_sequence_counts[selected_blueprint.foreground_sequence] += 1
