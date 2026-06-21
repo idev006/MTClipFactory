@@ -34,6 +34,7 @@ from mt_clip_factory.ui.factory.auto_factory_control_actions import (
     set_feedback_message,
 )
 from mt_clip_factory.ui.factory.auto_factory_control_support import (
+    build_order_stage_rows,
     build_order_product_rows,
     build_order_summary_text,
     build_preflight_product_detail_text,
@@ -41,6 +42,11 @@ from mt_clip_factory.ui.factory.auto_factory_control_support import (
     build_run_mode_hint,
     build_run_product_detail_text,
     format_product_request_summary,
+    refresh_recent_orders,
+    refresh_selected_order,
+    refresh_selected_preflight_product_details,
+    refresh_selected_run_product_details,
+    select_first_row,
 )
 from mt_clip_factory.ui.factory.auto_factory_run_worker import AutoFactoryRunWorker
 from mt_clip_factory.ui.theme import apply_theme
@@ -331,8 +337,8 @@ class AutoFactoryControlWindow(QMainWindow):
         self.selected_product_text.setReadOnly(True)
         self.selected_product_text.setMinimumHeight(self.SELECTED_PRODUCT_MIN_HEIGHT - 90)
         self.selected_product_text.setPlainText(self.SELECTED_PRODUCT_PLACEHOLDER)
-        layout.addWidget(self.selected_product_text)
         refresh_selected_product_action_state(self)
+        layout.addWidget(self.selected_product_text)
         return group
 
     def _build_preflight_issues_group(self) -> QGroupBox:
@@ -356,18 +362,18 @@ class AutoFactoryControlWindow(QMainWindow):
         self.order_summary_text = QTextEdit()
         self.order_summary_text.setReadOnly(True)
         self.order_summary_text.setMinimumHeight(110)
-        self.order_product_progress_table = QTableWidget(0, 4)
+        self.order_product_progress_table = QTableWidget(0, 5)
         self._configure_table(
             self.order_product_progress_table,
-            ["Product Code", "Requested Outputs", "Last Stage", "Status"],
+            ["Product Code", "Requested Outputs", "Last Stage", "Status", "Duplicate Risk"],
             stretch_columns=(0, 2, 3),
         )
-        self.order_stages_table = QTableWidget(0, 8)
+        self.order_stages_table = QTableWidget(0, 10)
         self._configure_table(
             self.order_stages_table,
-            ["Seq", "Stage", "Scope", "Status", "Item", "Recipe", "Job", "Failure"],
-            stretch_columns=(1, 7),
-            interactive_widths={4: 90, 5: 90, 6: 90},
+            ["Seq", "Stage", "Scope", "Status", "Item", "Recipe", "Job", "Failure", "Duplicate Risk", "Reasons"],
+            stretch_columns=(1, 9),
+            interactive_widths={4: 90, 5: 90, 6: 90, 8: 110},
         )
         self.order_events_table = QTableWidget(0, 5)
         self._configure_table(
@@ -508,7 +514,7 @@ class AutoFactoryControlWindow(QMainWindow):
             ]
             for column_index, value in enumerate(values):
                 self.product_reports_table.setItem(row_index, column_index, QTableWidgetItem(value))
-        _select_first_row(self.product_reports_table)
+        select_first_row(self.product_reports_table)
 
         self.asset_actions_table.setRowCount(len(run_report.asset_actions))
         for row_index, action in enumerate(run_report.asset_actions):
@@ -581,75 +587,14 @@ class AutoFactoryControlWindow(QMainWindow):
         for row_index, values in enumerate(issue_rows):
             for column_index, value in enumerate(values):
                 self.preflight_issues_table.setItem(row_index, column_index, QTableWidgetItem(value))
-        _select_first_row(self.preflight_products_table)
+        select_first_row(self.preflight_products_table)
         self._refresh_selected_preflight_product_details()
 
     def _refresh_selected_order(self) -> None:
-        selected_order = self._view_model.selected_order
-        if selected_order is None:
-            self.order_summary_text.setPlainText("No production order selected.")
-            self.order_product_progress_table.setRowCount(0)
-            self.order_stages_table.setRowCount(0)
-            self.order_events_table.setRowCount(0)
-            self._refresh_run_controls()
-            return
-
-        self.results_tabs.setCurrentWidget(self.order_stage_group)
-        self.order_summary_text.setPlainText(build_order_summary_text(selected_order))
-        product_rows = build_order_product_rows(selected_order)
-        self.order_product_progress_table.setRowCount(len(product_rows))
-        for row_index, values in enumerate(product_rows):
-            for column_index, value in enumerate(values):
-                self.order_product_progress_table.setItem(row_index, column_index, QTableWidgetItem(value))
-        self.order_stages_table.setRowCount(len(selected_order.stages))
-        for row_index, stage in enumerate(selected_order.stages):
-            values = [
-                str(stage.sequence_index),
-                stage.stage_name,
-                stage.stage_scope,
-                stage.status,
-                str(stage.production_order_item_id or ""),
-                str(stage.recipe_id or ""),
-                str(stage.job_id or ""),
-                stage.failure_class or "",
-            ]
-            for column_index, value in enumerate(values):
-                self.order_stages_table.setItem(row_index, column_index, QTableWidgetItem(value))
-        self.order_events_table.setRowCount(len(selected_order.events))
-        for row_index, event in enumerate(selected_order.events):
-            values = [
-                str(event.sequence_index),
-                event.event_type,
-                event.status,
-                event.stage_name or "",
-                event.message,
-            ]
-            for column_index, value in enumerate(values):
-                self.order_events_table.setItem(row_index, column_index, QTableWidgetItem(value))
-        self._refresh_run_controls()
+        refresh_selected_order(self)
 
     def _refresh_recent_orders(self) -> None:
-        orders = self._view_model.recent_orders
-        current_order_id = self._view_model.selected_order.production_order_id if self._view_model.selected_order else None
-        self.recent_orders_table.blockSignals(True)
-        self.recent_orders_table.setRowCount(len(orders))
-        for row_index, order in enumerate(orders):
-            values = [
-                str(order.production_order_id),
-                order.order_code,
-                order.batch_code,
-                order.status,
-                str(order.item_count),
-                order.source_mode,
-                order.started_at or "",
-                order.finished_at or "",
-            ]
-            for column_index, value in enumerate(values):
-                self.recent_orders_table.setItem(row_index, column_index, QTableWidgetItem(value))
-            if current_order_id is not None and order.production_order_id == current_order_id:
-                self.recent_orders_table.selectRow(row_index)
-        self.recent_orders_table.blockSignals(False)
-        self._refresh_run_controls()
+        refresh_recent_orders(self)
 
     def _browse_for_root_folder(self) -> None:
         selected_dir = QFileDialog.getExistingDirectory(self, "Select Auto Factory Root Folder")
@@ -785,51 +730,7 @@ class AutoFactoryControlWindow(QMainWindow):
             QMessageBox.warning(self, "Load Production Order", str(exc))
 
     def _refresh_selected_preflight_product_details(self) -> None:
-        preflight_report = self._view_model.preflight_report
-        if preflight_report is None:
-            refresh_selected_product_action_state(self)
-            return
-        row_index = _selected_row_index(self.preflight_products_table)
-        if row_index is None or row_index >= len(preflight_report.product_reports):
-            refresh_selected_product_action_state(self)
-            return
-        product_report = preflight_report.product_reports[row_index]
-        self.selected_product_text.setPlainText(build_preflight_product_detail_text(product_report))
-        refresh_selected_product_action_state(self)
+        refresh_selected_preflight_product_details(self)
 
     def _refresh_selected_run_product_details(self) -> None:
-        run_report = self._view_model.run_report
-        if run_report is None:
-            refresh_selected_product_action_state(self)
-            return
-        row_index = _selected_row_index(self.product_reports_table)
-        if row_index is None or row_index >= len(run_report.product_reports):
-            refresh_selected_product_action_state(self)
-            return
-        product_report = run_report.product_reports[row_index]
-        request = next(
-            (item for item in run_report.order.product_requests if item.product_code == product_report.product_code),
-            None,
-        )
-        product_actions = [action for action in run_report.asset_actions if action.product_code == product_report.product_code]
-        self.selected_product_text.setPlainText(
-            build_run_product_detail_text(
-                batch_code=run_report.batch_code,
-                scan_depth=run_report.scan_depth,
-                product_report=product_report,
-                request=request,
-                product_actions=product_actions,
-            )
-        )
-        refresh_selected_product_action_state(self)
-
-def _selected_row_index(table: QTableWidget) -> int | None:
-    selected_items = table.selectedItems()
-    if not selected_items:
-        return None
-    return selected_items[0].row()
-
-
-def _select_first_row(table: QTableWidget) -> None:
-    if table.rowCount() > 0 and not table.selectedItems():
-        table.selectRow(0)
+        refresh_selected_run_product_details(self)

@@ -55,6 +55,7 @@ The project now uses two roadmap layers:
 - `IR-33` Auto Factory review-surface operator actions: complete on 2026-06-20
 - `IR-34` Auto Factory history-aware anti-duplicate selection baseline: complete on 2026-06-21
 - `IR-35` Auto Factory near-duplicate similarity scoring baseline: complete on 2026-06-21
+- `IR-36` Auto Factory operator near-duplicate risk surface: in progress on 2026-06-21
 
 ## Current Execution Stream
 

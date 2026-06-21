@@ -110,6 +110,7 @@
 - blank `Batch Code` input in the desktop `Auto Factory` control surface now auto-generates a unique root-folder-based batch code so repeated runs do not collapse into one ambiguous product-local `runs/<batch_code>` folder
 - auto-factory planning now also uses recent same-product recipe history to deprioritize repeated exact combos, repeated foreground sequences, and overused voice assets before materialization
 - auto-factory planning now also scores each planned recipe for near-duplicate risk and records concise machine-readable reasons such as exact-combo reuse, foreground-sequence reuse, and voice/background/music overuse
+- successful auto-factory `materialize` stages now also persist planner duplicate-risk evidence, and the desktop `Auto Factory` `Orders` tab now surfaces that persisted risk truth for operators
 - `Pause Run`, `Stop Run`, and `Resume Run` remain visible operator-control groundwork only; the UI must continue to say `pending backend support` until persisted safe-checkpoint and worker-lease semantics are actually implemented
 - caption runtime now also clamps grouped top-band headline height through a new `max_safe_band_height_ratio` rule so presenter-led promo cards shrink before covering the eye line, while still keeping overflow review-visible when the safer band cannot contain the text
 - grouped multi-line caption solving no longer grows above the requested contract font size, while short single-line best-fit cards may still upscale when that is the intended readability behavior
@@ -150,7 +151,7 @@
 
 ## Verification Baseline
 
-- `python -m pytest` via `.venv`: `288 passed, 4 warnings`
+- `python -m pytest` via `.venv`: `289 passed, 4 warnings`
 - targeted `QT_QPA_PLATFORM=offscreen` UI coverage for the new `Auto Factory` window and existing themed windows: passed
 
 ## Current Focus
@@ -171,6 +172,7 @@
 - validate whether the new tag-aware planner rules are expressive enough before adding richer weighted or role-specific selection logic
 - validate whether the new history-aware anti-duplicate planner weighting is strong enough on real Shopee/TikTok publishing batches or whether operator-tunable cooldown rules are needed next
 - validate whether the new near-duplicate scoring reasons are sufficient for future operator-facing risk surfacing or whether explicit policy thresholds should become configurable next
+- validate whether operators understand the new persisted duplicate-risk surface in `Orders` well enough or whether summary badges, filters, or threshold highlighting should be added next
 - validate whether the new bulk asset tagging flow reduces repetitive operator work without causing accidental over-tagging
 - validate whether the new folder-driven additive tag sync is sufficient before implementing tag-removal sync behavior
 - keep the `Pause/Stop/Resume` surface truthful as pending backend support until persisted safe-checkpoint and worker-lease semantics are actually delivered

@@ -2,6 +2,8 @@ from __future__ import annotations
 
 import json
 
+from PySide6.QtWidgets import QTableWidget, QTableWidgetItem
+
 
 def format_product_request_summary(request) -> str:
     summary = (
@@ -209,6 +211,17 @@ def build_progress_summary_text(snapshot) -> str:
 
 
 def build_order_summary_text(order) -> str:
+    risk_scores: list[float] = []
+    risk_reasons: list[str] = []
+    for stage in _effective_order_stages(order.stages):
+        if stage.stage_name != "materialize" or stage.status != "succeeded":
+            continue
+        stage_score = _stage_near_duplicate_score(stage.detail_json)
+        if stage_score is not None:
+            risk_scores.append(stage_score)
+        risk_reasons.extend(_stage_near_duplicate_reasons(stage.detail_json))
+    risk_summary = "-" if not risk_scores else f"max={max(risk_scores):.3f}, recipes={len(risk_scores)}"
+    reasons_summary = ", ".join(dict.fromkeys(risk_reasons)) if risk_reasons else "-"
     return "\n".join(
         [
             f"Order ID: {order.production_order_id}",
@@ -227,18 +240,29 @@ def build_order_summary_text(order) -> str:
             f"Created At: {order.created_at}",
             f"Started At: {order.started_at or 'not started'}",
             f"Finished At: {order.finished_at or 'not finished'}",
+            "",
+            "Duplicate-Risk Summary:",
+            f"- Planner Risk: {risk_summary}",
+            f"- Reasons: {reasons_summary}",
+            "- Interpretation: planner duplicate-risk evidence only, not a platform verdict.",
         ]
     )
 
 
-def build_order_product_rows(order) -> list[tuple[str, str, str, str]]:
+def build_order_product_rows(order) -> list[tuple[str, str, str, str, str]]:
     latest_stage_by_item_id: dict[int, object] = {}
+    materialize_risk_by_item_id: dict[int, str] = {}
     for stage in _effective_order_stages(order.stages):
         if stage.production_order_item_id is None:
             continue
         latest_stage_by_item_id[stage.production_order_item_id] = stage
+        if stage.stage_name == "materialize" and stage.status == "succeeded":
+            stage_score = _stage_near_duplicate_score(stage.detail_json)
+            materialize_risk_by_item_id[stage.production_order_item_id] = (
+                "-" if stage_score is None else f"{stage_score:.3f}"
+            )
 
-    rows: list[tuple[str, str, str, str]] = []
+    rows: list[tuple[str, str, str, str, str]] = []
     for item in order.items:
         latest_stage = latest_stage_by_item_id.get(item.production_order_item_id)
         rows.append(
@@ -247,9 +271,157 @@ def build_order_product_rows(order) -> list[tuple[str, str, str, str]]:
                 str(item.requested_output_count),
                 "-" if latest_stage is None else latest_stage.stage_name,
                 "queued" if latest_stage is None else latest_stage.status,
+                materialize_risk_by_item_id.get(item.production_order_item_id, "-"),
             )
         )
     return rows
+
+
+def build_order_stage_rows(order) -> list[tuple[str, str, str, str, str, str, str, str, str, str]]:
+    rows: list[tuple[str, str, str, str, str, str, str, str, str, str]] = []
+    for stage in order.stages:
+        risk_score = _stage_near_duplicate_score(stage.detail_json)
+        risk_reasons = ", ".join(_stage_near_duplicate_reasons(stage.detail_json))
+        rows.append(
+            (
+                str(stage.sequence_index),
+                stage.stage_name,
+                stage.stage_scope,
+                stage.status,
+                str(stage.production_order_item_id or ""),
+                str(stage.recipe_id or ""),
+                str(stage.job_id or ""),
+                stage.failure_class or "",
+                "" if risk_score is None else f"{risk_score:.3f}",
+                risk_reasons,
+            )
+        )
+    return rows
+
+
+def refresh_selected_preflight_product_details(window) -> None:  # noqa: ANN001
+    preflight_report = window._view_model.preflight_report
+    if preflight_report is None:
+        from mt_clip_factory.ui.factory.auto_factory_control_actions import refresh_selected_product_action_state
+
+        refresh_selected_product_action_state(window)
+        return
+    row_index = selected_row_index(window.preflight_products_table)
+    if row_index is None or row_index >= len(preflight_report.product_reports):
+        from mt_clip_factory.ui.factory.auto_factory_control_actions import refresh_selected_product_action_state
+
+        refresh_selected_product_action_state(window)
+        return
+    product_report = preflight_report.product_reports[row_index]
+    window.selected_product_text.setPlainText(build_preflight_product_detail_text(product_report))
+    from mt_clip_factory.ui.factory.auto_factory_control_actions import refresh_selected_product_action_state
+
+    refresh_selected_product_action_state(window)
+
+
+def refresh_selected_run_product_details(window) -> None:  # noqa: ANN001
+    run_report = window._view_model.run_report
+    if run_report is None:
+        from mt_clip_factory.ui.factory.auto_factory_control_actions import refresh_selected_product_action_state
+
+        refresh_selected_product_action_state(window)
+        return
+    row_index = selected_row_index(window.product_reports_table)
+    if row_index is None or row_index >= len(run_report.product_reports):
+        from mt_clip_factory.ui.factory.auto_factory_control_actions import refresh_selected_product_action_state
+
+        refresh_selected_product_action_state(window)
+        return
+    product_report = run_report.product_reports[row_index]
+    request = next(
+        (item for item in run_report.order.product_requests if item.product_code == product_report.product_code),
+        None,
+    )
+    product_actions = [action for action in run_report.asset_actions if action.product_code == product_report.product_code]
+    window.selected_product_text.setPlainText(
+        build_run_product_detail_text(
+            batch_code=run_report.batch_code,
+            scan_depth=run_report.scan_depth,
+            product_report=product_report,
+            request=request,
+            product_actions=product_actions,
+        )
+    )
+    from mt_clip_factory.ui.factory.auto_factory_control_actions import refresh_selected_product_action_state
+
+    refresh_selected_product_action_state(window)
+
+
+def refresh_selected_order(window) -> None:  # noqa: ANN001
+    selected_order = window._view_model.selected_order
+    if selected_order is None:
+        window.order_summary_text.setPlainText("No production order selected.")
+        window.order_product_progress_table.setRowCount(0)
+        window.order_stages_table.setRowCount(0)
+        window.order_events_table.setRowCount(0)
+        window._refresh_run_controls()
+        return
+
+    window.results_tabs.setCurrentWidget(window.order_stage_group)
+    window.order_summary_text.setPlainText(build_order_summary_text(selected_order))
+    product_rows = build_order_product_rows(selected_order)
+    window.order_product_progress_table.setRowCount(len(product_rows))
+    for row_index, values in enumerate(product_rows):
+        for column_index, value in enumerate(values):
+            window.order_product_progress_table.setItem(row_index, column_index, QTableWidgetItem(value))
+    stage_rows = build_order_stage_rows(selected_order)
+    window.order_stages_table.setRowCount(len(stage_rows))
+    for row_index, values in enumerate(stage_rows):
+        for column_index, value in enumerate(values):
+            window.order_stages_table.setItem(row_index, column_index, QTableWidgetItem(value))
+    window.order_events_table.setRowCount(len(selected_order.events))
+    for row_index, event in enumerate(selected_order.events):
+        values = [
+            str(event.sequence_index),
+            event.event_type,
+            event.status,
+            event.stage_name or "",
+            event.message,
+        ]
+        for column_index, value in enumerate(values):
+            window.order_events_table.setItem(row_index, column_index, QTableWidgetItem(value))
+    window._refresh_run_controls()
+
+
+def refresh_recent_orders(window) -> None:  # noqa: ANN001
+    orders = window._view_model.recent_orders
+    current_order_id = window._view_model.selected_order.production_order_id if window._view_model.selected_order else None
+    window.recent_orders_table.blockSignals(True)
+    window.recent_orders_table.setRowCount(len(orders))
+    for row_index, order in enumerate(orders):
+        values = [
+            str(order.production_order_id),
+            order.order_code,
+            order.batch_code,
+            order.status,
+            str(order.item_count),
+            order.source_mode,
+            order.started_at or "",
+            order.finished_at or "",
+        ]
+        for column_index, value in enumerate(values):
+            window.recent_orders_table.setItem(row_index, column_index, QTableWidgetItem(value))
+        if current_order_id is not None and order.production_order_id == current_order_id:
+            window.recent_orders_table.selectRow(row_index)
+    window.recent_orders_table.blockSignals(False)
+    window._refresh_run_controls()
+
+
+def selected_row_index(table: QTableWidget) -> int | None:
+    selected_items = table.selectedItems()
+    if not selected_items:
+        return None
+    return selected_items[0].row()
+
+
+def select_first_row(table: QTableWidget) -> None:
+    if table.rowCount() > 0 and not table.selectedItems():
+        table.selectRow(0)
 
 
 def _effective_order_stages(stages: tuple[object, ...]) -> tuple[object, ...]:
@@ -285,6 +457,23 @@ def _stage_detail_value(detail_json: str | None, key: str) -> object | None:
     if not isinstance(payload, dict):
         return None
     return payload.get(key)
+
+
+def _stage_near_duplicate_score(detail_json: str | None) -> float | None:
+    value = _stage_detail_value(detail_json, "near_duplicate_score")
+    if value is None:
+        return None
+    try:
+        return float(value)
+    except (TypeError, ValueError):
+        return None
+
+
+def _stage_near_duplicate_reasons(detail_json: str | None) -> tuple[str, ...]:
+    value = _stage_detail_value(detail_json, "near_duplicate_reasons")
+    if not isinstance(value, list):
+        return ()
+    return tuple(reason for reason in value if isinstance(reason, str) and reason.strip())
 
 
 def format_selection_tag_summary(config) -> str:

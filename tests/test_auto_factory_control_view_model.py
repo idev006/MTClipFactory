@@ -198,7 +198,7 @@ class FakeProductionOrderService:
                     recipe_id=101,
                     output_id=None,
                     failure_class=None,
-                    detail_json='{"recipe_code":"tea_r0001"}',
+                    detail_json='{"recipe_code":"tea_r0001","near_duplicate_score":0.275,"near_duplicate_reasons":["voice_asset_overused"]}',
                     created_at="2026-06-13 12:00:02",
                     updated_at="2026-06-13 12:00:02",
                 ),

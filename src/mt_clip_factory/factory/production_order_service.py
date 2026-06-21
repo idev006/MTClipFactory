@@ -1,9 +1,8 @@
 from __future__ import annotations
 
 import json
-import threading
 from collections.abc import Callable, Sequence
-from datetime import UTC, datetime, timedelta
+from datetime import UTC, datetime
 from uuid import uuid4
 
 from mt_clip_factory.domain.entities import utc_now
@@ -21,6 +20,18 @@ from mt_clip_factory.factory.auto_factory_dto import (
     AutoFactoryProductRequestDTO,
     MaterializedBatchRecipeDTO,
 )
+from mt_clip_factory.factory.production_order_detail_support import (
+    build_batch_order,
+    build_materialize_stage_detail,
+    effective_stages,
+    find_materialized_recipe,
+    format_optional_timestamp,
+    format_timestamp,
+    has_successful_stage,
+    normalize_optional_text,
+    normalize_order_code,
+    normalize_required_text,
+)
 from mt_clip_factory.factory.production_order_dto import (
     ProductionOrderDetailsDTO,
     ProductionOrderEventDTO,
@@ -28,32 +39,12 @@ from mt_clip_factory.factory.production_order_dto import (
     ProductionOrderStageDTO,
     ProductionOrderSummaryDTO,
 )
-
-_LEASE_TIMEOUT_SECONDS = 60
-_HEARTBEAT_INTERVAL_SECONDS = 5
-_FINAL_ORDER_STATUSES = {
-    OrchestrationStatus.SUCCEEDED,
-    OrchestrationStatus.FAILED_RETRYABLE,
-    OrchestrationStatus.FAILED_TERMINAL,
-    OrchestrationStatus.REVIEW_REQUIRED,
-    OrchestrationStatus.CANCELLED,
-}
-_ACTIVE_ORDER_STATUSES = {
-    OrchestrationStatus.LEASED,
-    OrchestrationStatus.PROCESSING,
-    OrchestrationStatus.PAUSE_REQUESTED,
-    OrchestrationStatus.STOP_REQUESTED,
-    OrchestrationStatus.RESUME_REQUESTED,
-}
-_RUNNABLE_ORDER_STATUSES = {
-    OrchestrationStatus.QUEUED,
-    OrchestrationStatus.PAUSED,
-    OrchestrationStatus.STOPPED,
-    OrchestrationStatus.FAILED_RETRYABLE,
-    OrchestrationStatus.REVIEW_REQUIRED,
-    OrchestrationStatus.BLOCKED,
-    OrchestrationStatus.RESUME_REQUESTED,
-}
+from mt_clip_factory.factory.production_order_run_support import (
+    _OrderHeartbeat,
+    claim_order_lease,
+    complete_order_from_stages,
+    finalize_order,
+)
 
 
 class ProductionOrderNotFoundError(ValueError):
@@ -66,31 +57,6 @@ class ProductionOrderAlreadyExistsError(ValueError):
 
 class ProductionOrderRunStateError(ValueError):
     """Raised when an order cannot be run from its current state."""
-
-
-class _OrderHeartbeat:
-    def __init__(self, service: ProductionOrderService, *, production_order_id: int, worker_id: str) -> None:
-        self._service = service
-        self._production_order_id = production_order_id
-        self._worker_id = worker_id
-        self._stop_event = threading.Event()
-        self._thread = threading.Thread(
-            target=self._run,
-            name=f"production-order-heartbeat-{production_order_id}",
-            daemon=True,
-        )
-
-    def __enter__(self) -> _OrderHeartbeat:
-        self._thread.start()
-        return self
-
-    def __exit__(self, exc_type, exc, tb) -> None:
-        self._stop_event.set()
-        self._thread.join(timeout=_HEARTBEAT_INTERVAL_SECONDS)
-
-    def _run(self) -> None:
-        while not self._stop_event.wait(_HEARTBEAT_INTERVAL_SECONDS):
-            self._service._heartbeat_order(self._production_order_id, self._worker_id)
 
 
 class ProductionOrderService:
@@ -114,13 +80,13 @@ class ProductionOrderService:
         run_mode: str | None = None,
         source_root: str | None = None,
     ) -> int:
-        resolved_order_code = _normalize_order_code(order_code or order.batch_code)
+        resolved_order_code = normalize_order_code(order_code or order.batch_code)
         if not resolved_order_code:
             raise ValueError("Order code is required.")
-        source = _normalize_required_text(source_mode, field_name="source_mode")
-        requested_by_value = _normalize_optional_text(requested_by)
-        run_mode_value = _normalize_optional_text(run_mode)
-        source_root_value = _normalize_optional_text(source_root)
+        source = normalize_required_text(source_mode, field_name="source_mode")
+        requested_by_value = normalize_optional_text(requested_by)
+        run_mode_value = normalize_optional_text(run_mode)
+        source_root_value = normalize_optional_text(source_root)
 
         with self._unit_of_work_factory() as uow:
             if uow.production_orders.get_by_code(resolved_order_code) is not None:
@@ -197,10 +163,12 @@ class ProductionOrderService:
 
     def run_order(self, production_order_id: int, *, build_previews: bool | None = None) -> ProductionOrderDetailsDTO:
         worker_id = self._new_worker_id()
-        claimed_order, recovered_stale_lease, previous_status = self._claim_order_lease(
+        claimed_order, recovered_stale_lease, previous_status = claim_order_lease(
+            self,
             production_order_id,
             worker_id=worker_id,
             build_previews=build_previews,
+            run_state_error_cls=ProductionOrderRunStateError,
         )
         if recovered_stale_lease:
             self._append_event(
@@ -312,13 +280,13 @@ class ProductionOrderService:
             source_root=order.source_root,
             status=order.status.value,
             lease_owner=order.lease_owner,
-            lease_acquired_at=_format_optional_timestamp(order.lease_acquired_at),
-            lease_heartbeat_at=_format_optional_timestamp(order.lease_heartbeat_at),
-            lease_expires_at=_format_optional_timestamp(order.lease_expires_at),
+            lease_acquired_at=format_optional_timestamp(order.lease_acquired_at),
+            lease_heartbeat_at=format_optional_timestamp(order.lease_heartbeat_at),
+            lease_expires_at=format_optional_timestamp(order.lease_expires_at),
             blocking_reason=order.blocking_reason,
-            created_at=_format_timestamp(order.created_at),
-            started_at=_format_optional_timestamp(order.started_at),
-            finished_at=_format_optional_timestamp(order.finished_at),
+            created_at=format_timestamp(order.created_at),
+            started_at=format_optional_timestamp(order.started_at),
+            finished_at=format_optional_timestamp(order.finished_at),
             items=tuple(
                 ProductionOrderItemDTO(
                     production_order_item_id=item.id or 0,
@@ -348,8 +316,8 @@ class ProductionOrderService:
                     output_id=stage.output_id,
                     failure_class=stage.failure_class,
                     detail_json=stage.detail_json,
-                    created_at=_format_timestamp(stage.created_at),
-                    updated_at=_format_timestamp(stage.updated_at),
+                    created_at=format_timestamp(stage.created_at),
+                    updated_at=format_timestamp(stage.updated_at),
                 )
                 for stage in stages
             ),
@@ -364,7 +332,7 @@ class ProductionOrderService:
                     stage_name=event.stage_name,
                     worker_id=event.worker_id,
                     detail_json=event.detail_json,
-                    created_at=_format_timestamp(event.created_at),
+                    created_at=format_timestamp(event.created_at),
                 )
                 for event in events
             ),
@@ -381,16 +349,16 @@ class ProductionOrderService:
                     requested_by=summary.requested_by,
                     status=summary.status.value,
                     item_count=summary.item_count,
-                    created_at=_format_timestamp(summary.created_at),
-                    started_at=_format_optional_timestamp(summary.started_at),
-                    finished_at=_format_optional_timestamp(summary.finished_at),
+                    created_at=format_timestamp(summary.created_at),
+                    started_at=format_optional_timestamp(summary.started_at),
+                    finished_at=format_optional_timestamp(summary.finished_at),
                 )
                 for summary in uow.production_orders.list_summaries(status=status)
             ]
 
     def _execute_order_run(self, production_order_id: int, *, worker_id: str) -> ProductionOrderDetailsDTO:
         order, items = self._load_order_bundle(production_order_id)
-        batch_order = _build_batch_order(order, items)
+        batch_order = build_batch_order(order, items)
         item_by_product_code = {item.product_code_snapshot: item for item in items}
         stages = self._list_stages(production_order_id)
 
@@ -416,7 +384,8 @@ class ProductionOrderService:
                 failure_class="planning_capacity_shortfall",
                 detail={"error": str(exc)},
             )
-            return self._finalize_order(
+            return finalize_order(
+                self,
                 production_order_id,
                 worker_id=worker_id,
                 status=OrchestrationStatus.FAILED_TERMINAL,
@@ -433,7 +402,8 @@ class ProductionOrderService:
                 failure_class="planning_error",
                 detail={"error": str(exc)},
             )
-            return self._finalize_order(
+            return finalize_order(
+                self,
                 production_order_id,
                 worker_id=worker_id,
                 status=OrchestrationStatus.FAILED_TERMINAL,
@@ -450,7 +420,8 @@ class ProductionOrderService:
                 failure_class="materialization_runtime_failure",
                 detail={"error": str(exc)},
             )
-            return self._finalize_order(
+            return finalize_order(
+                self,
                 production_order_id,
                 worker_id=worker_id,
                 status=OrchestrationStatus.FAILED_RETRYABLE,
@@ -465,7 +436,7 @@ class ProductionOrderService:
                 return self.get_order(production_order_id)
 
             item = item_by_product_code[planned_recipe.product_code]
-            existing_materialized = _find_materialized_recipe(
+            existing_materialized = find_materialized_recipe(
                 stages,
                 production_order_item_id=item.id or 0,
                 recipe_code=planned_recipe.recipe_code,
@@ -499,7 +470,8 @@ class ProductionOrderService:
                     failure_class="materialization_runtime_failure",
                     detail={"error": str(exc), "recipe_code": planned_recipe.recipe_code},
                 )
-                return self._finalize_order(
+                return finalize_order(
+                    self,
                     production_order_id,
                     worker_id=worker_id,
                     status=OrchestrationStatus.FAILED_RETRYABLE,
@@ -518,10 +490,7 @@ class ProductionOrderService:
                 status=OrchestrationStatus.SUCCEEDED,
                 sequence_index=self._next_sequence_index(production_order_id),
                 recipe_id=created_recipe.recipe_id,
-                detail={
-                    "recipe_code": created_recipe.recipe_code,
-                    "assignment_count": created_recipe.assignment_count,
-                },
+                detail=build_materialize_stage_detail(planned_recipe, created_recipe),
             )
             self._append_event(
                 production_order_id=production_order_id,
@@ -536,14 +505,14 @@ class ProductionOrderService:
             stages = self._list_stages(production_order_id)
 
         if not order.preview_generation_enabled:
-            return self._complete_order_from_stages(production_order_id, worker_id=worker_id)
+            return complete_order_from_stages(self, production_order_id, worker_id=worker_id)
 
         for created_recipe in materialized_recipes:
             checkpoint_state = self._consume_control_checkpoint(production_order_id, worker_id=worker_id)
             if checkpoint_state is not None:
                 return self.get_order(production_order_id)
 
-            if _has_successful_stage(stages, stage_name="preview", recipe_id=created_recipe.recipe_id):
+            if has_successful_stage(stages, stage_name="preview", recipe_id=created_recipe.recipe_id):
                 continue
 
             item = item_by_product_code[created_recipe.product_code]
@@ -644,58 +613,7 @@ class ProductionOrderService:
                 )
             stages = self._list_stages(production_order_id)
 
-        return self._complete_order_from_stages(production_order_id, worker_id=worker_id)
-
-    def _claim_order_lease(
-        self,
-        production_order_id: int,
-        *,
-        worker_id: str,
-        build_previews: bool | None,
-    ) -> tuple[ProductionOrder, bool, OrchestrationStatus]:
-        now = utc_now()
-        with self._unit_of_work_factory() as uow:
-            order = self._require_order(uow, production_order_id)
-            previous_status = order.status
-            recovered_stale_lease = False
-            if build_previews is not None:
-                order.preview_generation_enabled = build_previews
-            if order.status not in _RUNNABLE_ORDER_STATUSES and not (
-                order.status in _ACTIVE_ORDER_STATUSES and self._lease_is_stale(order)
-            ):
-                raise ProductionOrderRunStateError(
-                    f"Production order {order.order_code} cannot run from state {order.status.value}."
-                )
-            if self._lease_is_active(order) and order.lease_owner != worker_id:
-                raise ProductionOrderRunStateError(
-                    f"Production order {order.order_code} is already leased by another worker."
-                )
-            if order.lease_owner is not None and self._lease_is_stale(order):
-                recovered_stale_lease = True
-            order.status = OrchestrationStatus.PROCESSING
-            order.started_at = order.started_at or now
-            order.finished_at = None
-            order.blocking_reason = None
-            order.lease_owner = worker_id
-            order.lease_acquired_at = now
-            order.lease_heartbeat_at = now
-            order.lease_expires_at = now + timedelta(seconds=_LEASE_TIMEOUT_SECONDS)
-            uow.production_orders.update(order)
-            uow.commit()
-            return order, recovered_stale_lease, previous_status
-
-    def _heartbeat_order(self, production_order_id: int, worker_id: str) -> None:
-        now = utc_now()
-        with self._unit_of_work_factory() as uow:
-            order = uow.production_orders.get_by_id(production_order_id)
-            if order is None or order.id is None:
-                return
-            if order.lease_owner != worker_id or order.status not in _ACTIVE_ORDER_STATUSES | {OrchestrationStatus.PROCESSING}:
-                return
-            order.lease_heartbeat_at = now
-            order.lease_expires_at = now + timedelta(seconds=_LEASE_TIMEOUT_SECONDS)
-            uow.production_orders.update(order)
-            uow.commit()
+        return complete_order_from_stages(self, production_order_id, worker_id=worker_id)
 
     def _consume_control_checkpoint(
         self,
@@ -703,81 +621,13 @@ class ProductionOrderService:
         *,
         worker_id: str,
     ) -> OrchestrationStatus | None:
-        with self._unit_of_work_factory() as uow:
-            order = self._require_order(uow, production_order_id)
-            if order.lease_owner != worker_id:
-                return None
-            if order.status == OrchestrationStatus.PAUSE_REQUESTED:
-                self._clear_lease(order)
-                order.status = OrchestrationStatus.PAUSED
-                uow.production_orders.update(order)
-                self._append_event_in_uow(
-                    uow,
-                    production_order_id=production_order_id,
-                    event_type="paused",
-                    status=OrchestrationStatus.PAUSED,
-                    message=f"Paused production order {order.order_code} at a safe checkpoint.",
-                )
-                uow.commit()
-                return OrchestrationStatus.PAUSED
-            if order.status == OrchestrationStatus.STOP_REQUESTED:
-                self._clear_lease(order)
-                order.status = OrchestrationStatus.STOPPED
-                order.finished_at = utc_now()
-                uow.production_orders.update(order)
-                self._append_event_in_uow(
-                    uow,
-                    production_order_id=production_order_id,
-                    event_type="stopped",
-                    status=OrchestrationStatus.STOPPED,
-                    message=f"Stopped production order {order.order_code} at a safe checkpoint.",
-                )
-                uow.commit()
-                return OrchestrationStatus.STOPPED
-        return None
+        from mt_clip_factory.factory.production_order_run_support import consume_control_checkpoint
 
-    def _complete_order_from_stages(self, production_order_id: int, *, worker_id: str) -> ProductionOrderDetailsDTO:
-        final_status = self._resolve_order_status(production_order_id)
-        message = f"Completed production order {self.get_order(production_order_id).order_code} with status {final_status.value}."
-        return self._finalize_order(
+        return consume_control_checkpoint(
+            self,
             production_order_id,
             worker_id=worker_id,
-            status=final_status,
-            message=message,
-            blocking_reason=None if final_status == OrchestrationStatus.SUCCEEDED else _resolve_blocking_reason(self._list_stages(production_order_id), final_status),
         )
-
-    def _finalize_order(
-        self,
-        production_order_id: int,
-        *,
-        worker_id: str,
-        status: OrchestrationStatus,
-        message: str,
-        blocking_reason: str | None,
-        production_order_item_id: int | None = None,
-        stage_name: str | None = None,
-    ) -> ProductionOrderDetailsDTO:
-        with self._unit_of_work_factory() as uow:
-            order = self._require_order(uow, production_order_id)
-            self._clear_lease(order)
-            order.status = status
-            order.blocking_reason = blocking_reason
-            if status in _FINAL_ORDER_STATUSES or status == OrchestrationStatus.STOPPED:
-                order.finished_at = utc_now()
-            uow.production_orders.update(order)
-            self._append_event_in_uow(
-                uow,
-                production_order_id=production_order_id,
-                production_order_item_id=production_order_item_id,
-                stage_name=stage_name,
-                event_type="run_completed" if status in {OrchestrationStatus.SUCCEEDED, OrchestrationStatus.REVIEW_REQUIRED} else "run_blocked",
-                status=status,
-                message=message,
-                worker_id=worker_id,
-            )
-            uow.commit()
-        return self.get_order(production_order_id)
 
     def _load_order_bundle(self, production_order_id: int) -> tuple[ProductionOrder, tuple[ProductionOrderItem, ...]]:
         with self._unit_of_work_factory() as uow:
@@ -826,8 +676,8 @@ class ProductionOrderService:
             uow.commit()
 
     def _resolve_order_status(self, production_order_id: int) -> OrchestrationStatus:
-        effective_stages = _effective_stages(self._list_stages(production_order_id))
-        statuses = [stage.status for stage in effective_stages]
+        resolved_stages = effective_stages(self._list_stages(production_order_id))
+        statuses = [stage.status for stage in resolved_stages]
         if any(status == OrchestrationStatus.FAILED_TERMINAL for status in statuses):
             return OrchestrationStatus.FAILED_TERMINAL
         if any(status == OrchestrationStatus.FAILED_RETRYABLE for status in statuses):
@@ -915,142 +765,3 @@ class ProductionOrderService:
         order.lease_acquired_at = None
         order.lease_heartbeat_at = None
         order.lease_expires_at = None
-
-
-def _build_batch_order(
-    order: ProductionOrder,
-    items: Sequence[ProductionOrderItem],
-) -> AutoFactoryBatchOrderDTO:
-    return AutoFactoryBatchOrderDTO(
-        batch_code=order.batch_code,
-        product_requests=tuple(
-            AutoFactoryProductRequestDTO(
-                product_code=item.product_code_snapshot,
-                requested_output_count=item.requested_output_count,
-                target_platform=item.target_platform,
-                target_ratio=item.target_ratio,
-                uniqueness_scope=item.uniqueness_scope,
-                duration_mode=item.duration_mode,
-                fixed_duration_sec=item.fixed_duration_sec,
-                min_duration_sec=item.min_duration_sec,
-                max_duration_sec=item.max_duration_sec,
-            )
-            for item in items
-        ),
-        strict_fulfillment=order.strict_fulfillment,
-    )
-
-
-def _effective_stage_key(stage: ProductionOrderStage) -> tuple[object, ...]:
-    recipe_code = _stage_detail_value(stage.detail_json, "recipe_code")
-    if stage.stage_name == "materialize":
-        return (stage.stage_name, stage.production_order_item_id, stage.recipe_id or recipe_code)
-    if stage.stage_name in {"preview", "review"}:
-        return (stage.stage_name, stage.recipe_id or stage.production_order_item_id)
-    return (
-        stage.stage_name,
-        stage.stage_scope,
-        stage.production_order_item_id,
-        stage.recipe_id,
-        stage.output_id,
-        recipe_code,
-    )
-
-
-def _effective_stages(stages: Sequence[ProductionOrderStage]) -> tuple[ProductionOrderStage, ...]:
-    latest_by_key: dict[tuple[object, ...], ProductionOrderStage] = {}
-    for stage in stages:
-        latest_by_key[_effective_stage_key(stage)] = stage
-    return tuple(sorted(latest_by_key.values(), key=lambda item: (item.sequence_index, item.id or 0)))
-
-
-def _find_materialized_recipe(
-    stages: Sequence[ProductionOrderStage],
-    *,
-    production_order_item_id: int,
-    recipe_code: str,
-    product_id: int,
-    product_code: str,
-) -> MaterializedBatchRecipeDTO | None:
-    for stage in _effective_stages(stages):
-        if stage.stage_name != "materialize" or stage.status != OrchestrationStatus.SUCCEEDED:
-            continue
-        if stage.production_order_item_id != production_order_item_id:
-            continue
-        if _stage_detail_value(stage.detail_json, "recipe_code") != recipe_code or stage.recipe_id is None:
-            continue
-        assignment_count = int(_stage_detail_value(stage.detail_json, "assignment_count") or 0)
-        return MaterializedBatchRecipeDTO(
-            recipe_id=stage.recipe_id,
-            product_id=product_id,
-            product_code=product_code,
-            recipe_code=recipe_code,
-            assignment_count=assignment_count,
-        )
-    return None
-
-
-def _has_successful_stage(
-    stages: Sequence[ProductionOrderStage],
-    *,
-    stage_name: str,
-    recipe_id: int,
-) -> bool:
-    for stage in _effective_stages(stages):
-        if stage.stage_name == stage_name and stage.recipe_id == recipe_id and stage.status == OrchestrationStatus.SUCCEEDED:
-            return True
-    return False
-
-
-def _resolve_blocking_reason(
-    stages: Sequence[ProductionOrderStage],
-    fallback_status: OrchestrationStatus,
-) -> str | None:
-    for stage in reversed(_effective_stages(stages)):
-        if stage.failure_class:
-            return stage.failure_class
-        error_message = _stage_detail_value(stage.detail_json, "error_message") or _stage_detail_value(stage.detail_json, "error")
-        if isinstance(error_message, str) and error_message.strip():
-            return error_message
-    return None if fallback_status == OrchestrationStatus.SUCCEEDED else fallback_status.value
-
-
-def _stage_detail_value(detail_json: str | None, key: str) -> object | None:
-    if not detail_json:
-        return None
-    try:
-        payload = json.loads(detail_json)
-    except json.JSONDecodeError:
-        return None
-    if not isinstance(payload, dict):
-        return None
-    return payload.get(key)
-
-
-def _format_timestamp(value: datetime) -> str:
-    return value.strftime("%Y-%m-%d %H:%M:%S")
-
-
-def _format_optional_timestamp(value: datetime | None) -> str | None:
-    if value is None:
-        return None
-    return _format_timestamp(value)
-
-
-def _normalize_order_code(value: str) -> str:
-    normalized = "".join(character if character.isalnum() else "_" for character in value.strip().lower())
-    return normalized.strip("_")
-
-
-def _normalize_required_text(value: str, *, field_name: str) -> str:
-    normalized = value.strip()
-    if not normalized:
-        raise ValueError(f"{field_name} is required.")
-    return normalized
-
-
-def _normalize_optional_text(value: str | None) -> str | None:
-    if value is None:
-        return None
-    normalized = value.strip()
-    return normalized or None

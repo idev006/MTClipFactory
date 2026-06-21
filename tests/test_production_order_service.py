@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import json
 from pathlib import Path
 from datetime import timedelta
 
@@ -239,6 +240,11 @@ def test_production_order_service_runs_order_and_records_successful_stages(unit_
     assert details.stages[0].recipe_id is not None
     assert details.stages[1].job_id is not None
     assert details.stages[1].output_id is not None
+    materialize_detail = json.loads(details.stages[0].detail_json or "{}")
+    assert materialize_detail["recipe_code"] == "cream_cream_batch_001"
+    assert "near_duplicate_score" in materialize_detail
+    assert "near_duplicate_reasons" in materialize_detail
+    assert "fingerprint" in materialize_detail
 
 
 def test_production_order_service_records_review_required_state(unit_of_work_factory, tmp_path) -> None:
