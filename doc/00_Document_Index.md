@@ -89,6 +89,7 @@ When code changes, the related Markdown documents in this folder must be updated
 81. [81_Auto_Factory_Orders_Risk_Emphasis_Workflow_2026-06-21.md](/F:/programming/python/MTClipFactory/doc/81_Auto_Factory_Orders_Risk_Emphasis_Workflow_2026-06-21.md)
 82. [82_Auto_Factory_Recent_Orders_Risk_Summary_Workflow_2026-06-21.md](/F:/programming/python/MTClipFactory/doc/82_Auto_Factory_Recent_Orders_Risk_Summary_Workflow_2026-06-21.md)
 83. [83_Auto_Factory_Background_Diversity_Hardening_Workflow_2026-06-21.md](/F:/programming/python/MTClipFactory/doc/83_Auto_Factory_Background_Diversity_Hardening_Workflow_2026-06-21.md)
+84. [84_Auto_Factory_Foreground_And_Music_Diversity_Hardening_Workflow_2026-06-21.md](/F:/programming/python/MTClipFactory/doc/84_Auto_Factory_Foreground_And_Music_Diversity_Hardening_Workflow_2026-06-21.md)
 
 ## Governance
 

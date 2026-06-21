@@ -60,6 +60,7 @@ The project now uses two roadmap layers:
 - `IR-38` Auto Factory Orders-tab duplicate-risk emphasis baseline: complete on 2026-06-21
 - `IR-39` Auto Factory recent-orders duplicate-risk summary baseline: complete on 2026-06-21
 - `IR-40` Auto Factory background-diversity hardening baseline: complete on 2026-06-21
+- `IR-41` Auto Factory foreground-and-music diversity hardening baseline: complete on 2026-06-21
 
 ## Current Execution Stream
 
@@ -76,6 +77,8 @@ The same anti-duplicate stream now also adds a hard exact-repeat guard through c
 The same operator-triage stream now also surfaces persisted duplicate-risk summary directly in the recent-orders history strip, so operators can choose which recent order to inspect before opening the detailed `Orders` tab.
 
 The same anti-duplicate stream now also hardens `background_video` diversity by surfacing alternate backgrounds earlier in candidate generation instead of letting a large foreground search space hide them.
+
+The same anti-duplicate stream now also moves from one linear dimension scan to a deterministic candidate frontier so fresh `foreground_sequence` and `music` alternatives can surface earlier when the search space grows large.
 
 Backlog activation rules:
 
@@ -986,7 +989,7 @@ Make the bottom `Recent Production Orders` strip useful for duplicate-risk triag
 - delivered `ProductionOrderService.list_orders()` risk-summary derivation from persisted successful `materialize` stages
 - delivered `ProductionOrderSummaryDTO` fields for order-level risk level and max raw score
 - delivered `Auto Factory` recent-orders strip columns plus row emphasis for duplicate-risk triage
-- covered the new summary seam with service and offscreen UI pytest, then reverified the full suite at `294 passed, 4 warnings`
+- covered the new summary seam with service and offscreen UI pytest, then reverified the full suite at `296 passed, 4 warnings`
 
 ## IR-40 | Auto Factory Background-Diversity Hardening Baseline
 
@@ -1012,7 +1015,34 @@ Reduce repeated `background_video` reuse across one batch when fresh alternative
 
 - delivered earlier `background` interleaving in Auto Factory candidate generation
 - delivered stronger background reuse penalties while keeping `voice` as the strongest role-level anti-duplicate weight
-- delivered pytest coverage for the regression case where a large foreground search space previously hid alternate backgrounds, then reverified the full suite at `294 passed, 4 warnings`
+- delivered pytest coverage for the regression case where a large foreground search space previously hid alternate backgrounds, then reverified the full suite at `296 passed, 4 warnings`
+
+## IR-41 | Auto Factory Foreground-And-Music Diversity Hardening Baseline
+
+### Goal
+
+Reduce repeated foreground-pattern and music reuse when fresh alternatives exist.
+
+### Scope
+
+- replace simple linear variant scanning with a deterministic candidate frontier across key diversity axes
+- surface alternate `music` choices earlier instead of hiding them behind deep Cartesian scan depth
+- strengthen planner pressure against historically repeated foreground sequences and music reuse
+- keep `voice` as the strongest single role-level anti-duplicate signal
+
+### Acceptance Criteria
+
+- candidate coverage must expose alternate music and foreground choices early enough for greedy selection to use them
+- historically repeated foreground sequences should be deprioritized when feasible fresh sequences exist
+- historically repeated music should be deprioritized when feasible fresh music exists
+- docs and pytest stay aligned to the delivered behavior
+
+### Delivery Result
+
+- delivered deterministic frontier-style candidate enumeration across `voice`, `foreground_sequence`, `background`, and `music`
+- delivered stronger foreground-sequence and music reuse penalties in the planner
+- delivered pytest coverage for hidden-music and repeated-foreground regression cases
+- reverified the full suite at `296 passed, 4 warnings`
 
 ## Cross-Milestone Rules
 

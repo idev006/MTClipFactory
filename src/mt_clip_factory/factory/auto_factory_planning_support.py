@@ -14,7 +14,7 @@ _SELECTION_ROLE_WEIGHTS = {
     "proof": 4.0,
     "cta": 4.0,
     "background": 5.0,
-    "music": 1.5,
+    "music": 3.0,
 }
 _SIMILARITY_REASON_LIMIT = 4
 
@@ -131,8 +131,8 @@ def _selection_score(
     )
     history_exact_penalty = float(planning_history.exact_signature_weights[blueprint.assignment_signature]) * 400.0
     selected_exact_penalty = float(selected_exact_signature_counts[blueprint.assignment_signature]) * 1000.0
-    history_foreground_penalty = float(planning_history.foreground_sequence_weights[blueprint.foreground_sequence]) * 40.0
-    selected_foreground_penalty = float(selected_foreground_sequence_counts[blueprint.foreground_sequence]) * 120.0
+    history_foreground_penalty = float(planning_history.foreground_sequence_weights[blueprint.foreground_sequence]) * 70.0
+    selected_foreground_penalty = float(selected_foreground_sequence_counts[blueprint.foreground_sequence]) * 180.0
     history_role_penalty = 0.0
     selected_role_penalty = 0.0
     for assignment in blueprint.assignments:
@@ -149,8 +149,8 @@ def _selection_score(
         + history_exact_penalty
         + selected_foreground_penalty
         + history_foreground_penalty
-        + (selected_role_penalty * 20.0)
-        + (history_role_penalty * 6.0)
+        + (selected_role_penalty * 24.0)
+        + (history_role_penalty * 7.0)
         + internal_repeat_penalty
         + (similarity.score * 500.0)
     )
@@ -180,7 +180,7 @@ def _assess_near_duplicate(
         + float(selected_foreground_sequence_counts[blueprint.foreground_sequence])
     )
     if blueprint.foreground_sequence and foreground_sequence_reuse > 0:
-        score += min(0.28 + (0.08 * max(0.0, foreground_sequence_reuse - 1.0)), 0.45)
+        score += min(0.34 + (0.09 * max(0.0, foreground_sequence_reuse - 1.0)), 0.55)
         reasons.append("foreground_sequence_reused")
 
     voice_reuse = _role_reuse_count(
@@ -210,7 +210,7 @@ def _assess_near_duplicate(
         selected_role_asset_counts=selected_role_asset_counts,
     )
     if music_reuse > 0:
-        score += min(0.06 + (0.03 * max(0.0, music_reuse - 1.0)), 0.12)
+        score += min(0.12 + (0.04 * max(0.0, music_reuse - 1.0)), 0.24)
         reasons.append("music_asset_reused")
 
     foreground_role_reuse = _foreground_role_reuse_count(
@@ -219,7 +219,7 @@ def _assess_near_duplicate(
         selected_role_asset_counts=selected_role_asset_counts,
     )
     if foreground_role_reuse >= 2:
-        score += min(0.08 * foreground_role_reuse, 0.24)
+        score += min(0.10 * foreground_role_reuse, 0.30)
         reasons.append("foreground_role_assets_reused")
 
     internal_repeat_count = _foreground_internal_repeat_count(blueprint.foreground_sequence)

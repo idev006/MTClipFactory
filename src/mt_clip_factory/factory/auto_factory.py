@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 from collections import Counter
+from collections import deque
 import math
 import re
 
@@ -41,10 +42,10 @@ from mt_clip_factory.library.dto import AssetSummaryDTO
 from mt_clip_factory.library.services import AssetIntakeService
 
 _DEFAULT_FIXED_DURATION_SEC = 15.0
-_DIVERSITY_DIMENSION_PRIORITY = (
+_DIVERSITY_FRONTIER_AXIS_PRIORITY = (
     "voice",
-    "background",
     "foreground_sequence",
+    "background",
     "music",
 )
 _HISTORY_RECIPE_LIMIT = 24
@@ -389,18 +390,26 @@ class AutoFactoryBatchService:
         if planned_count <= 0:
             return ()
         candidate_scan_limit = _resolve_candidate_scan_limit(planned_count=planned_count, feasible_count=feasible_count)
+        sequence_options = foreground_sequences if foreground_sequences else ((),)
+        background_options = background_assets if background_assets else (None,)
+        music_options = music_assets if music_assets else (None,)
+        voice_options = voice_assets if voice_assets else (None,)
+        candidate_dimension_selections = _enumerate_variant_dimension_selections(
+            limit=candidate_scan_limit,
+            sequence_options=sequence_options,
+            background_options=background_options,
+            music_options=music_options,
+            voice_options=voice_options,
+        )
         candidate_blueprints = tuple(
             self._build_variant_blueprint(
                 variant_index=variant_index,
                 product=product,
                 product_request=product_request,
                 foreground_assets=foreground_assets,
-                foreground_sequences=foreground_sequences,
-                background_assets=background_assets,
-                music_assets=music_assets,
-                voice_assets=voice_assets,
+                selected_dimensions=selected_dimensions,
             )
-            for variant_index in range(candidate_scan_limit)
+            for variant_index, selected_dimensions in enumerate(candidate_dimension_selections)
         )
         return _select_blueprints_greedily(
             candidate_blueprints,
@@ -415,23 +424,9 @@ class AutoFactoryBatchService:
         product,
         product_request: AutoFactoryProductRequestDTO,
         foreground_assets: tuple[AssetSummaryDTO, ...],
-        foreground_sequences: tuple[tuple[int, ...], ...],
-        background_assets: tuple[AssetSummaryDTO, ...],
-        music_assets: tuple[AssetSummaryDTO, ...],
-        voice_assets: tuple[AssetSummaryDTO, ...],
+        selected_dimensions: dict[str, object],
     ) -> _VariantBlueprint:
-        sequence_options = foreground_sequences if foreground_sequences else ((),)
-        background_options = background_assets if background_assets else (None,)
-        music_options = music_assets if music_assets else (None,)
-        voice_options = voice_assets if voice_assets else (None,)
-        selected_dimensions = _select_variant_dimensions(
-            variant_index=variant_index,
-            sequence_options=sequence_options,
-            background_options=background_options,
-            music_options=music_options,
-            voice_options=voice_options,
-        )
-        sequence = selected_dimensions["foreground_sequence"]
+        sequence = tuple(selected_dimensions["foreground_sequence"])
         background_asset = selected_dimensions["background"]
         music_asset = selected_dimensions["music"]
         voice_asset = selected_dimensions["voice"]
@@ -552,27 +547,47 @@ def _resolve_candidate_scan_limit(*, planned_count: int, feasible_count: int) ->
     return min(feasible_count, _MAX_CANDIDATE_SCAN, bounded_scan)
 
 
-def _select_variant_dimensions(
+def _enumerate_variant_dimension_selections(
     *,
-    variant_index: int,
+    limit: int,
     sequence_options: tuple[tuple[int, ...], ...],
     background_options: tuple[AssetSummaryDTO | None, ...],
     music_options: tuple[AssetSummaryDTO | None, ...],
     voice_options: tuple[AssetSummaryDTO | None, ...],
-) -> dict[str, object]:
+) -> tuple[dict[str, object], ...]:
     dimension_options: dict[str, tuple[object, ...]] = {
         "foreground_sequence": sequence_options,
         "background": background_options,
         "music": music_options,
         "voice": voice_options,
     }
-    remaining_index = variant_index
-    selected: dict[str, object] = {}
-    for dimension_name in _DIVERSITY_DIMENSION_PRIORITY:
-        options = dimension_options[dimension_name]
-        selected[dimension_name] = options[remaining_index % len(options)]
-        remaining_index //= len(options)
-    return selected
+    axis_names = _DIVERSITY_FRONTIER_AXIS_PRIORITY
+    axis_sizes = tuple(len(dimension_options[name]) for name in axis_names)
+    start = tuple(0 for _ in axis_names)
+    queue: deque[tuple[int, ...]] = deque((start,))
+    visited = {start}
+    coordinates: list[tuple[int, ...]] = []
+    while queue and len(coordinates) < limit:
+        coordinate = queue.popleft()
+        coordinates.append(coordinate)
+        for axis_index, axis_name in enumerate(axis_names):
+            next_index = coordinate[axis_index] + 1
+            if next_index >= axis_sizes[axis_index]:
+                continue
+            next_coordinate = list(coordinate)
+            next_coordinate[axis_index] = next_index
+            next_coordinate_tuple = tuple(next_coordinate)
+            if next_coordinate_tuple in visited:
+                continue
+            visited.add(next_coordinate_tuple)
+            queue.append(next_coordinate_tuple)
+    return tuple(
+        {
+            axis_name: dimension_options[axis_name][coordinate[axis_index]]
+            for axis_index, axis_name in enumerate(axis_names)
+        }
+        for coordinate in coordinates
+    )
 
 
 def _build_foreground_sequences(asset_ids: tuple[int, ...], *, role_count: int) -> tuple[tuple[int, ...], ...]:
