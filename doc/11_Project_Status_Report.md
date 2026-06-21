@@ -114,6 +114,8 @@
 - auto-factory planning now also enumerates a frontier across `voice`, `foreground_sequence`, `background`, and `music`, and penalizes repeated foreground/music reuse more strongly so fresh sequence and music alternatives are surfaced earlier when feasible
 - auto-factory planning now also reorders `voice`, `background`, `music`, and `foreground_sequence` option pools by historical underuse before frontier enumeration, so broader low-history assets can surface earlier instead of one seeded subset dominating a large ready pool
 - preview/final rendering now also uses semantic foreground assignments such as `hook`, `problem`, `benefit`, `proof`, and `cta` on the matching timeline segments instead of collapsing all foreground roles into one recipe-wide selected presenter asset
+- Auto Factory now also converts persisted order timestamps into local operator display time before populating recent-order and selected-order UI surfaces, so live monitoring no longer looks several hours behind the actual desktop session
+- new blank-`Batch Code` defaults and derived auto-generated order labels now also use local operator timestamp tokens, while product-local run journals keep explicit UTC `Z` timestamps for audit truth
 - successful auto-factory `materialize` stages now also persist planner duplicate-risk evidence, and the desktop `Auto Factory` `Orders` tab now surfaces that persisted risk truth for operators
 - auto-factory planning now also computes and hard-blocks one canonical `fingerprint_hash` against persisted same-product recipe history, so exact internal recipe formulas are not silently materialized again when no fresh variant exists
 - successful auto-factory `materialize` stages now also persist both human-readable `fingerprint` and canonical `fingerprint_hash` evidence for later audit
@@ -160,7 +162,7 @@
 
 ## Verification Baseline
 
-- `python -m pytest` via `.venv`: `301 passed, 4 warnings`
+- `python -m pytest` via `.venv`: `302 passed, 4 warnings`
 - targeted `QT_QPA_PLATFORM=offscreen` UI coverage for the new `Auto Factory` window and existing themed windows: passed
 
 ## Current Focus
@@ -188,6 +190,7 @@
 - validate whether the new foreground/music diversity hardening is strong enough on real campaign batches or whether product-level cooldown knobs are needed for sequence families or music reuse
 - validate whether the new frontier option-pool reordering is strong enough on real large-pool products or whether future policy needs explicit per-role cooldown windows or operator-tunable diversity budgets
 - validate whether the new segment-aware foreground rendering makes persisted planner foreground-sequence diversity visible enough in real preview batches or whether future work should expose segment-level diversity evidence more explicitly in the UI
+- validate whether local operator time display is sufficient across more locales or whether a future visible timezone badge is needed in the `Auto Factory` screen
 - validate whether the new exact `fingerprint_hash` guard basis is commercially strict enough or whether future policy should expand the canonical basis with caption/runtime contract dimensions
 - validate whether the new bulk asset tagging flow reduces repetitive operator work without causing accidental over-tagging
 - validate whether the new folder-driven additive tag sync is sufficient before implementing tag-removal sync behavior
@@ -216,7 +219,7 @@
 
 ## Next Steps
 
-1. Run broader controlled operator use on additional real campaign media on the delivered background-worker plus live-progress baseline, while keeping `Pause/Stop/Resume` explicitly marked as pending backend support.
+1. Run broader controlled operator use on additional real campaign media on the delivered background-worker plus local-time-truth baseline, while keeping `Pause/Stop/Resume` explicitly marked as pending backend support.
 2. Validate restart-safe recovery behavior after real interruptions, including stale-lease recovery, paused-order resume, stopped-order resume, and retryable preview reruns.
 3. Decide whether the append-only order-event journal should grow into a richer operator-facing event view with filtering, grouping, or export.
 4. Extend the auto-factory baseline from automated preview production into controlled final-render automation only after operators accept the current planner, tag-aware selection flow, control-surface flow, review-gate truth, and the new product-local run audit seam.
@@ -263,6 +266,7 @@
 - `IR-17` now adds automatic preview-job production from materialized auto-factory batches while keeping approval and final render human-gated
 - `IR-18` now locks the enterprise factory pipeline review plus architecture blueprint before scalable orchestration implementation begins
 - `IR-19` now persists production orders plus orchestration stages for `materialize`, `preview`, and `review` control-plane truth
+- `IR-44` now converts Auto Factory order timestamps into local operator display time, moves new auto-generated run labels to local timestamp tokens, and keeps run-journal artifact timestamps explicit in UTC
 - `IR-25` now adds multi-select bulk asset tagging while preserving an asset-first operator review loop
 - `IR-26` now applies folder-prepared `tags.toml` metadata during auto-factory intake so planner-facing asset tags can be assigned in the same run
 - `IR-27` now applies product-level `captions.toml` during preview/final runtime so caption pools, font resolution, and caption-fit review signals become operational

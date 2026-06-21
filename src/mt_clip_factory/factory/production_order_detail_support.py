@@ -12,6 +12,10 @@ from mt_clip_factory.factory.auto_factory_dto import (
     MaterializedBatchRecipeDTO,
     PlannedBatchRecipeDTO,
 )
+from mt_clip_factory.time_utils import (
+    format_local_display_timestamp,
+    format_optional_local_display_timestamp,
+)
 
 if TYPE_CHECKING:
     from collections.abc import Sequence
@@ -142,13 +146,11 @@ def stage_detail_value(detail_json: str | None, key: str) -> object | None:
 
 
 def format_timestamp(value: datetime) -> str:
-    return value.strftime("%Y-%m-%d %H:%M:%S")
+    return format_local_display_timestamp(value)
 
 
 def format_optional_timestamp(value: datetime | None) -> str | None:
-    if value is None:
-        return None
-    return format_timestamp(value)
+    return format_optional_local_display_timestamp(value)
 
 
 def normalize_order_code(value: str) -> str:

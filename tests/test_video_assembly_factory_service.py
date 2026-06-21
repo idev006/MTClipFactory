@@ -426,8 +426,12 @@ def test_factory_service_writes_product_local_preview_artifacts_for_batch_contex
     assert len(outputs) == 1
     assert "product_folder" in outputs[0].file_path
     assert "runs" in outputs[0].file_path
-    assert (product_root / "runs" / "batch_local" / "journal.toml").exists()
+    journal_path = product_root / "runs" / "batch_local" / "journal.toml"
+    assert journal_path.exists()
     assert (product_root / "runs" / "batch_local" / "manifests" / "honey_launch.json").exists()
+    journal_text = journal_path.read_text(encoding="utf-8")
+    assert 'recorded_at = "' in journal_text
+    assert "Z" in journal_text
 
 
 def test_factory_service_builds_layered_visual_stack_when_background_and_foreground_exist(unit_of_work_factory, tmp_path) -> None:

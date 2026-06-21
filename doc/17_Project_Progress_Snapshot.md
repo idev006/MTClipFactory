@@ -93,6 +93,8 @@
 - Auto Factory planning now also uses a deterministic candidate frontier across `voice`, `foreground_sequence`, `background`, and `music`, helping fresh music and foreground patterns appear early instead of being hidden behind a large search space.
 - Auto Factory planning now also reorders those frontier option pools by historical underuse pressure, helping broader low-history background/music/voice choices surface earlier on products with large ready pools.
 - Preview/final rendering now also respects semantic foreground roles on matching timeline segments, so planned Auto Factory foreground sequences influence the actual rendered clip instead of collapsing into one persistent foreground pick.
+- Auto Factory now also displays recent-order and selected-order timestamps in local operator time instead of raw persisted UTC wall-clock values, so order monitoring aligns with the real desktop session.
+- Blank `Batch Code` defaults and derived order labels now also use local operator timestamp tokens, while product-local run journals keep explicit UTC `Z` event timestamps for audit truth.
 - Auto Factory now also persists that duplicate-risk evidence on successful `materialize` stages and shows it in the `Orders` tab so operators can inspect order truth instead of relying on memory-only planner output.
 - Auto Factory now also computes a canonical `fingerprint_hash` and hard-blocks exact same-product recipe-formula repeats from persisted history instead of only warning after the fact.
 - Production-order `materialize` stages now also persist that `fingerprint_hash`, and order resume now ignores the same order's already-materialized recipes when rebuilding duplicate history so retryable failures can continue truthfully.
@@ -169,6 +171,8 @@
 - delivered foreground/music diversity hardening so candidate coverage and scoring now push fresh music and foreground sequences earlier when feasible
 - delivered frontier option-pool diversity hardening so large seeded pools are reordered by historical underuse before frontier enumeration
 - delivered segment-aware foreground assignment rendering so semantic Auto Factory foreground roles are now used on their matching segments during preview/final composition
+- delivered local-time truth for Auto Factory monitoring so persisted order `Started` / `Finished` values now render in operator-local time while journal artifact timestamps stay explicit in UTC `Z`
+- delivered operator-readable local timestamp tokens for new default `batch_code` and derived order labels, preventing fresh runs from appearing several hours behind the current session
 - delivered a new caption runtime guard for presenter-led top headline cards through `max_safe_band_height_ratio`, so grouped top-band promo boxes shrink before covering the presenter eye line
 - stopped grouped multi-line caption layouts from growing above the requested contract font size, while preserving single-line best-fit upscaling for deliberately short hooks
 - split caption runtime/layout support helpers into dedicated modules so the core orchestrators stay below the repo `800`-line guardrail
@@ -204,8 +208,9 @@
 20. validate whether the new foreground/music diversity hardening is enough for real publishing batches or whether operator-tunable sequence/music cooldown policy is needed next
 21. validate whether the new frontier option-pool reordering is enough for large-pool products or whether explicit per-role cooldown windows are still needed next
 22. validate whether the new segment-aware foreground rendering is enough to make planned foreground diversity visually obvious on real campaign outputs
+23. validate whether Auto Factory should also expose an explicit timezone badge in-screen after the new local-time display correction
 
 ## Verification Baseline
 
-- `python -m pytest` in `.venv`: `301 passed, 4 warnings`
+- `python -m pytest` in `.venv`: `302 passed, 4 warnings`
 - targeted `QT_QPA_PLATFORM=offscreen` UI/theme coverage for the new `Auto Factory` window and existing app windows: passed

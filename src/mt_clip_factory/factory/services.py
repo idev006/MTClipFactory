@@ -63,6 +63,7 @@ from mt_clip_factory.factory.service_support import (
     to_preview_job_summary as _to_preview_job_summary,
     utc_now as _utc_now,
 )
+from mt_clip_factory.time_utils import format_utc_iso_timestamp
 from mt_clip_factory.library.artifacts import build_artifact_job_code, decode_job_input
 class VideoAssemblyFactoryService:
     PREVIEW_JOB_TYPE = "render_recipe_preview"
@@ -603,7 +604,7 @@ class VideoAssemblyFactoryService:
                     event_type="preview_rendered",
                     status="review_required" if review_assessment.required else "succeeded",
                     fields={
-                        "recorded_at": _format_timestamp(finished_at),
+                        "recorded_at": format_utc_iso_timestamp(finished_at),
                         "recipe_code": recipe.recipe_code,
                         "output_path": str(rendered_output.file_path),
                         "manifest_path": str(manifest_path),
@@ -629,7 +630,7 @@ class VideoAssemblyFactoryService:
                     event_type="preview_rendered",
                     status="failed",
                     fields={
-                        "recorded_at": _format_timestamp(finished_at),
+                        "recorded_at": format_utc_iso_timestamp(finished_at),
                         "recipe_code": recipe.recipe_code,
                         "error_message": str(exc),
                     },
@@ -818,7 +819,7 @@ class VideoAssemblyFactoryService:
                     event_type="final_rendered",
                     status="succeeded",
                     fields={
-                        "recorded_at": _format_timestamp(finished_at),
+                        "recorded_at": format_utc_iso_timestamp(finished_at),
                         "recipe_code": recipe.recipe_code,
                         "output_path": str(rendered_output.file_path),
                         "manifest_path": str(manifest_path),
@@ -844,7 +845,7 @@ class VideoAssemblyFactoryService:
                     event_type="final_rendered",
                     status="failed",
                     fields={
-                        "recorded_at": _format_timestamp(finished_at),
+                        "recorded_at": format_utc_iso_timestamp(finished_at),
                         "recipe_code": recipe.recipe_code,
                         "error_message": str(exc),
                     },

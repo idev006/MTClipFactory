@@ -18,6 +18,7 @@ from mt_clip_factory.factory.production_order_dto import (
     ProductionOrderSummaryDTO,
 )
 from mt_clip_factory.factory.production_order_service import ProductionOrderService
+from mt_clip_factory.time_utils import build_local_timestamp_token
 
 TERMINAL_STAGE_STATUSES = {"succeeded", "review_required", "failed_retryable", "failed_terminal", "cancelled"}
 ACTIVE_ORDER_STATUSES = {"leased", "processing", "pause_requested", "stop_requested", "resume_requested"}
@@ -530,8 +531,7 @@ class AutoFactoryControlViewModel(QObject):
 
 
 def _build_order_code(batch_code: str) -> str:
-    timestamp = datetime.now(UTC).strftime("%Y%m%d_%H%M%S_%f")
-    return f"{batch_code}_{timestamp}"
+    return f"{batch_code}_{build_local_timestamp_token()}"
 
 
 def _build_run_feedback(

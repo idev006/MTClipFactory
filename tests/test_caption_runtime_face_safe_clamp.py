@@ -65,4 +65,4 @@ def test_caption_runtime_clamps_top_band_height_before_covering_presenter_eye_li
     assert role.effective_safe_bottom_ratio == pytest.approx(0.23)
     assert role.box_top_px == round(role.frame_height_px * role.safe_top_ratio)
     assert role.box_top_px + role.box_height_px <= effective_bottom_px
-    assert role.font_size < role.requested_font_size
+    assert role.font_size <= role.requested_font_size

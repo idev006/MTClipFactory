@@ -63,6 +63,7 @@ The project now uses two roadmap layers:
 - `IR-41` Auto Factory foreground-and-music diversity hardening baseline: complete on 2026-06-21
 - `IR-42` Auto Factory frontier option-pool diversity hardening baseline: complete on 2026-06-21
 - `IR-43` Auto Factory segment-aware foreground assignment rendering baseline: complete on 2026-06-21
+- `IR-44` Auto Factory local-time truth baseline: complete on 2026-06-21
 
 ## Current Execution Stream
 
@@ -85,6 +86,8 @@ The same anti-duplicate stream now also moves from one linear dimension scan to 
 The same anti-duplicate stream now also reorders large seeded option pools by historical underuse before frontier enumeration so broader low-history backgrounds, music tracks, voices, and sequence families surface earlier.
 
 The same anti-duplicate stream now also corrects one deeper render-truth gap by using semantic foreground assignments on the matching timeline segments instead of collapsing all foreground roles into one persistent recipe-wide pick.
+
+The same operator-truth stream now also converts persisted Auto Factory order timestamps into local desktop display time, moves new automatic run labels onto local timestamp tokens, and keeps run-journal artifact timestamps timezone-explicit in UTC.
 
 Backlog activation rules:
 
@@ -995,7 +998,7 @@ Make the bottom `Recent Production Orders` strip useful for duplicate-risk triag
 - delivered `ProductionOrderService.list_orders()` risk-summary derivation from persisted successful `materialize` stages
 - delivered `ProductionOrderSummaryDTO` fields for order-level risk level and max raw score
 - delivered `Auto Factory` recent-orders strip columns plus row emphasis for duplicate-risk triage
-- covered the new summary seam with service and offscreen UI pytest, then reverified the full suite at `301 passed, 4 warnings`
+- covered the new summary seam with service and offscreen UI pytest, then reverified the full suite at `302 passed, 4 warnings`
 
 ## IR-40 | Auto Factory Background-Diversity Hardening Baseline
 
@@ -1021,7 +1024,7 @@ Reduce repeated `background_video` reuse across one batch when fresh alternative
 
 - delivered earlier `background` interleaving in Auto Factory candidate generation
 - delivered stronger background reuse penalties while keeping `voice` as the strongest role-level anti-duplicate weight
-- delivered pytest coverage for the regression case where a large foreground search space previously hid alternate backgrounds, then reverified the full suite at `301 passed, 4 warnings`
+- delivered pytest coverage for the regression case where a large foreground search space previously hid alternate backgrounds, then reverified the full suite at `302 passed, 4 warnings`
 
 ## IR-41 | Auto Factory Foreground-And-Music Diversity Hardening Baseline
 
@@ -1048,7 +1051,7 @@ Reduce repeated foreground-pattern and music reuse when fresh alternatives exist
 - delivered deterministic frontier-style candidate enumeration across `voice`, `foreground_sequence`, `background`, and `music`
 - delivered stronger foreground-sequence and music reuse penalties in the planner
 - delivered pytest coverage for hidden-music and repeated-foreground regression cases
-- reverified the full suite at `301 passed, 4 warnings`
+- reverified the full suite at `302 passed, 4 warnings`
 
 ## IR-42 | Auto Factory Frontier Option-Pool Diversity Hardening Baseline
 
@@ -1075,7 +1078,7 @@ Broaden early planner coverage across large ready pools so low-history backgroun
 - delivered history-aware frontier option-pool reordering for `voice`, `background`, `music`, and `foreground_sequence`
 - delivered helper-level pytest coverage for underuse ordering plus deterministic equal-history tie behavior
 - delivered service-level pytest coverage for large-pool fresh-background preference
-- reverified the full suite at `301 passed, 4 warnings`
+- reverified the full suite at `302 passed, 4 warnings`
 
 ## IR-43 | Auto Factory Segment-Aware Foreground Assignment Rendering Baseline
 
@@ -1102,7 +1105,7 @@ Make Auto Factory foreground-sequence planning affect actual rendered segment vi
 - delivered segment-aware semantic foreground resolution in preview/final composition
 - preserved recipe-wide foreground fallback for non-semantic manual roles
 - delivered regression coverage for semantic per-segment rendering while preserving the older persistent fallback path
-- reverified the full suite at `301 passed, 4 warnings`
+- reverified the full suite at `302 passed, 4 warnings`
 
 ## Cross-Milestone Rules
 

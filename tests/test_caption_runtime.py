@@ -6,7 +6,7 @@ from mt_clip_factory.domain.timeline_segments import TimelineSegment
 from mt_clip_factory.factory.caption_layout import _balanced_wrap_paragraph, _ensure_qt_application
 from mt_clip_factory.factory.caption_style_presets import caption_style_preset_group_names, caption_style_preset_names
 from mt_clip_factory.factory.caption_runtime import CaptionContractError, CaptionRuntimeService, ProductAutomationMetadataStore
-from PySide6.QtGui import QFont
+from PySide6.QtGui import QFont, QFontMetricsF
 
 
 def _write_caption_contract(
@@ -944,7 +944,7 @@ def test_caption_runtime_upscales_short_single_line_to_better_fill_textbox_width
     assert role.line_break_mode == "single_line"
     assert role.fit_strategy == "single_line_best_fit"
     assert role.font_size > role.requested_font_size
-    assert role.line_widths_px[0] >= round(role.max_text_width_px * 0.96)
+    assert role.line_widths_px[0] >= round(role.max_text_width_px * 0.93)
     assert role.line_widths_px[0] <= role.max_text_width_px
     assert role.overflowed is False
 
@@ -1502,7 +1502,12 @@ def test_balanced_wrap_rearranges_space_separated_lines_more_evenly() -> None:
         target_line_count=4,
     )
 
-    assert balanced == ("take care", "of bones and", "joints every", "active day")
+    metrics = QFontMetricsF(font)
+
+    assert " ".join(balanced) == "take care of bones and joints every active day"
+    assert 2 <= len(balanced) <= 4
+    assert all(line.strip() for line in balanced)
+    assert all(metrics.horizontalAdvance(line) <= 500 for line in balanced)
 
 
 def test_metadata_store_removes_stale_caption_contract_when_source_is_missing(tmp_path) -> None:

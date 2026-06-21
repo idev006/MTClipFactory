@@ -23,7 +23,7 @@ That was readable, but it created an operator-grade traceability gap:
 ## Core Decision
 
 - keep manual `Batch Code` override fully supported
-- when the operator leaves `Batch Code` blank, generate a unique default from the selected root folder stem plus a UTC timestamp
+- when the operator leaves `Batch Code` blank, generate a unique default from the selected root folder stem plus a local operator timestamp
 - the generated default must stay slug-safe for paths and codes
 - the generated default becomes the single source of truth for:
   - folder-intake report `batch_code`
@@ -45,7 +45,7 @@ Example:
 flowchart LR
     A["Operator selects root folder"] --> B{"Batch Code typed?"}
     B -->|"Yes"| C["Slugify operator override"]
-    B -->|"No"| D["Build unique default from root folder slug + UTC timestamp"]
+    B -->|"No"| D["Build unique default from root folder slug + local operator timestamp"]
     C --> E["Use effective batch_code for intake + artifacts + order creation"]
     D --> E
     E --> F["Write product-local runs/<batch_code> evidence"]

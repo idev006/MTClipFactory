@@ -2,7 +2,7 @@ from __future__ import annotations
 
 import json
 from pathlib import Path
-from datetime import timedelta
+from datetime import timedelta, timezone
 
 import pytest
 
@@ -22,6 +22,7 @@ from mt_clip_factory.factory.production_order_service import (
 )
 from mt_clip_factory.factory.renderers import RenderedPreviewOutput
 from mt_clip_factory.factory.services import VideoAssemblyFactoryService
+from mt_clip_factory import time_utils
 from mt_clip_factory.library.contracts import AnalyzedMediaMetadata
 from mt_clip_factory.library.dto import RegisterAssetCommand
 from mt_clip_factory.library.readiness import AssetReadinessEvaluator
@@ -190,6 +191,38 @@ def test_production_order_service_persists_and_lists_orders(unit_of_work_factory
             source_mode="manual_batch",
             order_code="launch_batch_001",
         )
+
+
+def test_production_order_service_displays_local_operator_time(unit_of_work_factory, tmp_path, monkeypatch) -> None:
+    monkeypatch.setattr(time_utils, "resolve_local_display_timezone", lambda: timezone(timedelta(hours=7)))
+    product_service, _, _, service = _build_services(unit_of_work_factory, tmp_path)
+    product_service.create_product(CreateProductCommand(product_code="serum", product_name="Serum"))
+
+    order_id = service.create_order(
+        AutoFactoryBatchOrderDTO(
+            batch_code="launch_batch",
+            product_requests=(AutoFactoryProductRequestDTO(product_code="serum", requested_output_count=1),),
+        ),
+        source_mode="manual_batch",
+        order_code="launch_batch_001",
+    )
+
+    with unit_of_work_factory() as uow:
+        order = uow.production_orders.get_by_id(order_id)
+        assert order is not None
+        order.created_at = order.created_at.replace(year=2026, month=6, day=21, hour=7, minute=57, second=27, microsecond=0)
+        order.started_at = order.created_at.replace(second=28)
+        order.finished_at = order.created_at.replace(hour=8, minute=5, second=23)
+        uow.production_orders.update(order)
+        uow.commit()
+
+    summary = service.list_orders()[0]
+    details = service.get_order(order_id)
+
+    assert summary.started_at == "2026-06-21 14:57:28"
+    assert summary.finished_at == "2026-06-21 15:05:23"
+    assert details.started_at == "2026-06-21 14:57:28"
+    assert details.finished_at == "2026-06-21 15:05:23"
 
 
 def test_production_order_service_runs_order_and_records_successful_stages(unit_of_work_factory, tmp_path) -> None:

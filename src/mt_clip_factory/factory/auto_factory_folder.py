@@ -25,6 +25,7 @@ from mt_clip_factory.factory.auto_factory_folder_dto import (
 )
 from mt_clip_factory.factory.caption_runtime import ProductAutomationMetadataStore
 from mt_clip_factory.factory.product_run_store import ProductRunArtifactStore
+from mt_clip_factory.time_utils import build_local_timestamp_token
 from mt_clip_factory.library.dto import RegisterAssetCommand
 from mt_clip_factory.library.services import AssetIntakeService
 from mt_clip_factory.library.tag_dto import AssignTagToAssetCommand
@@ -1042,8 +1043,7 @@ def _resolve_effective_batch_code(*, batch_code: str | None, root_path: Path) ->
     if explicit_batch_code:
         return explicit_batch_code
     root_slug = _slugify(root_path.name) or "auto_factory_batch"
-    timestamp = datetime.now(UTC).strftime("%Y%m%d_%H%M%S_%f")
-    return f"{root_slug}_{timestamp}"
+    return f"{root_slug}_{build_local_timestamp_token()}"
 
 
 def _optional_text(value) -> str | None:

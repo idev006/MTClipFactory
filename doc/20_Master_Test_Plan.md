@@ -47,6 +47,7 @@ It complements [07_Testing_Strategy.md](/F:/programming/python/MTClipFactory/doc
 - canonical exact `fingerprint_hash` duplicate guard across persisted same-product recipe history
 - `Orders`-tab duplicate-risk emphasis, including derived risk levels plus operator filter/sort controls
 - recent-orders duplicate-risk summary, including persisted risk level plus raw score visibility in the lower history strip
+- Auto Factory local-time truth so recent-order and selected-order timestamp display aligns with the operator's local wall clock while persisted audit artifacts stay timezone-explicit
 - background-diversity hardening so batches with multiple feasible backgrounds do not collapse onto one repeated background unnecessarily
 - foreground/music diversity hardening so fresh sequence or music choices are surfaced before the planner settles on repeated patterns unnecessarily
 - frontier option-pool diversity hardening so large seeded pools reorder by historical underuse before frontier enumeration
@@ -217,6 +218,8 @@ It complements [07_Testing_Strategy.md](/F:/programming/python/MTClipFactory/doc
 21. Confirm the desktop `Auto Factory` screen can browse/select a root folder, set `scan_depth`, and complete `Intake Only` mode with truthful discovered-folder, product, and asset-action reporting.
 22. Confirm `Intake + Materialize` creates a persisted `Production Order` and shows stage truth in the screen's recent-order surfaces.
 23. Confirm `Intake + Materialize + Build Previews` records preview and review stages while still stopping at the human approval boundary.
+24. Confirm Auto Factory recent-order and selected-order timestamps display in local operator time rather than raw persisted UTC wall-clock values.
+25. Confirm product-local run journals keep timezone-explicit UTC `Z` timestamps even after the local display correction lands in the UI.
 - Confirm `Pause Run`, `Stop Run`, and `Resume Run` continue to display truthful `pending backend support` messaging until persisted safe-checkpoint and worker-lease semantics exist.
 24. Confirm leaving `Batch Code` blank auto-generates a unique root-folder-based value and creates product-local `runs/<batch_code>` artifacts under that generated name.
 25. Confirm `pipeline.toml [selection_tags]` can restrict foreground/background/music/voice pools by normalized `group:name` labels.
