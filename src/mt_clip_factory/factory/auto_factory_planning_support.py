@@ -13,7 +13,7 @@ _SELECTION_ROLE_WEIGHTS = {
     "benefit": 4.0,
     "proof": 4.0,
     "cta": 4.0,
-    "background": 3.0,
+    "background": 5.0,
     "music": 1.5,
 }
 _SIMILARITY_REASON_LIMIT = 4
@@ -200,7 +200,7 @@ def _assess_near_duplicate(
         selected_role_asset_counts=selected_role_asset_counts,
     )
     if background_reuse > 0:
-        score += min(0.10 + (0.04 * max(0.0, background_reuse - 1.0)), 0.18)
+        score += min(0.18 + (0.06 * max(0.0, background_reuse - 1.0)), 0.30)
         reasons.append("background_asset_reused")
 
     music_reuse = _role_reuse_count(

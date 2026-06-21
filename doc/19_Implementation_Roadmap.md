@@ -59,6 +59,7 @@ The project now uses two roadmap layers:
 - `IR-37` Auto Factory exact fingerprint hash duplicate guard baseline: complete on 2026-06-21
 - `IR-38` Auto Factory Orders-tab duplicate-risk emphasis baseline: complete on 2026-06-21
 - `IR-39` Auto Factory recent-orders duplicate-risk summary baseline: complete on 2026-06-21
+- `IR-40` Auto Factory background-diversity hardening baseline: complete on 2026-06-21
 
 ## Current Execution Stream
 
@@ -73,6 +74,8 @@ The same caption-quality stream now also hardens Thai rendering by compositing a
 The same anti-duplicate stream now also adds a hard exact-repeat guard through canonical recipe fingerprint hashes, while near-duplicate scoring remains the softer explainability layer on top.
 
 The same operator-triage stream now also surfaces persisted duplicate-risk summary directly in the recent-orders history strip, so operators can choose which recent order to inspect before opening the detailed `Orders` tab.
+
+The same anti-duplicate stream now also hardens `background_video` diversity by surfacing alternate backgrounds earlier in candidate generation instead of letting a large foreground search space hide them.
 
 Backlog activation rules:
 
@@ -983,7 +986,33 @@ Make the bottom `Recent Production Orders` strip useful for duplicate-risk triag
 - delivered `ProductionOrderService.list_orders()` risk-summary derivation from persisted successful `materialize` stages
 - delivered `ProductionOrderSummaryDTO` fields for order-level risk level and max raw score
 - delivered `Auto Factory` recent-orders strip columns plus row emphasis for duplicate-risk triage
-- covered the new summary seam with service and offscreen UI pytest, then reverified the full suite at `293 passed, 4 warnings`
+- covered the new summary seam with service and offscreen UI pytest, then reverified the full suite at `294 passed, 4 warnings`
+
+## IR-40 | Auto Factory Background-Diversity Hardening Baseline
+
+### Goal
+
+Reduce repeated `background_video` reuse across one batch when fresh alternatives exist.
+
+### Scope
+
+- interleave `background` alternatives earlier in deterministic candidate generation
+- strengthen planner-side background reuse avoidance without overtaking `voice` as the highest-priority diversity signal
+- keep persisted duplicate-risk evidence truthful when background reuse still becomes necessary
+- cover the regression scenario with pytest
+
+### Acceptance Criteria
+
+- alternate backgrounds appear early enough in the candidate pool for greedy selection to choose them
+- a batch with multiple feasible backgrounds should not collapse onto the same background across all early clips
+- `voice` remains more heavily weighted than `background`
+- docs and pytest stay aligned to the delivered behavior
+
+### Delivery Result
+
+- delivered earlier `background` interleaving in Auto Factory candidate generation
+- delivered stronger background reuse penalties while keeping `voice` as the strongest role-level anti-duplicate weight
+- delivered pytest coverage for the regression case where a large foreground search space previously hid alternate backgrounds, then reverified the full suite at `294 passed, 4 warnings`
 
 ## Cross-Milestone Rules
 

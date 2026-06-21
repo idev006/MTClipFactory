@@ -43,8 +43,8 @@ from mt_clip_factory.library.services import AssetIntakeService
 _DEFAULT_FIXED_DURATION_SEC = 15.0
 _DIVERSITY_DIMENSION_PRIORITY = (
     "voice",
-    "foreground_sequence",
     "background",
+    "foreground_sequence",
     "music",
 )
 _HISTORY_RECIPE_LIMIT = 24

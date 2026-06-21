@@ -328,6 +328,43 @@ def test_auto_factory_diversifies_voice_early_within_batch(unit_of_work_factory,
     assert len(set(voice_codes)) == 2
 
 
+def test_auto_factory_spreads_backgrounds_early_within_batch(unit_of_work_factory, tmp_path) -> None:
+    product_service = ProductApplicationService(unit_of_work_factory=unit_of_work_factory)
+    product_id = product_service.create_product(CreateProductCommand(product_code="bgspread", product_name="BG Spread"))
+    asset_service = _build_asset_service(
+        unit_of_work_factory,
+        tmp_path / "media_library",
+        {"voice_01.mp3": 12.0},
+    )
+    for asset_index in range(1, 10):
+        _register_asset(
+            asset_service,
+            product_id=product_id,
+            tmp_path=tmp_path,
+            asset_type="foreground_video",
+            asset_code=f"fg_{asset_index:02d}",
+            file_name=f"fg{asset_index:02d}.mp4",
+        )
+    _register_asset(asset_service, product_id=product_id, tmp_path=tmp_path, asset_type="background_video", asset_code="bg_01", file_name="bg01.mp4")
+    _register_asset(asset_service, product_id=product_id, tmp_path=tmp_path, asset_type="background_video", asset_code="bg_02", file_name="bg02.mp4")
+    _register_asset(asset_service, product_id=product_id, tmp_path=tmp_path, asset_type="voiceover", asset_code="voice_01", file_name="voice_01.mp3")
+    service = _build_auto_factory_service(unit_of_work_factory, tmp_path, {"voice_01.mp3": 12.0})
+
+    plan = service.plan_batch(
+        AutoFactoryBatchOrderDTO(
+            batch_code="bgspread_batch",
+            product_requests=(AutoFactoryProductRequestDTO(product_code="bgspread", requested_output_count=2),),
+        )
+    )
+
+    background_codes = [
+        next(assignment.asset_code for assignment in recipe.assignments if assignment.role == "background")
+        for recipe in plan.planned_recipes
+    ]
+
+    assert len(set(background_codes)) == 2
+
+
 def test_auto_factory_avoids_historically_repeated_exact_combo_when_alternative_exists(unit_of_work_factory, tmp_path) -> None:
     product_service = ProductApplicationService(unit_of_work_factory=unit_of_work_factory)
     product_id = product_service.create_product(CreateProductCommand(product_code="repeatfix", product_name="Repeat Fix"))

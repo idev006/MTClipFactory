@@ -110,6 +110,7 @@
 - blank `Batch Code` input in the desktop `Auto Factory` control surface now auto-generates a unique root-folder-based batch code so repeated runs do not collapse into one ambiguous product-local `runs/<batch_code>` folder
 - auto-factory planning now also uses recent same-product recipe history to deprioritize repeated exact combos, repeated foreground sequences, and overused voice assets before materialization
 - auto-factory planning now also scores each planned recipe for near-duplicate risk and records concise machine-readable reasons such as exact-combo reuse, foreground-sequence reuse, and voice/background/music overuse
+- auto-factory planning now also interleaves `background_video` alternatives earlier and penalizes repeated background reuse more strongly, so one batch is less likely to reuse the same background across many clips when fresh alternatives exist
 - successful auto-factory `materialize` stages now also persist planner duplicate-risk evidence, and the desktop `Auto Factory` `Orders` tab now surfaces that persisted risk truth for operators
 - auto-factory planning now also computes and hard-blocks one canonical `fingerprint_hash` against persisted same-product recipe history, so exact internal recipe formulas are not silently materialized again when no fresh variant exists
 - successful auto-factory `materialize` stages now also persist both human-readable `fingerprint` and canonical `fingerprint_hash` evidence for later audit
@@ -156,7 +157,7 @@
 
 ## Verification Baseline
 
-- `python -m pytest` via `.venv`: `293 passed, 4 warnings`
+- `python -m pytest` via `.venv`: `294 passed, 4 warnings`
 - targeted `QT_QPA_PLATFORM=offscreen` UI coverage for the new `Auto Factory` window and existing themed windows: passed
 
 ## Current Focus
@@ -180,6 +181,7 @@
 - validate whether operators understand the new persisted duplicate-risk surface in `Orders` well enough or whether summary badges, filters, or threshold highlighting should be added next
 - validate whether the new `Orders`-tab risk emphasis thresholds and row-highlighting palette are readable enough during real operator use
 - validate whether the new recent-orders duplicate-risk strip helps operators choose the right order to inspect first without opening each one manually
+- validate whether the new background-diversity hardening is strong enough on real campaign batches or whether future policy needs per-product cooldown knobs for backgrounds
 - validate whether the new exact `fingerprint_hash` guard basis is commercially strict enough or whether future policy should expand the canonical basis with caption/runtime contract dimensions
 - validate whether the new bulk asset tagging flow reduces repetitive operator work without causing accidental over-tagging
 - validate whether the new folder-driven additive tag sync is sufficient before implementing tag-removal sync behavior
@@ -218,11 +220,12 @@
 8. Validate whether the new exact `fingerprint_hash` guard prevents commercially unacceptable exact repeats in real Shopee/TikTok publishing batches without over-blocking useful variants.
 9. Validate whether the new `Orders`-tab risk filter, sort, and level emphasis actually reduce operator triage time on real campaign batches.
 10. Validate whether the new recent-orders risk summary strip reduces operator click-through time when scanning recent production history.
-11. Run another live end-to-end preview/final audit on `Biothentic0001` after the new policy-aware voice-loop, loop-authority, and promo-caption contract slice.
-12. Validate whether product-level voice looping should surface an operator-facing repetition warning or max-repeat policy after more live runs.
-13. Run another live `Biothentic0001` audit on the versioned manifest envelope and verify that output-detail surfaces remain readable from the new sectioned contract.
-14. Run a live folder-intake audit on one real product folder arranged in the new `contracts/` plus `assets/` layout and verify that ambiguity failures are understandable to operators.
-15. Validate the new `Audit Only` control-surface mode with operators and decide whether issue grouping/export needs to be added.
+11. Validate whether the new background-diversity hardening actually reduces same-background repetition on real Shopee/TikTok publishing batches.
+12. Run another live end-to-end preview/final audit on `Biothentic0001` after the new policy-aware voice-loop, loop-authority, and promo-caption contract slice.
+13. Validate whether product-level voice looping should surface an operator-facing repetition warning or max-repeat policy after more live runs.
+14. Run another live `Biothentic0001` audit on the versioned manifest envelope and verify that output-detail surfaces remain readable from the new sectioned contract.
+15. Run a live folder-intake audit on one real product folder arranged in the new `contracts/` plus `assets/` layout and verify that ambiguity failures are understandable to operators.
+16. Validate the new `Audit Only` control-surface mode with operators and decide whether issue grouping/export needs to be added.
 
 ## Direction Locked In This Documentation Revision
 
