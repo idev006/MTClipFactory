@@ -125,6 +125,8 @@
 - production-order resume now excludes the same order's already-materialized recipes from duplicate-guard history rebuilding, so retryable preview failures can resume truthfully without self-blocking
 - the desktop `Auto Factory` `Orders` tab now also derives `High` / `Medium` / `Low` / `Unavailable` planner-risk emphasis, supports duplicate-risk filtering and sorting, and highlights riskier product/stage rows for faster operator triage
 - the desktop `Auto Factory` `Recent Production Orders` strip now also surfaces persisted `Risk Level` plus max raw `Duplicate Risk` per order and highlights riskier recent orders for faster operator triage
+- local-worker production-order heartbeat updates now also tolerate transient SQLite `database is locked` contention, so one skipped heartbeat attempt no longer crashes the background heartbeat thread during active Auto Factory runs
+- file-backed desktop SQLite runtime now also enables `WAL` plus a `busy_timeout`, reducing lease-heartbeat versus stage/event write contention during local Auto Factory execution
 - `Pause Run`, `Stop Run`, and `Resume Run` remain visible operator-control groundwork only; the UI must continue to say `pending backend support` until persisted safe-checkpoint and worker-lease semantics are actually implemented
 - caption runtime now also clamps grouped top-band headline height through a new `max_safe_band_height_ratio` rule so presenter-led promo cards shrink before covering the eye line, while still keeping overflow review-visible when the safer band cannot contain the text
 - grouped multi-line caption solving no longer grows above the requested contract font size, while short single-line best-fit cards may still upscale when that is the intended readability behavior
@@ -165,7 +167,7 @@
 
 ## Verification Baseline
 
-- `python -m pytest` via `.venv`: `302 passed, 4 warnings`
+- `python -m pytest` via `.venv`: `306 passed, 4 warnings`
 - targeted `QT_QPA_PLATFORM=offscreen` UI coverage for the new `Auto Factory` window and existing themed windows: passed
 
 ## Current Focus
@@ -195,6 +197,7 @@
 - validate whether the new persistent foreground/background clip policy lowers same-clip repetition risk enough on real Shopee/TikTok batches or whether future policy still needs stronger pair-cooldown tuning
 - validate whether the new manifest `segment_inventory` and clip formula hash are sufficient for operator audit and future duplicate-hardening tooling or whether a dedicated UI surface is needed next
 - validate whether local operator time display is sufficient across more locales or whether a future visible timezone badge is needed in the `Auto Factory` screen
+- validate whether the new SQLite heartbeat lock-tolerance plus `WAL`/`busy_timeout` runtime hardening is sufficient during longer desktop Auto Factory runs or whether later work should reduce write frequency further
 - validate whether the new exact `fingerprint_hash` guard basis is commercially strict enough or whether future policy should expand the canonical basis with caption/runtime contract dimensions
 - validate whether the new bulk asset tagging flow reduces repetitive operator work without causing accidental over-tagging
 - validate whether the new folder-driven additive tag sync is sufficient before implementing tag-removal sync behavior

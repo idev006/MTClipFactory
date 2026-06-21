@@ -80,6 +80,13 @@ The control-plane should also add one append-only `production_order_events` tabl
 - a later `Resume Run` may recover that stale lease and continue remaining work
 - active-worker truth remains `0` or `1` in this slice
 
+### SQLite Contention Rule
+
+- the current desktop baseline uses SQLite, so lease-heartbeat writes can temporarily contend with other persisted stage or event writes
+- one transient `database is locked` heartbeat failure must not be treated as worker death by itself
+- heartbeat execution should tolerate transient SQLite lock contention, skip that single heartbeat attempt, and continue retrying on the next normal interval
+- lease timeout remains the authoritative stale-worker boundary, so a worker becomes stale only after heartbeat expiry rather than after one missed write attempt
+
 ## Safe Checkpoint Rules
 
 The first safe checkpoints are:
@@ -153,6 +160,10 @@ sequenceDiagram
     Worker->>State: claim lease + set processing
     loop while eligible units remain
         Worker->>State: heartbeat
+        alt transient SQLite write lock
+            State-->>Worker: heartbeat write deferred
+            Worker->>Worker: continue next interval
+        end
         Worker->>OrderSvc: process one materialize or preview unit
         OrderSvc->>State: persist stage/event truth
         alt pause requested

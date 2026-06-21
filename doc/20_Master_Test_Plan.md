@@ -40,6 +40,7 @@ It complements [07_Testing_Strategy.md](/F:/programming/python/MTClipFactory/doc
 - persisted production-order and append-only order-event tracking
 - desktop `Auto Factory` control-surface workflow for root selection, scan depth, run mode, intake reporting, and recent-order inspection
 - desktop `Auto Factory` live-progress workflow plus truthful `Pause/Stop/Resume` groundwork that remains pending backend support
+- local-worker SQLite heartbeat lock tolerance so transient `database is locked` contention does not kill active Auto Factory lease monitoring
 - desktop `Auto Factory` `Audit Only` workflow for preflight summary and issue visibility
 - history-aware auto-factory anti-duplicate selection across repeated product runs
 - near-duplicate score and reason visibility on planned auto-factory recipes
@@ -92,6 +93,7 @@ It complements [07_Testing_Strategy.md](/F:/programming/python/MTClipFactory/doc
 - migration guard behavior
 - persisted jobs and retry flows
 - stale-lease recovery and resume behavior for interrupted local-worker production orders
+- file-backed SQLite runtime behavior, including `WAL`, `busy_timeout`, and lease-heartbeat tolerance during transient write contention
 - runtime/configured path truthfulness
 - filesystem-path safety across media, preview, and outputs roots
 

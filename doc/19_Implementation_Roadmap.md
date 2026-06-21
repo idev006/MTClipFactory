@@ -73,6 +73,8 @@ The next mandatory implementation stream should implement and validate the pendi
 
 The delivered 2026-06-20 control slice keeps `Pause Run`, `Stop Run`, and `Resume Run` visible in the UI as groundwork only; they must continue to report `pending backend support` until persisted worker-lease and safe-checkpoint behavior is actually implemented.
 
+The same local-worker control stream now also hardens SQLite lease-heartbeat execution so transient `database is locked` contention skips one heartbeat attempt instead of killing the background heartbeat thread, while file-backed desktop SQLite now enables `WAL` plus a `busy_timeout` to reduce write contention.
+
 The current caption-quality hardening stream should also keep presenter-led promo cards face-safe by clamping grouped top-band band height and by treating requested grouped headline size as a real upper bound instead of a suggestion.
 
 The same caption-quality stream now also hardens Thai rendering by compositing a Qt-rendered caption bitmap in FFmpeg instead of asking FFmpeg `drawtext` to redraw already-measured caption glyphs.
@@ -691,12 +693,13 @@ Make the new control-plane baseline safe for future multi-worker execution by in
 ### Delivery Result
 
 - delivered Alembic migration `20260620_0007` plus persistence support for order-level run mode, source root, preview-enabled flag, lease ownership, heartbeat timestamps, lease expiry, blocking reason, and append-only `production_order_events`
-- delivered `ProductionOrderService` local-worker lease claim, background heartbeat, persisted pause/stop intent, safe-checkpoint pause/stop settlement, and restart-safe `resume_order(...)`
+- delivered `ProductionOrderService` local-worker lease claim, background heartbeat, persisted order-control groundwork, and restart-oriented `resume_order(...)` seams
 - delivered effective-stage resume behavior that reuses already-succeeded materialize/preview units and retries only remaining eligible `failed_retryable` work
-- delivered `Auto Factory` UI/view-model wiring for real `Pause Run`, `Stop Run`, and `Resume Run` actions, lease visibility, active-worker truth, and order-event inspection
-- covered migration, service, view-model, and UI seams with pytest, and reverified the full suite at `253 passed, 4 warnings`
+- delivered `Auto Factory` UI/view-model wiring for `Pause Run`, `Stop Run`, and `Resume Run` operator surfaces, lease visibility, active-worker truth, and order-event inspection while keeping the controls truthful as pending backend support
+- delivered SQLite heartbeat lock-tolerance plus file-backed `WAL` and `busy_timeout` runtime hardening so transient write contention does not kill the heartbeat thread during active local Auto Factory runs
+- covered migration, service, view-model, and UI seams with pytest, and reverified the full suite at `306 passed, 4 warnings`
 
-The latest caption hardening pass, including the Thai-safe bitmap overlay path, has now also reverified the full suite at `257 passed, 4 warnings`.
+The latest caption hardening pass, including the Thai-safe bitmap overlay path, and the SQLite heartbeat hardening pass have now also reverified the full suite at `306 passed, 4 warnings`.
 
 ## IR-21 | Folder Discovery Depth And Assisted Tagging Ergonomics
 

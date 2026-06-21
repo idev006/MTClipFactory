@@ -98,6 +98,8 @@
 - Auto Factory now also displays recent-order and selected-order timestamps in local operator time instead of raw persisted UTC wall-clock values, so order monitoring aligns with the real desktop session.
 - Blank `Batch Code` defaults and derived order labels now also use local operator timestamp tokens, while product-local run journals keep explicit UTC `Z` event timestamps for audit truth.
 - Auto Factory now also persists that duplicate-risk evidence on successful `materialize` stages and shows it in the `Orders` tab so operators can inspect order truth instead of relying on memory-only planner output.
+- Auto Factory local-worker heartbeat updates now also tolerate transient SQLite `database is locked` contention, so one missed heartbeat write no longer kills the heartbeat thread during an otherwise active run.
+- File-backed desktop SQLite runtime now also enables `WAL` plus a `busy_timeout`, reducing write contention between lease heartbeats and persisted stage/event updates.
 - Auto Factory now also computes a canonical `fingerprint_hash` and hard-blocks exact same-product recipe-formula repeats from persisted history instead of only warning after the fact.
 - Production-order `materialize` stages now also persist that `fingerprint_hash`, and order resume now ignores the same order's already-materialized recipes when rebuilding duplicate history so retryable failures can continue truthfully.
 - Auto Factory `Orders` now also emphasizes persisted planner risk through derived `High` / `Medium` / `Low` / `Unavailable` labels, row highlighting, and operator-facing filter/sort controls instead of showing only raw score text.
@@ -217,5 +219,5 @@
 
 ## Verification Baseline
 
-- `python -m pytest` in `.venv`: `302 passed, 4 warnings`
+- `python -m pytest` in `.venv`: `306 passed, 4 warnings`
 - targeted `QT_QPA_PLATFORM=offscreen` UI/theme coverage for the new `Auto Factory` window and existing app windows: passed

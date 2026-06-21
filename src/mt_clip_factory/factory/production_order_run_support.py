@@ -1,8 +1,11 @@
 from __future__ import annotations
 
+import logging
 import threading
 from datetime import timedelta
 from typing import TYPE_CHECKING
+
+from sqlalchemy.exc import OperationalError
 
 from mt_clip_factory.domain.entities import utc_now
 from mt_clip_factory.domain.enums import OrchestrationStatus
@@ -16,6 +19,7 @@ if TYPE_CHECKING:
 
 _LEASE_TIMEOUT_SECONDS = 60
 _HEARTBEAT_INTERVAL_SECONDS = 5
+_SQLITE_LOCK_MARKERS = ("database is locked", "database table is locked")
 _FINAL_ORDER_STATUSES = {
     OrchestrationStatus.SUCCEEDED,
     OrchestrationStatus.FAILED_RETRYABLE,
@@ -39,6 +43,7 @@ _RUNNABLE_ORDER_STATUSES = {
     OrchestrationStatus.BLOCKED,
     OrchestrationStatus.RESUME_REQUESTED,
 }
+_LOGGER = logging.getLogger(__name__)
 
 
 class _OrderHeartbeat:
@@ -63,7 +68,13 @@ class _OrderHeartbeat:
 
     def _run(self) -> None:
         while not self._stop_event.wait(_HEARTBEAT_INTERVAL_SECONDS):
-            heartbeat_order(self._service, self._production_order_id, self._worker_id)
+            try:
+                heartbeat_order(self._service, self._production_order_id, self._worker_id)
+            except Exception:  # noqa: BLE001
+                _LOGGER.exception(
+                    "Unexpected heartbeat failure for production order %s.",
+                    self._production_order_id,
+                )
 
 
 def claim_order_lease(
@@ -106,18 +117,28 @@ def claim_order_lease(
         return order, recovered_stale_lease, previous_status
 
 
-def heartbeat_order(service: ProductionOrderService, production_order_id: int, worker_id: str) -> None:
+def heartbeat_order(service: ProductionOrderService, production_order_id: int, worker_id: str) -> bool:
     now = utc_now()
-    with service._unit_of_work_factory() as uow:  # noqa: SLF001
-        order = uow.production_orders.get_by_id(production_order_id)
-        if order is None or order.id is None:
-            return
-        if order.lease_owner != worker_id or order.status not in _ACTIVE_ORDER_STATUSES | {OrchestrationStatus.PROCESSING}:
-            return
-        order.lease_heartbeat_at = now
-        order.lease_expires_at = now + timedelta(seconds=_LEASE_TIMEOUT_SECONDS)
-        uow.production_orders.update(order)
-        uow.commit()
+    try:
+        with service._unit_of_work_factory() as uow:  # noqa: SLF001
+            order = uow.production_orders.get_by_id(production_order_id)
+            if order is None or order.id is None:
+                return False
+            if order.lease_owner != worker_id or order.status not in _ACTIVE_ORDER_STATUSES | {OrchestrationStatus.PROCESSING}:
+                return False
+            order.lease_heartbeat_at = now
+            order.lease_expires_at = now + timedelta(seconds=_LEASE_TIMEOUT_SECONDS)
+            uow.production_orders.update(order)
+            uow.commit()
+            return True
+    except OperationalError as exc:
+        if _is_transient_sqlite_lock_error(exc):
+            _LOGGER.warning(
+                "Skipped one heartbeat for production order %s because SQLite was temporarily locked.",
+                production_order_id,
+            )
+            return False
+        raise
 
 
 def consume_control_checkpoint(
@@ -213,3 +234,8 @@ def finalize_order(
         )
         uow.commit()
     return service.get_order(production_order_id)
+
+
+def _is_transient_sqlite_lock_error(exc: OperationalError) -> bool:
+    error_text = str(exc).lower()
+    return any(marker in error_text for marker in _SQLITE_LOCK_MARKERS)
