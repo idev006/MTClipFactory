@@ -466,6 +466,74 @@ def test_factory_service_builds_layered_visual_stack_when_background_and_foregro
     assert manifest_payload["segments"][0]["background_layer"]["asset_code"] == "bg_asset"
 
 
+def test_factory_service_uses_semantic_foreground_assignments_per_segment(unit_of_work_factory, tmp_path) -> None:
+    product_id, background_asset_id = _register_ready_asset(
+        unit_of_work_factory,
+        tmp_path,
+        asset_type="background_video",
+        asset_code="bg_asset",
+        file_name="bg.mp4",
+    )
+    semantic_assets = {}
+    for role_name in ("hook", "problem", "benefit", "proof", "cta"):
+        _, asset_id = _register_ready_asset(
+            unit_of_work_factory,
+            tmp_path,
+            asset_type="foreground_video",
+            asset_code=f"fg_{role_name}",
+            file_name=f"{role_name}.mp4",
+        )
+        semantic_assets[role_name] = asset_id
+    voice_product_id, voice_asset_id = _register_ready_asset(
+        unit_of_work_factory,
+        tmp_path,
+        asset_type="voiceover",
+        asset_code="voice_asset",
+        file_name="voice.mp3",
+    )
+    assert voice_product_id == product_id
+
+    service = _build_factory_service(unit_of_work_factory, tmp_path / "previews")
+    recipe_id = service.create_recipe(
+        CreateRecipeCommand(
+            product_id=product_id,
+            recipe_code="Semantic Layer",
+            target_ratio="9:16",
+            duration_sec=20.0,
+        )
+    )
+    service.assign_asset_to_recipe(AssignAssetToRecipeCommand(recipe_id=recipe_id, asset_id=background_asset_id, role="background"))
+    service.assign_asset_to_recipe(AssignAssetToRecipeCommand(recipe_id=recipe_id, asset_id=voice_asset_id, role="voice"))
+    for role_name, asset_id in semantic_assets.items():
+        service.assign_asset_to_recipe(AssignAssetToRecipeCommand(recipe_id=recipe_id, asset_id=asset_id, role=role_name))
+
+    job_id = service.enqueue_preview_job(recipe_id)
+    service.run_preview_job(job_id)
+
+    output = service.list_outputs(recipe_id=recipe_id)[0]
+    manifest_payload = json.loads(Path(output.manifest_path).read_text(encoding="utf-8"))
+    segment_clips = service._preview_renderer.calls[0]["segment_clips"]
+
+    expected_codes = {
+        "hook": "fg_hook",
+        "problem": "fg_problem",
+        "benefit": "fg_benefit",
+        "proof": "fg_proof",
+        "cta": "fg_cta",
+    }
+
+    assert [segment.segment_type for segment in segment_clips] == ["hook", "problem", "benefit", "proof", "cta"]
+    assert [segment.asset_code for segment in segment_clips] == [
+        expected_codes[segment.segment_type]
+        for segment in segment_clips
+    ]
+    assert [segment["asset_code"] for segment in manifest_payload["segments"]] == [
+        expected_codes[segment["segment_type"]]
+        for segment in manifest_payload["segments"]
+    ]
+    assert all(segment.background_layer is not None for segment in segment_clips)
+
+
 def test_factory_service_keeps_selected_visual_asset_persistent_across_segments(unit_of_work_factory, tmp_path) -> None:
     product_id, background_asset_id = _register_ready_asset(
         unit_of_work_factory,

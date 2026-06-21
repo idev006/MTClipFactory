@@ -113,6 +113,7 @@
 - auto-factory planning now also interleaves `background_video` alternatives earlier and penalizes repeated background reuse more strongly, so one batch is less likely to reuse the same background across many clips when fresh alternatives exist
 - auto-factory planning now also enumerates a frontier across `voice`, `foreground_sequence`, `background`, and `music`, and penalizes repeated foreground/music reuse more strongly so fresh sequence and music alternatives are surfaced earlier when feasible
 - auto-factory planning now also reorders `voice`, `background`, `music`, and `foreground_sequence` option pools by historical underuse before frontier enumeration, so broader low-history assets can surface earlier instead of one seeded subset dominating a large ready pool
+- preview/final rendering now also uses semantic foreground assignments such as `hook`, `problem`, `benefit`, `proof`, and `cta` on the matching timeline segments instead of collapsing all foreground roles into one recipe-wide selected presenter asset
 - successful auto-factory `materialize` stages now also persist planner duplicate-risk evidence, and the desktop `Auto Factory` `Orders` tab now surfaces that persisted risk truth for operators
 - auto-factory planning now also computes and hard-blocks one canonical `fingerprint_hash` against persisted same-product recipe history, so exact internal recipe formulas are not silently materialized again when no fresh variant exists
 - successful auto-factory `materialize` stages now also persist both human-readable `fingerprint` and canonical `fingerprint_hash` evidence for later audit
@@ -159,7 +160,7 @@
 
 ## Verification Baseline
 
-- `python -m pytest` via `.venv`: `300 passed, 4 warnings`
+- `python -m pytest` via `.venv`: `301 passed, 4 warnings`
 - targeted `QT_QPA_PLATFORM=offscreen` UI coverage for the new `Auto Factory` window and existing themed windows: passed
 
 ## Current Focus
@@ -186,6 +187,7 @@
 - validate whether the new background-diversity hardening is strong enough on real campaign batches or whether future policy needs per-product cooldown knobs for backgrounds
 - validate whether the new foreground/music diversity hardening is strong enough on real campaign batches or whether product-level cooldown knobs are needed for sequence families or music reuse
 - validate whether the new frontier option-pool reordering is strong enough on real large-pool products or whether future policy needs explicit per-role cooldown windows or operator-tunable diversity budgets
+- validate whether the new segment-aware foreground rendering makes persisted planner foreground-sequence diversity visible enough in real preview batches or whether future work should expose segment-level diversity evidence more explicitly in the UI
 - validate whether the new exact `fingerprint_hash` guard basis is commercially strict enough or whether future policy should expand the canonical basis with caption/runtime contract dimensions
 - validate whether the new bulk asset tagging flow reduces repetitive operator work without causing accidental over-tagging
 - validate whether the new folder-driven additive tag sync is sufficient before implementing tag-removal sync behavior
@@ -227,11 +229,12 @@
 11. Validate whether the new background-diversity hardening actually reduces same-background repetition on real Shopee/TikTok publishing batches.
 12. Validate whether the new foreground/music diversity hardening actually lowers repeated-sequence and repeated-music risk on real Shopee/TikTok publishing batches.
 13. Validate whether the new frontier option-pool reordering actually broadens large-pool background/music usage on real campaign batches such as `Biothentic0001`.
-14. Run another live end-to-end preview/final audit on `Biothentic0001` after the new policy-aware voice-loop, loop-authority, and promo-caption contract slice.
-15. Validate whether product-level voice looping should surface an operator-facing repetition warning or max-repeat policy after more live runs.
-16. Run another live `Biothentic0001` audit on the versioned manifest envelope and verify that output-detail surfaces remain readable from the new sectioned contract.
-17. Run a live folder-intake audit on one real product folder arranged in the new `contracts/` plus `assets/` layout and verify that ambiguity failures are understandable to operators.
-18. Validate the new `Audit Only` control-surface mode with operators and decide whether issue grouping/export needs to be added.
+14. Validate whether the new segment-aware foreground rendering actually reduces visible same-presenter repetition inside one Auto Factory clip when semantic foreground roles differ.
+15. Run another live end-to-end preview/final audit on `Biothentic0001` after the new policy-aware voice-loop, loop-authority, and promo-caption contract slice.
+16. Validate whether product-level voice looping should surface an operator-facing repetition warning or max-repeat policy after more live runs.
+17. Run another live `Biothentic0001` audit on the versioned manifest envelope and verify that output-detail surfaces remain readable from the new sectioned contract.
+18. Run a live folder-intake audit on one real product folder arranged in the new `contracts/` plus `assets/` layout and verify that ambiguity failures are understandable to operators.
+19. Validate the new `Audit Only` control-surface mode with operators and decide whether issue grouping/export needs to be added.
 
 ## Direction Locked In This Documentation Revision
 

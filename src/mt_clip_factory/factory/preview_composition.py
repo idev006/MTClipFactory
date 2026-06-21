@@ -6,6 +6,7 @@ from pathlib import Path
 
 from mt_clip_factory.domain.assets import Asset
 from mt_clip_factory.domain.composition_plans import CompositionPlan
+from mt_clip_factory.domain.enums import AssetType
 from mt_clip_factory.domain.recipes import Recipe, RecipeItem
 from mt_clip_factory.domain.timeline_segments import TimelineSegment
 from mt_clip_factory.factory.audio_composition import PreviewAudioMixPlan, build_audio_mix_plan
@@ -15,6 +16,7 @@ from mt_clip_factory.factory.visual_selection import seeded_choice
 
 
 VISUAL_LAYER_FALLBACK = ("product_focus_visual", "background_visual")
+_SEMANTIC_FOREGROUND_SEGMENT_TYPES = frozenset({"hook", "problem", "benefit", "proof", "cta"})
 
 
 @dataclass(slots=True, frozen=True)
@@ -75,6 +77,11 @@ def build_segmented_preview_composition(
         visual_assets_by_layer,
         recipe_code=recipe.recipe_code,
     )
+    selected_semantic_foreground_assets = _select_semantic_foreground_assets(
+        items,
+        assets,
+        recipe_code=recipe.recipe_code,
+    )
     audio_mix_plan = build_audio_mix_plan(plan, assets, fill_policies=fill_policies)
     resolved_captions = _resolve_segment_captions(
         caption_runtime_service=caption_runtime_service,
@@ -103,6 +110,7 @@ def build_segmented_preview_composition(
         _build_segment_clip(
             segment,
             selected_visual_assets_by_layer,
+            selected_semantic_foreground_assets=selected_semantic_foreground_assets,
             captions_by_sequence=resolved_captions,
             fill_policies=fill_policies,
         )
@@ -160,6 +168,7 @@ def _build_segment_clip(
     segment: TimelineSegment,
     selected_visual_assets_by_layer: dict[str, Asset],
     *,
+    selected_semantic_foreground_assets: dict[str, Asset],
     captions_by_sequence: dict[int, ResolvedSegmentCaptions],
     fill_policies,
 ) -> PreviewSegmentClip:
@@ -169,10 +178,10 @@ def _build_segment_clip(
         layer_name="background_visual",
         fill_policy=fill_policies.background_video,
     )
-    foreground_layer = _build_optional_layer_clip(
-        segment,
-        selected_visual_assets_by_layer,
-        layer_name="product_focus_visual",
+    foreground_layer = _build_foreground_layer_clip(
+        segment=segment,
+        selected_visual_assets_by_layer=selected_visual_assets_by_layer,
+        selected_semantic_foreground_assets=selected_semantic_foreground_assets,
         fill_policy=fill_policies.foreground_video,
     )
     primary_layer = foreground_layer or background_layer
@@ -225,6 +234,29 @@ def _build_optional_layer_clip(
         layer_name=layer_name,
         asset=asset,
         target_duration_sec=segment.target_duration_sec,
+        fill_policy=fill_policy,
+    )
+
+
+def _build_foreground_layer_clip(
+    *,
+    segment: TimelineSegment,
+    selected_visual_assets_by_layer: dict[str, Asset],
+    selected_semantic_foreground_assets: dict[str, Asset],
+    fill_policy=None,
+) -> PreviewLayerClip | None:
+    asset = selected_semantic_foreground_assets.get(segment.segment_type)
+    if asset is not None:
+        return _build_layer_clip(
+            layer_name="product_focus_visual",
+            asset=asset,
+            target_duration_sec=segment.target_duration_sec,
+            fill_policy=fill_policy,
+        )
+    return _build_optional_layer_clip(
+        segment,
+        selected_visual_assets_by_layer,
+        layer_name="product_focus_visual",
         fill_policy=fill_policy,
     )
 
@@ -370,6 +402,30 @@ def _select_visual_assets_by_layer(
         selected[layer_name] = seeded_choice(
             candidate_assets,
             seed_key="|".join((recipe_code, layer_name, "persistent_layer_asset")),
+        )
+    return selected
+
+
+def _select_semantic_foreground_assets(
+    items: Sequence[RecipeItem],
+    assets: dict[int, Asset],
+    *,
+    recipe_code: str,
+) -> dict[str, Asset]:
+    candidates_by_role: dict[str, list[Asset]] = {}
+    for item in items:
+        normalized_role = item.role.strip().lower()
+        if normalized_role not in _SEMANTIC_FOREGROUND_SEGMENT_TYPES:
+            continue
+        asset = assets.get(item.asset_id)
+        if asset is None or asset.asset_type != AssetType.FOREGROUND_VIDEO:
+            continue
+        candidates_by_role.setdefault(normalized_role, []).append(asset)
+    selected: dict[str, Asset] = {}
+    for role_name, candidate_assets in candidates_by_role.items():
+        selected[role_name] = seeded_choice(
+            tuple(candidate_assets),
+            seed_key="|".join((recipe_code, "semantic_foreground_role", role_name)),
         )
     return selected
 
