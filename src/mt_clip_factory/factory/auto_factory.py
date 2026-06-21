@@ -323,9 +323,27 @@ class AutoFactoryBatchService:
             )
             return {"summary": summary, "recipes": ()}
 
-        foreground_sequences = _build_foreground_sequences(
-            tuple(asset.asset_id for asset in foreground_assets),
-            role_count=len(_SEMANTIC_VISUAL_ROLES),
+        foreground_sequences = _order_foreground_sequences_for_diversity_frontier(
+            _build_foreground_sequences(
+                tuple(asset.asset_id for asset in foreground_assets),
+                role_count=len(_SEMANTIC_VISUAL_ROLES),
+            ),
+            planning_history=planning_history,
+        )
+        background_assets = _order_role_assets_for_diversity_frontier(
+            background_assets,
+            role_name="background",
+            planning_history=planning_history,
+        )
+        voice_assets = _order_role_assets_for_diversity_frontier(
+            voice_assets,
+            role_name="voice",
+            planning_history=planning_history,
+        )
+        music_assets = _order_role_assets_for_diversity_frontier(
+            music_assets,
+            role_name="music",
+            planning_history=planning_history,
         )
         foreground_sequence_count = len(foreground_sequences) if foreground_sequences else 1
         background_count = len(background_assets) if background_assets else 1
@@ -588,6 +606,53 @@ def _enumerate_variant_dimension_selections(
         }
         for coordinate in coordinates
     )
+
+
+def _order_role_assets_for_diversity_frontier(
+    assets: tuple[AssetSummaryDTO, ...],
+    *,
+    role_name: str,
+    planning_history: _PlanningHistory,
+) -> tuple[AssetSummaryDTO, ...]:
+    return tuple(
+        sorted(
+            assets,
+            key=lambda asset: float(planning_history.role_asset_weights[(role_name, asset.asset_id)]),
+        )
+    )
+
+
+def _order_foreground_sequences_for_diversity_frontier(
+    sequences: tuple[tuple[int, ...], ...],
+    *,
+    planning_history: _PlanningHistory,
+) -> tuple[tuple[int, ...], ...]:
+    return tuple(
+        sorted(
+            sequences,
+            key=lambda sequence: (
+                float(planning_history.foreground_sequence_weights[sequence]),
+                _foreground_sequence_role_reuse_pressure(sequence, planning_history=planning_history),
+                _foreground_sequence_internal_repeat_count(sequence),
+            ),
+        )
+    )
+
+
+def _foreground_sequence_role_reuse_pressure(
+    sequence: tuple[int, ...],
+    *,
+    planning_history: _PlanningHistory,
+) -> float:
+    return sum(
+        float(planning_history.role_asset_weights[(role_name, asset_id)])
+        for role_name, asset_id in zip(_SEMANTIC_VISUAL_ROLES, sequence)
+    )
+
+
+def _foreground_sequence_internal_repeat_count(sequence: tuple[int, ...]) -> int:
+    counts = Counter(sequence)
+    return sum(max(0, count - 1) for count in counts.values())
 
 
 def _build_foreground_sequences(asset_ids: tuple[int, ...], *, role_count: int) -> tuple[tuple[int, ...], ...]:

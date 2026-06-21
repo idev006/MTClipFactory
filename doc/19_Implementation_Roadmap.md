@@ -61,6 +61,7 @@ The project now uses two roadmap layers:
 - `IR-39` Auto Factory recent-orders duplicate-risk summary baseline: complete on 2026-06-21
 - `IR-40` Auto Factory background-diversity hardening baseline: complete on 2026-06-21
 - `IR-41` Auto Factory foreground-and-music diversity hardening baseline: complete on 2026-06-21
+- `IR-42` Auto Factory frontier option-pool diversity hardening baseline: complete on 2026-06-21
 
 ## Current Execution Stream
 
@@ -79,6 +80,8 @@ The same operator-triage stream now also surfaces persisted duplicate-risk summa
 The same anti-duplicate stream now also hardens `background_video` diversity by surfacing alternate backgrounds earlier in candidate generation instead of letting a large foreground search space hide them.
 
 The same anti-duplicate stream now also moves from one linear dimension scan to a deterministic candidate frontier so fresh `foreground_sequence` and `music` alternatives can surface earlier when the search space grows large.
+
+The same anti-duplicate stream now also reorders large seeded option pools by historical underuse before frontier enumeration so broader low-history backgrounds, music tracks, voices, and sequence families surface earlier.
 
 Backlog activation rules:
 
@@ -989,7 +992,7 @@ Make the bottom `Recent Production Orders` strip useful for duplicate-risk triag
 - delivered `ProductionOrderService.list_orders()` risk-summary derivation from persisted successful `materialize` stages
 - delivered `ProductionOrderSummaryDTO` fields for order-level risk level and max raw score
 - delivered `Auto Factory` recent-orders strip columns plus row emphasis for duplicate-risk triage
-- covered the new summary seam with service and offscreen UI pytest, then reverified the full suite at `296 passed, 4 warnings`
+- covered the new summary seam with service and offscreen UI pytest, then reverified the full suite at `300 passed, 4 warnings`
 
 ## IR-40 | Auto Factory Background-Diversity Hardening Baseline
 
@@ -1015,7 +1018,7 @@ Reduce repeated `background_video` reuse across one batch when fresh alternative
 
 - delivered earlier `background` interleaving in Auto Factory candidate generation
 - delivered stronger background reuse penalties while keeping `voice` as the strongest role-level anti-duplicate weight
-- delivered pytest coverage for the regression case where a large foreground search space previously hid alternate backgrounds, then reverified the full suite at `296 passed, 4 warnings`
+- delivered pytest coverage for the regression case where a large foreground search space previously hid alternate backgrounds, then reverified the full suite at `300 passed, 4 warnings`
 
 ## IR-41 | Auto Factory Foreground-And-Music Diversity Hardening Baseline
 
@@ -1042,7 +1045,34 @@ Reduce repeated foreground-pattern and music reuse when fresh alternatives exist
 - delivered deterministic frontier-style candidate enumeration across `voice`, `foreground_sequence`, `background`, and `music`
 - delivered stronger foreground-sequence and music reuse penalties in the planner
 - delivered pytest coverage for hidden-music and repeated-foreground regression cases
-- reverified the full suite at `296 passed, 4 warnings`
+- reverified the full suite at `300 passed, 4 warnings`
+
+## IR-42 | Auto Factory Frontier Option-Pool Diversity Hardening Baseline
+
+### Goal
+
+Broaden early planner coverage across large ready pools so low-history backgrounds, music, voices, and foreground sequences surface before heavily reused options.
+
+### Scope
+
+- reorder seeded option pools by historical underuse before frontier enumeration
+- preserve seeded deterministic order as the tie-break path for equally weighted options
+- keep duplicate-risk persistence truthful when the product really is diversity-limited
+- add pytest coverage for option-pool ordering and large-pool fresh-background selection
+
+### Acceptance Criteria
+
+- historically underused role assets should surface ahead of heavily reused ones in frontier option ordering
+- equal-history options should preserve deterministic seeded tie order
+- a large ready background pool should prefer fresher backgrounds before falling back to reused ones
+- docs and pytest stay aligned to the delivered behavior
+
+### Delivery Result
+
+- delivered history-aware frontier option-pool reordering for `voice`, `background`, `music`, and `foreground_sequence`
+- delivered helper-level pytest coverage for underuse ordering plus deterministic equal-history tie behavior
+- delivered service-level pytest coverage for large-pool fresh-background preference
+- reverified the full suite at `300 passed, 4 warnings`
 
 ## Cross-Milestone Rules
 

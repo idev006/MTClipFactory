@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+from collections import Counter
 from pathlib import Path
 
 import pytest
@@ -10,18 +11,21 @@ from mt_clip_factory.factory.audio_composition import PreviewAudioMixPlan
 from mt_clip_factory.factory.auto_factory import (
     AutoFactoryBatchService,
     AutoFactoryCapacityError,
+    _order_foreground_sequences_for_diversity_frontier,
+    _order_role_assets_for_diversity_frontier,
 )
 from mt_clip_factory.factory.auto_factory_dto import (
     AutoFactoryBatchOrderDTO,
     AutoFactoryProductRequestDTO,
 )
+from mt_clip_factory.factory.auto_factory_planning_support import _PlanningHistory
 from mt_clip_factory.factory.dto import AssignAssetToRecipeCommand, CreateRecipeCommand
 from mt_clip_factory.factory.preview_composition import PreviewSegmentClip
 from mt_clip_factory.factory.preview_artifacts import PreviewManifestBuilder
 from mt_clip_factory.factory.renderers import RenderedPreviewOutput
 from mt_clip_factory.factory.services import VideoAssemblyFactoryService
 from mt_clip_factory.library.contracts import AnalyzedMediaMetadata
-from mt_clip_factory.library.dto import RegisterAssetCommand
+from mt_clip_factory.library.dto import AssetSummaryDTO, RegisterAssetCommand
 from mt_clip_factory.library.readiness import AssetReadinessEvaluator
 from mt_clip_factory.library.services import AssetIntakeService
 from mt_clip_factory.library.storage import LocalAssetStorage
@@ -191,6 +195,24 @@ def _foreground_sequence_signature(planned_recipe) -> tuple[str, ...]:  # noqa: 
     role_order = ("hook", "problem", "benefit", "proof", "cta")
     role_to_code = {assignment.role: assignment.asset_code for assignment in planned_recipe.assignments}
     return tuple(role_to_code[role] for role in role_order if role in role_to_code)
+
+
+def _asset_summary(*, asset_id: int, asset_code: str, asset_type: str) -> AssetSummaryDTO:
+    return AssetSummaryDTO(
+        asset_id=asset_id,
+        product_id=1,
+        product_code="test_product",
+        asset_code=asset_code,
+        asset_type=asset_type,
+        file_name=f"{asset_code}.dat",
+        status="ready",
+        ratio=None,
+        duration_sec=12.0,
+        file_size_mb=1.0,
+        tag_labels=(),
+        thumbnail_path=None,
+        proxy_path=None,
+    )
 
 
 def _replace_assignment_role(planned_recipe, *, role: str, asset_id: int, asset_code: str, asset_type: str):  # noqa: ANN001
@@ -369,6 +391,146 @@ def test_auto_factory_spreads_backgrounds_early_within_batch(unit_of_work_factor
     ]
 
     assert len(set(background_codes)) == 2
+
+
+def test_auto_factory_frontier_orders_role_assets_by_historical_underuse() -> None:
+    music_a = _asset_summary(asset_id=1, asset_code="music_a", asset_type="background_music")
+    music_b = _asset_summary(asset_id=2, asset_code="music_b", asset_type="background_music")
+    music_c = _asset_summary(asset_id=3, asset_code="music_c", asset_type="background_music")
+    planning_history = _PlanningHistory(
+        exact_signature_weights=Counter(),
+        exact_fingerprint_hashes=frozenset(),
+        foreground_sequence_weights=Counter(),
+        role_asset_weights=Counter(
+            {
+                ("music", music_a.asset_id): 5.0,
+                ("music", music_b.asset_id): 0.0,
+                ("music", music_c.asset_id): 2.0,
+            }
+        ),
+    )
+
+    ordered_assets = _order_role_assets_for_diversity_frontier(
+        (music_a, music_b, music_c),
+        role_name="music",
+        planning_history=planning_history,
+    )
+
+    assert [asset.asset_code for asset in ordered_assets] == ["music_b", "music_c", "music_a"]
+
+
+def test_auto_factory_frontier_keeps_seeded_tie_order_for_equal_history() -> None:
+    voice_c = _asset_summary(asset_id=1, asset_code="voice_c", asset_type="voiceover")
+    voice_a = _asset_summary(asset_id=2, asset_code="voice_a", asset_type="voiceover")
+    voice_b = _asset_summary(asset_id=3, asset_code="voice_b", asset_type="voiceover")
+
+    ordered_assets = _order_role_assets_for_diversity_frontier(
+        (voice_c, voice_a, voice_b),
+        role_name="voice",
+        planning_history=_PlanningHistory.empty(),
+    )
+
+    assert [asset.asset_code for asset in ordered_assets] == ["voice_c", "voice_a", "voice_b"]
+
+
+def test_auto_factory_frontier_orders_foreground_sequences_by_history_pressure() -> None:
+    sequence_a = (11, 12, 13, 14, 11)
+    sequence_b = (12, 13, 14, 11, 12)
+    sequence_c = (13, 14, 11, 12, 13)
+    planning_history = _PlanningHistory(
+        exact_signature_weights=Counter(),
+        exact_fingerprint_hashes=frozenset(),
+        foreground_sequence_weights=Counter(
+            {
+                sequence_a: 2.0,
+                sequence_b: 0.0,
+                sequence_c: 0.0,
+            }
+        ),
+        role_asset_weights=Counter(
+            {
+                ("hook", 13): 3.0,
+                ("problem", 14): 3.0,
+                ("benefit", 11): 3.0,
+                ("proof", 12): 3.0,
+                ("cta", 13): 3.0,
+            }
+        ),
+    )
+
+    ordered_sequences = _order_foreground_sequences_for_diversity_frontier(
+        (sequence_a, sequence_b, sequence_c),
+        planning_history=planning_history,
+    )
+
+    assert ordered_sequences == (sequence_b, sequence_c, sequence_a)
+
+
+def test_auto_factory_prefers_historically_fresh_backgrounds_from_large_pool(unit_of_work_factory, tmp_path) -> None:
+    product_service = ProductApplicationService(unit_of_work_factory=unit_of_work_factory)
+    product_id = product_service.create_product(CreateProductCommand(product_code="bgfresh", product_name="BG Fresh"))
+    asset_service = _build_asset_service(
+        unit_of_work_factory,
+        tmp_path / "media_library",
+        {"voice_01.mp3": 12.0},
+    )
+    for asset_index in range(1, 7):
+        _register_asset(
+            asset_service,
+            product_id=product_id,
+            tmp_path=tmp_path,
+            asset_type="foreground_video",
+            asset_code=f"fg_{asset_index:02d}",
+            file_name=f"bgfresh_fg{asset_index:02d}.mp4",
+        )
+    background_ids: list[int] = []
+    for asset_index in range(1, 8):
+        background_ids.append(
+            _register_asset(
+                asset_service,
+                product_id=product_id,
+                tmp_path=tmp_path,
+                asset_type="background_video",
+                asset_code=f"bg_{asset_index:02d}",
+                file_name=f"bgfresh_bg{asset_index:02d}.mp4",
+            )
+        )
+    _register_asset(asset_service, product_id=product_id, tmp_path=tmp_path, asset_type="voiceover", asset_code="voice_01", file_name="voice_01.mp3")
+    factory_service = _build_factory_service(unit_of_work_factory, tmp_path / "previews")
+    service = AutoFactoryBatchService(
+        product_service=product_service,
+        asset_intake_service=asset_service,
+        video_assembly_factory_service=factory_service,
+    )
+    order = AutoFactoryBatchOrderDTO(
+        batch_code="bgfresh_batch",
+        product_requests=(AutoFactoryProductRequestDTO(product_code="bgfresh", requested_output_count=3),),
+    )
+
+    baseline_plan = service.plan_batch(order)
+    baseline_recipe = baseline_plan.planned_recipes[0]
+    for history_index, background_id in enumerate(background_ids[:4], start=1):
+        history_recipe = _replace_assignment_role(
+            baseline_recipe,
+            role="background",
+            asset_id=background_id,
+            asset_code=f"bg_{history_index:02d}",
+            asset_type="background_video",
+        )
+        _materialize_history_recipe(
+            factory_service,
+            product_id=product_id,
+            recipe_code=f"bgfresh_history_{history_index:03d}",
+            planned_recipe=history_recipe,
+        )
+
+    rerun_plan = service.plan_batch(order)
+    rerun_background_codes = [
+        next(assignment.asset_code for assignment in recipe.assignments if assignment.role == "background")
+        for recipe in rerun_plan.planned_recipes
+    ]
+
+    assert set(rerun_background_codes) == {"bg_05", "bg_06", "bg_07"}
 
 
 def test_auto_factory_surfaces_alternate_music_even_when_search_space_is_large(unit_of_work_factory, tmp_path) -> None:

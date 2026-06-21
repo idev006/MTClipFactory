@@ -91,6 +91,7 @@
 - Auto Factory planning now also emits per-recipe `near_duplicate_score` plus concise `near_duplicate_reasons`, creating a machine-readable seam for future operator-facing duplicate-risk review before publishing.
 - Auto Factory planning now also surfaces alternate `background_video` candidates earlier and penalizes repeated background reuse more strongly, reducing the chance that one batch uses the same background across most clips when fresh options exist.
 - Auto Factory planning now also uses a deterministic candidate frontier across `voice`, `foreground_sequence`, `background`, and `music`, helping fresh music and foreground patterns appear early instead of being hidden behind a large search space.
+- Auto Factory planning now also reorders those frontier option pools by historical underuse pressure, helping broader low-history background/music/voice choices surface earlier on products with large ready pools.
 - Auto Factory now also persists that duplicate-risk evidence on successful `materialize` stages and shows it in the `Orders` tab so operators can inspect order truth instead of relying on memory-only planner output.
 - Auto Factory now also computes a canonical `fingerprint_hash` and hard-blocks exact same-product recipe-formula repeats from persisted history instead of only warning after the fact.
 - Production-order `materialize` stages now also persist that `fingerprint_hash`, and order resume now ignores the same order's already-materialized recipes when rebuilding duplicate history so retryable failures can continue truthfully.
@@ -165,6 +166,7 @@
 - delivered recent-orders duplicate-risk summary so the bottom `Recent Production Orders` strip now shows persisted `Risk Level` and raw score per order with the same truthful emphasis palette
 - delivered background-diversity hardening so early Auto Factory candidate scans no longer hide alternate backgrounds behind a large foreground search space
 - delivered foreground/music diversity hardening so candidate coverage and scoring now push fresh music and foreground sequences earlier when feasible
+- delivered frontier option-pool diversity hardening so large seeded pools are reordered by historical underuse before frontier enumeration
 - delivered a new caption runtime guard for presenter-led top headline cards through `max_safe_band_height_ratio`, so grouped top-band promo boxes shrink before covering the presenter eye line
 - stopped grouped multi-line caption layouts from growing above the requested contract font size, while preserving single-line best-fit upscaling for deliberately short hooks
 - split caption runtime/layout support helpers into dedicated modules so the core orchestrators stay below the repo `800`-line guardrail
@@ -198,8 +200,9 @@
 18. validate whether the new recent-orders duplicate-risk summary is sufficient for top-level order triage or whether the strip also needs quick filters next
 19. validate whether the new background-diversity hardening is enough for real publishing batches or whether operator-tunable background cooldown policy is needed next
 20. validate whether the new foreground/music diversity hardening is enough for real publishing batches or whether operator-tunable sequence/music cooldown policy is needed next
+21. validate whether the new frontier option-pool reordering is enough for large-pool products or whether explicit per-role cooldown windows are still needed next
 
 ## Verification Baseline
 
-- `python -m pytest` in `.venv`: `296 passed, 4 warnings`
+- `python -m pytest` in `.venv`: `300 passed, 4 warnings`
 - targeted `QT_QPA_PLATFORM=offscreen` UI/theme coverage for the new `Auto Factory` window and existing app windows: passed
