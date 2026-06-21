@@ -420,6 +420,7 @@ def test_auto_factory_window_exposes_guided_run_controls(qapp: QApplication) -> 
     assert auto_factory_window.order_stages_table.columnCount() == 11
     assert auto_factory_window.selected_product_text.isReadOnly() is True
     assert auto_factory_window.selected_product_text.minimumHeight() == auto_factory_window.SELECTED_PRODUCT_MIN_HEIGHT - 90
+    assert auto_factory_window.recent_orders_table.columnCount() == 10
     assert auto_factory_window.recent_orders_table.minimumHeight() == auto_factory_window.RECENT_ORDERS_MIN_HEIGHT - 50
     assert auto_factory_window.open_product_folder_button.text() == "Open Product Folder"
     assert auto_factory_window.open_contracts_button.text() == "Open Contracts"

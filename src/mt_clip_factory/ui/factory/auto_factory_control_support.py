@@ -483,13 +483,17 @@ def refresh_recent_orders(window) -> None:  # noqa: ANN001
             order.order_code,
             order.batch_code,
             order.status,
+            order.risk_level,
+            _format_risk_score(order.max_near_duplicate_score),
             str(order.item_count),
             order.source_mode,
             order.started_at or "",
             order.finished_at or "",
         ]
         for column_index, value in enumerate(values):
-            window.recent_orders_table.setItem(row_index, column_index, QTableWidgetItem(value))
+            item = QTableWidgetItem(value)
+            _apply_risk_item_emphasis(item, order.risk_level)
+            window.recent_orders_table.setItem(row_index, column_index, item)
         if current_order_id is not None and order.production_order_id == current_order_id:
             window.recent_orders_table.selectRow(row_index)
     window.recent_orders_table.blockSignals(False)

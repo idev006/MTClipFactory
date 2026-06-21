@@ -47,6 +47,8 @@ class ProductionOrderSummaryDTO:
     created_at: str
     started_at: str | None
     finished_at: str | None
+    risk_level: str = "Unavailable"
+    max_near_duplicate_score: float | None = None
 
 
 @dataclass(slots=True, frozen=True)

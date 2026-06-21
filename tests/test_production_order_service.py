@@ -15,6 +15,7 @@ from mt_clip_factory.factory.auto_factory import AutoFactoryBatchService
 from mt_clip_factory.factory.auto_factory_dto import AutoFactoryBatchOrderDTO, AutoFactoryProductRequestDTO
 from mt_clip_factory.factory.preview_artifacts import PreviewManifestBuilder
 from mt_clip_factory.factory.preview_composition import PreviewSegmentClip
+from mt_clip_factory.factory.production_order_risk_support import classify_near_duplicate_score
 from mt_clip_factory.factory.production_order_service import (
     ProductionOrderAlreadyExistsError,
     ProductionOrderService,
@@ -171,6 +172,8 @@ def test_production_order_service_persists_and_lists_orders(unit_of_work_factory
     assert summary.production_order_id == order_id
     assert summary.order_code == "launch_batch_001"
     assert summary.status == "queued"
+    assert summary.risk_level == "Unavailable"
+    assert summary.max_near_duplicate_score is None
     assert details.production_order_id == order_id
     assert details.source_mode == "manual_batch"
     assert details.requested_by == "planner_a"
@@ -246,6 +249,15 @@ def test_production_order_service_runs_order_and_records_successful_stages(unit_
     assert "near_duplicate_reasons" in materialize_detail
     assert "fingerprint" in materialize_detail
     assert "fingerprint_hash" in materialize_detail
+
+    summary = service.list_orders()[0]
+    expected_risk_level = classify_near_duplicate_score(float(materialize_detail["near_duplicate_score"]))
+
+    assert summary.production_order_id == details.production_order_id
+    assert summary.status == "succeeded"
+    assert summary.risk_level == expected_risk_level
+    assert summary.max_near_duplicate_score is not None
+    assert summary.max_near_duplicate_score == pytest.approx(materialize_detail["near_duplicate_score"])
 
 
 def test_production_order_service_records_review_required_state(unit_of_work_factory, tmp_path) -> None:

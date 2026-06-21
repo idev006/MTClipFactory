@@ -45,6 +45,7 @@ from mt_clip_factory.factory.production_order_run_support import (
     complete_order_from_stages,
     finalize_order,
 )
+from mt_clip_factory.factory.production_order_risk_support import classify_near_duplicate_score, max_materialize_risk_score
 
 
 class ProductionOrderNotFoundError(ValueError):
@@ -340,21 +341,29 @@ class ProductionOrderService:
 
     def list_orders(self, *, status: str | None = None) -> list[ProductionOrderSummaryDTO]:
         with self._unit_of_work_factory() as uow:
-            return [
-                ProductionOrderSummaryDTO(
-                    production_order_id=summary.production_order_id,
-                    order_code=summary.order_code,
-                    batch_code=summary.batch_code,
-                    source_mode=summary.source_mode,
-                    requested_by=summary.requested_by,
-                    status=summary.status.value,
-                    item_count=summary.item_count,
-                    created_at=format_timestamp(summary.created_at),
-                    started_at=format_optional_timestamp(summary.started_at),
-                    finished_at=format_optional_timestamp(summary.finished_at),
+            order_summaries = uow.production_orders.list_summaries(status=status)
+            recent_orders: list[ProductionOrderSummaryDTO] = []
+            for summary in order_summaries:
+                order_risk_score = max_materialize_risk_score(
+                    uow.production_order_stages.list_by_order(summary.production_order_id)
                 )
-                for summary in uow.production_orders.list_summaries(status=status)
-            ]
+                recent_orders.append(
+                    ProductionOrderSummaryDTO(
+                        production_order_id=summary.production_order_id,
+                        order_code=summary.order_code,
+                        batch_code=summary.batch_code,
+                        source_mode=summary.source_mode,
+                        requested_by=summary.requested_by,
+                        status=summary.status.value,
+                        item_count=summary.item_count,
+                        created_at=format_timestamp(summary.created_at),
+                        started_at=format_optional_timestamp(summary.started_at),
+                        finished_at=format_optional_timestamp(summary.finished_at),
+                        risk_level=classify_near_duplicate_score(order_risk_score),
+                        max_near_duplicate_score=order_risk_score,
+                    )
+                )
+            return recent_orders
 
     def _execute_order_run(self, production_order_id: int, *, worker_id: str) -> ProductionOrderDetailsDTO:
         order, items = self._load_order_bundle(production_order_id)

@@ -24,6 +24,7 @@ from mt_clip_factory.factory.production_order_dto import (
     ProductionOrderEventDTO,
     ProductionOrderItemDTO,
     ProductionOrderStageDTO,
+    ProductionOrderSummaryDTO,
 )
 from mt_clip_factory.presentation.factory.auto_factory_control import (
     AutoFactoryControlProgressSnapshot,
@@ -55,9 +56,9 @@ class FakeAutoFactoryControlViewModel(QObject):
     RUN_MODE_MATERIALIZE = "materialize"
     RUN_MODE_MATERIALIZE_AND_PREVIEWS = "materialize_and_build_previews"
 
-    def __init__(self, *, run_report=None, preflight_report=None, selected_order=None) -> None:  # noqa: ANN001
+    def __init__(self, *, run_report=None, preflight_report=None, selected_order=None, recent_orders=None) -> None:  # noqa: ANN001
         super().__init__()
-        self.recent_orders = []
+        self.recent_orders = [] if recent_orders is None else list(recent_orders)
         self.run_report = run_report
         self.preflight_report = preflight_report
         self.selected_order = selected_order
@@ -467,6 +468,36 @@ def test_auto_factory_window_filters_and_sorts_order_risk_rows(qapp: QApplicatio
     assert auto_factory_window.order_stages_table.item(0, 1).text() == "materialize"
     assert auto_factory_window.order_stages_table.item(0, 9).text() == "0.775"
     assert auto_factory_window.order_stages_table.item(1, 9).text() == "0.275"
+    auto_factory_window.close()
+
+
+def test_auto_factory_window_shows_risk_summary_in_recent_orders_strip(qapp: QApplication) -> None:
+    auto_factory_window = AutoFactoryControlWindow(
+        FakeAutoFactoryControlViewModel(
+            recent_orders=(
+                ProductionOrderSummaryDTO(
+                    production_order_id=12,
+                    order_code="tea_order_012",
+                    batch_code="tea_batch_012",
+                    source_mode="folder_control_surface",
+                    requested_by=None,
+                    status="succeeded",
+                    item_count=1,
+                    created_at="2026-06-21 12:00:00",
+                    started_at="2026-06-21 12:00:01",
+                    finished_at="2026-06-21 12:00:05",
+                    risk_level="High",
+                    max_near_duplicate_score=0.775,
+                ),
+            )
+        )
+    )
+
+    auto_factory_window._refresh_recent_orders()
+
+    assert auto_factory_window.recent_orders_table.columnCount() == 10
+    assert auto_factory_window.recent_orders_table.item(0, 4).text() == "High"
+    assert auto_factory_window.recent_orders_table.item(0, 5).text() == "0.775"
     auto_factory_window.close()
 
 

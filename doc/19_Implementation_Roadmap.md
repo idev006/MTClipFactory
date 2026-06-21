@@ -58,6 +58,7 @@ The project now uses two roadmap layers:
 - `IR-36` Auto Factory operator near-duplicate risk surface: complete on 2026-06-21
 - `IR-37` Auto Factory exact fingerprint hash duplicate guard baseline: complete on 2026-06-21
 - `IR-38` Auto Factory Orders-tab duplicate-risk emphasis baseline: complete on 2026-06-21
+- `IR-39` Auto Factory recent-orders duplicate-risk summary baseline: complete on 2026-06-21
 
 ## Current Execution Stream
 
@@ -70,6 +71,8 @@ The current caption-quality hardening stream should also keep presenter-led prom
 The same caption-quality stream now also hardens Thai rendering by compositing a Qt-rendered caption bitmap in FFmpeg instead of asking FFmpeg `drawtext` to redraw already-measured caption glyphs.
 
 The same anti-duplicate stream now also adds a hard exact-repeat guard through canonical recipe fingerprint hashes, while near-duplicate scoring remains the softer explainability layer on top.
+
+The same operator-triage stream now also surfaces persisted duplicate-risk summary directly in the recent-orders history strip, so operators can choose which recent order to inspect before opening the detailed `Orders` tab.
 
 Backlog activation rules:
 
@@ -954,6 +957,33 @@ Turn the selected-product review panel into a more practical operator surface by
 - delivered batch-aware runs resolution through intake DTO product-path truth
 - delivered clipboard copy for the currently rendered product summary
 - covered audit-mode and intake-mode operator actions with targeted pytest
+
+## IR-39 | Auto Factory Recent-Orders Duplicate-Risk Summary Baseline
+
+### Goal
+
+Make the bottom `Recent Production Orders` strip useful for duplicate-risk triage before an operator opens a specific order.
+
+### Scope
+
+- derive one persisted order-level duplicate-risk summary from successful `materialize` stage detail
+- expose `Risk Level` plus max raw `Duplicate Risk` through `ProductionOrderSummaryDTO`
+- render those fields directly in the desktop recent-orders strip
+- reuse the existing `High` / `Medium` / `Low` / `Unavailable` emphasis palette for fast operator scanning
+
+### Acceptance Criteria
+
+- recent-order summaries carry persisted duplicate-risk truth without reparsing raw stage rows in the UI
+- the recent-orders strip shows both a human-readable risk level and the raw score
+- higher-risk recent orders are visually emphasized for quicker triage
+- pytest covers service derivation and offscreen window rendering
+
+### Delivery Result
+
+- delivered `ProductionOrderService.list_orders()` risk-summary derivation from persisted successful `materialize` stages
+- delivered `ProductionOrderSummaryDTO` fields for order-level risk level and max raw score
+- delivered `Auto Factory` recent-orders strip columns plus row emphasis for duplicate-risk triage
+- covered the new summary seam with service and offscreen UI pytest, then reverified the full suite at `293 passed, 4 warnings`
 
 ## Cross-Milestone Rules
 

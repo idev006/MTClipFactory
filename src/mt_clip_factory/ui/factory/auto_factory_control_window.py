@@ -430,11 +430,23 @@ class AutoFactoryControlWindow(QMainWindow):
         group = QGroupBox("Recent Production Orders")
         group.setMinimumHeight(self.RECENT_ORDERS_MIN_HEIGHT)
         layout = QVBoxLayout(group)
-        self.recent_orders_table = QTableWidget(0, 8)
+        self.recent_orders_table = QTableWidget(0, 10)
         self._configure_table(
             self.recent_orders_table,
-            ["ID", "Order Code", "Batch Code", "Status", "Items", "Source", "Started", "Finished"],
-            stretch_columns=(1, 2, 5),
+            [
+                "ID",
+                "Order Code",
+                "Batch Code",
+                "Status",
+                "Risk Level",
+                "Duplicate Risk",
+                "Items",
+                "Source",
+                "Started",
+                "Finished",
+            ],
+            stretch_columns=(1, 2, 7),
+            interactive_widths={4: 110, 5: 110},
         )
         self.recent_orders_table.setMinimumHeight(self.RECENT_ORDERS_MIN_HEIGHT - 50)
         self.recent_orders_table.itemSelectionChanged.connect(self._select_recent_order)
