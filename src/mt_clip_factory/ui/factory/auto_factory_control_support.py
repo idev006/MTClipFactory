@@ -1,8 +1,54 @@
 from __future__ import annotations
 
 import json
+from dataclasses import dataclass
 
+from PySide6.QtGui import QColor
 from PySide6.QtWidgets import QTableWidget, QTableWidgetItem
+
+ORDER_RISK_FILTER_ALL = "all"
+ORDER_RISK_FILTER_HIGH_ONLY = "high_only"
+ORDER_RISK_FILTER_MEDIUM_AND_HIGH = "medium_and_high"
+ORDER_RISK_FILTER_LOW_AND_HIGHER = "low_and_higher"
+ORDER_RISK_FILTER_UNAVAILABLE_ONLY = "unavailable_only"
+
+ORDER_PRODUCT_SORT_PRODUCT_CODE = "product_code"
+ORDER_PRODUCT_SORT_RISK_DESC = "risk_desc"
+ORDER_PRODUCT_SORT_STATUS_THEN_RISK = "status_then_risk"
+
+ORDER_STAGE_SORT_SEQUENCE = "sequence"
+ORDER_STAGE_SORT_RISK_DESC = "risk_desc"
+ORDER_STAGE_SORT_RISK_ASC = "risk_asc"
+
+_RISK_LEVEL_HIGH = "High"
+_RISK_LEVEL_MEDIUM = "Medium"
+_RISK_LEVEL_LOW = "Low"
+_RISK_LEVEL_UNAVAILABLE = "Unavailable"
+
+
+@dataclass(slots=True, frozen=True)
+class OrderProductRiskRow:
+    product_code: str
+    requested_outputs: int
+    last_stage: str
+    status: str
+    risk_level: str
+    risk_score: float | None
+
+
+@dataclass(slots=True, frozen=True)
+class OrderStageRiskRow:
+    sequence_index: int
+    stage_name: str
+    stage_scope: str
+    status: str
+    production_order_item_id: int | None
+    recipe_id: int | None
+    job_id: int | None
+    failure_class: str
+    risk_level: str
+    risk_score: float | None
+    risk_reasons: str
 
 
 def format_product_request_summary(request) -> str:
@@ -220,8 +266,10 @@ def build_order_summary_text(order) -> str:
         if stage_score is not None:
             risk_scores.append(stage_score)
         risk_reasons.extend(_stage_near_duplicate_reasons(stage.detail_json))
-    risk_summary = "-" if not risk_scores else f"max={max(risk_scores):.3f}, recipes={len(risk_scores)}"
+    max_risk_score = None if not risk_scores else max(risk_scores)
+    risk_summary = "-" if max_risk_score is None else f"max={max_risk_score:.3f}, recipes={len(risk_scores)}"
     reasons_summary = ", ".join(dict.fromkeys(risk_reasons)) if risk_reasons else "-"
+    risk_focus = _risk_level_label(max_risk_score)
     return "\n".join(
         [
             f"Order ID: {order.production_order_id}",
@@ -242,58 +290,60 @@ def build_order_summary_text(order) -> str:
             f"Finished At: {order.finished_at or 'not finished'}",
             "",
             "Duplicate-Risk Summary:",
+            f"- Risk Focus: {risk_focus}",
             f"- Planner Risk: {risk_summary}",
             f"- Reasons: {reasons_summary}",
+            "- Risk Legend: High >= 0.600 | Medium >= 0.250 | Low < 0.250 | Unavailable = no persisted evidence.",
             "- Interpretation: planner duplicate-risk evidence only, not a platform verdict.",
         ]
     )
 
 
-def build_order_product_rows(order) -> list[tuple[str, str, str, str, str]]:
+def build_order_product_rows(order) -> list[OrderProductRiskRow]:
     latest_stage_by_item_id: dict[int, object] = {}
-    materialize_risk_by_item_id: dict[int, str] = {}
+    materialize_risk_by_item_id: dict[int, float | None] = {}
     for stage in _effective_order_stages(order.stages):
         if stage.production_order_item_id is None:
             continue
         latest_stage_by_item_id[stage.production_order_item_id] = stage
         if stage.stage_name == "materialize" and stage.status == "succeeded":
-            stage_score = _stage_near_duplicate_score(stage.detail_json)
-            materialize_risk_by_item_id[stage.production_order_item_id] = (
-                "-" if stage_score is None else f"{stage_score:.3f}"
-            )
+            materialize_risk_by_item_id[stage.production_order_item_id] = _stage_near_duplicate_score(stage.detail_json)
 
-    rows: list[tuple[str, str, str, str, str]] = []
+    rows: list[OrderProductRiskRow] = []
     for item in order.items:
         latest_stage = latest_stage_by_item_id.get(item.production_order_item_id)
+        risk_score = materialize_risk_by_item_id.get(item.production_order_item_id)
         rows.append(
-            (
-                item.product_code,
-                str(item.requested_output_count),
-                "-" if latest_stage is None else latest_stage.stage_name,
-                "queued" if latest_stage is None else latest_stage.status,
-                materialize_risk_by_item_id.get(item.production_order_item_id, "-"),
+            OrderProductRiskRow(
+                product_code=item.product_code,
+                requested_outputs=item.requested_output_count,
+                last_stage="-" if latest_stage is None else latest_stage.stage_name,
+                status="queued" if latest_stage is None else latest_stage.status,
+                risk_level=_risk_level_label(risk_score),
+                risk_score=risk_score,
             )
         )
     return rows
 
 
-def build_order_stage_rows(order) -> list[tuple[str, str, str, str, str, str, str, str, str, str]]:
-    rows: list[tuple[str, str, str, str, str, str, str, str, str, str]] = []
+def build_order_stage_rows(order) -> list[OrderStageRiskRow]:
+    rows: list[OrderStageRiskRow] = []
     for stage in order.stages:
         risk_score = _stage_near_duplicate_score(stage.detail_json)
         risk_reasons = ", ".join(_stage_near_duplicate_reasons(stage.detail_json))
         rows.append(
-            (
-                str(stage.sequence_index),
-                stage.stage_name,
-                stage.stage_scope,
-                stage.status,
-                str(stage.production_order_item_id or ""),
-                str(stage.recipe_id or ""),
-                str(stage.job_id or ""),
-                stage.failure_class or "",
-                "" if risk_score is None else f"{risk_score:.3f}",
-                risk_reasons,
+            OrderStageRiskRow(
+                sequence_index=stage.sequence_index,
+                stage_name=stage.stage_name,
+                stage_scope=stage.stage_scope,
+                status=stage.status,
+                production_order_item_id=stage.production_order_item_id,
+                recipe_id=stage.recipe_id,
+                job_id=stage.job_id,
+                failure_class=stage.failure_class or "",
+                risk_level=_risk_level_label(risk_score),
+                risk_score=risk_score,
+                risk_reasons=risk_reasons,
             )
         )
     return rows
@@ -364,16 +414,50 @@ def refresh_selected_order(window) -> None:  # noqa: ANN001
 
     window.results_tabs.setCurrentWidget(window.order_stage_group)
     window.order_summary_text.setPlainText(build_order_summary_text(selected_order))
-    product_rows = build_order_product_rows(selected_order)
+    risk_filter = str(window.order_risk_filter_combo.currentData())
+    product_sort = str(window.order_product_sort_combo.currentData())
+    stage_sort = str(window.order_stage_sort_combo.currentData())
+    product_rows = sort_order_product_rows(
+        filter_order_product_rows(build_order_product_rows(selected_order), risk_filter=risk_filter),
+        sort_mode=product_sort,
+    )
     window.order_product_progress_table.setRowCount(len(product_rows))
-    for row_index, values in enumerate(product_rows):
+    for row_index, row in enumerate(product_rows):
+        values = [
+            row.product_code,
+            str(row.requested_outputs),
+            row.last_stage,
+            row.status,
+            row.risk_level,
+            _format_risk_score(row.risk_score),
+        ]
         for column_index, value in enumerate(values):
-            window.order_product_progress_table.setItem(row_index, column_index, QTableWidgetItem(value))
-    stage_rows = build_order_stage_rows(selected_order)
+            item = QTableWidgetItem(value)
+            _apply_risk_item_emphasis(item, row.risk_level)
+            window.order_product_progress_table.setItem(row_index, column_index, item)
+    stage_rows = sort_order_stage_rows(
+        filter_order_stage_rows(build_order_stage_rows(selected_order), risk_filter=risk_filter),
+        sort_mode=stage_sort,
+    )
     window.order_stages_table.setRowCount(len(stage_rows))
-    for row_index, values in enumerate(stage_rows):
+    for row_index, row in enumerate(stage_rows):
+        values = [
+            str(row.sequence_index),
+            row.stage_name,
+            row.stage_scope,
+            row.status,
+            str(row.production_order_item_id or ""),
+            str(row.recipe_id or ""),
+            str(row.job_id or ""),
+            row.failure_class,
+            row.risk_level,
+            _format_risk_score(row.risk_score),
+            row.risk_reasons,
+        ]
         for column_index, value in enumerate(values):
-            window.order_stages_table.setItem(row_index, column_index, QTableWidgetItem(value))
+            item = QTableWidgetItem(value)
+            _apply_risk_item_emphasis(item, row.risk_level)
+            window.order_stages_table.setItem(row_index, column_index, item)
     window.order_events_table.setRowCount(len(selected_order.events))
     for row_index, event in enumerate(selected_order.events):
         values = [
@@ -476,6 +560,70 @@ def _stage_near_duplicate_reasons(detail_json: str | None) -> tuple[str, ...]:
     return tuple(reason for reason in value if isinstance(reason, str) and reason.strip())
 
 
+def filter_order_product_rows(
+    rows: list[OrderProductRiskRow],
+    *,
+    risk_filter: str,
+) -> list[OrderProductRiskRow]:
+    return [row for row in rows if _matches_risk_filter(row.risk_level, risk_filter)]
+
+
+def sort_order_product_rows(
+    rows: list[OrderProductRiskRow],
+    *,
+    sort_mode: str,
+) -> list[OrderProductRiskRow]:
+    if sort_mode == ORDER_PRODUCT_SORT_RISK_DESC:
+        return sorted(
+            rows,
+            key=lambda row: (
+                -_risk_level_priority(row.risk_level),
+                float("-inf") if row.risk_score is None else -row.risk_score,
+                row.product_code,
+            ),
+        )
+    if sort_mode == ORDER_PRODUCT_SORT_STATUS_THEN_RISK:
+        return sorted(
+            rows,
+            key=lambda row: (row.status, -_risk_level_priority(row.risk_level), -(row.risk_score or 0.0), row.product_code),
+        )
+    return sorted(rows, key=lambda row: row.product_code)
+
+
+def filter_order_stage_rows(
+    rows: list[OrderStageRiskRow],
+    *,
+    risk_filter: str,
+) -> list[OrderStageRiskRow]:
+    return [row for row in rows if _matches_risk_filter(row.risk_level, risk_filter)]
+
+
+def sort_order_stage_rows(
+    rows: list[OrderStageRiskRow],
+    *,
+    sort_mode: str,
+) -> list[OrderStageRiskRow]:
+    if sort_mode == ORDER_STAGE_SORT_RISK_DESC:
+        return sorted(
+            rows,
+            key=lambda row: (
+                -_risk_level_priority(row.risk_level),
+                float("-inf") if row.risk_score is None else -row.risk_score,
+                row.sequence_index,
+            ),
+        )
+    if sort_mode == ORDER_STAGE_SORT_RISK_ASC:
+        return sorted(
+            rows,
+            key=lambda row: (
+                _risk_level_priority(row.risk_level),
+                float("inf") if row.risk_score is None else row.risk_score,
+                row.sequence_index,
+            ),
+        )
+    return sorted(rows, key=lambda row: row.sequence_index)
+
+
 def format_selection_tag_summary(config) -> str:
     parts: list[str] = []
     for label, values in (
@@ -499,3 +647,49 @@ def join_optional(left: str | None, right: str | None) -> str:
     if left and right:
         return f"{left} / {right}"
     return left or right or "-"
+
+
+def _risk_level_label(score: float | None) -> str:
+    if score is None:
+        return _RISK_LEVEL_UNAVAILABLE
+    if score >= 0.6:
+        return _RISK_LEVEL_HIGH
+    if score >= 0.25:
+        return _RISK_LEVEL_MEDIUM
+    return _RISK_LEVEL_LOW
+
+
+def _risk_level_priority(level: str) -> int:
+    return {
+        _RISK_LEVEL_HIGH: 3,
+        _RISK_LEVEL_MEDIUM: 2,
+        _RISK_LEVEL_LOW: 1,
+        _RISK_LEVEL_UNAVAILABLE: 0,
+    }.get(level, 0)
+
+
+def _matches_risk_filter(level: str, risk_filter: str) -> bool:
+    if risk_filter == ORDER_RISK_FILTER_HIGH_ONLY:
+        return level == _RISK_LEVEL_HIGH
+    if risk_filter == ORDER_RISK_FILTER_MEDIUM_AND_HIGH:
+        return level in {_RISK_LEVEL_HIGH, _RISK_LEVEL_MEDIUM}
+    if risk_filter == ORDER_RISK_FILTER_LOW_AND_HIGHER:
+        return level in {_RISK_LEVEL_HIGH, _RISK_LEVEL_MEDIUM, _RISK_LEVEL_LOW}
+    if risk_filter == ORDER_RISK_FILTER_UNAVAILABLE_ONLY:
+        return level == _RISK_LEVEL_UNAVAILABLE
+    return True
+
+
+def _format_risk_score(score: float | None) -> str:
+    return "-" if score is None else f"{score:.3f}"
+
+
+def _apply_risk_item_emphasis(item: QTableWidgetItem, level: str) -> None:
+    if level == _RISK_LEVEL_HIGH:
+        item.setBackground(QColor("#f7d6d9"))
+    elif level == _RISK_LEVEL_MEDIUM:
+        item.setBackground(QColor("#f7ead1"))
+    elif level == _RISK_LEVEL_LOW:
+        item.setBackground(QColor("#e2f1df"))
+    else:
+        item.setBackground(QColor("#eef1f5"))

@@ -413,8 +413,11 @@ def test_auto_factory_window_exposes_guided_run_controls(qapp: QApplication) -> 
     assert "No active run." in auto_factory_window.progress_text.toPlainText()
     assert auto_factory_window.preflight_products_table.columnCount() == 5
     assert auto_factory_window.preflight_issues_table.columnCount() == 5
-    assert auto_factory_window.order_product_progress_table.columnCount() == 5
-    assert auto_factory_window.order_stages_table.columnCount() == 10
+    assert auto_factory_window.order_risk_filter_combo.itemText(1) == "High Only"
+    assert auto_factory_window.order_product_sort_combo.itemText(1) == "Risk Desc"
+    assert auto_factory_window.order_stage_sort_combo.itemText(2) == "Risk Asc"
+    assert auto_factory_window.order_product_progress_table.columnCount() == 6
+    assert auto_factory_window.order_stages_table.columnCount() == 11
     assert auto_factory_window.selected_product_text.isReadOnly() is True
     assert auto_factory_window.selected_product_text.minimumHeight() == auto_factory_window.SELECTED_PRODUCT_MIN_HEIGHT - 90
     assert auto_factory_window.recent_orders_table.minimumHeight() == auto_factory_window.RECENT_ORDERS_MIN_HEIGHT - 50

@@ -92,6 +92,7 @@
 - Auto Factory now also persists that duplicate-risk evidence on successful `materialize` stages and shows it in the `Orders` tab so operators can inspect order truth instead of relying on memory-only planner output.
 - Auto Factory now also computes a canonical `fingerprint_hash` and hard-blocks exact same-product recipe-formula repeats from persisted history instead of only warning after the fact.
 - Production-order `materialize` stages now also persist that `fingerprint_hash`, and order resume now ignores the same order's already-materialized recipes when rebuilding duplicate history so retryable failures can continue truthfully.
+- Auto Factory `Orders` now also emphasizes persisted planner risk through derived `High` / `Medium` / `Low` / `Unavailable` labels, row highlighting, and operator-facing filter/sort controls instead of showing only raw score text.
 - A new corrective execution slice is now active for safer default caption placement bands and longest-contributing-layer duration resolution after real auto-mode preview feedback exposed layout and timeline quality gaps.
 
 ## Delivered In The Latest Loop
@@ -157,6 +158,7 @@
 - delivered a canonical exact-duplicate guard so persisted same-product recipe history now blocks exact `fingerprint_hash` repeats during planning instead of only surfacing risk after selection
 - delivered persisted `fingerprint_hash` evidence on successful `materialize` stages so future audit and publishing policy can point to one stable exact-duplicate key
 - delivered resume-safe duplicate-guard behavior so a production order with already-materialized recipes can retry preview or later work without blocking itself during replan
+- delivered stronger `Orders`-tab operator triage for duplicate risk through derived risk levels, row emphasis, and risk filter/sort controls backed only by persisted planner evidence
 - delivered a new caption runtime guard for presenter-led top headline cards through `max_safe_band_height_ratio`, so grouped top-band promo boxes shrink before covering the presenter eye line
 - stopped grouped multi-line caption layouts from growing above the requested contract font size, while preserving single-line best-fit upscaling for deliberately short hooks
 - split caption runtime/layout support helpers into dedicated modules so the core orchestrators stay below the repo `800`-line guardrail
@@ -186,9 +188,9 @@
 14. validate the new Qt caption bitmap overlay on more Thai-heavy products and decide whether any remaining issues are font-specific rather than render-path-specific
 15. validate whether the new near-duplicate similarity score is calibrated tightly enough for Shopee/TikTok publishing batches and decide whether future policy thresholds should be operator-configurable
 16. validate whether the new exact `fingerprint_hash` basis should stay limited to platform/ratio/duration plus assignments or whether future work should include more contract dimensions
-17. validate whether operators need stronger `Orders`-tab emphasis such as risk badges, sorting, or threshold highlighting on top of the new persisted duplicate-risk evidence
+17. validate whether the new `Orders`-tab emphasis thresholds and row-highlighting choices are strong enough on real operator sessions or need tuning
 
 ## Verification Baseline
 
-- `python -m pytest` in `.venv`: `291 passed, 4 warnings`
+- `python -m pytest` in `.venv`: `292 passed, 4 warnings`
 - targeted `QT_QPA_PLATFORM=offscreen` UI/theme coverage for the new `Auto Factory` window and existing app windows: passed

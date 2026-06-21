@@ -57,6 +57,7 @@ The project now uses two roadmap layers:
 - `IR-35` Auto Factory near-duplicate similarity scoring baseline: complete on 2026-06-21
 - `IR-36` Auto Factory operator near-duplicate risk surface: complete on 2026-06-21
 - `IR-37` Auto Factory exact fingerprint hash duplicate guard baseline: complete on 2026-06-21
+- `IR-38` Auto Factory Orders-tab duplicate-risk emphasis baseline: complete on 2026-06-21
 
 ## Current Execution Stream
 

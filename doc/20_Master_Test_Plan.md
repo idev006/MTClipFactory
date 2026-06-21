@@ -45,6 +45,7 @@ It complements [07_Testing_Strategy.md](/F:/programming/python/MTClipFactory/doc
 - near-duplicate score and reason visibility on planned auto-factory recipes
 - persisted near-duplicate planner evidence on materialize stages plus operator visibility in the `Auto Factory` `Orders` tab
 - canonical exact `fingerprint_hash` duplicate guard across persisted same-product recipe history
+- `Orders`-tab duplicate-risk emphasis, including derived risk levels plus operator filter/sort controls
 - tag-aware auto-factory asset-pool filtering from normalized asset labels
 - asset-first tagging workflow for selected-asset details, tag search, and create-and-attach behavior
 - bulk asset tagging workflow for multi-select assignment and primary selected-asset review
@@ -223,34 +224,36 @@ It complements [07_Testing_Strategy.md](/F:/programming/python/MTClipFactory/doc
 32. Confirm the planner hard-blocks an exact canonical `fingerprint_hash` repeat when the same product already has that exact persisted recipe formula in history.
 33. Confirm the hard guard still allows a non-identical candidate when target ratio, target duration, or role assignment differences change the canonical hash.
 34. Confirm production-order resume excludes the same order's already-materialized recipes from duplicate-guard history rebuilding so retryable preview failures can continue.
-35. Confirm the `Tags` screen shows current asset tag labels and supports `Asset Type` filtering during assignment work.
-36. Confirm the `Tags` screen keeps a selected asset in focus and allows `Create And Attach` plus existing-tag attach from the same workflow.
-37. Confirm the `Tags` screen can multi-select assets and attach one existing tag across the selected asset set.
-38. Confirm `Create And Attach` can create one tag and apply it across the selected asset set while preserving one primary selected-asset detail panel.
-39. Confirm folder-driven intake can read `tags.toml` global and per-file tag metadata, create missing tags, and assign them to matching assets.
-40. Confirm rerunning folder-driven intake does not duplicate tag assignment links for existing assets.
-41. Confirm invalid `tags.toml` labels fail truthfully.
-42. Confirm folder-driven automation syncs `captions.toml` into runtime metadata under the media library.
-43. Confirm preview/final manifests record resolved caption text, font resolution, and caption-fit evidence when caption metadata exists.
-44. Confirm unsafe caption fit raises a review signal instead of silently treating the render as clean.
-45. Confirm folder-driven automation syncs `pipeline.toml` and source product context into runtime metadata.
-46. Confirm auto-mode preview artifacts can be written into `Product/runs/<batch_code>/previews/videos`.
-47. Confirm auto-mode final artifacts can be written into `Product/runs/<batch_code>/finals/videos`.
-48. Confirm `order_snapshot.toml` and `journal.toml` are created for product-local auto runs.
-49. Confirm per-asset-type fill policy is reflected in manifest evidence for voice, music, background video, and foreground video.
-50. Confirm non-loop foreground shortfall can use `freeze_last_frame` or raise review-visible shortfall instead of silently looping.
-51. Confirm a real prepared product folder can move from review-required preview output to clean rerun by correcting overly narrow `selection_tags` and non-publishable or overlong caption copy in the product-local contract files.
-52. Confirm caption layout uses pixel-based fit evidence, supports `left`/`center`/`right` line alignment, and writes per-line layout truth into the manifest.
-53. Confirm seeded auto-mode visual selection yields varied but deterministic foreground/background choices across multiple recipes in one batch.
-54. Confirm textbox-based caption layout can center the textbox while left-aligning the text inside it, and that manifest evidence keeps box width distinct from text-content width.
-55. Confirm textbox-only caption rendering can be verified from one segmented frame path without requiring a full product-folder audit, including one `drawbox` plus one `drawtext` per rendered line.
-56. Confirm textbox-based caption layout supports `top`/`middle`/`bottom` text placement inside a taller textbox and still keeps best-fit line widths within textbox content bounds.
-57. Confirm the best-fit caption solver can reduce font size to satisfy textbox height constraints, not only width constraints, while preserving honest overflow signals when no clean candidate exists.
-58. Confirm caption contracts can render one textbox per line for advertising-style captions and that FFmpeg emits one `drawbox` per rendered line.
-59. Confirm product-folder preflight reports `ready`, `warning`, and `error` truthfully, including missing recommended contracts and `selection_tags` that do not match any current ingestible asset files.
-60. Confirm the desktop `Auto Factory` screen can run `Audit Only` and show dedicated preflight product summaries plus actionable issue rows without creating a production order.
-61. Confirm grouped top-band promo headlines respect `max_safe_band_height_ratio` and shrink before covering the presenter eye line.
-62. Confirm grouped multi-line captions do not grow above the requested contract font size, while short single-line best-fit captions may still upscale intentionally.
+35. Confirm the desktop `Auto Factory` `Orders` tab derives `High`, `Medium`, `Low`, and `Unavailable` emphasis labels from persisted planner evidence without inventing missing scores.
+36. Confirm the desktop `Auto Factory` `Orders` tab can filter product/stage rows by risk emphasis and sort stage rows by duplicate risk.
+37. Confirm the `Tags` screen shows current asset tag labels and supports `Asset Type` filtering during assignment work.
+38. Confirm the `Tags` screen keeps a selected asset in focus and allows `Create And Attach` plus existing-tag attach from the same workflow.
+39. Confirm the `Tags` screen can multi-select assets and attach one existing tag across the selected asset set.
+40. Confirm `Create And Attach` can create one tag and apply it across the selected asset set while preserving one primary selected-asset detail panel.
+41. Confirm folder-driven intake can read `tags.toml` global and per-file tag metadata, create missing tags, and assign them to matching assets.
+42. Confirm rerunning folder-driven intake does not duplicate tag assignment links for existing assets.
+43. Confirm invalid `tags.toml` labels fail truthfully.
+44. Confirm folder-driven automation syncs `captions.toml` into runtime metadata under the media library.
+45. Confirm preview/final manifests record resolved caption text, font resolution, and caption-fit evidence when caption metadata exists.
+46. Confirm unsafe caption fit raises a review signal instead of silently treating the render as clean.
+47. Confirm folder-driven automation syncs `pipeline.toml` and source product context into runtime metadata.
+48. Confirm auto-mode preview artifacts can be written into `Product/runs/<batch_code>/previews/videos`.
+49. Confirm auto-mode final artifacts can be written into `Product/runs/<batch_code>/finals/videos`.
+50. Confirm `order_snapshot.toml` and `journal.toml` are created for product-local auto runs.
+51. Confirm per-asset-type fill policy is reflected in manifest evidence for voice, music, background video, and foreground video.
+52. Confirm non-loop foreground shortfall can use `freeze_last_frame` or raise review-visible shortfall instead of silently looping.
+53. Confirm a real prepared product folder can move from review-required preview output to clean rerun by correcting overly narrow `selection_tags` and non-publishable or overlong caption copy in the product-local contract files.
+54. Confirm caption layout uses pixel-based fit evidence, supports `left`/`center`/`right` line alignment, and writes per-line layout truth into the manifest.
+55. Confirm seeded auto-mode visual selection yields varied but deterministic foreground/background choices across multiple recipes in one batch.
+56. Confirm textbox-based caption layout can center the textbox while left-aligning the text inside it, and that manifest evidence keeps box width distinct from text-content width.
+57. Confirm textbox-only caption rendering can be verified from one segmented frame path without requiring a full product-folder audit, including one `drawbox` plus one `drawtext` per rendered line.
+58. Confirm textbox-based caption layout supports `top`/`middle`/`bottom` text placement inside a taller textbox and still keeps best-fit line widths within textbox content bounds.
+59. Confirm the best-fit caption solver can reduce font size to satisfy textbox height constraints, not only width constraints, while preserving honest overflow signals when no clean candidate exists.
+60. Confirm caption contracts can render one textbox per line for advertising-style captions and that FFmpeg emits one `drawbox` per rendered line.
+61. Confirm product-folder preflight reports `ready`, `warning`, and `error` truthfully, including missing recommended contracts and `selection_tags` that do not match any current ingestible asset files.
+62. Confirm the desktop `Auto Factory` screen can run `Audit Only` and show dedicated preflight product summaries plus actionable issue rows without creating a production order.
+63. Confirm grouped top-band promo headlines respect `max_safe_band_height_ratio` and shrink before covering the presenter eye line.
+64. Confirm grouped multi-line captions do not grow above the requested contract font size, while short single-line best-fit captions may still upscale intentionally.
 
 ### C. Review And Approval Flow
 

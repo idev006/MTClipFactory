@@ -42,6 +42,17 @@ from mt_clip_factory.ui.factory.auto_factory_control_support import (
     build_run_mode_hint,
     build_run_product_detail_text,
     format_product_request_summary,
+    ORDER_PRODUCT_SORT_PRODUCT_CODE,
+    ORDER_PRODUCT_SORT_RISK_DESC,
+    ORDER_PRODUCT_SORT_STATUS_THEN_RISK,
+    ORDER_RISK_FILTER_ALL,
+    ORDER_RISK_FILTER_HIGH_ONLY,
+    ORDER_RISK_FILTER_LOW_AND_HIGHER,
+    ORDER_RISK_FILTER_MEDIUM_AND_HIGH,
+    ORDER_RISK_FILTER_UNAVAILABLE_ONLY,
+    ORDER_STAGE_SORT_RISK_ASC,
+    ORDER_STAGE_SORT_RISK_DESC,
+    ORDER_STAGE_SORT_SEQUENCE,
     refresh_recent_orders,
     refresh_selected_order,
     refresh_selected_preflight_product_details,
@@ -359,21 +370,48 @@ class AutoFactoryControlWindow(QMainWindow):
         group = QGroupBox("Selected Production Order Stages")
         group.setMinimumHeight(self.ORDER_STAGES_MIN_HEIGHT)
         layout = QVBoxLayout(group)
+        controls_row = QHBoxLayout()
+        controls_row.addWidget(QLabel("Risk Filter"))
+        self.order_risk_filter_combo = QComboBox()
+        self.order_risk_filter_combo.addItem("All Rows", ORDER_RISK_FILTER_ALL)
+        self.order_risk_filter_combo.addItem("High Only", ORDER_RISK_FILTER_HIGH_ONLY)
+        self.order_risk_filter_combo.addItem("Medium + High", ORDER_RISK_FILTER_MEDIUM_AND_HIGH)
+        self.order_risk_filter_combo.addItem("Low + Higher", ORDER_RISK_FILTER_LOW_AND_HIGHER)
+        self.order_risk_filter_combo.addItem("Unavailable Only", ORDER_RISK_FILTER_UNAVAILABLE_ONLY)
+        self.order_risk_filter_combo.currentIndexChanged.connect(self._refresh_selected_order)
+        controls_row.addWidget(self.order_risk_filter_combo)
+        controls_row.addWidget(QLabel("Product Sort"))
+        self.order_product_sort_combo = QComboBox()
+        self.order_product_sort_combo.addItem("Product Code", ORDER_PRODUCT_SORT_PRODUCT_CODE)
+        self.order_product_sort_combo.addItem("Risk Desc", ORDER_PRODUCT_SORT_RISK_DESC)
+        self.order_product_sort_combo.addItem("Status Then Risk", ORDER_PRODUCT_SORT_STATUS_THEN_RISK)
+        self.order_product_sort_combo.currentIndexChanged.connect(self._refresh_selected_order)
+        controls_row.addWidget(self.order_product_sort_combo)
+        controls_row.addWidget(QLabel("Stage Sort"))
+        self.order_stage_sort_combo = QComboBox()
+        self.order_stage_sort_combo.addItem("Sequence", ORDER_STAGE_SORT_SEQUENCE)
+        self.order_stage_sort_combo.addItem("Risk Desc", ORDER_STAGE_SORT_RISK_DESC)
+        self.order_stage_sort_combo.addItem("Risk Asc", ORDER_STAGE_SORT_RISK_ASC)
+        self.order_stage_sort_combo.currentIndexChanged.connect(self._refresh_selected_order)
+        controls_row.addWidget(self.order_stage_sort_combo)
+        controls_row.addStretch(1)
+        layout.addLayout(controls_row)
         self.order_summary_text = QTextEdit()
         self.order_summary_text.setReadOnly(True)
         self.order_summary_text.setMinimumHeight(110)
-        self.order_product_progress_table = QTableWidget(0, 5)
+        self.order_product_progress_table = QTableWidget(0, 6)
         self._configure_table(
             self.order_product_progress_table,
-            ["Product Code", "Requested Outputs", "Last Stage", "Status", "Duplicate Risk"],
+            ["Product Code", "Requested Outputs", "Last Stage", "Status", "Risk Level", "Duplicate Risk"],
             stretch_columns=(0, 2, 3),
+            interactive_widths={4: 110, 5: 110},
         )
-        self.order_stages_table = QTableWidget(0, 10)
+        self.order_stages_table = QTableWidget(0, 11)
         self._configure_table(
             self.order_stages_table,
-            ["Seq", "Stage", "Scope", "Status", "Item", "Recipe", "Job", "Failure", "Duplicate Risk", "Reasons"],
-            stretch_columns=(1, 9),
-            interactive_widths={4: 90, 5: 90, 6: 90, 8: 110},
+            ["Seq", "Stage", "Scope", "Status", "Item", "Recipe", "Job", "Failure", "Risk Level", "Duplicate Risk", "Reasons"],
+            stretch_columns=(1, 10),
+            interactive_widths={4: 90, 5: 90, 6: 90, 8: 110, 9: 110},
         )
         self.order_events_table = QTableWidget(0, 5)
         self._configure_table(
