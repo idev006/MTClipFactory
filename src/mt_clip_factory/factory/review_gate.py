@@ -221,6 +221,33 @@ def assess_review_gate(
     )
 
 
+def with_historical_render_duplicate(
+    assessment: ReviewAssessment,
+    *,
+    duplicate_count: int,
+) -> ReviewAssessment:
+    if duplicate_count <= 0:
+        return assessment
+    duplicate_signal = ReviewSignal(
+        code="historical_render_duplicate",
+        message="Rendered clip matches prior usable same-product output history.",
+        metric_value=duplicate_count,
+        threshold=0,
+    )
+    signals = (*assessment.signals, duplicate_signal)
+    summary = "; ".join(signal.message for signal in signals)
+    metrics = dict(assessment.metrics)
+    metrics["historical_render_duplicate_count"] = duplicate_count
+    return ReviewAssessment(
+        required=True,
+        duplicate_risk=1.0,
+        quality_score=0.0,
+        summary=summary,
+        signals=signals,
+        metrics=metrics,
+    )
+
+
 def review_gate_manifest_payload(assessment: ReviewAssessment) -> dict:
     return {
         "required": assessment.required,

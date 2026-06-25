@@ -1,7 +1,6 @@
 from __future__ import annotations
 
 from collections import Counter
-from collections import deque
 import re
 
 from mt_clip_factory.application.services import ProductApplicationService
@@ -23,6 +22,13 @@ from mt_clip_factory.factory.auto_factory_fingerprint import (
     build_planned_recipe_fingerprint,
     build_planned_recipe_fingerprint_hash,
 )
+from mt_clip_factory.factory.auto_factory_variant_support import (
+    _build_persistent_foreground_sequences,
+    _enumerate_variant_dimension_selections,
+    _order_foreground_sequences_for_diversity_frontier,
+    _order_role_assets_for_diversity_frontier,
+    _resolve_candidate_scan_limit,
+)
 from mt_clip_factory.factory.auto_factory_pool_support import (
     _filter_assets_by_required_tags,
     _foreground_sequence_from_recipe_items,
@@ -40,22 +46,14 @@ from mt_clip_factory.factory.dto import (
     OutputSummaryDTO,
     PreviewJobSummaryDTO,
 )
+from mt_clip_factory.factory.output_history import USABLE_OUTPUT_HISTORY_SCOPES
 from mt_clip_factory.factory.services import VideoAssemblyFactoryService
 from mt_clip_factory.factory.visual_selection import seeded_order
 from mt_clip_factory.library.dto import AssetSummaryDTO
 from mt_clip_factory.library.services import AssetIntakeService
 
 _DEFAULT_FIXED_DURATION_SEC = 15.0
-_DIVERSITY_FRONTIER_AXIS_PRIORITY = (
-    "voice",
-    "foreground_sequence",
-    "background",
-    "music",
-)
 _HISTORY_RECIPE_LIMIT = 24
-_MIN_CANDIDATE_SCAN = 64
-_CANDIDATE_SCAN_MULTIPLIER = 24
-_MAX_CANDIDATE_SCAN = 4096
 
 
 class AutoFactoryPlanningError(ValueError):
@@ -233,6 +231,9 @@ class AutoFactoryBatchService:
             output_id=None if output is None else output.output_id,
             output_code=None if output is None else output.output_code,
             output_path=job_summary.output_path,
+            clip_formula_hash=None if output is None else output.clip_formula_hash,
+            history_scope=None if output is None else output.history_scope,
+            duplicate_risk=None if output is None else output.duplicate_risk,
             error_message=job_summary.error_message or error_message,
         )
 
@@ -308,6 +309,7 @@ class AutoFactoryBatchService:
         )
         planning_history = self._load_planning_history(
             product_id=product.product_id,
+            product_code=product.product_code,
             excluded_recipe_ids=history_excluded_recipe_ids,
         )
 
@@ -502,29 +504,32 @@ class AutoFactoryBatchService:
         self,
         *,
         product_id: int,
+        product_code: str,
         excluded_recipe_ids: frozenset[int] = frozenset(),
     ) -> _PlanningHistory:
-        recipe_summaries = sorted(
-            [
-                summary
-                for summary in self._video_assembly_factory_service.list_recipes(product_id=product_id)
-                if summary.recipe_id not in excluded_recipe_ids
-            ],
-            key=lambda summary: summary.recipe_id,
-            reverse=True,
+        output_summaries = self._video_assembly_factory_service.list_outputs(
+            product_id=product_id,
+            history_scopes=USABLE_OUTPUT_HISTORY_SCOPES,
         )
-        if not recipe_summaries:
+        recipe_ids_in_history_order: list[int] = []
+        seen_recipe_ids: set[int] = set()
+        for summary in output_summaries:
+            if summary.recipe_id in excluded_recipe_ids or summary.recipe_id in seen_recipe_ids:
+                continue
+            seen_recipe_ids.add(summary.recipe_id)
+            recipe_ids_in_history_order.append(summary.recipe_id)
+        if not recipe_ids_in_history_order:
             return _PlanningHistory.empty()
 
         exact_signature_weights: Counter = Counter()
         exact_fingerprint_hashes: set[str] = set()
         foreground_sequence_weights: Counter = Counter()
         role_asset_weights: Counter = Counter()
-        for history_index, recipe_summary in enumerate(recipe_summaries):
-            recipe_details = self._video_assembly_factory_service.get_recipe(recipe_summary.recipe_id)
+        for history_index, recipe_id in enumerate(recipe_ids_in_history_order):
+            recipe_details = self._video_assembly_factory_service.get_recipe(recipe_id)
             exact_fingerprint_hashes.add(
                 build_history_recipe_fingerprint_hash(
-                    product_code=recipe_summary.product_code,
+                    product_code=product_code,
                     target_platform=recipe_details.target_platform,
                     target_ratio=recipe_details.target_ratio,
                     duration_sec=recipe_details.duration_sec,
@@ -566,114 +571,6 @@ class AutoFactoryBatchService:
 def _slugify(value: str) -> str:
     normalized = re.sub(r"[^a-z0-9]+", "_", value.strip().lower())
     return normalized.strip("_")
-
-
-def _resolve_candidate_scan_limit(*, planned_count: int, feasible_count: int) -> int:
-    bounded_scan = max(_MIN_CANDIDATE_SCAN, planned_count * _CANDIDATE_SCAN_MULTIPLIER, planned_count)
-    return min(feasible_count, _MAX_CANDIDATE_SCAN, bounded_scan)
-
-
-def _enumerate_variant_dimension_selections(
-    *,
-    limit: int,
-    sequence_options: tuple[tuple[int, ...], ...],
-    background_options: tuple[AssetSummaryDTO | None, ...],
-    music_options: tuple[AssetSummaryDTO | None, ...],
-    voice_options: tuple[AssetSummaryDTO | None, ...],
-) -> tuple[dict[str, object], ...]:
-    dimension_options: dict[str, tuple[object, ...]] = {
-        "foreground_sequence": sequence_options,
-        "background": background_options,
-        "music": music_options,
-        "voice": voice_options,
-    }
-    axis_names = _DIVERSITY_FRONTIER_AXIS_PRIORITY
-    axis_sizes = tuple(len(dimension_options[name]) for name in axis_names)
-    start = tuple(0 for _ in axis_names)
-    queue: deque[tuple[int, ...]] = deque((start,))
-    visited = {start}
-    coordinates: list[tuple[int, ...]] = []
-    while queue and len(coordinates) < limit:
-        coordinate = queue.popleft()
-        coordinates.append(coordinate)
-        for axis_index, axis_name in enumerate(axis_names):
-            next_index = coordinate[axis_index] + 1
-            if next_index >= axis_sizes[axis_index]:
-                continue
-            next_coordinate = list(coordinate)
-            next_coordinate[axis_index] = next_index
-            next_coordinate_tuple = tuple(next_coordinate)
-            if next_coordinate_tuple in visited:
-                continue
-            visited.add(next_coordinate_tuple)
-            queue.append(next_coordinate_tuple)
-    return tuple(
-        {
-            axis_name: dimension_options[axis_name][coordinate[axis_index]]
-            for axis_index, axis_name in enumerate(axis_names)
-        }
-        for coordinate in coordinates
-    )
-
-
-def _order_role_assets_for_diversity_frontier(
-    assets: tuple[AssetSummaryDTO, ...],
-    *,
-    role_name: str,
-    planning_history: _PlanningHistory,
-) -> tuple[AssetSummaryDTO, ...]:
-    return tuple(
-        sorted(
-            assets,
-            key=lambda asset: float(planning_history.role_asset_weights[(role_name, asset.asset_id)]),
-        )
-    )
-
-
-def _order_foreground_sequences_for_diversity_frontier(
-    sequences: tuple[tuple[int, ...], ...],
-    *,
-    planning_history: _PlanningHistory,
-) -> tuple[tuple[int, ...], ...]:
-    return tuple(
-        sorted(
-            sequences,
-            key=lambda sequence: (
-                float(planning_history.foreground_sequence_weights[sequence]),
-                _foreground_sequence_role_reuse_pressure(sequence, planning_history=planning_history),
-                _foreground_sequence_internal_repeat_count(sequence),
-            ),
-        )
-    )
-
-
-def _foreground_sequence_role_reuse_pressure(
-    sequence: tuple[int, ...],
-    *,
-    planning_history: _PlanningHistory,
-) -> float:
-    return sum(
-        float(planning_history.role_asset_weights[(role_name, asset_id)])
-        for role_name, asset_id in zip(_SEMANTIC_VISUAL_ROLES, sequence)
-    )
-
-
-def _foreground_sequence_internal_repeat_count(sequence: tuple[int, ...]) -> int:
-    if len(set(sequence)) <= 1:
-        return 0
-    counts = Counter(sequence)
-    return sum(max(0, count - 1) for count in counts.values())
-
-
-def _build_persistent_foreground_sequences(
-    asset_ids: tuple[int, ...],
-    *,
-    role_count: int,
-) -> tuple[tuple[int, ...], ...]:
-    if not asset_ids:
-        return ()
-    return tuple(tuple(asset_id for _ in range(role_count)) for asset_id in asset_ids)
-
 
 def _require_asset(assets: tuple[AssetSummaryDTO, ...], asset_id: int) -> AssetSummaryDTO:
     for asset in assets:

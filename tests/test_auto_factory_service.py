@@ -166,6 +166,7 @@ def _materialize_history_recipe(
     product_id: int,
     recipe_code: str,
     planned_recipe,
+    source_mode: str = "folder_control_surface",
 ) -> int:  # noqa: ANN001
     recipe_id = factory_service.create_recipe(
         CreateRecipeCommand(
@@ -184,6 +185,12 @@ def _materialize_history_recipe(
                 role=assignment.role,
             )
         )
+    job_id = factory_service.enqueue_preview_job(
+        recipe_id,
+        batch_code="history_batch",
+        source_mode=source_mode,
+    )
+    factory_service.run_preview_job(job_id)
     return recipe_id
 
 

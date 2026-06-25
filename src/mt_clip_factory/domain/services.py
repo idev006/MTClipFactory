@@ -167,7 +167,9 @@ class OutputRepository(Protocol):
         self,
         *,
         recipe_id: int | None = None,
+        product_id: int | None = None,
         approved: bool | None = None,
+        history_scopes: tuple[str, ...] | None = None,
     ) -> Sequence[OutputSummary]:
         ...
 

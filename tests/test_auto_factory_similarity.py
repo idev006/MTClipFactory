@@ -125,6 +125,7 @@ def _materialize_history_recipe(
     product_id: int,
     recipe_code: str,
     planned_recipe,
+    source_mode: str = "folder_control_surface",
 ) -> int:  # noqa: ANN001
     recipe_id = factory_service.create_recipe(
         CreateRecipeCommand(
@@ -143,6 +144,12 @@ def _materialize_history_recipe(
                 role=assignment.role,
             )
         )
+    job_id = factory_service.enqueue_preview_job(
+        recipe_id,
+        batch_code="history_batch",
+        source_mode=source_mode,
+    )
+    factory_service.run_preview_job(job_id)
     return recipe_id
 
 
@@ -343,6 +350,40 @@ def test_auto_factory_exact_fingerprint_guard_allows_same_assets_with_different_
     )
 
     rerun_plan = service.plan_batch(rerun_order)
+
+    assert rerun_plan.summaries[0].planned_output_count == 1
+    assert len(rerun_plan.planned_recipes) == 1
+
+
+def test_auto_factory_excludes_manual_draft_preview_history_from_exact_fingerprint_block(unit_of_work_factory, tmp_path) -> None:
+    product_service = ProductApplicationService(unit_of_work_factory=unit_of_work_factory)
+    product_id = product_service.create_product(CreateProductCommand(product_code="draftsafe", product_name="Draft Safe"))
+    asset_service = _build_asset_service(unit_of_work_factory, tmp_path / "media_library", {"voice_01.mp3": 12.0})
+    _register_asset(asset_service, product_id=product_id, tmp_path=tmp_path, asset_type="foreground_video", asset_code="fg_01", file_name="fg01.mp4")
+    _register_asset(asset_service, product_id=product_id, tmp_path=tmp_path, asset_type="background_video", asset_code="bg_01", file_name="bg01.mp4")
+    _register_asset(asset_service, product_id=product_id, tmp_path=tmp_path, asset_type="background_music", asset_code="music_01", file_name="music01.mp3")
+    _register_asset(asset_service, product_id=product_id, tmp_path=tmp_path, asset_type="voiceover", asset_code="voice_01", file_name="voice_01.mp3")
+    factory_service = _build_factory_service(unit_of_work_factory, tmp_path / "previews")
+    service = AutoFactoryBatchService(
+        product_service=product_service,
+        asset_intake_service=asset_service,
+        video_assembly_factory_service=factory_service,
+    )
+    order = AutoFactoryBatchOrderDTO(
+        batch_code="draftsafe_batch",
+        product_requests=(AutoFactoryProductRequestDTO(product_code="draftsafe", requested_output_count=1),),
+    )
+
+    baseline_plan = service.plan_batch(order)
+    _materialize_history_recipe(
+        factory_service,
+        product_id=product_id,
+        recipe_code="draftsafe_history_001",
+        planned_recipe=baseline_plan.planned_recipes[0],
+        source_mode=None,
+    )
+
+    rerun_plan = service.plan_batch(order)
 
     assert rerun_plan.summaries[0].planned_output_count == 1
     assert len(rerun_plan.planned_recipes) == 1

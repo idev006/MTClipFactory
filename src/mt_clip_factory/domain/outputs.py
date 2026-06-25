@@ -20,6 +20,8 @@ class Output:
     approved_by: str | None = None
     approved_at: datetime | None = None
     approval_reason: str | None = None
+    clip_formula_hash: str | None = None
+    history_scope: str = "draft_preview"
     created_at: datetime = field(default_factory=utc_now)
     id: int | None = None
 
@@ -40,3 +42,5 @@ class OutputSummary:
     created_at: datetime
     quality_score: float | None = None
     duplicate_risk: float | None = None
+    clip_formula_hash: str | None = None
+    history_scope: str | None = None

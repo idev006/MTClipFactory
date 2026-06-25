@@ -97,6 +97,9 @@
 - Preview/final manifests now also expose `composition.segment_inventory`, giving each clip an operator-readable segment asset/time inventory plus a deterministic clip formula hash.
 - Auto Factory now also displays recent-order and selected-order timestamps in local operator time instead of raw persisted UTC wall-clock values, so order monitoring aligns with the real desktop session.
 - Blank `Batch Code` defaults and derived order labels now also use local operator timestamp tokens, while product-local run journals keep explicit UTC `Z` event timestamps for audit truth.
+- Output records now also persist rendered `clip_formula_hash` plus one explicit `history_scope`, giving the duplicate-protection path a render-truth seam that can distinguish usable automation output from manual draft previews.
+- Auto Factory now also treats manual preview experiments as audit-visible `draft_preview` history instead of hard duplicate-blocking evidence, while approved outputs and automation previews remain usable same-product history.
+- Auto Factory candidate generation now also uses deterministic permutation coverage across foreground/background/voice/music coordinates, reducing large-pool axis bias and improving early asset spread.
 - Auto Factory now also persists that duplicate-risk evidence on successful `materialize` stages and shows it in the `Orders` tab so operators can inspect order truth instead of relying on memory-only planner output.
 - Auto Factory local-worker heartbeat updates now also tolerate transient SQLite `database is locked` contention, so one missed heartbeat write no longer kills the heartbeat thread during an otherwise active run.
 - File-backed desktop SQLite runtime now also enables `WAL` plus a `busy_timeout`, reducing write contention between lease heartbeats and persisted stage/event updates.

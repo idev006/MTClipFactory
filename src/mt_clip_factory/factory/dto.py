@@ -165,3 +165,5 @@ class OutputSummaryDTO:
     source_output_path: str | None = None
     quality_score: float | None = None
     duplicate_risk: float | None = None
+    clip_formula_hash: str | None = None
+    history_scope: str | None = None

@@ -134,6 +134,8 @@ class OutputModel(Base):
     approved_by: Mapped[str | None] = mapped_column(String(255), nullable=True)
     approved_at: Mapped[datetime | None] = mapped_column(DateTime, nullable=True)
     approval_reason: Mapped[str | None] = mapped_column(Text, nullable=True)
+    clip_formula_hash: Mapped[str | None] = mapped_column(String(64), nullable=True)
+    history_scope: Mapped[str] = mapped_column(String(32), nullable=False, default="draft_preview")
     created_at: Mapped[datetime] = mapped_column(DateTime, nullable=False, default=func.now())
 
 

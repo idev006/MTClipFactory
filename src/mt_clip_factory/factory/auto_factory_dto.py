@@ -99,6 +99,9 @@ class AutoFactoryPreviewRecipeResultDTO:
     output_id: int | None = None
     output_code: str | None = None
     output_path: str | None = None
+    clip_formula_hash: str | None = None
+    history_scope: str | None = None
+    duplicate_risk: float | None = None
     error_message: str | None = None
 
 

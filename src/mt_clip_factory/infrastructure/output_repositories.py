@@ -27,6 +27,8 @@ class SqlAlchemyOutputRepository:
             approved_by=output.approved_by,
             approved_at=output.approved_at,
             approval_reason=output.approval_reason,
+            clip_formula_hash=output.clip_formula_hash,
+            history_scope=output.history_scope,
             created_at=output.created_at,
         )
         self._session.add(model)
@@ -56,6 +58,8 @@ class SqlAlchemyOutputRepository:
         model.approved_by = output.approved_by
         model.approved_at = output.approved_at
         model.approval_reason = output.approval_reason
+        model.clip_formula_hash = output.clip_formula_hash
+        model.history_scope = output.history_scope
         self._session.flush()
         return output
 
@@ -63,12 +67,15 @@ class SqlAlchemyOutputRepository:
         self,
         *,
         recipe_id: int | None = None,
+        product_id: int | None = None,
         approved: bool | None = None,
+        history_scopes: tuple[str, ...] | None = None,
     ) -> Sequence[OutputSummary]:
         statement = (
             select(
                 OutputModel.id,
                 OutputModel.recipe_id,
+                RecipeModel.product_id,
                 RecipeModel.recipe_code,
                 OutputModel.output_code,
                 OutputModel.file_path,
@@ -81,14 +88,20 @@ class SqlAlchemyOutputRepository:
                 OutputModel.created_at,
                 OutputModel.quality_score,
                 OutputModel.duplicate_risk,
+                OutputModel.clip_formula_hash,
+                OutputModel.history_scope,
             )
             .join(RecipeModel, RecipeModel.id == OutputModel.recipe_id)
             .order_by(OutputModel.created_at.desc(), OutputModel.id.desc())
         )
         if recipe_id is not None:
             statement = statement.where(OutputModel.recipe_id == recipe_id)
+        if product_id is not None:
+            statement = statement.where(RecipeModel.product_id == product_id)
         if approved is not None:
             statement = statement.where(OutputModel.approved == approved)
+        if history_scopes:
+            statement = statement.where(OutputModel.history_scope.in_(history_scopes))
         rows = self._session.execute(statement).all()
         return [
             OutputSummary(
@@ -106,6 +119,8 @@ class SqlAlchemyOutputRepository:
                 created_at=row.created_at,
                 quality_score=row.quality_score,
                 duplicate_risk=row.duplicate_risk,
+                clip_formula_hash=row.clip_formula_hash,
+                history_scope=row.history_scope,
             )
             for row in rows
         ]
@@ -125,5 +140,7 @@ class SqlAlchemyOutputRepository:
             approved_by=model.approved_by,
             approved_at=model.approved_at,
             approval_reason=model.approval_reason,
+            clip_formula_hash=model.clip_formula_hash,
+            history_scope=model.history_scope,
             created_at=model.created_at,
         )

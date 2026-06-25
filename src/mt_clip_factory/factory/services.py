@@ -25,12 +25,19 @@ from mt_clip_factory.factory.dto import (
     RecipeSummaryDTO,
 )
 from mt_clip_factory.factory.manifest_envelope import build_manifest_envelope
+from mt_clip_factory.factory.output_history import USABLE_OUTPUT_HISTORY_SCOPES, extract_clip_formula_hash, resolve_output_history_scope
 from mt_clip_factory.factory.preview_artifacts import PreviewManifestBuilder
 from mt_clip_factory.factory.preview_composition import build_segmented_preview_composition
 from mt_clip_factory.factory.product_run_store import ProductRunArtifactStore
 from mt_clip_factory.factory.renderers import RenderedPreviewOutput
 from mt_clip_factory.factory.recipe_scoring import score_and_persist_recipe
-from mt_clip_factory.factory.review_gate import apply_review_gate, assess_review_gate, review_gate_manifest_payload, review_settings_from_provider
+from mt_clip_factory.factory.review_gate import (
+    apply_review_gate,
+    assess_review_gate,
+    review_gate_manifest_payload,
+    review_settings_from_provider,
+    with_historical_render_duplicate,
+)
 from mt_clip_factory.factory.service_errors import (
     AssetNotReadyForRecipeError,
     FactoryJobNotFoundError,
@@ -262,12 +269,16 @@ class VideoAssemblyFactoryService:
         self,
         *,
         recipe_id: int | None = None,
+        product_id: int | None = None,
         approved: bool | None = None,
+        history_scopes: tuple[str, ...] | None = None,
     ) -> list[OutputSummaryDTO]:
         return _list_output_summaries(
             unit_of_work_factory=self._unit_of_work_factory,
             recipe_id=recipe_id,
+            product_id=product_id,
             approved=approved,
+            history_scopes=history_scopes,
             preview_job_type=self.PREVIEW_JOB_TYPE,
             final_job_type=self.FINAL_JOB_TYPE,
             format_timestamp=_format_timestamp,
@@ -451,6 +462,7 @@ class VideoAssemblyFactoryService:
             payload = decode_job_input(job.input_json)
             recipe_id = int(payload.get("recipe_id") or job.recipe_id or 0)
             batch_code = _optional_text(payload.get("batch_code"))
+            source_mode = _optional_text(payload.get("source_mode"))
             recipe = uow.recipes.get_by_id(recipe_id)
             if recipe is None or recipe.id is None:
                 raise RecipeNotFoundError(str(recipe_id))
@@ -525,6 +537,15 @@ class VideoAssemblyFactoryService:
                     audio_mix_summary=rendered_output.audio_mix_summary,
                 )
                 manifest_payload = dict(composition.manifest_payload)
+                clip_formula_hash = extract_clip_formula_hash(manifest_payload)
+                review_assessment = with_historical_render_duplicate(
+                    review_assessment,
+                    duplicate_count=_historical_render_duplicate_count(
+                        uow,
+                        product_id=recipe.product_id,
+                        clip_formula_hash=clip_formula_hash,
+                    ),
+                )
                 manifest_payload["review_gate"] = review_gate_manifest_payload(review_assessment)
                 if rendered_output.audio_mix_summary is not None:
                     manifest_payload["audio_mix"] = rendered_output.audio_mix_summary
@@ -562,6 +583,8 @@ class VideoAssemblyFactoryService:
                         quality_score=review_assessment.quality_score,
                         duplicate_risk=review_assessment.duplicate_risk,
                         approved=False,
+                        clip_formula_hash=clip_formula_hash,
+                        history_scope=resolve_output_history_scope(approved=False, source_mode=source_mode),
                     )
                 )
                 apply_review_gate(
@@ -648,6 +671,7 @@ class VideoAssemblyFactoryService:
             payload = decode_job_input(job.input_json)
             recipe_id = int(payload.get("recipe_id") or job.recipe_id or 0)
             batch_code = _optional_text(payload.get("batch_code"))
+            source_mode = _optional_text(payload.get("source_mode"))
             recipe = uow.recipes.get_by_id(recipe_id)
             if recipe is None or recipe.id is None:
                 raise RecipeNotFoundError(str(recipe_id))
@@ -734,6 +758,17 @@ class VideoAssemblyFactoryService:
                     audio_mix_summary=rendered_output.audio_mix_summary,
                 )
                 manifest_payload = dict(composition.manifest_payload)
+                clip_formula_hash = extract_clip_formula_hash(manifest_payload)
+                duplicate_count = _historical_render_duplicate_count(
+                    uow,
+                    product_id=recipe.product_id,
+                    clip_formula_hash=clip_formula_hash,
+                    exclude_recipe_id=recipe.id,
+                )
+                review_assessment = with_historical_render_duplicate(
+                    review_assessment,
+                    duplicate_count=duplicate_count,
+                )
                 manifest_payload["review_gate"] = review_gate_manifest_payload(review_assessment)
                 if rendered_output.audio_mix_summary is not None:
                     manifest_payload["audio_mix"] = rendered_output.audio_mix_summary
@@ -761,6 +796,7 @@ class VideoAssemblyFactoryService:
                     target_path=artifact_paths.manifest_path,
                 )
                 approved_at = _utc_now()
+                output_approved = duplicate_count <= 0
                 output = uow.outputs.add(
                     Output(
                         recipe_id=recipe.id,
@@ -771,23 +807,37 @@ class VideoAssemblyFactoryService:
                         duration_sec=rendered_output.duration_sec,
                         quality_score=review_assessment.quality_score,
                         duplicate_risk=review_assessment.duplicate_risk,
-                        approved=True,
-                        approved_by=self.SYSTEM_APPROVAL_ACTOR,
-                        approved_at=approved_at,
-                        approval_reason=self.SYSTEM_APPROVAL_REASON,
+                        approved=output_approved,
+                        approved_by=self.SYSTEM_APPROVAL_ACTOR if output_approved else None,
+                        approved_at=approved_at if output_approved else None,
+                        approval_reason=self.SYSTEM_APPROVAL_REASON if output_approved else None,
+                        clip_formula_hash=clip_formula_hash,
+                        history_scope=resolve_output_history_scope(approved=output_approved, source_mode=source_mode),
                     )
                 )
                 if output.id is None:
                     raise RuntimeError("Final output identifier was not assigned.")
-                _record_decision_event(
-                    uow,
-                    recipe_id=recipe.id,
-                    output_id=output.id,
-                    event_type=self.OUTPUT_AUTO_APPROVED_EVENT,
-                    actor=self.SYSTEM_APPROVAL_ACTOR,
-                    reason=self.SYSTEM_APPROVAL_REASON,
-                    created_at=approved_at,
-                )
+                if output_approved:
+                    _record_decision_event(
+                        uow,
+                        recipe_id=recipe.id,
+                        output_id=output.id,
+                        event_type=self.OUTPUT_AUTO_APPROVED_EVENT,
+                        actor=self.SYSTEM_APPROVAL_ACTOR,
+                        reason=self.SYSTEM_APPROVAL_REASON,
+                        created_at=approved_at,
+                    )
+                else:
+                    apply_review_gate(
+                        uow,
+                        recipe=recipe,
+                        assessment=review_assessment,
+                        required_event=self.RECIPE_REVIEW_REQUIRED_EVENT,
+                        cleared_event=self.RECIPE_REVIEW_CLEARED_EVENT,
+                        actor=self.SYSTEM_REVIEW_ACTOR,
+                        utc_now=_utc_now,
+                        record_decision_event=_record_decision_event,
+                    )
                 score_and_persist_recipe(
                     uow,
                     recipe=recipe,
@@ -885,3 +935,24 @@ class VideoAssemblyFactoryService:
             self.run_preview_job(job_id)
             return
         self.run_final_render_job(job_id)
+
+
+def _historical_render_duplicate_count(
+    uow: UnitOfWork,
+    *,
+    product_id: int,
+    clip_formula_hash: str | None,
+    exclude_recipe_id: int | None = None,
+) -> int:
+    if not clip_formula_hash:
+        return 0
+    history_outputs = uow.outputs.list_summaries(
+        product_id=product_id,
+        history_scopes=USABLE_OUTPUT_HISTORY_SCOPES,
+    )
+    return sum(
+        1
+        for summary in history_outputs
+        if summary.clip_formula_hash == clip_formula_hash
+        and (exclude_recipe_id is None or summary.recipe_id != exclude_recipe_id)
+    )

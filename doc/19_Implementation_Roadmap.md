@@ -66,6 +66,7 @@ The project now uses two roadmap layers:
 - `IR-44` Auto Factory local-time truth baseline: complete on 2026-06-21
 - `IR-45` Auto Factory persistent foreground/background clip policy baseline: complete on 2026-06-21
 - `IR-46` Auto Factory segment-inventory manifest baseline: complete on 2026-06-21
+- `IR-47` Auto Factory rendered-history and permutation-diversity hardening baseline: complete on 2026-06-25
 
 ## Current Execution Stream
 
@@ -98,6 +99,8 @@ The same operator-grade publishing stream now also locks Auto Factory materializ
 The same audit stream now also adds clip-level `segment_inventory` manifest evidence so operators and future duplicate-hardening tooling can read per-segment asset/time composition truth from one stable section.
 
 The same operator-truth stream now also converts persisted Auto Factory order timestamps into local desktop display time, moves new automatic run labels onto local timestamp tokens, and keeps run-journal artifact timestamps timezone-explicit in UTC.
+
+The same anti-duplicate stream now also persists rendered `clip_formula_hash` and explicit output `history_scope`, separates manual draft previews from usable Auto Factory history, and replaces axis-biased candidate frontier coverage with deterministic permutation coverage across larger asset pools.
 
 Backlog activation rules:
 
@@ -1173,6 +1176,35 @@ Expose one operator-readable clip-composition audit seam that summarizes segment
 - delivered deterministic clip formula hashing for future duplicate-hardening support
 - delivered pytest coverage for manifest-writing and output-detail helper reading of the new inventory section
 - reverified the full suite at `302 passed, 4 warnings`
+
+## IR-47 | Auto Factory Rendered-History And Permutation-Diversity Hardening Baseline
+
+### Goal
+
+Keep Auto Factory truthful about rendered duplicate risk while broadening deterministic candidate coverage across larger asset pools.
+
+### Scope
+
+- persist output-level rendered `clip_formula_hash`
+- persist one explicit output `history_scope`
+- exclude manual draft previews from hard same-product duplicate-history blocking
+- keep approved outputs and automation previews as usable history
+- replace axis-biased candidate frontier coverage with deterministic permutation coverage
+- add pytest coverage for rendered-history persistence, usable-history filtering, and large-pool coverage behavior
+
+### Acceptance Criteria
+
+- output rows retain rendered duplicate-history fields directly
+- usable history survives reruns without manual preview noise poisoning the exact-repeat guard
+- rendered exact duplicates surface review-required truth
+- deterministic planning stays reproducible while distributing large pools more evenly
+
+### Delivery Result
+
+- delivered persisted output `clip_formula_hash` and `history_scope` fields
+- delivered same-product usable-history filtering that excludes manual draft previews from hard planning history
+- delivered deterministic permutation-based coordinate coverage for large foreground/background/voice/music pools
+- delivered pytest coverage for rendered-history duplicate handling and larger-pool diversity regression
 
 ## Cross-Milestone Rules
 

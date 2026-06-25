@@ -617,6 +617,9 @@ class ProductionOrderService:
                     "job_status": preview_result.job_status,
                     "output_code": preview_result.output_code,
                     "output_path": preview_result.output_path,
+                    "clip_formula_hash": preview_result.clip_formula_hash,
+                    "history_scope": preview_result.history_scope,
+                    "duplicate_risk": preview_result.duplicate_risk,
                     "error_message": preview_result.error_message,
                 },
             )
@@ -649,6 +652,9 @@ class ProductionOrderService:
                         "recipe_code": preview_result.recipe_code,
                         "recipe_status": preview_result.recipe_status,
                         "output_code": preview_result.output_code,
+                        "clip_formula_hash": preview_result.clip_formula_hash,
+                        "history_scope": preview_result.history_scope,
+                        "duplicate_risk": preview_result.duplicate_risk,
                     },
                 )
                 self._append_event(

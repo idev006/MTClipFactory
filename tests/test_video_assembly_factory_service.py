@@ -602,6 +602,97 @@ def test_factory_service_keeps_selected_visual_asset_persistent_across_segments(
     assert {segment["asset_code"] for segment in manifest_payload["segments"]} == selected_foreground_codes
 
 
+def test_factory_service_persists_clip_formula_hash_and_automation_history_scope(unit_of_work_factory, tmp_path) -> None:
+    product_id, background_asset_id = _register_ready_asset(
+        unit_of_work_factory,
+        tmp_path,
+        asset_type="background_video",
+        asset_code="bg_asset",
+        file_name="bg.mp4",
+    )
+    _, foreground_asset_id = _register_ready_asset(
+        unit_of_work_factory,
+        tmp_path,
+        asset_type="foreground_video",
+        asset_code="fg_asset",
+        file_name="fg.mp4",
+    )
+    service = _build_factory_service(unit_of_work_factory, tmp_path / "previews")
+    recipe_id = service.create_recipe(CreateRecipeCommand(product_id=product_id, recipe_code="History Scope", target_ratio="9:16"))
+    service.assign_asset_to_recipe(AssignAssetToRecipeCommand(recipe_id=recipe_id, asset_id=background_asset_id, role="background"))
+    service.assign_asset_to_recipe(AssignAssetToRecipeCommand(recipe_id=recipe_id, asset_id=foreground_asset_id, role="foreground"))
+
+    job_id = service.enqueue_preview_job(recipe_id, batch_code="history_scope_batch", source_mode="folder_control_surface")
+    service.run_preview_job(job_id)
+
+    output = service.list_outputs(recipe_id=recipe_id)[0]
+
+    assert output.clip_formula_hash is not None
+    assert output.history_scope == "auto_factory_preview"
+
+
+def test_factory_service_keeps_manual_preview_history_as_draft(unit_of_work_factory, tmp_path) -> None:
+    product_id, background_asset_id = _register_ready_asset(
+        unit_of_work_factory,
+        tmp_path,
+        asset_type="background_video",
+        asset_code="bg_asset",
+        file_name="bg.mp4",
+    )
+    _, foreground_asset_id = _register_ready_asset(
+        unit_of_work_factory,
+        tmp_path,
+        asset_type="foreground_video",
+        asset_code="fg_asset",
+        file_name="fg.mp4",
+    )
+    service = _build_factory_service(unit_of_work_factory, tmp_path / "previews")
+    recipe_id = service.create_recipe(CreateRecipeCommand(product_id=product_id, recipe_code="Draft Scope", target_ratio="9:16"))
+    service.assign_asset_to_recipe(AssignAssetToRecipeCommand(recipe_id=recipe_id, asset_id=background_asset_id, role="background"))
+    service.assign_asset_to_recipe(AssignAssetToRecipeCommand(recipe_id=recipe_id, asset_id=foreground_asset_id, role="foreground"))
+
+    job_id = service.enqueue_preview_job(recipe_id)
+    service.run_preview_job(job_id)
+
+    output = service.list_outputs(recipe_id=recipe_id)[0]
+
+    assert output.history_scope == "draft_preview"
+
+
+def test_factory_service_marks_historical_render_duplicate_for_usable_history(unit_of_work_factory, tmp_path) -> None:
+    product_id, background_asset_id = _register_ready_asset(
+        unit_of_work_factory,
+        tmp_path,
+        asset_type="background_video",
+        asset_code="bg_asset",
+        file_name="bg.mp4",
+    )
+    _, foreground_asset_id = _register_ready_asset(
+        unit_of_work_factory,
+        tmp_path,
+        asset_type="foreground_video",
+        asset_code="fg_asset",
+        file_name="fg.mp4",
+    )
+    service = _build_factory_service(unit_of_work_factory, tmp_path / "previews")
+    recipe_id = service.create_recipe(CreateRecipeCommand(product_id=product_id, recipe_code="Duplicate Guard", target_ratio="9:16"))
+    service.assign_asset_to_recipe(AssignAssetToRecipeCommand(recipe_id=recipe_id, asset_id=background_asset_id, role="background"))
+    service.assign_asset_to_recipe(AssignAssetToRecipeCommand(recipe_id=recipe_id, asset_id=foreground_asset_id, role="foreground"))
+
+    first_job_id = service.enqueue_preview_job(recipe_id, batch_code="dup_batch_001", source_mode="folder_control_surface")
+    service.run_preview_job(first_job_id)
+
+    second_job_id = service.enqueue_preview_job(recipe_id, batch_code="dup_batch_002", source_mode="folder_control_surface")
+    service.run_preview_job(second_job_id)
+
+    outputs = service.list_outputs(recipe_id=recipe_id)
+    recipe = service.get_recipe(recipe_id)
+    latest_output = outputs[0]
+
+    assert latest_output.duplicate_risk == pytest.approx(1.0)
+    assert recipe.status == "needs_review"
+
+
 def test_factory_service_routes_audio_masking_risk_to_review_manifest(unit_of_work_factory, tmp_path) -> None:
     product_id, visual_asset_id = _register_ready_asset(unit_of_work_factory, tmp_path)
     _, voice_asset_id = _register_ready_asset(

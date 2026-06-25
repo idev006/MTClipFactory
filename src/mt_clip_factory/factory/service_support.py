@@ -124,17 +124,31 @@ def list_output_summaries(
     *,
     unit_of_work_factory: Callable[[], UnitOfWork],
     recipe_id: int | None,
+    product_id: int | None,
     approved: bool | None,
+    history_scopes: tuple[str, ...] | None,
     preview_job_type: str,
     final_job_type: str,
     format_timestamp,
     format_optional_timestamp,
 ) -> list[OutputSummaryDTO]:
     with unit_of_work_factory() as uow:
-        requested_outputs = list(uow.outputs.list_summaries(recipe_id=recipe_id, approved=approved))
+        requested_outputs = list(
+            uow.outputs.list_summaries(
+                recipe_id=recipe_id,
+                product_id=product_id,
+                approved=approved,
+                history_scopes=history_scopes,
+            )
+        )
         lineage_context = build_output_lineage_context(
             requested_outputs=requested_outputs,
-            all_outputs=list(uow.outputs.list_summaries(recipe_id=recipe_id)),
+            all_outputs=list(
+                uow.outputs.list_summaries(
+                    recipe_id=recipe_id,
+                    product_id=product_id,
+                )
+            ),
             preview_jobs=[
                 job
                 for job in (
@@ -174,6 +188,8 @@ def list_output_summaries(
                 source_output_path=lineage_value(summary.output_id, lineage_context, "source_output_path"),
                 quality_score=summary.quality_score,
                 duplicate_risk=summary.duplicate_risk,
+                clip_formula_hash=summary.clip_formula_hash,
+                history_scope=summary.history_scope,
             )
             for summary in requested_outputs
         ]
