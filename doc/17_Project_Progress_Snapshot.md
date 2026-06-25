@@ -2,7 +2,7 @@
 
 ## Snapshot Date
 
-- 2026-06-25
+- 2026-06-26
 
 ## Where To See Progress
 
@@ -100,6 +100,9 @@
 - Output records now also persist rendered `clip_formula_hash` plus one explicit `history_scope`, giving the duplicate-protection path a render-truth seam that can distinguish usable automation output from manual draft previews.
 - Auto Factory now also treats manual preview experiments as audit-visible `draft_preview` history instead of hard duplicate-blocking evidence, while approved outputs and automation previews remain usable same-product history.
 - Auto Factory candidate generation now also uses deterministic permutation coverage across foreground/background/voice/music coordinates, reducing large-pool axis bias and improving early asset spread.
+- Auto Factory selected-order surfaces now also show render-history truth directly, including persisted `history_scope`, rendered `clip_formula_hash`, and historical duplicate review signals in addition to planner-time duplicate-risk evidence.
+- Recipe Builder output details now also expose `history_scope`, direct output-level `clip_formula_hash`, and a clearer operator-facing explanation for the `historical_render_duplicate` review signal.
+- Preview/final render execution is now split into a dedicated factory support module so `services.py` stays under the repo line-count preference without changing public workflow behavior.
 - Auto Factory now also persists that duplicate-risk evidence on successful `materialize` stages and shows it in the `Orders` tab so operators can inspect order truth instead of relying on memory-only planner output.
 - Auto Factory local-worker heartbeat updates now also tolerate transient SQLite `database is locked` contention, so one missed heartbeat write no longer kills the heartbeat thread during an otherwise active run.
 - File-backed desktop SQLite runtime now also enables `WAL` plus a `busy_timeout`, reducing write contention between lease heartbeats and persisted stage/event updates.
@@ -183,6 +186,9 @@
 - delivered clip-level segment-inventory manifest evidence with per-segment asset/time detail, distinct visual-asset counts, and deterministic clip formula hashing
 - delivered local-time truth for Auto Factory monitoring so persisted order `Started` / `Finished` values now render in operator-local time while journal artifact timestamps stay explicit in UTC `Z`
 - delivered operator-readable local timestamp tokens for new default `batch_code` and derived order labels, preventing fresh runs from appearing several hours behind the current session
+- delivered an operator-facing render-history truth surface for Auto Factory `Orders`, including persisted `history_scope`, `clip_formula_hash`, and historical render duplicate explanations in the selected-order summary and stage rows
+- delivered Recipe Builder output-detail visibility for output-level `history_scope` plus a clearer human-readable explanation when review came from `historical_render_duplicate`
+- delivered a render-orchestration refactor so preview/final execution moved into `service_render_execution.py` and `src/mt_clip_factory/factory/services.py` returned below the repo line-count guardrail
 - delivered a new caption runtime guard for presenter-led top headline cards through `max_safe_band_height_ratio`, so grouped top-band promo boxes shrink before covering the presenter eye line
 - stopped grouped multi-line caption layouts from growing above the requested contract font size, while preserving single-line best-fit upscaling for deliberately short hooks
 - split caption runtime/layout support helpers into dedicated modules so the core orchestrators stay below the repo `800`-line guardrail
@@ -220,8 +226,9 @@
 22. validate whether the new persistent foreground/background clip policy is enough to reduce same-clip duplicate feel on real campaign outputs without sacrificing cross-output diversity
 23. validate whether the new segment-inventory manifest evidence should surface more directly in operator UI beyond output-detail helper text
 24. validate whether Auto Factory should also expose an explicit timezone badge in-screen after the new local-time display correction
+25. validate whether the new render-history truth surface is sufficient for operator triage or whether recent-order summary rows also need the same deeper history evidence next
 
 ## Verification Baseline
 
-- `python -m pytest` in `.venv`: `306 passed, 4 warnings`
+- `python -m pytest` in `.venv`: `316 passed, 4 warnings`
 - targeted `QT_QPA_PLATFORM=offscreen` UI/theme coverage for the new `Auto Factory` window and existing app windows: passed

@@ -1,6 +1,8 @@
 from __future__ import annotations
 
 from collections import Counter
+import json
+from pathlib import Path
 import re
 
 from mt_clip_factory.application.services import ProductApplicationService
@@ -46,6 +48,7 @@ from mt_clip_factory.factory.dto import (
     OutputSummaryDTO,
     PreviewJobSummaryDTO,
 )
+from mt_clip_factory.factory.manifest_envelope import read_manifest_section
 from mt_clip_factory.factory.output_history import USABLE_OUTPUT_HISTORY_SCOPES
 from mt_clip_factory.factory.services import VideoAssemblyFactoryService
 from mt_clip_factory.factory.visual_selection import seeded_order
@@ -219,6 +222,7 @@ class AutoFactoryBatchService:
         job_summary = self._get_preview_job_summary(preview_job_id)
         recipe = self._video_assembly_factory_service.get_recipe(created_recipe.recipe_id)
         output = self._latest_output_for_recipe(created_recipe.recipe_id) if job_summary.status == "done" else None
+        review_signal_codes = () if output is None else _load_review_signal_codes_from_manifest(output.manifest_path)
         return AutoFactoryPreviewRecipeResultDTO(
             recipe_id=created_recipe.recipe_id,
             product_id=created_recipe.product_id,
@@ -234,6 +238,7 @@ class AutoFactoryBatchService:
             clip_formula_hash=None if output is None else output.clip_formula_hash,
             history_scope=None if output is None else output.history_scope,
             duplicate_risk=None if output is None else output.duplicate_risk,
+            review_signal_codes=review_signal_codes,
             error_message=job_summary.error_message or error_message,
         )
 
@@ -571,6 +576,31 @@ class AutoFactoryBatchService:
 def _slugify(value: str) -> str:
     normalized = re.sub(r"[^a-z0-9]+", "_", value.strip().lower())
     return normalized.strip("_")
+
+
+def _load_review_signal_codes_from_manifest(manifest_path: str | None) -> tuple[str, ...]:
+    if not manifest_path:
+        return ()
+    manifest_file = Path(manifest_path)
+    if not manifest_file.exists():
+        return ()
+    try:
+        payload = json.loads(manifest_file.read_text(encoding="utf-8"))
+    except (OSError, ValueError):
+        return ()
+    if not isinstance(payload, dict):
+        return ()
+    review_gate = read_manifest_section(payload, section_name="quality", legacy_key="review_gate")
+    if not isinstance(review_gate, dict):
+        return ()
+    signals = review_gate.get("signals")
+    if not isinstance(signals, list):
+        return ()
+    return tuple(
+        code.strip()
+        for code in (signal.get("code") for signal in signals if isinstance(signal, dict))
+        if isinstance(code, str) and code.strip()
+    )
 
 def _require_asset(assets: tuple[AssetSummaryDTO, ...], asset_id: int) -> AssetSummaryDTO:
     for asset in assets:

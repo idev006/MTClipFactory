@@ -620,6 +620,7 @@ class ProductionOrderService:
                     "clip_formula_hash": preview_result.clip_formula_hash,
                     "history_scope": preview_result.history_scope,
                     "duplicate_risk": preview_result.duplicate_risk,
+                    "review_signal_codes": list(preview_result.review_signal_codes),
                     "error_message": preview_result.error_message,
                 },
             )
@@ -655,6 +656,7 @@ class ProductionOrderService:
                         "clip_formula_hash": preview_result.clip_formula_hash,
                         "history_scope": preview_result.history_scope,
                         "duplicate_risk": preview_result.duplicate_risk,
+                        "review_signal_codes": list(preview_result.review_signal_codes),
                     },
                 )
                 self._append_event(

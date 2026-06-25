@@ -67,6 +67,7 @@ The project now uses two roadmap layers:
 - `IR-45` Auto Factory persistent foreground/background clip policy baseline: complete on 2026-06-21
 - `IR-46` Auto Factory segment-inventory manifest baseline: complete on 2026-06-21
 - `IR-47` Auto Factory rendered-history and permutation-diversity hardening baseline: complete on 2026-06-25
+- `IR-48` Auto Factory render-history operator surface and render-service split baseline: complete on 2026-06-26
 
 ## Current Execution Stream
 
@@ -101,6 +102,8 @@ The same audit stream now also adds clip-level `segment_inventory` manifest evid
 The same operator-truth stream now also converts persisted Auto Factory order timestamps into local desktop display time, moves new automatic run labels onto local timestamp tokens, and keeps run-journal artifact timestamps timezone-explicit in UTC.
 
 The same anti-duplicate stream now also persists rendered `clip_formula_hash` and explicit output `history_scope`, separates manual draft previews from usable Auto Factory history, and replaces axis-biased candidate frontier coverage with deterministic permutation coverage across larger asset pools.
+
+The same anti-duplicate stream now also surfaces that persisted render-history truth more directly in Auto Factory `Orders` and Recipe Builder output details, while splitting preview/final render execution out of the oversized factory service module to keep the service seam maintainable.
 
 Backlog activation rules:
 

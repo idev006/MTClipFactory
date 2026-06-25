@@ -97,6 +97,7 @@ When code changes, the related Markdown documents in this folder must be updated
 89. [89_Auto_Factory_Segment_Inventory_Manifest_Workflow_2026-06-21.md](/F:/programming/python/MTClipFactory/doc/89_Auto_Factory_Segment_Inventory_Manifest_Workflow_2026-06-21.md)
 90. [90_Auto_Factory_Reopen_And_Continue_Recovery_Surface_2026-06-25.md](/F:/programming/python/MTClipFactory/doc/90_Auto_Factory_Reopen_And_Continue_Recovery_Surface_2026-06-25.md)
 91. [91_Auto_Factory_Rendered_History_And_Permutation_Diversity_Workflow_2026-06-25.md](/F:/programming/python/MTClipFactory/doc/91_Auto_Factory_Rendered_History_And_Permutation_Diversity_Workflow_2026-06-25.md)
+92. [92_Auto_Factory_Render_History_Operator_Surface_And_Render_Service_Split_2026-06-26.md](/F:/programming/python/MTClipFactory/doc/92_Auto_Factory_Render_History_Operator_Surface_And_Render_Service_Split_2026-06-26.md)
 
 ## Governance
 

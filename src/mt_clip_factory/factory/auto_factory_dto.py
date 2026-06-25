@@ -102,6 +102,7 @@ class AutoFactoryPreviewRecipeResultDTO:
     clip_formula_hash: str | None = None
     history_scope: str | None = None
     duplicate_risk: float | None = None
+    review_signal_codes: tuple[str, ...] = ()
     error_message: str | None = None
 
 

@@ -4,6 +4,7 @@ from mt_clip_factory.factory.dto import DecisionEventDTO, OutputSummaryDTO
 from mt_clip_factory.ui.factory.recipe_builder_aftercare import (
     assess_recipe_aftercare,
     build_aftercare_guidance,
+    build_output_detail_lines,
     format_output_aftercare_state,
 )
 
@@ -79,3 +80,55 @@ def test_assess_recipe_aftercare_recognizes_post_replacement_approval() -> None:
     assert status.requires_rebuild is False
     assert status.has_post_replacement_approved_output is True
     assert "post-replacement output has already been approved" in build_aftercare_guidance(status).lower()
+
+
+def test_output_detail_lines_show_history_scope_and_historical_duplicate_message(tmp_path) -> None:
+    manifest_path = tmp_path / "preview_manifest.json"
+    manifest_path.write_text(
+        """
+        {
+          "quality": {
+            "review_gate": {
+              "required": true,
+              "duplicate_risk": 1.0,
+              "quality_score": 0.0,
+              "summary": "Review required.",
+              "signals": [
+                {
+                  "code": "historical_render_duplicate",
+                  "metric_value": 1,
+                  "threshold": 0
+                }
+              ]
+            }
+          }
+        }
+        """.strip(),
+        encoding="utf-8",
+    )
+    output = OutputSummaryDTO(
+        output_id=9,
+        recipe_id=1,
+        recipe_code="honey_launch",
+        output_code="output_9",
+        file_path="outputs/9.mp4",
+        platform="tiktok",
+        ratio="9:16",
+        approved=False,
+        created_at="2026-06-26 11:00:00",
+        approved_by=None,
+        approved_at=None,
+        approval_reason=None,
+        output_kind="preview",
+        rendering_job_code="preview_job_9",
+        manifest_path=str(manifest_path),
+        duplicate_risk=1.0,
+        clip_formula_hash="hash_123",
+        history_scope="auto_factory_preview",
+    )
+
+    lines = build_output_detail_lines(output, None, [])
+
+    assert "History Scope: auto_factory_preview" in lines
+    assert "Clip Formula Hash: hash_123" in lines
+    assert "- Historical Duplicate: This clip formula already matches usable same-product render history." in lines

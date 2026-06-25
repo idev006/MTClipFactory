@@ -2,7 +2,7 @@
 
 ## Project Manager Snapshot
 
-- Report date: 2026-06-25
+- Report date: 2026-06-26
 - Overall status: In Progress
 - Current phase: Phase 6, operator-grade local-worker auto-factory control baseline delivered; distributed execution and deeper recovery-facing UX still pending
 - Delivery mode: document-led SSOT with code and tests kept in sync
@@ -119,6 +119,8 @@
 - preview and final manifests now also expose `composition.segment_inventory`, including per-segment asset/timing evidence, distinct visual-asset counts, and a deterministic clip formula hash for audit and future duplicate hardening
 - Auto Factory now also converts persisted order timestamps into local operator display time before populating recent-order and selected-order UI surfaces, so live monitoring no longer looks several hours behind the actual desktop session
 - output history now also persists rendered `clip_formula_hash` plus explicit `history_scope`, so usable Auto Factory render history can be separated from manual draft previews before future duplicate checks run
+- Auto Factory selected-order surfaces now also expose that persisted render-history truth directly, including `history_scope`, rendered `clip_formula_hash`, and historical duplicate review signals in addition to planner-time risk
+- Recipe Builder output details now also surface output-level `history_scope`, direct `clip_formula_hash`, and a clearer explanation when review came from `historical_render_duplicate`
 - Auto Factory planner now also samples large foreground/background/voice/music pools through deterministic permutation coverage instead of one axis-biased frontier walk, so fresh alternatives surface more evenly on larger products
 - new blank-`Batch Code` defaults and derived auto-generated order labels now also use local operator timestamp tokens, while product-local run journals keep explicit UTC `Z` timestamps for audit truth
 - successful auto-factory `materialize` stages now also persist planner duplicate-risk evidence, and the desktop `Auto Factory` `Orders` tab now surfaces that persisted risk truth for operators
@@ -135,6 +137,7 @@
 - caption runtime now also clamps grouped top-band headline height through a new `max_safe_band_height_ratio` rule so presenter-led promo cards shrink before covering the eye line, while still keeping overflow review-visible when the safer band cannot contain the text
 - grouped multi-line caption solving no longer grows above the requested contract font size, while short single-line best-fit cards may still upscale when that is the intended readability behavior
 - caption runtime/layout support helpers are now split into dedicated modules so the core orchestrators stay below the repo `800`-line guardrail without changing rendered behavior
+- preview/final render orchestration is now also split into a dedicated factory support module so `src/mt_clip_factory/factory/services.py` stays below the same guardrail without changing service behavior
 - caption rendering now also rasterizes a transparent Qt bitmap per segment before FFmpeg compositing, so Thai glyph shaping and textbox rendering stay on one measured-vs-drawn engine path instead of depending on FFmpeg `drawtext`
 - grouped Thai multi-line captions now also raise compressed `line_advance_ratio` to a script-safe runtime floor and report that effective resolved ratio truthfully in runtime metadata and manifests
 - grouped Thai multi-line captions now also resolve pair-aware adjacent-line spacing, so low-risk pairs may stay tighter while medium/high-risk pairs surface truthful per-pair runtime evidence in manifests
@@ -171,7 +174,7 @@
 
 ## Verification Baseline
 
-- `python -m pytest` via `.venv`: `306 passed, 4 warnings`
+- `python -m pytest` via `.venv`: `316 passed, 4 warnings`
 - targeted `QT_QPA_PLATFORM=offscreen` UI coverage for the new `Auto Factory` window and existing themed windows: passed
 
 ## Current Focus
@@ -200,6 +203,7 @@
 - validate whether the new frontier option-pool reordering is strong enough on real large-pool products or whether future policy needs explicit per-role cooldown windows or operator-tunable diversity budgets
 - validate whether the new persistent foreground/background clip policy lowers same-clip repetition risk enough on real Shopee/TikTok batches or whether future policy still needs stronger pair-cooldown tuning
 - validate whether the new manifest `segment_inventory` and clip formula hash are sufficient for operator audit and future duplicate-hardening tooling or whether a dedicated UI surface is needed next
+- validate whether the new render-history wording in Auto Factory `Orders` and Recipe Builder is clear enough for non-engineer operators or whether stronger glossary/help text is needed next
 - validate whether local operator time display is sufficient across more locales or whether a future visible timezone badge is needed in the `Auto Factory` screen
 - validate whether the new SQLite heartbeat lock-tolerance plus `WAL`/`busy_timeout` runtime hardening is sufficient during longer desktop Auto Factory runs or whether later work should reduce write frequency further
 - validate whether the new recovery-state and suggested-action wording is clear enough for operators during real reopen-and-continue situations without additional training text

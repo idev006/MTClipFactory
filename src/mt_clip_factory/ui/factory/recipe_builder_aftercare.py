@@ -118,6 +118,8 @@ def build_output_detail_lines(
         f"Source Output Path: {output.source_output_path or '-'}",
         f"Quality Score: {output.quality_score if output.quality_score is not None else '-'}",
         f"Duplicate Risk: {output.duplicate_risk if output.duplicate_risk is not None else '-'}",
+        f"History Scope: {output.history_scope or '-'}",
+        f"Clip Formula Hash: {output.clip_formula_hash or '-'}",
         f"File Path: {output.file_path}",
     ]
     if aftercare.has_replacement:
@@ -181,6 +183,10 @@ def _build_manifest_review_lines(manifest_path: str | None) -> list[str]:
             lines.append(
                 f"- Signal: {signal.get('code', '-')} | value={signal.get('metric_value', '-')} | threshold={signal.get('threshold', '-')}"
             )
+            if signal.get("code") == "historical_render_duplicate":
+                lines.append(
+                    "- Historical Duplicate: This clip formula already matches usable same-product render history."
+                )
     metrics = review_gate.get("metrics")
     if isinstance(metrics, dict):
         for metric_name, metric_value in sorted(metrics.items()):

@@ -17,6 +17,7 @@ from mt_clip_factory.factory.auto_factory import (
 from mt_clip_factory.factory.auto_factory_dto import (
     AutoFactoryBatchOrderDTO,
     AutoFactoryProductRequestDTO,
+    MaterializedBatchRecipeDTO,
 )
 from mt_clip_factory.factory.auto_factory_planning_support import _PlanningHistory
 from mt_clip_factory.factory.dto import AssignAssetToRecipeCommand, CreateRecipeCommand
@@ -1084,6 +1085,56 @@ def test_auto_factory_materializes_and_builds_previews(unit_of_work_factory, tmp
     assert all(Path(result.output_path or "").exists() for result in execution.preview_production.recipe_results)
     assert all(result.recipe_status == "candidate" for result in execution.preview_production.recipe_results)
     assert all(result.review_required is False for result in execution.preview_production.recipe_results)
+
+
+def test_auto_factory_preview_result_surfaces_historical_duplicate_signal_codes(unit_of_work_factory, tmp_path) -> None:
+    product_service = ProductApplicationService(unit_of_work_factory=unit_of_work_factory)
+    product_id = product_service.create_product(CreateProductCommand(product_code="serum", product_name="Serum"))
+    asset_service = _build_asset_service(unit_of_work_factory, tmp_path / "media_library", {})
+    _register_asset(
+        asset_service,
+        product_id=product_id,
+        tmp_path=tmp_path,
+        asset_type="foreground_video",
+        asset_code="fg_01",
+        file_name="fg01.mp4",
+    )
+    _register_asset(
+        asset_service,
+        product_id=product_id,
+        tmp_path=tmp_path,
+        asset_type="background_video",
+        asset_code="bg_01",
+        file_name="bg01.mp4",
+    )
+    factory_service = _build_factory_service(unit_of_work_factory, tmp_path / "previews")
+    service = AutoFactoryBatchService(
+        product_service=product_service,
+        asset_intake_service=asset_service,
+        video_assembly_factory_service=factory_service,
+    )
+    recipe_id = factory_service.create_recipe(
+        CreateRecipeCommand(product_id=product_id, recipe_code="Serum Duplicate", target_ratio="9:16")
+    )
+    recipe = factory_service.get_recipe(recipe_id)
+    for asset in asset_service.list_assets(product_id=product_id, status="ready"):
+        factory_service.assign_asset_to_recipe(
+            AssignAssetToRecipeCommand(recipe_id=recipe_id, asset_id=asset.asset_id, role="background" if asset.asset_type == "background_video" else "foreground")
+        )
+    created_recipe = MaterializedBatchRecipeDTO(
+        recipe_id=recipe.recipe_id,
+        product_id=product_id,
+        product_code="serum",
+        recipe_code=recipe.recipe_code,
+        assignment_count=len(factory_service.get_recipe(recipe_id).items),
+    )
+
+    first_result = service.build_preview_for_materialized_recipe(created_recipe, batch_code="dup_batch_001")
+    second_result = service.build_preview_for_materialized_recipe(created_recipe, batch_code="dup_batch_002")
+
+    assert first_result.review_signal_codes == ()
+    assert second_result.review_required is True
+    assert "historical_render_duplicate" in second_result.review_signal_codes
 
 
 def test_auto_factory_preview_batch_reports_failures_and_continues(unit_of_work_factory, tmp_path) -> None:
