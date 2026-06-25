@@ -95,6 +95,7 @@ When code changes, the related Markdown documents in this folder must be updated
 87. [87_Auto_Factory_Local_Time_Truth_2026-06-21.md](/F:/programming/python/MTClipFactory/doc/87_Auto_Factory_Local_Time_Truth_2026-06-21.md)
 88. [88_Auto_Factory_Persistent_Foreground_Background_Clip_Policy_2026-06-21.md](/F:/programming/python/MTClipFactory/doc/88_Auto_Factory_Persistent_Foreground_Background_Clip_Policy_2026-06-21.md)
 89. [89_Auto_Factory_Segment_Inventory_Manifest_Workflow_2026-06-21.md](/F:/programming/python/MTClipFactory/doc/89_Auto_Factory_Segment_Inventory_Manifest_Workflow_2026-06-21.md)
+90. [90_Auto_Factory_Reopen_And_Continue_Recovery_Surface_2026-06-25.md](/F:/programming/python/MTClipFactory/doc/90_Auto_Factory_Reopen_And_Continue_Recovery_Surface_2026-06-25.md)
 
 ## Governance
 

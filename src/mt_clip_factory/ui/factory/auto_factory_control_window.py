@@ -430,7 +430,7 @@ class AutoFactoryControlWindow(QMainWindow):
         group = QGroupBox("Recent Production Orders")
         group.setMinimumHeight(self.RECENT_ORDERS_MIN_HEIGHT)
         layout = QVBoxLayout(group)
-        self.recent_orders_table = QTableWidget(0, 10)
+        self.recent_orders_table = QTableWidget(0, 12)
         self._configure_table(
             self.recent_orders_table,
             [
@@ -438,6 +438,8 @@ class AutoFactoryControlWindow(QMainWindow):
                 "Order Code",
                 "Batch Code",
                 "Status",
+                "Recovery State",
+                "Suggested Action",
                 "Risk Level",
                 "Duplicate Risk",
                 "Items",
@@ -445,8 +447,8 @@ class AutoFactoryControlWindow(QMainWindow):
                 "Started",
                 "Finished",
             ],
-            stretch_columns=(1, 2, 7),
-            interactive_widths={4: 110, 5: 110},
+            stretch_columns=(1, 2, 9),
+            interactive_widths={4: 130, 5: 150, 6: 110, 7: 110},
         )
         self.recent_orders_table.setMinimumHeight(self.RECENT_ORDERS_MIN_HEIGHT - 50)
         self.recent_orders_table.itemSelectionChanged.connect(self._select_recent_order)
@@ -501,9 +503,20 @@ class AutoFactoryControlWindow(QMainWindow):
         self.run_mode_combo.setEnabled(not run_active)
         self.refresh_orders_button.setEnabled(not run_active)
         self.refresh_progress_button.setEnabled(has_order_context or run_active)
-        self.pause_button.setEnabled(has_order_context and order_status in {"leased", "processing", "resume_requested"})
+        self.pause_button.setEnabled(
+            has_order_context
+            and active_worker_count > 0
+            and order_status in {"leased", "processing", "resume_requested"}
+        )
         self.stop_button.setEnabled(
-            has_order_context and order_status in {"leased", "processing", "pause_requested", "paused", "resume_requested"}
+            has_order_context
+            and (
+                order_status in {"paused"}
+                or (
+                    active_worker_count > 0
+                    and order_status in {"leased", "processing", "pause_requested", "resume_requested"}
+                )
+            )
         )
         self.resume_button.setEnabled(
             has_order_context

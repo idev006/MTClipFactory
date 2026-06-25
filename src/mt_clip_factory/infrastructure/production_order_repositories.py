@@ -89,6 +89,8 @@ class SqlAlchemyProductionOrderRepository:
                 ProductionOrderModel.source_mode,
                 ProductionOrderModel.requested_by,
                 ProductionOrderModel.status,
+                ProductionOrderModel.lease_owner,
+                ProductionOrderModel.lease_expires_at,
                 ProductionOrderModel.created_at,
                 ProductionOrderModel.started_at,
                 ProductionOrderModel.finished_at,
@@ -102,6 +104,8 @@ class SqlAlchemyProductionOrderRepository:
                 ProductionOrderModel.source_mode,
                 ProductionOrderModel.requested_by,
                 ProductionOrderModel.status,
+                ProductionOrderModel.lease_owner,
+                ProductionOrderModel.lease_expires_at,
                 ProductionOrderModel.created_at,
                 ProductionOrderModel.started_at,
                 ProductionOrderModel.finished_at,
@@ -123,6 +127,8 @@ class SqlAlchemyProductionOrderRepository:
                 started_at=row.started_at,
                 finished_at=row.finished_at,
                 item_count=row.item_count,
+                lease_owner=row.lease_owner,
+                lease_expires_at=row.lease_expires_at,
             )
             for row in rows
         ]

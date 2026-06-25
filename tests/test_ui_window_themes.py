@@ -271,8 +271,11 @@ class FakeAutoFactoryControlViewModel(QObject):
             order_status=None,
             current_stage="running_intake",
             lease_owner=None,
+            lease_state="not_applicable",
             lease_expires_at=None,
             lease_heartbeat_at=None,
+            recovery_state="not_applicable",
+            suggested_action="inspect",
             total_products=0,
             products_with_stage_activity=0,
             total_requested_outputs=0,
@@ -420,7 +423,7 @@ def test_auto_factory_window_exposes_guided_run_controls(qapp: QApplication) -> 
     assert auto_factory_window.order_stages_table.columnCount() == 11
     assert auto_factory_window.selected_product_text.isReadOnly() is True
     assert auto_factory_window.selected_product_text.minimumHeight() == auto_factory_window.SELECTED_PRODUCT_MIN_HEIGHT - 90
-    assert auto_factory_window.recent_orders_table.columnCount() == 10
+    assert auto_factory_window.recent_orders_table.columnCount() == 12
     assert auto_factory_window.recent_orders_table.minimumHeight() == auto_factory_window.RECENT_ORDERS_MIN_HEIGHT - 50
     assert auto_factory_window.open_product_folder_button.text() == "Open Product Folder"
     assert auto_factory_window.open_contracts_button.text() == "Open Contracts"

@@ -21,6 +21,22 @@ if TYPE_CHECKING:
     from collections.abc import Sequence
 
 
+ACTIVE_ORDER_STATUS_VALUES = {
+    OrchestrationStatus.LEASED.value,
+    OrchestrationStatus.PROCESSING.value,
+    OrchestrationStatus.PAUSE_REQUESTED.value,
+    OrchestrationStatus.STOP_REQUESTED.value,
+    OrchestrationStatus.RESUME_REQUESTED.value,
+}
+RESUMABLE_ORDER_STATUS_VALUES = {
+    OrchestrationStatus.PAUSED.value,
+    OrchestrationStatus.STOPPED.value,
+    OrchestrationStatus.FAILED_RETRYABLE.value,
+    OrchestrationStatus.REVIEW_REQUIRED.value,
+    OrchestrationStatus.BLOCKED.value,
+}
+
+
 def build_batch_order(
     order: ProductionOrder,
     items: Sequence[ProductionOrderItem],
@@ -151,6 +167,36 @@ def format_timestamp(value: datetime) -> str:
 
 def format_optional_timestamp(value: datetime | None) -> str | None:
     return format_optional_local_display_timestamp(value)
+
+
+def lease_is_stale(*, lease_owner: str | None, lease_expires_at: datetime | None, now: datetime) -> bool:
+    return lease_owner is not None and lease_expires_at is not None and lease_expires_at <= now
+
+
+def derive_lease_state(*, lease_owner: str | None, lease_is_stale_value: bool) -> str:
+    if lease_owner is None:
+        return "released"
+    return "stale" if lease_is_stale_value else "active"
+
+
+def derive_recovery_state(*, status: str, lease_owner: str | None, lease_is_stale_value: bool) -> str:
+    if lease_owner is not None and lease_is_stale_value:
+        return "stale"
+    if lease_owner is not None and status in ACTIVE_ORDER_STATUS_VALUES:
+        return "active"
+    if status in RESUMABLE_ORDER_STATUS_VALUES or (status in ACTIVE_ORDER_STATUS_VALUES and lease_owner is None):
+        return "released"
+    return "not_applicable"
+
+
+def derive_suggested_action(*, status: str, lease_owner: str | None, lease_is_stale_value: bool) -> str:
+    if lease_owner is not None and not lease_is_stale_value and status in ACTIVE_ORDER_STATUS_VALUES:
+        return "monitor"
+    if lease_owner is not None and lease_is_stale_value and status in ACTIVE_ORDER_STATUS_VALUES:
+        return "resume_recover_stale"
+    if status in RESUMABLE_ORDER_STATUS_VALUES or (status in ACTIVE_ORDER_STATUS_VALUES and lease_owner is None):
+        return "resume"
+    return "inspect"
 
 
 def normalize_order_code(value: str) -> str:

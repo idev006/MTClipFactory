@@ -47,6 +47,9 @@ class ProductionOrderSummaryDTO:
     created_at: str
     started_at: str | None
     finished_at: str | None
+    lease_state: str = "not_applicable"
+    recovery_state: str = "not_applicable"
+    suggested_action: str = "inspect"
     risk_level: str = "Unavailable"
     max_near_duplicate_score: float | None = None
 
@@ -88,3 +91,7 @@ class ProductionOrderDetailsDTO:
     items: tuple[ProductionOrderItemDTO, ...]
     stages: tuple[ProductionOrderStageDTO, ...]
     events: tuple[ProductionOrderEventDTO, ...]
+    lease_state: str = "not_applicable"
+    lease_is_stale: bool = False
+    recovery_state: str = "not_applicable"
+    suggested_action: str = "inspect"

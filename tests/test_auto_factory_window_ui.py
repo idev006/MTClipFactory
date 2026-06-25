@@ -99,8 +99,11 @@ class FakeAutoFactoryControlViewModel(QObject):
             order_status=None,
             current_stage="running_intake",
             lease_owner=None,
+            lease_state="not_applicable",
             lease_expires_at=None,
             lease_heartbeat_at=None,
+            recovery_state="not_applicable",
+            suggested_action="inspect",
             total_products=0,
             products_with_stage_activity=0,
             total_requested_outputs=0,
@@ -486,6 +489,8 @@ def test_auto_factory_window_shows_risk_summary_in_recent_orders_strip(qapp: QAp
                     created_at="2026-06-21 12:00:00",
                     started_at="2026-06-21 12:00:01",
                     finished_at="2026-06-21 12:00:05",
+                    recovery_state="not_applicable",
+                    suggested_action="inspect",
                     risk_level="High",
                     max_near_duplicate_score=0.775,
                 ),
@@ -495,9 +500,115 @@ def test_auto_factory_window_shows_risk_summary_in_recent_orders_strip(qapp: QAp
 
     auto_factory_window._refresh_recent_orders()
 
-    assert auto_factory_window.recent_orders_table.columnCount() == 10
-    assert auto_factory_window.recent_orders_table.item(0, 4).text() == "High"
-    assert auto_factory_window.recent_orders_table.item(0, 5).text() == "0.775"
+    assert auto_factory_window.recent_orders_table.columnCount() == 12
+    assert auto_factory_window.recent_orders_table.item(0, 4).text() == "not_applicable"
+    assert auto_factory_window.recent_orders_table.item(0, 5).text() == "inspect"
+    assert auto_factory_window.recent_orders_table.item(0, 6).text() == "High"
+    assert auto_factory_window.recent_orders_table.item(0, 7).text() == "0.775"
+    auto_factory_window.close()
+
+
+def test_auto_factory_window_surfaces_stale_lease_recovery_truth(qapp: QApplication) -> None:
+    selected_order = ProductionOrderDetailsDTO(
+        production_order_id=17,
+        order_code="tea_order_017",
+        batch_code="tea_batch_017",
+        source_mode="folder_control_surface",
+        requested_by=None,
+        strict_fulfillment=True,
+        preview_generation_enabled=True,
+        run_mode="materialize_and_build_previews",
+        source_root="F:\\batch_root",
+        status="processing",
+        lease_owner="worker_a",
+        lease_acquired_at="2026-06-21 14:00:00",
+        lease_heartbeat_at="2026-06-21 14:00:05",
+        lease_expires_at="2026-06-21 14:01:05",
+        blocking_reason=None,
+        created_at="2026-06-21 14:00:00",
+        started_at="2026-06-21 14:00:01",
+        finished_at=None,
+        items=(
+            ProductionOrderItemDTO(
+                production_order_item_id=5,
+                product_id=1,
+                product_code="tea",
+                requested_output_count=1,
+                target_platform="tiktok",
+                target_ratio="9:16",
+                uniqueness_scope="batch",
+                duration_mode="voice_with_bounds",
+                fixed_duration_sec=None,
+                min_duration_sec=12.0,
+                max_duration_sec=30.0,
+            ),
+        ),
+        stages=(),
+        events=(
+            ProductionOrderEventDTO(
+                production_order_event_id=30,
+                sequence_index=1,
+                event_type="run_started",
+                status="processing",
+                message="Started production order tea_order_017.",
+                production_order_item_id=None,
+                stage_name=None,
+                worker_id="worker_a",
+                detail_json=None,
+                created_at="2026-06-21 14:00:01",
+            ),
+        ),
+        lease_state="stale",
+        lease_is_stale=True,
+        recovery_state="stale",
+        suggested_action="resume_recover_stale",
+    )
+
+    auto_factory_window = AutoFactoryControlWindow(
+        FakeAutoFactoryControlViewModel(selected_order=selected_order)
+    )
+    auto_factory_window._view_model.progress_snapshot = AutoFactoryControlProgressSnapshot(
+        run_state="ready",
+        phase="selected_order",
+        run_mode=selected_order.run_mode,
+        root_folder=selected_order.source_root,
+        batch_code=selected_order.batch_code,
+        monitored_order_id=selected_order.production_order_id,
+        monitored_order_code=selected_order.order_code,
+        order_status=selected_order.status,
+        current_stage="queued",
+        lease_owner=selected_order.lease_owner,
+        lease_state=selected_order.lease_state,
+        lease_expires_at=selected_order.lease_expires_at,
+        lease_heartbeat_at=selected_order.lease_heartbeat_at,
+        recovery_state=selected_order.recovery_state,
+        suggested_action=selected_order.suggested_action,
+        total_products=1,
+        products_with_stage_activity=0,
+        total_requested_outputs=1,
+        materialized_recipe_count=0,
+        preview_completed_count=0,
+        review_required_count=0,
+        stage_count=0,
+        active_worker_count=0,
+        last_event="Started production order tea_order_017.",
+        blocking_reason=None,
+        started_at=selected_order.started_at,
+        finished_at=selected_order.finished_at,
+        command_note="This run has a stale lease. Resume Run will recover the expired lease and continue remaining eligible work from persisted order and stage truth.",
+    )
+
+    auto_factory_window._refresh_selected_order()
+    auto_factory_window._refresh_progress()
+    auto_factory_window._refresh_run_controls()
+
+    assert "Lease State: stale" in auto_factory_window.order_summary_text.toPlainText()
+    assert "Suggested Action: resume_recover_stale" in auto_factory_window.order_summary_text.toPlainText()
+    assert "Active Workers: 0" in auto_factory_window.progress_text.toPlainText()
+    assert "stale lease" in auto_factory_window.operator_controls_label.text().lower()
+    assert auto_factory_window.pause_button.isEnabled() is False
+    assert auto_factory_window.stop_button.isEnabled() is False
+    assert auto_factory_window.resume_button.isEnabled() is True
     auto_factory_window.close()
 
 

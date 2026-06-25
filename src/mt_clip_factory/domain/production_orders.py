@@ -90,3 +90,5 @@ class ProductionOrderSummary:
     started_at: datetime | None
     finished_at: datetime | None
     item_count: int
+    lease_owner: str | None = None
+    lease_expires_at: datetime | None = None

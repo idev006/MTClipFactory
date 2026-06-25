@@ -507,3 +507,44 @@ def test_production_order_service_resume_reuses_materialized_recipes_after_retry
     assert sum(1 for stage in resumed.stages if stage.stage_name == "materialize") == 1
     assert sum(1 for stage in resumed.stages if stage.stage_name == "preview") == 2
     assert any(event.event_type == "resume_requested" for event in resumed.events)
+
+
+def test_production_order_service_marks_stale_leases_as_recoverable_in_details_and_summary(
+    unit_of_work_factory,
+    tmp_path,
+) -> None:
+    product_service, _, _, service = _build_services(unit_of_work_factory, tmp_path)
+    product_service.create_product(CreateProductCommand(product_code="stale", product_name="Stale"))
+
+    order_id = service.create_order(
+        AutoFactoryBatchOrderDTO(
+            batch_code="stale_batch",
+            product_requests=(AutoFactoryProductRequestDTO(product_code="stale", requested_output_count=1),),
+        ),
+        source_mode="manual_batch",
+        order_code="stale_order_001",
+    )
+
+    with unit_of_work_factory() as uow:
+        order = uow.production_orders.get_by_id(order_id)
+        assert order is not None
+        now = utc_now()
+        order.status = OrchestrationStatus.PROCESSING
+        order.started_at = now
+        order.lease_owner = "worker_a"
+        order.lease_acquired_at = now - timedelta(minutes=3)
+        order.lease_heartbeat_at = now - timedelta(minutes=2)
+        order.lease_expires_at = now - timedelta(minutes=1)
+        uow.production_orders.update(order)
+        uow.commit()
+
+    details = service.get_order(order_id)
+    summary = service.list_orders()[0]
+
+    assert details.lease_is_stale is True
+    assert details.lease_state == "stale"
+    assert details.recovery_state == "stale"
+    assert details.suggested_action == "resume_recover_stale"
+    assert summary.lease_state == "stale"
+    assert summary.recovery_state == "stale"
+    assert summary.suggested_action == "resume_recover_stale"

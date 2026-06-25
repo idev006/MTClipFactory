@@ -75,6 +75,8 @@ The delivered 2026-06-20 control slice keeps `Pause Run`, `Stop Run`, and `Resum
 
 The same local-worker control stream now also hardens SQLite lease-heartbeat execution so transient `database is locked` contention skips one heartbeat attempt instead of killing the background heartbeat thread, while file-backed desktop SQLite now enables `WAL` plus a `busy_timeout` to reduce write contention.
 
+The same local-worker control stream now also adds an operator-facing reopen-and-continue recovery surface so stale leases no longer masquerade as active workers and recent-order history can recommend `Monitor`, `Resume`, or `Resume (Recover Stale Lease)` truthfully.
+
 The current caption-quality hardening stream should also keep presenter-led promo cards face-safe by clamping grouped top-band band height and by treating requested grouped headline size as a real upper bound instead of a suggestion.
 
 The same caption-quality stream now also hardens Thai rendering by compositing a Qt-rendered caption bitmap in FFmpeg instead of asking FFmpeg `drawtext` to redraw already-measured caption glyphs.

@@ -2,7 +2,7 @@
 
 ## Project Manager Snapshot
 
-- Report date: 2026-06-21
+- Report date: 2026-06-25
 - Overall status: In Progress
 - Current phase: Phase 6, operator-grade local-worker auto-factory control baseline delivered; distributed execution and deeper recovery-facing UX still pending
 - Delivery mode: document-led SSOT with code and tests kept in sync
@@ -127,6 +127,8 @@
 - the desktop `Auto Factory` `Recent Production Orders` strip now also surfaces persisted `Risk Level` plus max raw `Duplicate Risk` per order and highlights riskier recent orders for faster operator triage
 - local-worker production-order heartbeat updates now also tolerate transient SQLite `database is locked` contention, so one skipped heartbeat attempt no longer crashes the background heartbeat thread during active Auto Factory runs
 - file-backed desktop SQLite runtime now also enables `WAL` plus a `busy_timeout`, reducing lease-heartbeat versus stage/event write contention during local Auto Factory execution
+- Auto Factory now also exposes operator-facing reopen-and-continue recovery truth, including stale-versus-active lease state, recovery-state summary, and suggested action visibility in recent-order and selected-order surfaces
+- Auto Factory no longer counts a stale lease as one active worker in the operator progress surface, keeping `Resume Run` truthful as lease recovery instead of pretending the worker is still active
 - `Pause Run`, `Stop Run`, and `Resume Run` remain visible operator-control groundwork only; the UI must continue to say `pending backend support` until persisted safe-checkpoint and worker-lease semantics are actually implemented
 - caption runtime now also clamps grouped top-band headline height through a new `max_safe_band_height_ratio` rule so presenter-led promo cards shrink before covering the eye line, while still keeping overflow review-visible when the safer band cannot contain the text
 - grouped multi-line caption solving no longer grows above the requested contract font size, while short single-line best-fit cards may still upscale when that is the intended readability behavior
@@ -198,6 +200,7 @@
 - validate whether the new manifest `segment_inventory` and clip formula hash are sufficient for operator audit and future duplicate-hardening tooling or whether a dedicated UI surface is needed next
 - validate whether local operator time display is sufficient across more locales or whether a future visible timezone badge is needed in the `Auto Factory` screen
 - validate whether the new SQLite heartbeat lock-tolerance plus `WAL`/`busy_timeout` runtime hardening is sufficient during longer desktop Auto Factory runs or whether later work should reduce write frequency further
+- validate whether the new recovery-state and suggested-action wording is clear enough for operators during real reopen-and-continue situations without additional training text
 - validate whether the new exact `fingerprint_hash` guard basis is commercially strict enough or whether future policy should expand the canonical basis with caption/runtime contract dimensions
 - validate whether the new bulk asset tagging flow reduces repetitive operator work without causing accidental over-tagging
 - validate whether the new folder-driven additive tag sync is sufficient before implementing tag-removal sync behavior

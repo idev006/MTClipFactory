@@ -395,3 +395,56 @@ def test_auto_factory_control_view_model_refreshes_monitored_order_progress() ->
     assert view_model.progress_snapshot.monitored_order_id == 41
     assert view_model.progress_snapshot.order_status == "succeeded"
     assert order_service.get_calls == [41, 41]
+
+
+def test_auto_factory_control_view_model_marks_stale_leases_as_zero_active_workers() -> None:
+    order_service = FakeProductionOrderService()
+    order_service._details = ProductionOrderDetailsDTO(
+        production_order_id=41,
+        order_code="stale_order_041",
+        batch_code="stale_batch",
+        source_mode="folder_control_surface",
+        requested_by=None,
+        strict_fulfillment=True,
+        preview_generation_enabled=True,
+        run_mode="materialize_and_build_previews",
+        source_root="F:\\batch_root",
+        status="processing",
+        lease_owner="worker_a",
+        lease_acquired_at="2026-06-21 14:00:00",
+        lease_heartbeat_at="2026-06-21 14:00:05",
+        lease_expires_at="2026-06-21 14:01:05",
+        blocking_reason=None,
+        created_at="2026-06-21 14:00:00",
+        started_at="2026-06-21 14:00:01",
+        finished_at=None,
+        items=(
+            ProductionOrderItemDTO(
+                production_order_item_id=5,
+                product_id=1,
+                product_code="tea",
+                requested_output_count=1,
+                target_platform="tiktok",
+                target_ratio="9:16",
+                uniqueness_scope="batch",
+                duration_mode="voice_with_bounds",
+                fixed_duration_sec=None,
+                min_duration_sec=12.0,
+                max_duration_sec=30.0,
+            ),
+        ),
+        stages=(),
+        events=(),
+        lease_state="stale",
+        lease_is_stale=True,
+        recovery_state="stale",
+        suggested_action="resume_recover_stale",
+    )
+
+    view_model = AutoFactoryControlViewModel(FakeAutoFactoryFolderService(), order_service)
+    view_model.select_order(41)
+
+    assert view_model.progress_snapshot.active_worker_count == 0
+    assert view_model.progress_snapshot.lease_state == "stale"
+    assert view_model.progress_snapshot.suggested_action == "resume_recover_stale"
+    assert "stale lease" in view_model.progress_snapshot.command_note.lower()

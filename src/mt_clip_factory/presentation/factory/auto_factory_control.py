@@ -55,8 +55,11 @@ class AutoFactoryControlProgressSnapshot:
     order_status: str | None
     current_stage: str | None
     lease_owner: str | None
+    lease_state: str
     lease_expires_at: str | None
     lease_heartbeat_at: str | None
+    recovery_state: str
+    suggested_action: str
     total_products: int
     products_with_stage_activity: int
     total_requested_outputs: int
@@ -84,8 +87,11 @@ class AutoFactoryControlProgressSnapshot:
             order_status=None,
             current_stage=None,
             lease_owner=None,
+            lease_state="not_applicable",
             lease_expires_at=None,
             lease_heartbeat_at=None,
+            recovery_state="not_applicable",
+            suggested_action="inspect",
             total_products=0,
             products_with_stage_activity=0,
             total_requested_outputs=0,
@@ -251,6 +257,7 @@ class AutoFactoryControlViewModel(QObject):
                 command_note=_build_command_note(
                     order_status=selected_order.status,
                     run_active=True,
+                    lease_state=selected_order.lease_state,
                 ),
             )
         )
@@ -360,6 +367,7 @@ class AutoFactoryControlViewModel(QObject):
                     command_note=_build_command_note(
                         order_status=result.selected_order.status,
                         run_active=False,
+                        lease_state=result.selected_order.lease_state,
                     ),
                 )
             )
@@ -383,8 +391,11 @@ class AutoFactoryControlViewModel(QObject):
                 order_status="failed_terminal",
                 current_stage=self._progress_snapshot.current_stage,
                 lease_owner=None,
+                lease_state="not_applicable",
                 lease_expires_at=None,
                 lease_heartbeat_at=None,
+                recovery_state="not_applicable",
+                suggested_action="inspect",
                 total_products=self._progress_snapshot.total_products,
                 products_with_stage_activity=self._progress_snapshot.products_with_stage_activity,
                 total_requested_outputs=self._progress_snapshot.total_requested_outputs,
@@ -421,7 +432,11 @@ class AutoFactoryControlViewModel(QObject):
                 request=self._run_request,
                 run_state=_snapshot_run_state(selected_order.status, run_active=self._run_active),
                 phase="monitoring_order",
-                command_note=_build_command_note(order_status=selected_order.status, run_active=self._run_active),
+                command_note=_build_command_note(
+                    order_status=selected_order.status,
+                    run_active=self._run_active,
+                    lease_state=selected_order.lease_state,
+                ),
             )
         )
 
@@ -446,7 +461,11 @@ class AutoFactoryControlViewModel(QObject):
                 request=_request_from_order(self._selected_order, fallback=self._run_request),
                 run_state=_snapshot_run_state(self._selected_order.status, run_active=self._run_active),
                 phase="selected_order",
-                command_note=_build_command_note(order_status=self._selected_order.status, run_active=self._run_active),
+                command_note=_build_command_note(
+                    order_status=self._selected_order.status,
+                    run_active=self._run_active,
+                    lease_state=self._selected_order.lease_state,
+                ),
             )
         )
         self._set_feedback(f"Loaded production order #{production_order_id}.")
@@ -463,7 +482,11 @@ class AutoFactoryControlViewModel(QObject):
                 request=_request_from_order(updated, fallback=self._run_request),
                 run_state=_snapshot_run_state(updated.status, run_active=self._run_active),
                 phase="pause_requested",
-                command_note=_build_command_note(order_status=updated.status, run_active=self._run_active),
+                command_note=_build_command_note(
+                    order_status=updated.status,
+                    run_active=self._run_active,
+                    lease_state=updated.lease_state,
+                ),
             )
         )
         self._set_feedback(f"Pause requested for production order {updated.order_code}.")
@@ -479,7 +502,11 @@ class AutoFactoryControlViewModel(QObject):
                 request=_request_from_order(updated, fallback=self._run_request),
                 run_state=_snapshot_run_state(updated.status, run_active=self._run_active),
                 phase="stop_requested" if updated.status == "stop_requested" else "stopped",
-                command_note=_build_command_note(order_status=updated.status, run_active=self._run_active),
+                command_note=_build_command_note(
+                    order_status=updated.status,
+                    run_active=self._run_active,
+                    lease_state=updated.lease_state,
+                ),
             )
         )
         self._set_feedback(f"Stop requested for production order {updated.order_code}.")
@@ -581,8 +608,11 @@ def _build_initial_progress_snapshot(request: AutoFactoryControlRunRequest) -> A
         order_status=None,
         current_stage=resolved_phase,
         lease_owner=None,
+        lease_state="not_applicable",
         lease_expires_at=None,
         lease_heartbeat_at=None,
+        recovery_state="not_applicable",
+        suggested_action="inspect",
         total_products=0,
         products_with_stage_activity=0,
         total_requested_outputs=0,
@@ -614,8 +644,11 @@ def _build_preflight_progress_snapshot(
         order_status=preflight_report.status,
         current_stage="audit_complete",
         lease_owner=None,
+        lease_state="not_applicable",
         lease_expires_at=None,
         lease_heartbeat_at=None,
+        recovery_state="not_applicable",
+        suggested_action="inspect",
         total_products=len(preflight_report.product_reports),
         products_with_stage_activity=len(preflight_report.product_reports),
         total_requested_outputs=sum(report.requested_output_count or 0 for report in preflight_report.product_reports),
@@ -648,8 +681,11 @@ def _build_intake_progress_snapshot(
         order_status="intake_complete",
         current_stage="intake_complete",
         lease_owner=None,
+        lease_state="not_applicable",
         lease_expires_at=None,
         lease_heartbeat_at=None,
+        recovery_state="not_applicable",
+        suggested_action="inspect",
         total_products=len(run_report.order.product_requests),
         products_with_stage_activity=len(run_report.product_reports),
         total_requested_outputs=total_requested_outputs,
@@ -685,8 +721,11 @@ def _build_order_bootstrap_progress_snapshot(
         order_status="processing",
         current_stage="order_created",
         lease_owner=None,
+        lease_state="released",
         lease_expires_at=None,
         lease_heartbeat_at=None,
+        recovery_state="released",
+        suggested_action="monitor",
         total_products=len(run_report.order.product_requests),
         products_with_stage_activity=0,
         total_requested_outputs=total_requested_outputs,
@@ -747,8 +786,11 @@ def _build_order_progress_snapshot(
         order_status=order.status,
         current_stage="queued" if latest_stage is None else latest_stage.stage_name,
         lease_owner=order.lease_owner,
+        lease_state=order.lease_state,
         lease_expires_at=order.lease_expires_at,
         lease_heartbeat_at=order.lease_heartbeat_at,
+        recovery_state=order.recovery_state,
+        suggested_action=order.suggested_action,
         total_products=len(order.items),
         products_with_stage_activity=len(product_ids_with_stage_activity),
         total_requested_outputs=total_requested_outputs,
@@ -756,7 +798,7 @@ def _build_order_progress_snapshot(
         preview_completed_count=preview_completed_count,
         review_required_count=review_required_count,
         stage_count=len(effective_stages),
-        active_worker_count=1 if order.lease_owner and order.status in ACTIVE_ORDER_STATUSES else 0,
+        active_worker_count=1 if order.lease_state == "active" and order.status in ACTIVE_ORDER_STATUSES else 0,
         last_event=(
             latest_event
             or "Order created; waiting for first recorded stage."
@@ -770,7 +812,12 @@ def _build_order_progress_snapshot(
     )
 
 
-def _build_command_note(*, order_status: str | None, run_active: bool) -> str:
+def _build_command_note(*, order_status: str | None, run_active: bool, lease_state: str = "not_applicable") -> str:
+    if lease_state == "stale":
+        return (
+            "This run has a stale lease. Resume Run will recover the expired lease and continue remaining eligible work "
+            "from persisted order and stage truth."
+        )
     if order_status in {"processing", "leased", "resume_requested"}:
         return (
             "Live monitoring is active. Pause and Stop are persisted requests that apply at the next recipe-boundary "

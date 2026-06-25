@@ -23,11 +23,15 @@ from mt_clip_factory.factory.auto_factory_dto import (
 from mt_clip_factory.factory.production_order_detail_support import (
     build_batch_order,
     build_materialize_stage_detail,
+    derive_lease_state,
+    derive_recovery_state,
+    derive_suggested_action,
     effective_stages,
     find_materialized_recipe,
     format_optional_timestamp,
     format_timestamp,
     has_successful_stage,
+    lease_is_stale,
     normalize_optional_text,
     normalize_order_code,
     normalize_required_text,
@@ -269,6 +273,25 @@ class ProductionOrderService:
         with self._unit_of_work_factory() as uow:
             stages = tuple(uow.production_order_stages.list_by_order(production_order_id))
             events = tuple(uow.production_order_events.list_by_order(production_order_id))
+        lease_is_stale_value = lease_is_stale(
+            lease_owner=order.lease_owner,
+            lease_expires_at=order.lease_expires_at,
+            now=utc_now(),
+        )
+        lease_state = derive_lease_state(
+            lease_owner=order.lease_owner,
+            lease_is_stale_value=lease_is_stale_value,
+        )
+        recovery_state = derive_recovery_state(
+            status=order.status.value,
+            lease_owner=order.lease_owner,
+            lease_is_stale_value=lease_is_stale_value,
+        )
+        suggested_action = derive_suggested_action(
+            status=order.status.value,
+            lease_owner=order.lease_owner,
+            lease_is_stale_value=lease_is_stale_value,
+        )
         return ProductionOrderDetailsDTO(
             production_order_id=order.id or 0,
             order_code=order.order_code,
@@ -337,6 +360,10 @@ class ProductionOrderService:
                 )
                 for event in events
             ),
+            lease_state=lease_state,
+            lease_is_stale=lease_is_stale_value,
+            recovery_state=recovery_state,
+            suggested_action=suggested_action,
         )
 
     def list_orders(self, *, status: str | None = None) -> list[ProductionOrderSummaryDTO]:
@@ -344,6 +371,11 @@ class ProductionOrderService:
             order_summaries = uow.production_orders.list_summaries(status=status)
             recent_orders: list[ProductionOrderSummaryDTO] = []
             for summary in order_summaries:
+                lease_is_stale_value = lease_is_stale(
+                    lease_owner=summary.lease_owner,
+                    lease_expires_at=summary.lease_expires_at,
+                    now=utc_now(),
+                )
                 order_risk_score = max_materialize_risk_score(
                     uow.production_order_stages.list_by_order(summary.production_order_id)
                 )
@@ -359,6 +391,20 @@ class ProductionOrderService:
                         created_at=format_timestamp(summary.created_at),
                         started_at=format_optional_timestamp(summary.started_at),
                         finished_at=format_optional_timestamp(summary.finished_at),
+                        lease_state=derive_lease_state(
+                            lease_owner=summary.lease_owner,
+                            lease_is_stale_value=lease_is_stale_value,
+                        ),
+                        recovery_state=derive_recovery_state(
+                            status=summary.status.value,
+                            lease_owner=summary.lease_owner,
+                            lease_is_stale_value=lease_is_stale_value,
+                        ),
+                        suggested_action=derive_suggested_action(
+                            status=summary.status.value,
+                            lease_owner=summary.lease_owner,
+                            lease_is_stale_value=lease_is_stale_value,
+                        ),
                         risk_level=classify_near_duplicate_score(order_risk_score),
                         max_near_duplicate_score=order_risk_score,
                     )

@@ -41,6 +41,7 @@ It complements [07_Testing_Strategy.md](/F:/programming/python/MTClipFactory/doc
 - desktop `Auto Factory` control-surface workflow for root selection, scan depth, run mode, intake reporting, and recent-order inspection
 - desktop `Auto Factory` live-progress workflow plus truthful `Pause/Stop/Resume` groundwork that remains pending backend support
 - local-worker SQLite heartbeat lock tolerance so transient `database is locked` contention does not kill active Auto Factory lease monitoring
+- desktop `Auto Factory` reopen-and-continue recovery surface, including stale-lease visibility, suggested action truth, and active-worker count dropping to zero after lease expiry
 - desktop `Auto Factory` `Audit Only` workflow for preflight summary and issue visibility
 - history-aware auto-factory anti-duplicate selection across repeated product runs
 - near-duplicate score and reason visibility on planned auto-factory recipes
