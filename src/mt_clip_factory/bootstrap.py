@@ -129,6 +129,7 @@ def build_resource_library_module(
         product_service=product_service,
         asset_intake_service=asset_intake_service,
         video_assembly_factory_service=video_assembly_factory_service,
+        caption_runtime_service=caption_runtime_service,
     )
     tag_management_service = TagManagementService(unit_of_work_factory=uow_factory)
     auto_factory_folder_service = AutoFactoryFolderService(

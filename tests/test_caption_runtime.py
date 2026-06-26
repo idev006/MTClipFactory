@@ -178,6 +178,57 @@ def test_caption_runtime_batch_seed_scope_cycles_caption_choices_across_outputs(
     assert repeated_first[0].roles[1].source_text == first[0].roles[1].source_text
 
 
+def test_caption_runtime_can_resolve_selection_signature_without_layout_rendering(tmp_path) -> None:
+    media_root = tmp_path / "media_library"
+    fonts_root = tmp_path / "fonts"
+    fonts_root.mkdir(parents=True, exist_ok=True)
+    (fonts_root / "THSarabun.ttf").write_bytes(b"font")
+    product_dir = tmp_path / "product_signature"
+    product_dir.mkdir(parents=True, exist_ok=True)
+    caption_file = product_dir / "captions.toml"
+    caption_file.write_text(
+        "\n".join(
+            [
+                "[caption_selection]",
+                'mode = "random_with_seed"',
+                'seed_scope = "batch"',
+                "",
+                "[caption_pools.hook]",
+                'main = ["hook one", "hook two"]',
+                'sub = ["sub one", "sub two"]',
+                "",
+                "[caption_pools.cta]",
+                'main = ["cta one", "cta two"]',
+                "",
+                "[caption_properties.main]",
+                'font_family = "THSarabun"',
+                "",
+                "[caption_properties.sub]",
+                'font_family = "THSarabun"',
+            ]
+        ),
+        encoding="utf-8",
+    )
+    store = ProductAutomationMetadataStore(media_root)
+    store.sync_caption_contract(product_code="product_signature", source_file=caption_file)
+    service = CaptionRuntimeService(metadata_store=store, fonts_root=fonts_root)
+
+    first = service.resolve_caption_selection_signature(
+        product_code="product_signature",
+        recipe_code="product_signature_batch_001",
+    )
+    second = service.resolve_caption_selection_signature(
+        product_code="product_signature",
+        recipe_code="product_signature_batch_002",
+    )
+
+    assert first is not None
+    assert second is not None
+    assert first.main_role_texts != second.main_role_texts
+    assert first.role_texts[0][0:2] == ("hook", "main")
+    assert first.role_texts[-1][0:2] == ("cta", "main")
+
+
 def test_caption_runtime_places_default_main_and_sub_in_separate_safe_bands(tmp_path) -> None:
     media_root = tmp_path / "media_library"
     fonts_root = tmp_path / "fonts"

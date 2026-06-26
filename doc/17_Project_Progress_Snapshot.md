@@ -199,6 +199,8 @@
 - tuned the live `Biothentic0001` contract toward promo-card captions with stronger `main`/`sub` sizing and explicit loop behavior for voice and foreground assets
 - corrected batch-variant ordering so early outputs diversify `voiceover` sooner instead of exhausting only foreground variation first
 - delivered deterministic caption cycling for `seed_scope = "batch"` so the first outputs in one automation batch vary caption picks instead of collapsing onto one repeated hook/sub pair when the pool has enough entries
+- delivered caption-aware same-batch planner scoring so deterministic headline signatures now influence duplicate-risk selection before materialization
+- completed a live `Biothentic0001` caption-aware planner audit, confirming `9` distinct `headline + foreground` pairs and `9` distinct `headline + music` pairs across a 10-output plan even though the product still rotated only `3` headline signatures
 - tuned the built-in `sale_blast` and `dark_lower_third` preset defaults plus the new-product caption template toward lighter top banners, tighter grouped headline spacing, and larger lower-third readability baselines
 
 ## Still Open
@@ -229,8 +231,9 @@
 24. validate whether Auto Factory should also expose an explicit timezone badge in-screen after the new local-time display correction
 25. validate whether the new render-history truth surface is sufficient for operator triage or whether recent-order summary rows also need the same deeper history evidence next
 26. widen or diversify the `Biothentic0001` caption headline pool so 10-output batches do not rotate only three main hooks
+27. validate whether the new caption-aware planner pressure should also surface explicit pair-count summaries in the operator UI before publishing decisions
 
 ## Verification Baseline
 
-- `python -m pytest` in `.venv`: `317 passed, 4 warnings`
+- `python -m pytest` in `.venv`: `320 passed, 4 warnings`
 - targeted `QT_QPA_PLATFORM=offscreen` UI/theme coverage for the new `Auto Factory` window and existing app windows: passed

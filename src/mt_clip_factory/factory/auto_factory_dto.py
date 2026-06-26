@@ -50,6 +50,8 @@ class PlannedBatchRecipeDTO:
     assignments: tuple[PlannedBatchAssetAssignmentDTO, ...]
     near_duplicate_score: float = 0.0
     near_duplicate_reasons: tuple[str, ...] = ()
+    caption_signature: tuple[tuple[str, str, str], ...] = ()
+    main_caption_signature: tuple[tuple[str, str], ...] = ()
 
 
 @dataclass(slots=True, frozen=True)

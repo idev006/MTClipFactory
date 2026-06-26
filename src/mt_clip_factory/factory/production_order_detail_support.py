@@ -146,6 +146,14 @@ def build_materialize_stage_detail(
         "near_duplicate_reasons": list(planned_recipe.near_duplicate_reasons),
         "fingerprint": planned_recipe.fingerprint,
         "fingerprint_hash": planned_recipe.fingerprint_hash,
+        "caption_signature": [
+            {"segment_type": segment_type, "role": role, "source_text": source_text}
+            for segment_type, role, source_text in planned_recipe.caption_signature
+        ],
+        "main_caption_signature": [
+            {"segment_type": segment_type, "source_text": source_text}
+            for segment_type, source_text in planned_recipe.main_caption_signature
+        ],
     }
 
 

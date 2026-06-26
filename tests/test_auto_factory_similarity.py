@@ -7,6 +7,7 @@ from mt_clip_factory.application.services import ProductApplicationService
 from mt_clip_factory.factory.audio_composition import PreviewAudioMixPlan
 from mt_clip_factory.factory.auto_factory import AutoFactoryBatchService
 from mt_clip_factory.factory.auto_factory_dto import AutoFactoryBatchOrderDTO, AutoFactoryProductRequestDTO
+from mt_clip_factory.factory.caption_runtime import CaptionRuntimeService, ProductAutomationMetadataStore
 from mt_clip_factory.factory.dto import AssignAssetToRecipeCommand, CreateRecipeCommand
 from mt_clip_factory.factory.preview_artifacts import PreviewManifestBuilder
 from mt_clip_factory.factory.preview_composition import PreviewSegmentClip
@@ -119,6 +120,43 @@ def _build_auto_factory_service(unit_of_work_factory, tmp_path: Path, durations_
     )
 
 
+def _build_caption_runtime_service(
+    tmp_path: Path,
+    *,
+    product_code: str,
+    main_headlines: tuple[str, ...],
+) -> CaptionRuntimeService:
+    media_root = tmp_path / "media_library"
+    fonts_root = tmp_path / "fonts"
+    fonts_root.mkdir(parents=True, exist_ok=True)
+    (fonts_root / "THSarabun.ttf").write_bytes(b"font")
+    product_dir = tmp_path / product_code
+    product_dir.mkdir(parents=True, exist_ok=True)
+    caption_file = product_dir / "captions.toml"
+    caption_file.write_text(
+        "\n".join(
+            [
+                "[caption_selection]",
+                'mode = "random_with_seed"',
+                'seed_scope = "batch"',
+                "",
+                "[caption_pools.hook]",
+                "main = [" + ", ".join(f'"{headline}"' for headline in main_headlines) + "]",
+                "",
+                "[caption_properties.main]",
+                'font_family = "THSarabun"',
+                "",
+                "[caption_properties.sub]",
+                'font_family = "THSarabun"',
+            ]
+        ),
+        encoding="utf-8",
+    )
+    store = ProductAutomationMetadataStore(media_root)
+    store.sync_caption_contract(product_code=product_code, source_file=caption_file)
+    return CaptionRuntimeService(metadata_store=store, fonts_root=fonts_root)
+
+
 def _materialize_history_recipe(
     factory_service: VideoAssemblyFactoryService,
     *,
@@ -211,6 +249,92 @@ def test_auto_factory_reports_zero_near_duplicate_score_for_clean_first_recipe(u
 
     assert recipe.near_duplicate_score == 0.0
     assert recipe.near_duplicate_reasons == ()
+
+
+def test_auto_factory_caption_aware_planner_spreads_headline_foreground_combos_within_batch(
+    unit_of_work_factory,
+    tmp_path,
+) -> None:
+    product_service = ProductApplicationService(unit_of_work_factory=unit_of_work_factory)
+    product_code = "headlinecool"
+    product_id = product_service.create_product(CreateProductCommand(product_code=product_code, product_name="Headline Cool"))
+    asset_service = _build_asset_service(unit_of_work_factory, tmp_path / "media_library", {"voice_01.mp3": 12.0})
+    _register_asset(asset_service, product_id=product_id, tmp_path=tmp_path, asset_type="foreground_video", asset_code="fg_01", file_name="fg01.mp4")
+    _register_asset(asset_service, product_id=product_id, tmp_path=tmp_path, asset_type="foreground_video", asset_code="fg_02", file_name="fg02.mp4")
+    _register_asset(asset_service, product_id=product_id, tmp_path=tmp_path, asset_type="background_video", asset_code="bg_01", file_name="bg01.mp4")
+    _register_asset(asset_service, product_id=product_id, tmp_path=tmp_path, asset_type="background_video", asset_code="bg_02", file_name="bg02.mp4")
+    _register_asset(asset_service, product_id=product_id, tmp_path=tmp_path, asset_type="background_music", asset_code="music_01", file_name="music01.mp3")
+    _register_asset(asset_service, product_id=product_id, tmp_path=tmp_path, asset_type="voiceover", asset_code="voice_01", file_name="voice_01.mp3")
+    factory_service = _build_factory_service(unit_of_work_factory, tmp_path / "previews")
+    caption_runtime_service = _build_caption_runtime_service(
+        tmp_path,
+        product_code=product_code,
+        main_headlines=("headline one", "headline two"),
+    )
+    service = AutoFactoryBatchService(
+        product_service=product_service,
+        asset_intake_service=asset_service,
+        video_assembly_factory_service=factory_service,
+        caption_runtime_service=caption_runtime_service,
+    )
+
+    plan = service.plan_batch(
+        AutoFactoryBatchOrderDTO(
+            batch_code="headlinecool_batch",
+            product_requests=(AutoFactoryProductRequestDTO(product_code=product_code, requested_output_count=4),),
+        )
+    )
+
+    headline_foreground_pairs = []
+    for recipe in plan.planned_recipes:
+        foreground_code = next(assignment.asset_code for assignment in recipe.assignments if assignment.role == "foreground")
+        headline_signature = tuple(recipe.main_caption_signature)
+        headline_foreground_pairs.append((headline_signature, foreground_code))
+
+    assert len(headline_foreground_pairs) == 4
+    assert len(set(headline_foreground_pairs)) == 4
+    assert all(recipe.main_caption_signature for recipe in plan.planned_recipes)
+
+
+def test_auto_factory_caption_aware_planner_reports_headline_reuse_reasons_when_pool_is_small(
+    unit_of_work_factory,
+    tmp_path,
+) -> None:
+    product_service = ProductApplicationService(unit_of_work_factory=unit_of_work_factory)
+    product_code = "captionrisk"
+    product_id = product_service.create_product(CreateProductCommand(product_code=product_code, product_name="Caption Risk"))
+    asset_service = _build_asset_service(unit_of_work_factory, tmp_path / "media_library", {"voice_01.mp3": 12.0})
+    _register_asset(asset_service, product_id=product_id, tmp_path=tmp_path, asset_type="foreground_video", asset_code="fg_01", file_name="fg01.mp4")
+    _register_asset(asset_service, product_id=product_id, tmp_path=tmp_path, asset_type="foreground_video", asset_code="fg_02", file_name="fg02.mp4")
+    _register_asset(asset_service, product_id=product_id, tmp_path=tmp_path, asset_type="background_video", asset_code="bg_01", file_name="bg01.mp4")
+    _register_asset(asset_service, product_id=product_id, tmp_path=tmp_path, asset_type="background_video", asset_code="bg_02", file_name="bg02.mp4")
+    _register_asset(asset_service, product_id=product_id, tmp_path=tmp_path, asset_type="background_music", asset_code="music_01", file_name="music01.mp3")
+    _register_asset(asset_service, product_id=product_id, tmp_path=tmp_path, asset_type="voiceover", asset_code="voice_01", file_name="voice_01.mp3")
+    factory_service = _build_factory_service(unit_of_work_factory, tmp_path / "previews")
+    caption_runtime_service = _build_caption_runtime_service(
+        tmp_path,
+        product_code=product_code,
+        main_headlines=("headline one", "headline two"),
+    )
+    service = AutoFactoryBatchService(
+        product_service=product_service,
+        asset_intake_service=asset_service,
+        video_assembly_factory_service=factory_service,
+        caption_runtime_service=caption_runtime_service,
+    )
+
+    plan = service.plan_batch(
+        AutoFactoryBatchOrderDTO(
+            batch_code="captionrisk_batch",
+            product_requests=(AutoFactoryProductRequestDTO(product_code=product_code, requested_output_count=4),),
+        )
+    )
+
+    later_recipe = plan.planned_recipes[2]
+
+    assert later_recipe.near_duplicate_score > 0.0
+    assert "headline_reused" in later_recipe.near_duplicate_reasons
+    assert later_recipe.main_caption_signature
 
 
 def test_auto_factory_blocks_exact_fingerprint_reuse_when_history_forces_repeat(unit_of_work_factory, tmp_path) -> None:

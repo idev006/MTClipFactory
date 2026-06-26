@@ -6,6 +6,11 @@ import shutil
 import tomllib
 
 from mt_clip_factory.domain.timeline_segments import TimelineSegment
+from mt_clip_factory.factory.caption_selection_support import (
+    CaptionSelectionSignature,
+    resolve_caption_selection_signature,
+    select_caption_index,
+)
 from mt_clip_factory.factory.caption_layout import CaptionFrameContext, resolve_caption_layout
 from mt_clip_factory.factory.caption_line_pair_spacing import LinePairSpacingDetail
 from mt_clip_factory.factory.caption_runtime_support import (
@@ -21,7 +26,6 @@ from mt_clip_factory.factory.caption_runtime_support import (
     _resolve_style_preset_defaults,
     _text_list,
 )
-from mt_clip_factory.factory.visual_selection import seeded_choice, seeded_cycled_choice
 
 
 @dataclass(slots=True, frozen=True)
@@ -326,6 +330,24 @@ class CaptionRuntimeService:
                 )
         return tuple(resolved_segments)
 
+    def resolve_caption_selection_signature(
+        self,
+        *,
+        product_code: str,
+        recipe_code: str,
+        segment_types: tuple[str, ...] | None = None,
+    ) -> CaptionSelectionSignature | None:
+        contract = self._load_contract(product_code)
+        if contract is None:
+            return None
+        return resolve_caption_selection_signature(
+            pools=contract.pools,
+            seed_scope=contract.selection.seed_scope,
+            product_code=product_code,
+            recipe_code=recipe_code,
+            segment_types=segment_types,
+        )
+
     def _load_contract(self, product_code: str) -> ProductCaptionContract | None:
         raw_text = self._metadata_store.load_caption_contract_text(product_code)
         if raw_text is None:
@@ -368,7 +390,7 @@ class CaptionRuntimeService:
         selection: CaptionSelectionPolicy,
         frame: CaptionFrameContext | None,
     ) -> ResolvedCaptionRole:
-        selection_index, seed_key = _select_index(
+        selection_index, seed_key = select_caption_index(
             option_count=len(options),
             product_code=product_code,
             recipe_code=recipe_code,
@@ -669,71 +691,3 @@ def _parse_role_style(value, *, role: str) -> CaptionRoleStyle:
             context=f"[caption_properties.{role}].review_required_if_overflow",
         ),
     )
-
-
-def _select_index(
-    *,
-    option_count: int,
-    product_code: str,
-    recipe_code: str,
-    segment: TimelineSegment,
-    role: str,
-    seed_scope: str,
-) -> tuple[int, str]:
-    if option_count <= 0:
-        raise CaptionContractError("Caption option count must be greater than zero.")
-    normalized_scope = seed_scope.strip().casefold()
-    if normalized_scope == "batch":
-        batch_seed_key, batch_position = _resolve_batch_seed_context(
-            product_code=product_code,
-            recipe_code=recipe_code,
-            segment=segment,
-            role=role,
-        )
-        selection_index = seeded_cycled_choice(
-            tuple(range(option_count)),
-            seed_key=batch_seed_key,
-            position=batch_position,
-        )
-        seed_key = f"{batch_seed_key}|cycle_position={batch_position}"
-        return selection_index, seed_key
-    seed_key = "|".join(
-        (
-            normalized_scope or "recipe",
-            product_code,
-            recipe_code,
-            segment.segment_type,
-            str(segment.sequence_index),
-            role,
-        )
-    )
-    selection_index = seeded_choice(tuple(range(option_count)), seed_key=seed_key)
-    return selection_index, seed_key
-
-
-def _resolve_batch_seed_context(
-    *,
-    product_code: str,
-    recipe_code: str,
-    segment: TimelineSegment,
-    role: str,
-) -> tuple[str, int]:
-    batch_recipe_code, batch_position = _split_batch_recipe_code(recipe_code)
-    seed_key = "|".join(
-        (
-            "batch",
-            product_code,
-            batch_recipe_code,
-            segment.segment_type,
-            str(segment.sequence_index),
-            role,
-        )
-    )
-    return seed_key, batch_position
-
-
-def _split_batch_recipe_code(recipe_code: str) -> tuple[str, int]:
-    prefix, separator, suffix = recipe_code.rpartition("_")
-    if separator and suffix.isdigit():
-        return prefix, max(0, int(suffix) - 1)
-    return recipe_code, 0

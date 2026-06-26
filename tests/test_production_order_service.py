@@ -282,6 +282,8 @@ def test_production_order_service_runs_order_and_records_successful_stages(unit_
     assert "near_duplicate_reasons" in materialize_detail
     assert "fingerprint" in materialize_detail
     assert "fingerprint_hash" in materialize_detail
+    assert "caption_signature" in materialize_detail
+    assert "main_caption_signature" in materialize_detail
 
     summary = service.list_orders()[0]
     expected_risk_level = classify_near_duplicate_score(float(materialize_detail["near_duplicate_score"]))

@@ -31,6 +31,8 @@ from mt_clip_factory.factory.auto_factory_variant_support import (
     _order_role_assets_for_diversity_frontier,
     _resolve_candidate_scan_limit,
 )
+from mt_clip_factory.factory.caption_runtime import CaptionRuntimeService
+from mt_clip_factory.factory.caption_selection_support import CaptionSelectionSignature
 from mt_clip_factory.factory.auto_factory_pool_support import (
     _filter_assets_by_required_tags,
     _foreground_sequence_from_recipe_items,
@@ -78,10 +80,12 @@ class AutoFactoryBatchService:
         product_service: ProductApplicationService,
         asset_intake_service: AssetIntakeService,
         video_assembly_factory_service: VideoAssemblyFactoryService,
+        caption_runtime_service: CaptionRuntimeService | None = None,
     ) -> None:
         self._product_service = product_service
         self._asset_intake_service = asset_intake_service
         self._video_assembly_factory_service = video_assembly_factory_service
+        self._caption_runtime_service = caption_runtime_service
 
     def plan_batch(
         self,
@@ -366,6 +370,7 @@ class AutoFactoryBatchService:
         voice_count = len(voice_assets) if voice_assets else 1
         feasible_count = foreground_sequence_count * background_count * music_count * voice_count
         planned_variants = self._select_planned_variants(
+            batch_code=batch_code,
             product=product,
             product_request=product_request,
             planned_count=product_request.requested_output_count,
@@ -409,6 +414,7 @@ class AutoFactoryBatchService:
     def _select_planned_variants(
         self,
         *,
+        batch_code: str,
         product,
         product_request: AutoFactoryProductRequestDTO,
         planned_count: int,
@@ -434,6 +440,13 @@ class AutoFactoryBatchService:
             music_options=music_options,
             voice_options=voice_options,
         )
+        caption_signatures_by_slot = tuple(
+            self._resolve_caption_signatures_for_slots(
+                product_code=product.product_code,
+                batch_code=batch_code,
+                planned_count=planned_count,
+            )
+        )
         candidate_blueprints = tuple(
             self._build_variant_blueprint(
                 variant_index=variant_index,
@@ -441,6 +454,7 @@ class AutoFactoryBatchService:
                 product_request=product_request,
                 foreground_assets=foreground_assets,
                 selected_dimensions=selected_dimensions,
+                caption_signatures_by_slot=caption_signatures_by_slot,
             )
             for variant_index, selected_dimensions in enumerate(candidate_dimension_selections)
         )
@@ -458,6 +472,7 @@ class AutoFactoryBatchService:
         product_request: AutoFactoryProductRequestDTO,
         foreground_assets: tuple[AssetSummaryDTO, ...],
         selected_dimensions: dict[str, object],
+        caption_signatures_by_slot: tuple[CaptionSelectionSignature | None, ...],
     ) -> _VariantBlueprint:
         sequence = tuple(selected_dimensions["foreground_sequence"])
         background_asset = selected_dimensions["background"]
@@ -503,6 +518,7 @@ class AutoFactoryBatchService:
             assignment_signature=_assignment_signature_from_assignments(tuple(assignments)),
             foreground_sequence=tuple(sequence),
             variant_index=variant_index,
+            caption_signatures_by_slot=caption_signatures_by_slot,
         )
 
     def _load_planning_history(
@@ -571,6 +587,23 @@ class AutoFactoryBatchService:
     def _latest_output_for_recipe(self, recipe_id: int) -> OutputSummaryDTO | None:
         outputs = self._video_assembly_factory_service.list_outputs(recipe_id=recipe_id)
         return max(outputs, key=lambda item: item.output_id, default=None)
+
+    def _resolve_caption_signatures_for_slots(
+        self,
+        *,
+        product_code: str,
+        batch_code: str,
+        planned_count: int,
+    ) -> tuple[CaptionSelectionSignature | None, ...]:
+        if self._caption_runtime_service is None or planned_count <= 0:
+            return ()
+        return tuple(
+            self._caption_runtime_service.resolve_caption_selection_signature(
+                product_code=product_code,
+                recipe_code=f"{product_code}_{batch_code}_{request_index:03d}",
+            )
+            for request_index in range(1, planned_count + 1)
+        )
 
 
 def _slugify(value: str) -> str:
@@ -641,6 +674,8 @@ def _blueprint_to_planned_recipe(
         assignments=blueprint.assignments,
         near_duplicate_score=blueprint.near_duplicate_score,
         near_duplicate_reasons=blueprint.near_duplicate_reasons,
+        caption_signature=blueprint.caption_signature,
+        main_caption_signature=blueprint.main_caption_signature,
     )
 
 

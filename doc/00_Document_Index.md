@@ -99,6 +99,8 @@ When code changes, the related Markdown documents in this folder must be updated
 91. [91_Auto_Factory_Rendered_History_And_Permutation_Diversity_Workflow_2026-06-25.md](/F:/programming/python/MTClipFactory/doc/91_Auto_Factory_Rendered_History_And_Permutation_Diversity_Workflow_2026-06-25.md)
 92. [92_Auto_Factory_Render_History_Operator_Surface_And_Render_Service_Split_2026-06-26.md](/F:/programming/python/MTClipFactory/doc/92_Auto_Factory_Render_History_Operator_Surface_And_Render_Service_Split_2026-06-26.md)
 93. [93_Biothentic0001_Live_Auto_Factory_Diversity_Audit_2026-06-26.md](/F:/programming/python/MTClipFactory/doc/93_Biothentic0001_Live_Auto_Factory_Diversity_Audit_2026-06-26.md)
+94. [94_Auto_Factory_Caption_Aware_Same_Batch_Diversity_Workflow_2026-06-26.md](/F:/programming/python/MTClipFactory/doc/94_Auto_Factory_Caption_Aware_Same_Batch_Diversity_Workflow_2026-06-26.md)
+95. [95_Biothentic0001_Caption_Aware_Planner_Audit_2026-06-26.md](/F:/programming/python/MTClipFactory/doc/95_Biothentic0001_Caption_Aware_Planner_Audit_2026-06-26.md)
 
 ## Governance
 

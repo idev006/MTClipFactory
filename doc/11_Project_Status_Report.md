@@ -122,6 +122,7 @@
 - Auto Factory selected-order surfaces now also expose that persisted render-history truth directly, including `history_scope`, rendered `clip_formula_hash`, and historical duplicate review signals in addition to planner-time risk
 - Recipe Builder output details now also surface output-level `history_scope`, direct `clip_formula_hash`, and a clearer explanation when review came from `historical_render_duplicate`
 - Auto Factory planner now also samples large foreground/background/voice/music pools through deterministic permutation coverage instead of one axis-biased frontier walk, so fresh alternatives surface more evenly on larger products
+- Auto Factory planner is now also caption-aware within the same batch, predicting deterministic caption signatures from the current caption contract and penalizing repeated `headline + foreground` or `headline + music` pairings when fresher combinations still exist
 - new blank-`Batch Code` defaults and derived auto-generated order labels now also use local operator timestamp tokens, while product-local run journals keep explicit UTC `Z` timestamps for audit truth
 - successful auto-factory `materialize` stages now also persist planner duplicate-risk evidence, and the desktop `Auto Factory` `Orders` tab now surfaces that persisted risk truth for operators
 - auto-factory planning now also computes and hard-blocks one canonical `fingerprint_hash` against persisted same-product recipe history, so exact internal recipe formulas are not silently materialized again when no fresh variant exists
@@ -139,6 +140,7 @@
 - caption runtime/layout support helpers are now split into dedicated modules so the core orchestrators stay below the repo `800`-line guardrail without changing rendered behavior
 - preview/final render orchestration is now also split into a dedicated factory support module so `src/mt_clip_factory/factory/services.py` stays below the same guardrail without changing service behavior
 - caption rendering now also rasterizes a transparent Qt bitmap per segment before FFmpeg compositing, so Thai glyph shaping and textbox rendering stay on one measured-vs-drawn engine path instead of depending on FFmpeg `drawtext`
+- a live caption-aware planner audit on `Biothentic0001` has now confirmed that a 10-output plan still rotated only `3` headline signatures but spread them across `9` distinct `headline + foreground` pairs and `9` distinct `headline + music` pairs
 - grouped Thai multi-line captions now also raise compressed `line_advance_ratio` to a script-safe runtime floor and report that effective resolved ratio truthfully in runtime metadata and manifests
 - grouped Thai multi-line captions now also resolve pair-aware adjacent-line spacing, so low-risk pairs may stay tighter while medium/high-risk pairs surface truthful per-pair runtime evidence in manifests
 - grouped Thai multi-line captions now also apply one global context-smoothing pass across arbitrary `n`-line blocks, so neighboring risky gaps can lift a middle pair when that produces safer and more coherent vertical rhythm
@@ -174,7 +176,7 @@
 
 ## Verification Baseline
 
-- `python -m pytest` via `.venv`: `317 passed, 4 warnings`
+- `python -m pytest` via `.venv`: `320 passed, 4 warnings`
 - targeted `QT_QPA_PLATFORM=offscreen` UI coverage for the new `Auto Factory` window and existing themed windows: passed
 
 ## Current Focus
@@ -199,6 +201,7 @@
 - validate whether the new `Orders`-tab risk emphasis thresholds and row-highlighting palette are readable enough during real operator use
 - validate whether the new recent-orders duplicate-risk strip helps operators choose the right order to inspect first without opening each one manually
 - validate whether the current caption headline pool is broad enough for 10-output commercial batches or whether repeated hook rotation is now the dominant samey-content risk
+- validate whether the new caption-aware same-batch planner pressure is strong enough on additional products or whether product-level headline-pool guidance and operator-visible pair-count summaries are needed next
 - validate whether the new background-diversity hardening is strong enough on real campaign batches or whether future policy needs per-product cooldown knobs for backgrounds
 - validate whether the new foreground/music diversity hardening is strong enough on real campaign batches or whether product-level cooldown knobs are needed for sequence families or music reuse
 - validate whether the new frontier option-pool reordering is strong enough on real large-pool products or whether future policy needs explicit per-role cooldown windows or operator-tunable diversity budgets
