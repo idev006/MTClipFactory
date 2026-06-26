@@ -229,6 +229,35 @@ class ProductionOrderService:
             order = self._require_order(uow, production_order_id)
             if order.status == OrchestrationStatus.STOPPED:
                 return self.get_order(production_order_id)
+            if order.status in {
+                OrchestrationStatus.LEASED,
+                OrchestrationStatus.PROCESSING,
+                OrchestrationStatus.PAUSE_REQUESTED,
+                OrchestrationStatus.STOP_REQUESTED,
+                OrchestrationStatus.RESUME_REQUESTED,
+            } and self._lease_is_stale(order):
+                stale_worker_id = order.lease_owner
+                self._clear_lease(order)
+                order.status = OrchestrationStatus.STOPPED
+                order.finished_at = utc_now()
+                uow.production_orders.update(order)
+                self._append_event_in_uow(
+                    uow,
+                    production_order_id=production_order_id,
+                    event_type="stop_requested",
+                    status=OrchestrationStatus.STOP_REQUESTED,
+                    message=f"Stop requested for production order {order.order_code}.",
+                    worker_id=stale_worker_id,
+                )
+                self._append_event_in_uow(
+                    uow,
+                    production_order_id=production_order_id,
+                    event_type="stopped",
+                    status=OrchestrationStatus.STOPPED,
+                    message=f"Stopped production order {order.order_code} immediately because its lease was stale.",
+                )
+                uow.commit()
+                return self.get_order(production_order_id)
             if order.status == OrchestrationStatus.PAUSED:
                 self._clear_lease(order)
                 order.status = OrchestrationStatus.STOPPED

@@ -457,6 +457,72 @@ def test_production_order_service_pauses_at_safe_checkpoint(unit_of_work_factory
     assert [event.event_type for event in paused.events][-2:] == ["pause_requested", "paused"]
 
 
+def test_production_order_service_stops_paused_order_immediately(unit_of_work_factory, tmp_path) -> None:
+    product_service, _, _, service = _build_services(unit_of_work_factory, tmp_path)
+    product_service.create_product(CreateProductCommand(product_code="stoppable", product_name="Stoppable"))
+
+    order_id = service.create_order(
+        AutoFactoryBatchOrderDTO(
+            batch_code="stop_batch",
+            product_requests=(AutoFactoryProductRequestDTO(product_code="stoppable", requested_output_count=1),),
+        ),
+        source_mode="manual_batch",
+        order_code="stop_order_001",
+    )
+
+    with unit_of_work_factory() as uow:
+        order = uow.production_orders.get_by_id(order_id)
+        assert order is not None
+        now = utc_now()
+        order.status = OrchestrationStatus.PAUSED
+        order.started_at = now
+        uow.production_orders.update(order)
+        uow.commit()
+
+    stopped = service.request_stop(order_id)
+
+    assert stopped.status == "stopped"
+    assert stopped.lease_owner is None
+    assert stopped.finished_at is not None
+    assert stopped.events[-1].event_type == "stopped"
+
+
+def test_production_order_service_stops_stale_active_order_immediately(unit_of_work_factory, tmp_path) -> None:
+    product_service, _, _, service = _build_services(unit_of_work_factory, tmp_path)
+    product_service.create_product(CreateProductCommand(product_code="stalestop", product_name="Stale Stop"))
+
+    order_id = service.create_order(
+        AutoFactoryBatchOrderDTO(
+            batch_code="stalestop_batch",
+            product_requests=(AutoFactoryProductRequestDTO(product_code="stalestop", requested_output_count=1),),
+        ),
+        source_mode="manual_batch",
+        order_code="stalestop_order_001",
+    )
+
+    with unit_of_work_factory() as uow:
+        order = uow.production_orders.get_by_id(order_id)
+        assert order is not None
+        now = utc_now()
+        order.status = OrchestrationStatus.PROCESSING
+        order.started_at = now - timedelta(minutes=3)
+        order.lease_owner = "worker_a"
+        order.lease_acquired_at = now - timedelta(minutes=3)
+        order.lease_heartbeat_at = now - timedelta(minutes=2)
+        order.lease_expires_at = now - timedelta(minutes=1)
+        uow.production_orders.update(order)
+        uow.commit()
+
+    stopped = service.request_stop(order_id)
+
+    assert stopped.status == "stopped"
+    assert stopped.lease_owner is None
+    assert stopped.lease_state == "released"
+    assert stopped.finished_at is not None
+    assert [event.event_type for event in stopped.events][-2:] == ["stop_requested", "stopped"]
+    assert "stale" in stopped.events[-1].message.lower()
+
+
 def test_production_order_service_resume_reuses_materialized_recipes_after_retryable_failure(
     unit_of_work_factory,
     tmp_path,

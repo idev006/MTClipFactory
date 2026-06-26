@@ -762,14 +762,24 @@ sequenceDiagram
     alt pause requested
         Operator->>View: Pause Run
         View->>VM: request_pause(order_id)
-        VM-->>View: pending backend support until persisted safe-checkpoint semantics exist
+        VM->>State: persist pause_requested on production order
+        State-->>VM: pause_requested truth
+        Worker->>State: finish current unit + consume safe checkpoint
+        State-->>VM: paused + lease released
+        VM-->>View: refresh operator truth
     else stop requested
         Operator->>View: Stop Run
         View->>VM: request_stop(order_id)
-        VM-->>View: pending backend support until persisted safe-checkpoint semantics exist
+        VM->>State: persist stop_requested or stale-stop terminal truth
+        State-->>VM: stop_requested or stopped
+        VM-->>View: refresh operator truth
     else resume after interruption
         Operator->>View: Resume Run
-        VM-->>View: pending backend support until persisted safe-checkpoint semantics exist
+        View->>VM: request_resume(order_id)
+        VM->>Worker: start resume worker for paused / stopped / stale order
+        Worker->>State: claim or recover lease + continue remaining units
+        State-->>VM: resumed processing truth
+        VM-->>View: refresh operator truth
     end
 ```
 

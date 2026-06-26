@@ -39,7 +39,7 @@ The project now uses two roadmap layers:
 - `IR-17` Auto Factory preview production baseline: complete on 2026-06-13
 - `IR-18` Enterprise factory pipeline review and architecture blueprint: complete on 2026-06-13
 - `IR-19` Production-order and shared job-state orchestration baseline: complete on 2026-06-13
-- `IR-20` Worker lease, heartbeat, and retry-policy baseline: pending after the 2026-06-20 live-progress groundwork slice
+- `IR-20` Worker lease, heartbeat, and retry-policy baseline: complete on 2026-06-26
 - `IR-21` Folder discovery depth and assisted tagging ergonomics: complete on 2026-06-13
 - `IR-22` Auto Factory desktop control surface baseline: complete on 2026-06-13
 - `IR-23` Tag-aware auto-factory selection baseline: complete on 2026-06-13
@@ -73,9 +73,9 @@ The project now uses two roadmap layers:
 
 ## Current Execution Stream
 
-The next mandatory implementation stream should implement and validate the pending `IR-20` local-worker baseline through persisted worker-lease semantics, safe checkpoints, recovery-facing event visibility, and clearer active-worker reporting.
+The current mandatory validation stream should broaden real operator use of the delivered `IR-20` local-worker baseline, especially persisted worker-lease semantics, safe checkpoints, stale-lease recovery, and clearer active-worker reporting.
 
-The delivered 2026-06-20 control slice keeps `Pause Run`, `Stop Run`, and `Resume Run` visible in the UI as groundwork only; they must continue to report `pending backend support` until persisted worker-lease and safe-checkpoint behavior is actually implemented.
+The delivered local-worker control slice now supports backend-functional `Pause Run`, `Stop Run`, and `Resume Run`, with persisted operator intent, lease-aware recovery truth, and immediate stale-stop handling when no live worker lease remains.
 
 The same local-worker control stream now also hardens SQLite lease-heartbeat execution so transient `database is locked` contention skips one heartbeat attempt instead of killing the background heartbeat thread, while file-backed desktop SQLite now enables `WAL` plus a `busy_timeout` to reduce write contention.
 
@@ -709,11 +709,12 @@ Make the new control-plane baseline safe for future multi-worker execution by in
 - delivered Alembic migration `20260620_0007` plus persistence support for order-level run mode, source root, preview-enabled flag, lease ownership, heartbeat timestamps, lease expiry, blocking reason, and append-only `production_order_events`
 - delivered `ProductionOrderService` local-worker lease claim, background heartbeat, persisted order-control groundwork, and restart-oriented `resume_order(...)` seams
 - delivered effective-stage resume behavior that reuses already-succeeded materialize/preview units and retries only remaining eligible `failed_retryable` work
-- delivered `Auto Factory` UI/view-model wiring for `Pause Run`, `Stop Run`, and `Resume Run` operator surfaces, lease visibility, active-worker truth, and order-event inspection while keeping the controls truthful as pending backend support
+- delivered `Auto Factory` UI/view-model wiring for backend-functional `Pause Run`, `Stop Run`, and `Resume Run` operator surfaces, lease visibility, active-worker truth, and order-event inspection
+- hardened stale active-order stop handling so `Stop Run` can finalize immediately when no live lease owner remains instead of waiting forever for a dead worker checkpoint
 - delivered SQLite heartbeat lock-tolerance plus file-backed `WAL` and `busy_timeout` runtime hardening so transient write contention does not kill the heartbeat thread during active local Auto Factory runs
-- covered migration, service, view-model, and UI seams with pytest, and reverified the full suite at `306 passed, 4 warnings`
+- covered migration, service, view-model, and UI seams with pytest, and reverified the full suite at `324 passed, 4 warnings`
 
-The latest caption hardening pass, including the Thai-safe bitmap overlay path, and the SQLite heartbeat hardening pass have now also reverified the full suite at `306 passed, 4 warnings`.
+The latest stale-stop hardening pass, SSOT/UML alignment pass, caption hardening pass, and SQLite heartbeat hardening pass have now also reverified the full suite at `324 passed, 4 warnings`.
 
 ## IR-21 | Folder Discovery Depth And Assisted Tagging Ergonomics
 

@@ -513,6 +513,10 @@ class AutoFactoryControlWindow(QMainWindow):
             and (
                 order_status in {"paused"}
                 or (
+                    self._view_model.progress_snapshot.lease_state == "stale"
+                    and order_status in {"leased", "processing", "pause_requested", "resume_requested", "stop_requested"}
+                )
+                or (
                     active_worker_count > 0
                     and order_status in {"leased", "processing", "pause_requested", "resume_requested"}
                 )

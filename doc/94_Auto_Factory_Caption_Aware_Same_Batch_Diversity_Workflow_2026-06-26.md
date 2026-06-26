@@ -75,7 +75,7 @@ sequenceDiagram
 - caption-aware scoring is based on the current caption contract and deterministic slot selection, not on vision-model similarity of rendered pixels
 - historical caption truth is intentionally out of scope here because older rendered outputs may have been produced under different caption contracts
 - exact render-history duplicate checks and `clip_formula_hash` review signals remain the stronger post-render truth seam
-- `Pause Run`, `Stop Run`, and `Resume Run` backend truth boundaries remain unchanged
+- `Pause Run`, `Stop Run`, and `Resume Run` backend truth boundaries remain unchanged by this caption-diversity slice; local-worker persisted control semantics are tracked separately in document `71`
 
 ## Acceptance Criteria
 

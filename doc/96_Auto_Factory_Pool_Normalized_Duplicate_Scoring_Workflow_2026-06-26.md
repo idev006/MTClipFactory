@@ -88,4 +88,4 @@ sequenceDiagram
 - this slice calibrates planner risk; it does not claim immunity from Shopee, TikTok, or any other platform duplicate detection
 - a low or medium planner score does not mean the product has a large enough real asset pool for unlimited safe publishing
 - the score can now say "this reuse was constrained and spread as fairly as possible", but it still cannot prove rendered pixel-level uniqueness
-- backend-functional `Pause Run`, `Stop Run`, and `Resume Run` semantics remain unchanged and still depend on persisted safe-checkpoint and worker-lease work
+- backend-functional `Pause Run`, `Stop Run`, and `Resume Run` semantics remain unchanged by this duplicate-scoring slice and are already delivered separately through the local-worker persisted control baseline in document `71`

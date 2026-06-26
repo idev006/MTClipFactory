@@ -816,7 +816,8 @@ def _build_command_note(*, order_status: str | None, run_active: bool, lease_sta
     if lease_state == "stale":
         return (
             "This run has a stale lease. Resume Run will recover the expired lease and continue remaining eligible work "
-            "from persisted order and stage truth."
+            "from persisted order and stage truth. Stop Run can halt the remaining work immediately because no active "
+            "worker lease is still valid."
         )
     if order_status in {"processing", "leased", "resume_requested"}:
         return (

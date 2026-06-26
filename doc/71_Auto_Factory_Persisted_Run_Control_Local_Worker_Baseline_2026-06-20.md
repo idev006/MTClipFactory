@@ -1,6 +1,6 @@
 # Auto Factory Persisted Run Control Local Worker Baseline 2026-06-20
 
-Status note: as of 2026-06-20 this document describes the target `IR-20` design only. Persisted worker-lease, safe-checkpoint, and backend-functional `Pause Run` / `Stop Run` / `Resume Run` behavior are not implemented in code yet, so the UI must continue to report `pending backend support`.
+Status note: as of 2026-06-26 this document describes delivered `IR-20` behavior for the current local-worker desktop baseline. Persisted worker-lease, safe-checkpoint, stale-lease recovery, and backend-functional `Pause Run` / `Stop Run` / `Resume Run` semantics are now implemented and covered by pytest for this slice.
 
 It extends [63_Auto_Factory_Operations_Control_Requirements_2026-06-19.md](/F:/programming/python/MTClipFactory/doc/63_Auto_Factory_Operations_Control_Requirements_2026-06-19.md), [70_Auto_Factory_Live_Progress_And_Control_Groundwork_2026-06-20.md](/F:/programming/python/MTClipFactory/doc/70_Auto_Factory_Live_Progress_And_Control_Groundwork_2026-06-20.md), and [34_Enterprise_Factory_Architecture_Blueprint_2026-06-13.md](/F:/programming/python/MTClipFactory/doc/34_Enterprise_Factory_Architecture_Blueprint_2026-06-13.md).
 
@@ -30,18 +30,19 @@ Out of scope for this slice:
 
 ## Core Decision
 
-The target backend-functional control slice uses `Production Order` as both:
+The delivered backend-functional control slice uses `Production Order` as both:
 
 1. the persisted operator intent record
 2. the current lease owner and heartbeat truth
 
-This is a local-worker baseline, not the final distributed-worker architecture.
+This is a delivered local-worker baseline, not the final distributed-worker architecture.
 
 The system remains truthful by saying:
 
 - `Pause` and `Stop` take effect at the next safe checkpoint
 - the current safe checkpoint is after one recipe materialization unit or one preview-job unit
 - a currently executing preview render is not forcibly killed mid-frame in this slice
+- `Stop` can also finalize immediately when the selected order no longer has a live lease owner and only stale active-state truth remains
 
 ## Persistence Direction
 
@@ -189,10 +190,10 @@ sequenceDiagram
     end
 ```
 
-## Acceptance Criteria For This Slice
+## Verified Acceptance Criteria For This Slice
 
 - `Pause Run` is persisted and becomes `paused` after the next safe checkpoint
-- `Stop Run` is persisted and becomes `stopped` after the next safe checkpoint
+- `Stop Run` is persisted and becomes `stopped` after the next safe checkpoint, or immediately when only a stale active lease remains
 - `Resume Run` continues remaining eligible work without duplicating completed units
 - stale leases become recoverable after app close or worker death
 - the UI can inspect real lease, status, and last-event truth from persisted state

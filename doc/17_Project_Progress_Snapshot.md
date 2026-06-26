@@ -84,8 +84,8 @@
 - The `Tags` screen now provides guided group reuse plus product/status/search filtering so operators can narrow the asset list before assigning labels.
 - The first controlled operator/UAT run has now completed end to end and produced a real final output from the current workspace.
 - A second controlled operator/UAT run has now validated runtime voice/music mixing, richer visual coverage, and a no-review-gate path on a stronger recipe.
-- The roadmap is now split into strategic and implementation layers, and the next major control-plane gap remains persisted worker-lease plus safe-checkpoint semantics for truthful `Pause/Stop/Resume`.
-- The auto-factory operations slice defined in SSOT now has a delivered background-worker plus live-progress baseline, while backend-functional pause/stop/resume and restart-safe recovery remain open.
+- The roadmap is now split into strategic and implementation layers, and the local-worker control-plane baseline now includes persisted worker-lease plus safe-checkpoint semantics for truthful `Pause/Stop/Resume`.
+- The auto-factory operations slice defined in SSOT now has a delivered background-worker plus live-progress plus backend-functional local-worker pause/stop/resume baseline, while broader operator validation and later distributed-worker concerns remain open.
 - Auto Factory now also auto-generates a unique root-folder-based `batch_code` when the operator leaves the field blank, keeping product-local `runs/<batch_code>` evidence separated across repeated runs from the same root.
 - Auto Factory planning now also uses recent same-product recipe history to reduce repeated exact combos and overused voice-led reruns before recipes are materialized.
 - Auto Factory planning now also emits per-recipe `near_duplicate_score` plus concise `near_duplicate_reasons`, creating a machine-readable seam for future operator-facing duplicate-risk review before publishing.
@@ -169,7 +169,7 @@
 - refined Thai grouped-caption spacing again into a pair-aware solver that inspects adjacent upper/lower mark collisions, allowing low-risk pairs to keep tighter promo rhythm while medium/high-risk pairs receive stronger runtime spacing floors with manifest-visible pair evidence
 - extended that Thai grouped-caption solver into `n`-line global context smoothing so one low-risk middle gap can still be promoted when surrounding high-risk gaps would otherwise make the full block look uneven or unsafe
 - delivered truthful operator-control groundwork in that same screen, with active `Refresh Progress` and a visible control seam for `Pause/Stop/Resume`
-- kept `Pause Run`, `Stop Run`, and `Resume Run` explicitly at `pending backend support` until persisted safe-checkpoint and worker-lease semantics exist
+- delivered backend-functional `Pause Run`, `Stop Run`, and `Resume Run` on the local-worker baseline, including persisted intent, stale-lease recovery truth, and checkpoint-safe transitions
 - delivered a safer blank-`Batch Code` behavior so the desktop `Auto Factory` screen now generates a unique root-folder-based batch code instead of reusing the bare folder name alone
 - delivered product-local traceability hardening so repeated runs from the same root now default into distinct `runs/<batch_code>` folders without requiring manual operator typing every time
 - delivered history-aware anti-duplicate planning so recent same-product recipe history now penalizes repeated exact combos, repeated foreground sequences, and overused voice assets before Auto Factory materializes a new batch
@@ -209,7 +209,7 @@
 ## Still Open
 
 1. run broader controlled operator use on real campaign media and capture operator notes without service-side intervention
-2. implement and validate persisted worker-lease plus safe-checkpoint semantics so `Pause/Stop/Resume` can become truthful backend-backed controls instead of groundwork-only buttons
+2. validate the delivered persisted worker-lease plus safe-checkpoint semantics against more real interruptions so `Pause/Stop/Resume` remain operationally trustworthy
 3. extend the new auto-preview factory baseline into controlled final-render automation only after operators accept the current planner, tag-aware selection rules, and review-gate truth
 4. repeat the new live auto-mode audit seam on more products so `Biothentic0001` does not remain the only proof point
 5. rerun a live `Biothentic0001` preview/final audit after the new policy-aware voice-loop and music-duration-authority slice

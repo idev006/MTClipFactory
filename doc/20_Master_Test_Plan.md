@@ -39,7 +39,7 @@ It complements [07_Testing_Strategy.md](/F:/programming/python/MTClipFactory/doc
 - persisted production-order and orchestration-stage tracking
 - persisted production-order and append-only order-event tracking
 - desktop `Auto Factory` control-surface workflow for root selection, scan depth, run mode, intake reporting, and recent-order inspection
-- desktop `Auto Factory` live-progress workflow plus truthful `Pause/Stop/Resume` groundwork that remains pending backend support
+- desktop `Auto Factory` live-progress workflow plus backend-functional local-worker `Pause/Stop/Resume` semantics
 - local-worker SQLite heartbeat lock tolerance so transient `database is locked` contention does not kill active Auto Factory lease monitoring
 - desktop `Auto Factory` reopen-and-continue recovery surface, including stale-lease visibility, suggested action truth, and active-worker count dropping to zero after lease expiry
 - desktop `Auto Factory` `Audit Only` workflow for preflight summary and issue visibility
@@ -225,7 +225,9 @@ It complements [07_Testing_Strategy.md](/F:/programming/python/MTClipFactory/doc
 23. Confirm `Intake + Materialize + Build Previews` records preview and review stages while still stopping at the human approval boundary.
 24. Confirm Auto Factory recent-order and selected-order timestamps display in local operator time rather than raw persisted UTC wall-clock values.
 25. Confirm product-local run journals keep timezone-explicit UTC `Z` timestamps even after the local display correction lands in the UI.
-- Confirm `Pause Run`, `Stop Run`, and `Resume Run` continue to display truthful `pending backend support` messaging until persisted safe-checkpoint and worker-lease semantics exist.
+- Confirm `Pause Run` persists `pause_requested` truth immediately and reaches `paused` after the next safe checkpoint.
+- Confirm `Stop Run` reaches `stopped` immediately for paused orders and stale active leases, while still stopping active live-worker runs at the next safe checkpoint.
+- Confirm `Resume Run` continues remaining eligible work without duplicating already-succeeded units and truthfully reflects stale-lease recovery.
 24. Confirm leaving `Batch Code` blank auto-generates a unique root-folder-based value and creates product-local `runs/<batch_code>` artifacts under that generated name.
 25. Confirm `pipeline.toml [selection_tags]` can restrict foreground/background/music/voice pools by normalized `group:name` labels.
 26. Confirm planner shortfalls caused by tag filters remain truthful and do not silently fall back to untagged visual assets.

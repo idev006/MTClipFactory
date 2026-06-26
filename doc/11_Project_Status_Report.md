@@ -136,7 +136,8 @@
 - file-backed desktop SQLite runtime now also enables `WAL` plus a `busy_timeout`, reducing lease-heartbeat versus stage/event write contention during local Auto Factory execution
 - Auto Factory now also exposes operator-facing reopen-and-continue recovery truth, including stale-versus-active lease state, recovery-state summary, and suggested action visibility in recent-order and selected-order surfaces
 - Auto Factory no longer counts a stale lease as one active worker in the operator progress surface, keeping `Resume Run` truthful as lease recovery instead of pretending the worker is still active
-- `Pause Run`, `Stop Run`, and `Resume Run` remain visible operator-control groundwork only; the UI must continue to say `pending backend support` until persisted safe-checkpoint and worker-lease semantics are actually implemented
+- `Pause Run`, `Stop Run`, and `Resume Run` are now backend-functional on the delivered local-worker baseline, including persisted operator intent, lease-aware recovery truth, and checkpoint-safe state transitions
+- stale active orders can now also be stopped immediately when no live worker lease remains, avoiding a forever-pending `stop_requested` state after worker death
 - caption runtime now also clamps grouped top-band headline height through a new `max_safe_band_height_ratio` rule so presenter-led promo cards shrink before covering the eye line, while still keeping overflow review-visible when the safer band cannot contain the text
 - grouped multi-line caption solving no longer grows above the requested contract font size, while short single-line best-fit cards may still upscale when that is the intended readability behavior
 - caption runtime/layout support helpers are now split into dedicated modules so the core orchestrators stay below the repo `800`-line guardrail without changing rendered behavior
@@ -217,7 +218,7 @@
 - validate whether the new exact `fingerprint_hash` guard basis is commercially strict enough or whether future policy should expand the canonical basis with caption/runtime contract dimensions
 - validate whether the new bulk asset tagging flow reduces repetitive operator work without causing accidental over-tagging
 - validate whether the new folder-driven additive tag sync is sufficient before implementing tag-removal sync behavior
-- keep the `Pause/Stop/Resume` surface truthful as pending backend support until persisted safe-checkpoint and worker-lease semantics are actually delivered
+- validate operator understanding of the delivered `Pause/Stop/Resume` semantics, especially safe-checkpoint timing versus immediate stale-stop behavior
 - keep project documents truthful through per-milestone revision checkpoints
 - validate the same product-local auto-mode audit seam across additional products beyond `Biothentic0001`
 - validate the new pixel-based caption layout and seeded clip diversity seam on additional products beyond `Biothentic0001`
@@ -242,7 +243,7 @@
 
 ## Next Steps
 
-1. Run broader controlled operator use on additional real campaign media on the delivered background-worker plus local-time-truth baseline, while keeping `Pause/Stop/Resume` explicitly marked as pending backend support.
+1. Run broader controlled operator use on additional real campaign media on the delivered background-worker plus backend-functional local-worker control baseline.
 2. Validate restart-safe recovery behavior after real interruptions, including stale-lease recovery, paused-order resume, stopped-order resume, and retryable preview reruns.
 3. Decide whether the append-only order-event journal should grow into a richer operator-facing event view with filtering, grouping, or export.
 4. Extend the auto-factory baseline from automated preview production into controlled final-render automation only after operators accept the current planner, tag-aware selection flow, control-surface flow, review-gate truth, and the new product-local run audit seam.

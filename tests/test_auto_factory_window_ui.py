@@ -595,7 +595,7 @@ def test_auto_factory_window_surfaces_stale_lease_recovery_truth(qapp: QApplicat
         blocking_reason=None,
         started_at=selected_order.started_at,
         finished_at=selected_order.finished_at,
-        command_note="This run has a stale lease. Resume Run will recover the expired lease and continue remaining eligible work from persisted order and stage truth.",
+        command_note="This run has a stale lease. Resume Run will recover the expired lease and continue remaining eligible work from persisted order and stage truth. Stop Run can halt the remaining work immediately because no active worker lease is still valid.",
     )
 
     auto_factory_window._refresh_selected_order()
@@ -607,7 +607,7 @@ def test_auto_factory_window_surfaces_stale_lease_recovery_truth(qapp: QApplicat
     assert "Active Workers: 0" in auto_factory_window.progress_text.toPlainText()
     assert "stale lease" in auto_factory_window.operator_controls_label.text().lower()
     assert auto_factory_window.pause_button.isEnabled() is False
-    assert auto_factory_window.stop_button.isEnabled() is False
+    assert auto_factory_window.stop_button.isEnabled() is True
     assert auto_factory_window.resume_button.isEnabled() is True
     auto_factory_window.close()
 
