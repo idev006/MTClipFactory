@@ -189,6 +189,7 @@
 - delivered an operator-facing render-history truth surface for Auto Factory `Orders`, including persisted `history_scope`, `clip_formula_hash`, and historical render duplicate explanations in the selected-order summary and stage rows
 - delivered Recipe Builder output-detail visibility for output-level `history_scope` plus a clearer human-readable explanation when review came from `historical_render_duplicate`
 - delivered a render-orchestration refactor so preview/final execution moved into `service_render_execution.py` and `src/mt_clip_factory/factory/services.py` returned below the repo line-count guardrail
+- completed a live `Biothentic0001` 10-output Auto Factory diversity audit on production order `#20`, confirming unique rendered clip hashes plus unique foreground/background pairing while exposing remaining same-batch pressure from repeated foreground, background, music, and headline reuse
 - delivered a new caption runtime guard for presenter-led top headline cards through `max_safe_band_height_ratio`, so grouped top-band promo boxes shrink before covering the presenter eye line
 - stopped grouped multi-line caption layouts from growing above the requested contract font size, while preserving single-line best-fit upscaling for deliberately short hooks
 - split caption runtime/layout support helpers into dedicated modules so the core orchestrators stay below the repo `800`-line guardrail
@@ -227,8 +228,9 @@
 23. validate whether the new segment-inventory manifest evidence should surface more directly in operator UI beyond output-detail helper text
 24. validate whether Auto Factory should also expose an explicit timezone badge in-screen after the new local-time display correction
 25. validate whether the new render-history truth surface is sufficient for operator triage or whether recent-order summary rows also need the same deeper history evidence next
+26. widen or diversify the `Biothentic0001` caption headline pool so 10-output batches do not rotate only three main hooks
 
 ## Verification Baseline
 
-- `python -m pytest` in `.venv`: `316 passed, 4 warnings`
+- `python -m pytest` in `.venv`: `317 passed, 4 warnings`
 - targeted `QT_QPA_PLATFORM=offscreen` UI/theme coverage for the new `Auto Factory` window and existing app windows: passed

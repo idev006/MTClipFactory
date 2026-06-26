@@ -652,7 +652,13 @@ def _stage_display_risk_reasons(stage) -> tuple[str, ...]:  # noqa: ANN001
     clip_formula_hash = _stage_clip_formula_hash(stage.detail_json)
     if clip_formula_hash is not None:
         parts.append(f"clip_formula_hash:{clip_formula_hash[:12]}")
-    if stage.stage_name in {"preview", "review"} and _stage_render_duplicate_score(stage.detail_json) is not None and not signal_codes:
+    render_duplicate_score = _stage_render_duplicate_score(stage.detail_json)
+    if (
+        stage.stage_name in {"preview", "review"}
+        and render_duplicate_score is not None
+        and render_duplicate_score > 0.0
+        and not signal_codes
+    ):
         parts.append("render_duplicate_risk")
     return tuple(dict.fromkeys(parts))
 

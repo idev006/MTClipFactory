@@ -174,7 +174,7 @@
 
 ## Verification Baseline
 
-- `python -m pytest` via `.venv`: `316 passed, 4 warnings`
+- `python -m pytest` via `.venv`: `317 passed, 4 warnings`
 - targeted `QT_QPA_PLATFORM=offscreen` UI coverage for the new `Auto Factory` window and existing themed windows: passed
 
 ## Current Focus
@@ -198,6 +198,7 @@
 - validate whether operators understand the new persisted duplicate-risk surface in `Orders` well enough or whether summary badges, filters, or threshold highlighting should be added next
 - validate whether the new `Orders`-tab risk emphasis thresholds and row-highlighting palette are readable enough during real operator use
 - validate whether the new recent-orders duplicate-risk strip helps operators choose the right order to inspect first without opening each one manually
+- validate whether the current caption headline pool is broad enough for 10-output commercial batches or whether repeated hook rotation is now the dominant samey-content risk
 - validate whether the new background-diversity hardening is strong enough on real campaign batches or whether future policy needs per-product cooldown knobs for backgrounds
 - validate whether the new foreground/music diversity hardening is strong enough on real campaign batches or whether product-level cooldown knobs are needed for sequence families or music reuse
 - validate whether the new frontier option-pool reordering is strong enough on real large-pool products or whether future policy needs explicit per-role cooldown windows or operator-tunable diversity budgets
