@@ -7,6 +7,7 @@ from mt_clip_factory.application.services import ProductApplicationService
 from mt_clip_factory.factory.audio_composition import PreviewAudioMixPlan
 from mt_clip_factory.factory.auto_factory import AutoFactoryBatchService
 from mt_clip_factory.factory.auto_factory_dto import AutoFactoryBatchOrderDTO, AutoFactoryProductRequestDTO
+from mt_clip_factory.factory.auto_factory_planning_support import _scaled_reuse_penalty
 from mt_clip_factory.factory.caption_runtime import CaptionRuntimeService, ProductAutomationMetadataStore
 from mt_clip_factory.factory.dto import AssignAssetToRecipeCommand, CreateRecipeCommand
 from mt_clip_factory.factory.preview_artifacts import PreviewManifestBuilder
@@ -335,6 +336,96 @@ def test_auto_factory_caption_aware_planner_reports_headline_reuse_reasons_when_
     assert later_recipe.near_duplicate_score > 0.0
     assert "headline_reused" in later_recipe.near_duplicate_reasons
     assert later_recipe.main_caption_signature
+
+
+def test_scaled_reuse_penalty_discounts_unavoidable_pool_pressure() -> None:
+    avoidable_penalty = _scaled_reuse_penalty(
+        reuse_count=1.0,
+        total_usage_count=2.0,
+        pool_size=5,
+        base_penalty=0.34,
+        incremental_penalty=0.09,
+        max_penalty=0.55,
+    )
+    unavoidable_penalty = _scaled_reuse_penalty(
+        reuse_count=3.0,
+        total_usage_count=9.0,
+        pool_size=3,
+        base_penalty=0.34,
+        incremental_penalty=0.09,
+        max_penalty=0.55,
+    )
+
+    assert avoidable_penalty == 0.34
+    assert 0.0 < unavoidable_penalty < avoidable_penalty
+
+
+def test_auto_factory_reduces_history_reuse_score_when_small_pools_are_used_evenly(
+    unit_of_work_factory,
+    tmp_path,
+) -> None:
+    product_service = ProductApplicationService(unit_of_work_factory=unit_of_work_factory)
+    product_code = "poolfair"
+    product_id = product_service.create_product(CreateProductCommand(product_code=product_code, product_name="Pool Fair"))
+    asset_service = _build_asset_service(unit_of_work_factory, tmp_path / "media_library", {"voice_01.mp3": 12.0})
+    for asset_index in range(3):
+        _register_asset(
+            asset_service,
+            product_id=product_id,
+            tmp_path=tmp_path,
+            asset_type="foreground_video",
+            asset_code=f"fg_{asset_index + 1:02d}",
+            file_name=f"fg{asset_index + 1:02d}.mp4",
+        )
+    for asset_index in range(9):
+        _register_asset(
+            asset_service,
+            product_id=product_id,
+            tmp_path=tmp_path,
+            asset_type="background_video",
+            asset_code=f"bg_{asset_index + 1:02d}",
+            file_name=f"bg{asset_index + 1:02d}.mp4",
+        )
+    _register_asset(asset_service, product_id=product_id, tmp_path=tmp_path, asset_type="voiceover", asset_code="voice_01", file_name="voice_01.mp3")
+    factory_service = _build_factory_service(unit_of_work_factory, tmp_path / "previews")
+    caption_runtime_service = _build_caption_runtime_service(
+        tmp_path,
+        product_code=product_code,
+        main_headlines=(
+            "headline one",
+            "headline two",
+            "headline three",
+            "headline four",
+            "headline five",
+            "headline six",
+        ),
+    )
+    service = AutoFactoryBatchService(
+        product_service=product_service,
+        asset_intake_service=asset_service,
+        video_assembly_factory_service=factory_service,
+        caption_runtime_service=caption_runtime_service,
+    )
+    order = AutoFactoryBatchOrderDTO(
+        batch_code="poolfair_batch",
+        product_requests=(AutoFactoryProductRequestDTO(product_code=product_code, requested_output_count=6),),
+    )
+
+    baseline_plan = service.plan_batch(order)
+    for history_index, planned_recipe in enumerate(baseline_plan.planned_recipes, start=1):
+        _materialize_history_recipe(
+            factory_service,
+            product_id=product_id,
+            recipe_code=f"poolfair_history_{history_index:03d}",
+            planned_recipe=planned_recipe,
+        )
+
+    rerun_plan = service.plan_batch(order)
+    rerun_scores = [recipe.near_duplicate_score for recipe in rerun_plan.planned_recipes]
+
+    assert len(rerun_scores) == 6
+    assert max(rerun_scores) < 0.6
+    assert all(recipe.main_caption_signature for recipe in rerun_plan.planned_recipes)
 
 
 def test_auto_factory_blocks_exact_fingerprint_reuse_when_history_forces_repeat(unit_of_work_factory, tmp_path) -> None:

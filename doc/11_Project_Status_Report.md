@@ -123,6 +123,8 @@
 - Recipe Builder output details now also surface output-level `history_scope`, direct `clip_formula_hash`, and a clearer explanation when review came from `historical_render_duplicate`
 - Auto Factory planner now also samples large foreground/background/voice/music pools through deterministic permutation coverage instead of one axis-biased frontier walk, so fresh alternatives surface more evenly on larger products
 - Auto Factory planner is now also caption-aware within the same batch, predicting deterministic caption signatures from the current caption contract and penalizing repeated `headline + foreground` or `headline + music` pairings when fresher combinations still exist
+- Auto Factory planner now also normalizes duplicate-risk penalties against the actually feasible role pool, so one-voice or low-foreground products are not automatically scored as `High` once reuse becomes mathematically unavoidable and spread evenly
+- Auto Factory planner now also applies a bounded fresh-headline diversity credit, letting widened headline pools reduce same-batch risk without hiding the remaining reuse reasons
 - new blank-`Batch Code` defaults and derived auto-generated order labels now also use local operator timestamp tokens, while product-local run journals keep explicit UTC `Z` timestamps for audit truth
 - successful auto-factory `materialize` stages now also persist planner duplicate-risk evidence, and the desktop `Auto Factory` `Orders` tab now surfaces that persisted risk truth for operators
 - auto-factory planning now also computes and hard-blocks one canonical `fingerprint_hash` against persisted same-product recipe history, so exact internal recipe formulas are not silently materialized again when no fresh variant exists
@@ -176,7 +178,7 @@
 
 ## Verification Baseline
 
-- `python -m pytest` via `.venv`: `320 passed, 4 warnings`
+- `python -m pytest` via `.venv`: `322 passed, 4 warnings`
 - targeted `QT_QPA_PLATFORM=offscreen` UI coverage for the new `Auto Factory` window and existing themed windows: passed
 
 ## Current Focus
@@ -202,6 +204,7 @@
 - validate whether the new recent-orders duplicate-risk strip helps operators choose the right order to inspect first without opening each one manually
 - validate whether the current caption headline pool is broad enough for 10-output commercial batches or whether repeated hook rotation is now the dominant samey-content risk
 - validate whether the new caption-aware same-batch planner pressure is strong enough on additional products or whether product-level headline-pool guidance and operator-visible pair-count summaries are needed next
+- validate whether the new pool-normalized duplicate-scoring math stays truthful across products with very uneven ready pools, especially one-voice or low-foreground catalogs
 - validate whether the new background-diversity hardening is strong enough on real campaign batches or whether future policy needs per-product cooldown knobs for backgrounds
 - validate whether the new foreground/music diversity hardening is strong enough on real campaign batches or whether product-level cooldown knobs are needed for sequence families or music reuse
 - validate whether the new frontier option-pool reordering is strong enough on real large-pool products or whether future policy needs explicit per-role cooldown windows or operator-tunable diversity budgets
@@ -247,17 +250,18 @@
 6. Clean the Alembic `path_separator=os` warning in a maintenance pass.
 7. Validate whether product-local `runs/<batch_code>` artifacts remain sufficient across multiple products and whether journal detail is enough for recovery-facing operator use.
 8. Validate whether the new exact `fingerprint_hash` guard prevents commercially unacceptable exact repeats in real Shopee/TikTok publishing batches without over-blocking useful variants.
-9. Validate whether the new `Orders`-tab risk filter, sort, and level emphasis actually reduce operator triage time on real campaign batches.
-10. Validate whether the new recent-orders risk summary strip reduces operator click-through time when scanning recent production history.
-11. Validate whether the new background-diversity hardening actually reduces same-background repetition on real Shopee/TikTok publishing batches.
-12. Validate whether the new foreground/music diversity hardening actually lowers repeated-foreground and repeated-music risk on real Shopee/TikTok publishing batches.
-13. Validate whether the new frontier option-pool reordering actually broadens large-pool background/music usage on real campaign batches such as `Biothentic0001`.
-14. Validate whether the new persistent foreground/background clip policy actually reduces same-clip duplicate feel on real operator batches while still preserving enough cross-output variety.
-15. Validate whether the new segment-inventory manifest evidence is enough for operator review or whether `Orders` / output-detail UI should surface more of it directly.
-16. Run another live end-to-end preview/final audit on `Biothentic0001` after the new policy-aware voice-loop, loop-authority, and promo-caption contract slice.
-17. Validate whether product-level voice looping should surface an operator-facing repetition warning or max-repeat policy after more live runs.
-18. Run another live `Biothentic0001` audit on the versioned manifest envelope and verify that output-detail surfaces remain readable from the new sectioned contract.
-19. Run a live folder-intake audit on one real product folder arranged in the new `contracts/` plus `assets/` layout and verify that ambiguity failures are understandable to operators.
+9. Validate whether the new pool-normalized duplicate-scoring math keeps `Medium` versus `High` operator truth aligned with real constrained pools across additional products.
+10. Validate whether the new `Orders`-tab risk filter, sort, and level emphasis actually reduce operator triage time on real campaign batches.
+11. Validate whether the new recent-orders risk summary strip reduces operator click-through time when scanning recent production history.
+12. Validate whether the new background-diversity hardening actually reduces same-background repetition on real Shopee/TikTok publishing batches.
+13. Validate whether the new foreground/music diversity hardening actually lowers repeated-foreground and repeated-music risk on real Shopee/TikTok publishing batches.
+14. Validate whether the new frontier option-pool reordering actually broadens large-pool background/music usage on real campaign batches such as `Biothentic0001`.
+15. Validate whether the new persistent foreground/background clip policy actually reduces same-clip duplicate feel on real operator batches while still preserving enough cross-output variety.
+16. Validate whether the new segment-inventory manifest evidence is enough for operator review or whether `Orders` / output-detail UI should surface more of it directly.
+17. Run another live end-to-end preview/final audit on `Biothentic0001` after the new policy-aware voice-loop, loop-authority, and promo-caption contract slice.
+18. Validate whether product-level voice looping should surface an operator-facing repetition warning or max-repeat policy after more live runs.
+19. Run another live `Biothentic0001` audit on the versioned manifest envelope and verify that output-detail surfaces remain readable from the new sectioned contract.
+20. Run a live folder-intake audit on one real product folder arranged in the new `contracts/` plus `assets/` layout and verify that ambiguity failures are understandable to operators.
 20. Validate the new `Audit Only` control-surface mode with operators and decide whether issue grouping/export needs to be added.
 
 ## Direction Locked In This Documentation Revision

@@ -102,6 +102,8 @@
 - Auto Factory candidate generation now also uses deterministic permutation coverage across foreground/background/voice/music coordinates, reducing large-pool axis bias and improving early asset spread.
 - Auto Factory selected-order surfaces now also show render-history truth directly, including persisted `history_scope`, rendered `clip_formula_hash`, and historical duplicate review signals in addition to planner-time duplicate-risk evidence.
 - Recipe Builder output details now also expose `history_scope`, direct output-level `clip_formula_hash`, and a clearer operator-facing explanation for the `historical_render_duplicate` review signal.
+- Auto Factory planner now also calibrates duplicate-risk math against the actual feasible role pool, so evenly spread reuse in one-voice or low-foreground products is scored more truthfully than avoidable early reuse.
+- Auto Factory planner now also grants bounded credit for fresh same-batch headline pairings, so a widened caption pool can lower risk without hiding real reuse reasons.
 - Preview/final render execution is now split into a dedicated factory support module so `services.py` stays under the repo line-count preference without changing public workflow behavior.
 - Auto Factory now also persists that duplicate-risk evidence on successful `materialize` stages and shows it in the `Orders` tab so operators can inspect order truth instead of relying on memory-only planner output.
 - Auto Factory local-worker heartbeat updates now also tolerate transient SQLite `database is locked` contention, so one missed heartbeat write no longer kills the heartbeat thread during an otherwise active run.
@@ -201,6 +203,7 @@
 - delivered deterministic caption cycling for `seed_scope = "batch"` so the first outputs in one automation batch vary caption picks instead of collapsing onto one repeated hook/sub pair when the pool has enough entries
 - delivered caption-aware same-batch planner scoring so deterministic headline signatures now influence duplicate-risk selection before materialization
 - completed a live `Biothentic0001` caption-aware planner audit, confirming `9` distinct `headline + foreground` pairs and `9` distinct `headline + music` pairs across a 10-output plan even though the product still rotated only `3` headline signatures
+- completed a follow-up live `Biothentic0001` planner audit after pool-normalized scoring, confirming `10` distinct headline signatures plus a calibrated `0.374` to `0.456` risk range instead of the earlier blanket `High`
 - tuned the built-in `sale_blast` and `dark_lower_third` preset defaults plus the new-product caption template toward lighter top banners, tighter grouped headline spacing, and larger lower-third readability baselines
 
 ## Still Open
@@ -219,7 +222,7 @@
 12. decide whether the append-only order-event journal should grow into a richer operator-facing event view with filtering, grouping, or export
 13. validate the new top-band face-safe clamp on more presenter-led products and decide whether future work should add subject-aware or face-detection-driven placement beyond the current contract-only geometry model
 14. validate the new Qt caption bitmap overlay on more Thai-heavy products and decide whether any remaining issues are font-specific rather than render-path-specific
-15. validate whether the new near-duplicate similarity score is calibrated tightly enough for Shopee/TikTok publishing batches and decide whether future policy thresholds should be operator-configurable
+15. validate whether the new pool-normalized near-duplicate similarity score stays calibrated tightly enough for Shopee/TikTok publishing batches and decide whether future policy thresholds should be operator-configurable
 16. validate whether the new exact `fingerprint_hash` basis should stay limited to platform/ratio/duration plus assignments or whether future work should include more contract dimensions
 17. validate whether the new `Orders`-tab emphasis thresholds and row-highlighting choices are strong enough on real operator sessions or need tuning
 18. validate whether the new recent-orders duplicate-risk summary is sufficient for top-level order triage or whether the strip also needs quick filters next
@@ -230,10 +233,11 @@
 23. validate whether the new segment-inventory manifest evidence should surface more directly in operator UI beyond output-detail helper text
 24. validate whether Auto Factory should also expose an explicit timezone badge in-screen after the new local-time display correction
 25. validate whether the new render-history truth surface is sufficient for operator triage or whether recent-order summary rows also need the same deeper history evidence next
-26. widen or diversify the `Biothentic0001` caption headline pool so 10-output batches do not rotate only three main hooks
+26. widen the real `Biothentic0001` foreground and voice pools so the calibrated planner has more actual variety to work with
 27. validate whether the new caption-aware planner pressure should also surface explicit pair-count summaries in the operator UI before publishing decisions
+28. verify whether the current lack of ready `background_music` on `Biothentic0001` is intentional policy or a product-library gap
 
 ## Verification Baseline
 
-- `python -m pytest` in `.venv`: `320 passed, 4 warnings`
+- `python -m pytest` in `.venv`: `322 passed, 4 warnings`
 - targeted `QT_QPA_PLATFORM=offscreen` UI/theme coverage for the new `Auto Factory` window and existing app windows: passed

@@ -58,6 +58,15 @@ class _PlanningHistory:
 
 
 @dataclass(slots=True, frozen=True)
+class _PlanningPoolProfile:
+    role_asset_pool_sizes: dict[str, int]
+    foreground_sequence_pool_size: int
+    main_caption_pool_size: int
+    headline_foreground_combo_pool_size: int
+    headline_music_combo_pool_size: int
+
+
+@dataclass(slots=True, frozen=True)
 class _SimilarityAssessment:
     score: float
     reasons: tuple[str, ...]
@@ -70,6 +79,7 @@ def _select_blueprints_greedily(
     planning_history: _PlanningHistory,
 ) -> tuple[_VariantBlueprint, ...]:
     remaining = list(candidate_blueprints)
+    pool_profile = _build_planning_pool_profile(candidate_blueprints)
     selected: list[_VariantBlueprint] = []
     selected_fingerprint_hashes: set[str] = set()
     selected_exact_signature_counts: Counter = Counter()
@@ -100,6 +110,7 @@ def _select_blueprints_greedily(
                 selected_main_caption_counts=selected_main_caption_counts,
                 selected_headline_foreground_counts=selected_headline_foreground_counts,
                 selected_headline_music_counts=selected_headline_music_counts,
+                pool_profile=pool_profile,
                 slot_position=slot_position,
             ),
         )
@@ -114,6 +125,7 @@ def _select_blueprints_greedily(
             selected_main_caption_counts=selected_main_caption_counts,
             selected_headline_foreground_counts=selected_headline_foreground_counts,
             selected_headline_music_counts=selected_headline_music_counts,
+            pool_profile=pool_profile,
             slot_signature=slot_signature,
         )
         selected_blueprint = replace(
@@ -152,6 +164,7 @@ def _selection_score(
     selected_main_caption_counts: Counter,
     selected_headline_foreground_counts: Counter,
     selected_headline_music_counts: Counter,
+    pool_profile: _PlanningPoolProfile,
     slot_position: int,
 ) -> tuple[float, int]:
     slot_signature = _resolve_slot_caption_signature(blueprint, slot_position=slot_position)
@@ -164,6 +177,7 @@ def _selection_score(
         selected_main_caption_counts=selected_main_caption_counts,
         selected_headline_foreground_counts=selected_headline_foreground_counts,
         selected_headline_music_counts=selected_headline_music_counts,
+        pool_profile=pool_profile,
         slot_signature=slot_signature,
     )
     history_exact_penalty = float(planning_history.exact_signature_weights[blueprint.assignment_signature]) * 400.0
@@ -204,6 +218,7 @@ def _assess_near_duplicate(
     selected_main_caption_counts: Counter,
     selected_headline_foreground_counts: Counter,
     selected_headline_music_counts: Counter,
+    pool_profile: _PlanningPoolProfile,
     slot_signature: CaptionSelectionSignature | None,
 ) -> _SimilarityAssessment:
     score = 0.0
@@ -221,7 +236,17 @@ def _assess_near_duplicate(
         + float(selected_foreground_sequence_counts[blueprint.foreground_sequence])
     )
     if blueprint.foreground_sequence and foreground_sequence_reuse > 0:
-        score += min(0.34 + (0.09 * max(0.0, foreground_sequence_reuse - 1.0)), 0.55)
+        score += _scaled_reuse_penalty(
+            reuse_count=foreground_sequence_reuse,
+            total_usage_count=_foreground_sequence_usage_total_count(
+                planning_history=planning_history,
+                selected_foreground_sequence_counts=selected_foreground_sequence_counts,
+            ),
+            pool_size=pool_profile.foreground_sequence_pool_size,
+            base_penalty=0.34,
+            incremental_penalty=0.09,
+            max_penalty=0.55,
+        )
         reasons.append("foreground_asset_reused")
 
     voice_reuse = _role_reuse_count(
@@ -231,7 +256,18 @@ def _assess_near_duplicate(
         selected_role_asset_counts=selected_role_asset_counts,
     )
     if voice_reuse > 0:
-        score += min(0.35 + (0.10 * max(0.0, voice_reuse - 1.0)), 0.55)
+        score += _scaled_reuse_penalty(
+            reuse_count=voice_reuse,
+            total_usage_count=_role_usage_total_count(
+                role_name="voice",
+                planning_history=planning_history,
+                selected_role_asset_counts=selected_role_asset_counts,
+            ),
+            pool_size=pool_profile.role_asset_pool_sizes.get("voice", 0),
+            base_penalty=0.35,
+            incremental_penalty=0.10,
+            max_penalty=0.55,
+        )
         reasons.append("voice_asset_overused")
 
     background_reuse = _role_reuse_count(
@@ -241,7 +277,18 @@ def _assess_near_duplicate(
         selected_role_asset_counts=selected_role_asset_counts,
     )
     if background_reuse > 0:
-        score += min(0.18 + (0.06 * max(0.0, background_reuse - 1.0)), 0.30)
+        score += _scaled_reuse_penalty(
+            reuse_count=background_reuse,
+            total_usage_count=_role_usage_total_count(
+                role_name="background",
+                planning_history=planning_history,
+                selected_role_asset_counts=selected_role_asset_counts,
+            ),
+            pool_size=pool_profile.role_asset_pool_sizes.get("background", 0),
+            base_penalty=0.18,
+            incremental_penalty=0.06,
+            max_penalty=0.30,
+        )
         reasons.append("background_asset_reused")
 
     music_reuse = _role_reuse_count(
@@ -251,7 +298,18 @@ def _assess_near_duplicate(
         selected_role_asset_counts=selected_role_asset_counts,
     )
     if music_reuse > 0:
-        score += min(0.12 + (0.04 * max(0.0, music_reuse - 1.0)), 0.24)
+        score += _scaled_reuse_penalty(
+            reuse_count=music_reuse,
+            total_usage_count=_role_usage_total_count(
+                role_name="music",
+                planning_history=planning_history,
+                selected_role_asset_counts=selected_role_asset_counts,
+            ),
+            pool_size=pool_profile.role_asset_pool_sizes.get("music", 0),
+            base_penalty=0.12,
+            incremental_penalty=0.04,
+            max_penalty=0.24,
+        )
         reasons.append("music_asset_reused")
 
     foreground_role_reuse = _foreground_role_reuse_count(
@@ -273,7 +331,14 @@ def _assess_near_duplicate(
         selected_main_caption_counts=selected_main_caption_counts,
     )
     if main_caption_reuse > 0:
-        score += min(0.14 + (0.04 * max(0.0, main_caption_reuse - 1.0)), 0.24)
+        score += _scaled_reuse_penalty(
+            reuse_count=main_caption_reuse,
+            total_usage_count=_main_caption_usage_total_count(selected_main_caption_counts),
+            pool_size=pool_profile.main_caption_pool_size,
+            base_penalty=0.14,
+            incremental_penalty=0.04,
+            max_penalty=0.24,
+        )
         reasons.append("headline_reused")
 
     headline_foreground_reuse = _headline_combo_reuse_count(
@@ -283,7 +348,14 @@ def _assess_near_duplicate(
         selected_combo_counts=selected_headline_foreground_counts,
     )
     if headline_foreground_reuse > 0:
-        score += min(0.24 + (0.06 * max(0.0, headline_foreground_reuse - 1.0)), 0.36)
+        score += _scaled_reuse_penalty(
+            reuse_count=headline_foreground_reuse,
+            total_usage_count=float(sum(selected_headline_foreground_counts.values())),
+            pool_size=pool_profile.headline_foreground_combo_pool_size,
+            base_penalty=0.24,
+            incremental_penalty=0.06,
+            max_penalty=0.36,
+        )
         reasons.append("headline_foreground_combo_reused")
 
     headline_music_reuse = _headline_combo_reuse_count(
@@ -293,8 +365,24 @@ def _assess_near_duplicate(
         selected_combo_counts=selected_headline_music_counts,
     )
     if headline_music_reuse > 0:
-        score += min(0.10 + (0.04 * max(0.0, headline_music_reuse - 1.0)), 0.18)
+        score += _scaled_reuse_penalty(
+            reuse_count=headline_music_reuse,
+            total_usage_count=float(sum(selected_headline_music_counts.values())),
+            pool_size=pool_profile.headline_music_combo_pool_size,
+            base_penalty=0.10,
+            incremental_penalty=0.04,
+            max_penalty=0.18,
+        )
         reasons.append("headline_music_combo_reused")
+
+    score = max(0.0, score - _fresh_diversity_credit(
+        exact_reuse_count=exact_reuse_count,
+        main_caption_reuse=main_caption_reuse,
+        headline_foreground_reuse=headline_foreground_reuse,
+        headline_music_reuse=headline_music_reuse,
+        pool_profile=pool_profile,
+        slot_signature=slot_signature,
+    ))
 
     unique_reasons = tuple(dict.fromkeys(reasons))
     return _SimilarityAssessment(
@@ -386,3 +474,133 @@ def _headline_combo_reuse_count(
     if asset_id is None:
         return 0.0
     return float(selected_combo_counts[(slot_signature.main_role_texts, asset_id)])
+
+
+def _build_planning_pool_profile(
+    candidate_blueprints: tuple[_VariantBlueprint, ...],
+) -> _PlanningPoolProfile:
+    role_asset_ids: dict[str, set[int]] = {}
+    foreground_sequences: set[tuple[int, ...]] = set()
+    main_caption_signatures: set[tuple[tuple[str, str], ...]] = set()
+    headline_foreground_combos: set[tuple[tuple[tuple[str, str], ...], int]] = set()
+    headline_music_combos: set[tuple[tuple[tuple[str, str], ...], int]] = set()
+    for blueprint in candidate_blueprints:
+        if blueprint.foreground_sequence:
+            foreground_sequences.add(blueprint.foreground_sequence)
+        foreground_asset_id = _role_asset_id(blueprint, role_name="foreground")
+        music_asset_id = _role_asset_id(blueprint, role_name="music")
+        for assignment in blueprint.assignments:
+            role_asset_ids.setdefault(assignment.role, set()).add(assignment.asset_id)
+        for slot_signature in blueprint.caption_signatures_by_slot:
+            if slot_signature is None or not slot_signature.main_role_texts:
+                continue
+            main_caption_signatures.add(slot_signature.main_role_texts)
+            if foreground_asset_id is not None:
+                headline_foreground_combos.add((slot_signature.main_role_texts, foreground_asset_id))
+            if music_asset_id is not None:
+                headline_music_combos.add((slot_signature.main_role_texts, music_asset_id))
+    return _PlanningPoolProfile(
+        role_asset_pool_sizes={role: len(asset_ids) for role, asset_ids in role_asset_ids.items()},
+        foreground_sequence_pool_size=len(foreground_sequences),
+        main_caption_pool_size=len(main_caption_signatures),
+        headline_foreground_combo_pool_size=len(headline_foreground_combos),
+        headline_music_combo_pool_size=len(headline_music_combos),
+    )
+
+
+def _scaled_reuse_penalty(
+    *,
+    reuse_count: float,
+    total_usage_count: float,
+    pool_size: int,
+    base_penalty: float,
+    incremental_penalty: float,
+    max_penalty: float,
+) -> float:
+    if reuse_count <= 0:
+        return 0.0
+    excess_reuse = _normalized_reuse_count(
+        reuse_count,
+        total_usage_count=total_usage_count,
+        pool_size=pool_size,
+    )
+    if excess_reuse > 0:
+        return min(base_penalty + (incremental_penalty * max(0.0, excess_reuse - 1.0)), max_penalty)
+    return base_penalty * _pool_constraint_discount(total_usage_count=total_usage_count, pool_size=pool_size)
+
+
+def _normalized_reuse_count(
+    reuse_count: float,
+    *,
+    total_usage_count: float,
+    pool_size: int,
+) -> float:
+    if reuse_count <= 0:
+        return 0.0
+    if pool_size <= 0:
+        return reuse_count
+    balanced_baseline = int(total_usage_count // pool_size)
+    return max(0.0, reuse_count - float(balanced_baseline))
+
+
+def _pool_constraint_discount(*, total_usage_count: float, pool_size: int) -> float:
+    if pool_size <= 0:
+        return 1.0
+    if total_usage_count < float(pool_size):
+        return 1.0
+    overflow_count = max(1.0, total_usage_count - float(pool_size) + 1.0)
+    return max(0.55, float(pool_size) / (float(pool_size) + overflow_count))
+
+
+def _role_usage_total_count(
+    *,
+    role_name: str,
+    planning_history: _PlanningHistory,
+    selected_role_asset_counts: Counter,
+) -> float:
+    historical_total = sum(
+        float(count)
+        for (assignment_role, _asset_id), count in planning_history.role_asset_weights.items()
+        if assignment_role == role_name
+    )
+    selected_total = sum(
+        float(count)
+        for (assignment_role, _asset_id), count in selected_role_asset_counts.items()
+        if assignment_role == role_name
+    )
+    return historical_total + selected_total
+
+
+def _foreground_sequence_usage_total_count(
+    *,
+    planning_history: _PlanningHistory,
+    selected_foreground_sequence_counts: Counter,
+) -> float:
+    return float(sum(planning_history.foreground_sequence_weights.values())) + float(
+        sum(selected_foreground_sequence_counts.values())
+    )
+
+
+def _main_caption_usage_total_count(selected_main_caption_counts: Counter) -> float:
+    return float(sum(selected_main_caption_counts.values()))
+
+
+def _fresh_diversity_credit(
+    *,
+    exact_reuse_count: float,
+    main_caption_reuse: float,
+    headline_foreground_reuse: float,
+    headline_music_reuse: float,
+    pool_profile: _PlanningPoolProfile,
+    slot_signature: CaptionSelectionSignature | None,
+) -> float:
+    if exact_reuse_count > 0 or slot_signature is None or not slot_signature.main_role_texts:
+        return 0.0
+    credit = 0.0
+    if main_caption_reuse == 0 and pool_profile.main_caption_pool_size > 1:
+        credit += 0.06
+    if headline_foreground_reuse == 0 and pool_profile.headline_foreground_combo_pool_size > 1:
+        credit += 0.08
+    if headline_music_reuse == 0 and pool_profile.headline_music_combo_pool_size > 1:
+        credit += 0.03
+    return min(0.17, credit)

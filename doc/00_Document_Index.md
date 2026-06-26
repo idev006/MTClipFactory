@@ -101,6 +101,8 @@ When code changes, the related Markdown documents in this folder must be updated
 93. [93_Biothentic0001_Live_Auto_Factory_Diversity_Audit_2026-06-26.md](/F:/programming/python/MTClipFactory/doc/93_Biothentic0001_Live_Auto_Factory_Diversity_Audit_2026-06-26.md)
 94. [94_Auto_Factory_Caption_Aware_Same_Batch_Diversity_Workflow_2026-06-26.md](/F:/programming/python/MTClipFactory/doc/94_Auto_Factory_Caption_Aware_Same_Batch_Diversity_Workflow_2026-06-26.md)
 95. [95_Biothentic0001_Caption_Aware_Planner_Audit_2026-06-26.md](/F:/programming/python/MTClipFactory/doc/95_Biothentic0001_Caption_Aware_Planner_Audit_2026-06-26.md)
+96. [96_Auto_Factory_Pool_Normalized_Duplicate_Scoring_Workflow_2026-06-26.md](/F:/programming/python/MTClipFactory/doc/96_Auto_Factory_Pool_Normalized_Duplicate_Scoring_Workflow_2026-06-26.md)
+97. [97_Biothentic0001_Pool_Normalized_Planner_Audit_2026-06-26.md](/F:/programming/python/MTClipFactory/doc/97_Biothentic0001_Pool_Normalized_Planner_Audit_2026-06-26.md)
 
 ## Governance
 

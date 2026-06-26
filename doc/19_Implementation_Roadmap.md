@@ -69,6 +69,7 @@ The project now uses two roadmap layers:
 - `IR-47` Auto Factory rendered-history and permutation-diversity hardening baseline: complete on 2026-06-25
 - `IR-48` Auto Factory render-history operator surface and render-service split baseline: complete on 2026-06-26
 - `IR-49` Auto Factory caption-aware same-batch diversity baseline: complete on 2026-06-26
+- `IR-50` Auto Factory pool-normalized duplicate scoring baseline: complete on 2026-06-26
 
 ## Current Execution Stream
 
@@ -107,6 +108,8 @@ The same anti-duplicate stream now also persists rendered `clip_formula_hash` an
 The same anti-duplicate stream now also surfaces that persisted render-history truth more directly in Auto Factory `Orders` and Recipe Builder output details, while splitting preview/final render execution out of the oversized factory service module to keep the service seam maintainable.
 
 The same anti-duplicate stream now also makes planner scoring caption-aware inside one batch by predicting deterministic headline selection from the current caption contract and penalizing repeated `headline + foreground` or `headline + music` pairings when fresher combinations still exist.
+
+The same anti-duplicate stream now also calibrates planner scoring against the feasible role pool so constrained products are not automatically pushed into `High` once the planner has already exhausted the available foreground, background, voice, or headline pool as evenly as possible.
 
 Backlog activation rules:
 
