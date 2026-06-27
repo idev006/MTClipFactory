@@ -18,6 +18,8 @@ class AutoFactoryProductRequestDTO:
     background_required_tag_labels: tuple[str, ...] = ()
     music_required_tag_labels: tuple[str, ...] = ()
     voice_required_tag_labels: tuple[str, ...] = ()
+    creative_preset_mode: str = "auto_best_fit"
+    creative_preset_codes: tuple[str, ...] = ()
 
 
 @dataclass(slots=True, frozen=True)
@@ -33,6 +35,7 @@ class PlannedBatchAssetAssignmentDTO:
     asset_code: str
     asset_type: str
     role: str
+    tag_labels: tuple[str, ...] = ()
 
 
 @dataclass(slots=True, frozen=True)
@@ -52,6 +55,9 @@ class PlannedBatchRecipeDTO:
     near_duplicate_reasons: tuple[str, ...] = ()
     caption_signature: tuple[tuple[str, str, str], ...] = ()
     main_caption_signature: tuple[tuple[str, str], ...] = ()
+    creative_preset_code: str | None = None
+    creative_preset_signature: str | None = None
+    creative_preset_reasons: tuple[str, ...] = ()
 
 
 @dataclass(slots=True, frozen=True)

@@ -54,6 +54,8 @@ def build_batch_order(
                 fixed_duration_sec=item.fixed_duration_sec,
                 min_duration_sec=item.min_duration_sec,
                 max_duration_sec=item.max_duration_sec,
+                creative_preset_mode=item.creative_preset_mode,
+                creative_preset_codes=item.creative_preset_codes,
             )
             for item in items
         ),
@@ -154,6 +156,9 @@ def build_materialize_stage_detail(
             {"segment_type": segment_type, "source_text": source_text}
             for segment_type, source_text in planned_recipe.main_caption_signature
         ],
+        "creative_preset_code": planned_recipe.creative_preset_code,
+        "creative_preset_signature": planned_recipe.creative_preset_signature,
+        "creative_preset_reasons": list(planned_recipe.creative_preset_reasons),
     }
 
 

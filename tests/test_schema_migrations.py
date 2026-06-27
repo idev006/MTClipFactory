@@ -74,6 +74,8 @@ def test_ensure_schema_current_upgrades_legacy_database(tmp_path: Path) -> None:
         "20260606_0005_timeline_segments.py",
         "20260613_0006_production_orders_and_stages.py",
         "20260620_0007_production_order_run_control.py",
+        "20260625_0008_output_history_scope_and_clip_formula_hash.py",
+        "20260627_0009_production_order_item_creative_presets.py",
     ):
         source = repo_root / "alembic" / "versions" / migration_name
         target = versions_dir / migration_name
@@ -127,6 +129,7 @@ def test_ensure_schema_current_upgrades_legacy_database(tmp_path: Path) -> None:
     render_decision_columns = {column["name"] for column in inspector.get_columns("render_decisions")}
     timeline_segment_columns = {column["name"] for column in inspector.get_columns("timeline_segments")}
     production_order_columns = {column["name"] for column in inspector.get_columns("production_orders")}
+    production_order_item_columns = {column["name"] for column in inspector.get_columns("production_order_items")}
     production_order_event_columns = {column["name"] for column in inspector.get_columns("production_order_events")}
     assert "decision_actor" in recipe_columns
     assert "decision_at" in recipe_columns
@@ -148,5 +151,6 @@ def test_ensure_schema_current_upgrades_legacy_database(tmp_path: Path) -> None:
         "lease_expires_at",
         "blocking_reason",
     } <= production_order_columns
+    assert {"creative_preset_mode", "creative_preset_codes_json"} <= production_order_item_columns
     assert {"production_order_id", "sequence_index", "event_type", "status", "message", "created_at"} <= production_order_event_columns
     assert "alembic_version" in inspector.get_table_names()

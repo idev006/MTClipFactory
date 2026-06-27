@@ -49,7 +49,12 @@ from mt_clip_factory.factory.production_order_run_support import (
     complete_order_from_stages,
     finalize_order,
 )
-from mt_clip_factory.factory.production_order_risk_support import classify_near_duplicate_score, max_materialize_risk_score
+from mt_clip_factory.factory.production_order_risk_support import (
+    classify_near_duplicate_score,
+    max_duplicate_truth_score,
+    max_materialize_risk_score,
+    max_render_duplicate_score,
+)
 
 
 class ProductionOrderNotFoundError(ValueError):
@@ -132,6 +137,8 @@ class ProductionOrderService:
                         fixed_duration_sec=product_request.fixed_duration_sec,
                         min_duration_sec=product_request.min_duration_sec,
                         max_duration_sec=product_request.max_duration_sec,
+                        creative_preset_mode=product_request.creative_preset_mode,
+                        creative_preset_codes=product_request.creative_preset_codes,
                     )
                 )
             self._append_event_in_uow(
@@ -353,6 +360,8 @@ class ProductionOrderService:
                     fixed_duration_sec=item.fixed_duration_sec,
                     min_duration_sec=item.min_duration_sec,
                     max_duration_sec=item.max_duration_sec,
+                    creative_preset_mode=item.creative_preset_mode,
+                    creative_preset_codes=item.creative_preset_codes,
                 )
                 for item in items
             ),
@@ -405,9 +414,10 @@ class ProductionOrderService:
                     lease_expires_at=summary.lease_expires_at,
                     now=utc_now(),
                 )
-                order_risk_score = max_materialize_risk_score(
-                    uow.production_order_stages.list_by_order(summary.production_order_id)
-                )
+                order_stages = uow.production_order_stages.list_by_order(summary.production_order_id)
+                planner_risk_score = max_materialize_risk_score(order_stages)
+                render_risk_score = max_render_duplicate_score(order_stages)
+                order_risk_score = max_duplicate_truth_score(order_stages)
                 recent_orders.append(
                     ProductionOrderSummaryDTO(
                         production_order_id=summary.production_order_id,
@@ -435,7 +445,9 @@ class ProductionOrderService:
                             lease_is_stale_value=lease_is_stale_value,
                         ),
                         risk_level=classify_near_duplicate_score(order_risk_score),
-                        max_near_duplicate_score=order_risk_score,
+                        max_near_duplicate_score=planner_risk_score,
+                        max_render_duplicate_score=render_risk_score,
+                        max_duplicate_truth_score=order_risk_score,
                     )
                 )
             return recent_orders

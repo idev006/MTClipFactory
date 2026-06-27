@@ -36,8 +36,47 @@ def max_materialize_risk_score(stages: Sequence[ProductionOrderStage]) -> float 
     return max(risk_scores)
 
 
+def max_render_duplicate_score(stages: Sequence[ProductionOrderStage]) -> float | None:
+    risk_scores = [
+        score
+        for score in (
+            _stage_render_duplicate_score(stage)
+            for stage in effective_stages(stages)
+            if stage.stage_name in {"preview", "review"} and stage.status.value in {"succeeded", "review_required"}
+        )
+        if score is not None
+    ]
+    if not risk_scores:
+        return None
+    return max(risk_scores)
+
+
+def max_duplicate_truth_score(stages: Sequence[ProductionOrderStage]) -> float | None:
+    candidates = [
+        score
+        for score in (
+            max_materialize_risk_score(stages),
+            max_render_duplicate_score(stages),
+        )
+        if score is not None
+    ]
+    if not candidates:
+        return None
+    return max(candidates)
+
+
 def _stage_near_duplicate_score(stage: ProductionOrderStage) -> float | None:
     value = stage_detail_value(stage.detail_json, "near_duplicate_score")
+    if value is None:
+        return None
+    try:
+        return float(value)
+    except (TypeError, ValueError):
+        return None
+
+
+def _stage_render_duplicate_score(stage: ProductionOrderStage) -> float | None:
+    value = stage_detail_value(stage.detail_json, "duplicate_risk")
     if value is None:
         return None
     try:

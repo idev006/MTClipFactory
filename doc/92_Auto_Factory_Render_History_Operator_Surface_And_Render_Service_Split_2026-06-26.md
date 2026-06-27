@@ -80,7 +80,7 @@ sequenceDiagram
 - planner-time risk and rendered-history duplicate truth are related but not identical; the UI must not collapse them into one claim
 - `history_scope = draft_preview` remains auditable but weaker than usable automation or approved-output history
 - a historical render duplicate remains an internal review signal, not proof that Shopee, TikTok, or another platform will definitely flag the clip
-- `Pause Run`, `Stop Run`, and `Resume Run` truth boundaries remain unchanged; backend-safe checkpoint semantics are still the pending requirement
+- `Pause Run`, `Stop Run`, and `Resume Run` now follow the delivered local-worker backend baseline with persisted operator intent, safe-checkpoint transitions, and stale-lease recovery semantics
 
 ## Acceptance Criteria
 

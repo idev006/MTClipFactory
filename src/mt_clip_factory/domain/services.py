@@ -244,6 +244,14 @@ class ProductionOrderStageRepository(Protocol):
     ) -> Sequence[ProductionOrderStage]:
         ...
 
+    def list_by_recipe(
+        self,
+        recipe_id: int,
+        *,
+        stage_name: str | None = None,
+    ) -> Sequence[ProductionOrderStage]:
+        ...
+
 
 class ProductionOrderEventRepository(Protocol):
     def add(self, event: ProductionOrderEvent) -> ProductionOrderEvent:

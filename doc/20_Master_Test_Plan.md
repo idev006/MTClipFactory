@@ -49,6 +49,8 @@ It complements [07_Testing_Strategy.md](/F:/programming/python/MTClipFactory/doc
 - canonical exact `fingerprint_hash` duplicate guard across persisted same-product recipe history
 - `Orders`-tab duplicate-risk emphasis, including derived risk levels plus operator filter/sort controls
 - recent-orders duplicate-risk summary, including persisted risk level plus raw score visibility in the lower history strip
+- creative-preset orchestration baseline, including product-local `creative_presets.toml`, planner-time preset resolution, persisted preset request truth, and manifest-visible preset identity
+- order-level duplicate-truth summarization so recent-order raw score reflects the stronger of materialize planner evidence and preview/review render-history evidence
 - Auto Factory local-time truth so recent-order and selected-order timestamp display aligns with the operator's local wall clock while persisted audit artifacts stay timezone-explicit
 - background-diversity hardening so batches with multiple feasible backgrounds do not collapse onto one repeated background unnecessarily
 - foreground/music diversity hardening so fresh sequence or music choices are surfaced before the planner settles on repeated patterns unnecessarily
@@ -244,20 +246,25 @@ It complements [07_Testing_Strategy.md](/F:/programming/python/MTClipFactory/doc
 36. Confirm the desktop `Auto Factory` `Orders` tab derives `High`, `Medium`, `Low`, and `Unavailable` emphasis labels from persisted planner evidence without inventing missing scores.
 37. Confirm the desktop `Auto Factory` `Orders` tab can filter product/stage rows by risk emphasis and sort stage rows by duplicate risk.
 38. Confirm the desktop `Auto Factory` `Recent Production Orders` strip shows persisted `Risk Level` plus raw `Duplicate Risk` and highlights higher-risk rows without guessing when evidence is missing.
-39. Confirm Auto Factory uses more than one feasible `background_video` across early batch outputs when alternatives exist, even if the product has a large foreground search space.
-40. Confirm Auto Factory can surface a fresh `background_music` alternative early enough to choose it when the default early scan would otherwise be dominated by other dimensions.
-41. Confirm the planner uses every feasible foreground at least once before repeating another foreground that is already used in the same batch when a fresh foreground still exists.
-42. Confirm Auto Factory deprioritizes a historically repeated foreground sequence when a feasible fresh sequence exists.
-41. Confirm large ready asset pools reorder `background`, `music`, or `voice` options by historical underuse before frontier enumeration.
-42. Confirm equal-history role assets preserve deterministic seeded tie order after the new frontier option-pool reordering.
-43. Confirm a large ready background pool prefers fresher backgrounds before falling back to historically reused ones.
-44. Confirm Auto Factory planned recipes contain exactly one `foreground` assignment and one `background` assignment per clip.
-45. Confirm Auto Factory never switches foreground assets mid-clip and instead loops the same foreground asset when timeline fill is needed.
-46. Confirm missing ready `foreground` or `background` assets produce truthful Auto Factory shortfall or terminal-order status instead of silent partial visual fallback.
-47. Confirm semantic foreground roles such as `hook`, `problem`, `benefit`, `proof`, and `cta` still render on the matching timeline segments for explicit/manual recipe paths.
-48. Confirm older non-semantic foreground roles still keep the persistent recipe-wide foreground fallback behavior.
-49. Confirm preview/final manifests expose `composition.segment_inventory` with per-segment asset, timing, fill-mode, and source-duration evidence.
-50. Confirm the same manifest also keeps a backward-safe top-level `segment_inventory` alias.
+39. Confirm product-local `creative_presets.toml` can be parsed, audited, and synced into runtime metadata without code edits.
+40. Confirm Auto Factory planner can resolve one eligible creative preset deterministically from the product-local runtime contract and persist preset code/reasons on the planned recipe and materialize stage.
+41. Confirm Auto Factory UI can pass preset mode plus optional preset-code overrides into a folder-driven run and that `order_snapshot.toml` preserves that requested preset truth.
+42. Confirm preview/final manifests expose chosen creative preset identity when materialize-stage preset truth exists for the recipe.
+43. Confirm the recent-orders duplicate-risk strip uses combined order-level truth from planner-time materialize evidence plus preview/review render-history evidence instead of planner-only score.
+44. Confirm Auto Factory uses more than one feasible `background_video` across early batch outputs when alternatives exist, even if the product has a large foreground search space.
+45. Confirm Auto Factory can surface a fresh `background_music` alternative early enough to choose it when the default early scan would otherwise be dominated by other dimensions.
+46. Confirm the planner uses every feasible foreground at least once before repeating another foreground that is already used in the same batch when a fresh foreground still exists.
+47. Confirm Auto Factory deprioritizes a historically repeated foreground sequence when a feasible fresh sequence exists.
+48. Confirm large ready asset pools reorder `background`, `music`, or `voice` options by historical underuse before frontier enumeration.
+49. Confirm equal-history role assets preserve deterministic seeded tie order after the new frontier option-pool reordering.
+50. Confirm a large ready background pool prefers fresher backgrounds before falling back to historically reused ones.
+51. Confirm Auto Factory planned recipes contain exactly one `foreground` assignment and one `background` assignment per clip.
+52. Confirm Auto Factory never switches foreground assets mid-clip and instead loops the same foreground asset when timeline fill is needed.
+53. Confirm missing ready `foreground` or `background` assets produce truthful Auto Factory shortfall or terminal-order status instead of silent partial visual fallback.
+54. Confirm semantic foreground roles such as `hook`, `problem`, `benefit`, `proof`, and `cta` still render on the matching timeline segments for explicit/manual recipe paths.
+55. Confirm older non-semantic foreground roles still keep the persistent recipe-wide foreground fallback behavior.
+56. Confirm preview/final manifests expose `composition.segment_inventory` with per-segment asset, timing, fill-mode, and source-duration evidence.
+57. Confirm the same manifest also keeps a backward-safe top-level `segment_inventory` alias.
 51. Confirm each manifest inventory exposes deterministic segment and clip formula hashes.
 52. Confirm the `Tags` screen shows current asset tag labels and supports `Asset Type` filtering during assignment work.
 53. Confirm the `Tags` screen keeps a selected asset in focus and allows `Create And Attach` plus existing-tag attach from the same workflow.

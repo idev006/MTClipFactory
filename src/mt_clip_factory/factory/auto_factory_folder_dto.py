@@ -33,6 +33,8 @@ class AutoFactoryFolderPipelineConfigDTO:
     background_required_tag_labels: tuple[str, ...] = ()
     music_required_tag_labels: tuple[str, ...] = ()
     voice_required_tag_labels: tuple[str, ...] = ()
+    creative_preset_mode: str = "auto_best_fit"
+    creative_preset_codes: tuple[str, ...] = ()
 
 
 @dataclass(slots=True, frozen=True)
@@ -97,6 +99,16 @@ class AutoFactoryFolderCaptionContractAuditDTO:
 
 
 @dataclass(slots=True, frozen=True)
+class AutoFactoryFolderCreativePresetContractAuditDTO:
+    preset_count: int
+    enabled_preset_count: int
+    preset_codes: tuple[str, ...]
+    platform_count: int
+    ratio_count: int
+    headline_pool_name_count: int
+
+
+@dataclass(slots=True, frozen=True)
 class AutoFactoryFolderAssetFolderAuditDTO:
     folder_name: str
     asset_type: str
@@ -129,6 +141,7 @@ class AutoFactoryFolderPreflightProductReportDTO:
     product_config: AutoFactoryFolderProductConfigDTO | None = None
     pipeline_config: AutoFactoryFolderPipelineConfigDTO | None = None
     caption_contract: AutoFactoryFolderCaptionContractAuditDTO | None = None
+    creative_preset_contract: AutoFactoryFolderCreativePresetContractAuditDTO | None = None
 
 
 @dataclass(slots=True, frozen=True)

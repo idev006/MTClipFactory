@@ -104,10 +104,13 @@
 - Recipe Builder output details now also expose `history_scope`, direct output-level `clip_formula_hash`, and a clearer operator-facing explanation for the `historical_render_duplicate` review signal.
 - Auto Factory planner now also calibrates duplicate-risk math against the actual feasible role pool, so evenly spread reuse in one-voice or low-foreground products is scored more truthfully than avoidable early reuse.
 - Auto Factory planner now also grants bounded credit for fresh same-batch headline pairings, so a widened caption pool can lower risk without hiding real reuse reasons.
+- Auto Factory now also supports product-local creative preset contracts, planner-time preset resolution, persisted preset request truth on production-order items, chosen-preset evidence on materialize stages, manifest-visible preset identity, and desktop preset-mode/operator-override controls.
+- Auto Factory recent-order summary now also reflects combined order-level duplicate truth from materialize-stage planner evidence plus preview/review render-history evidence instead of showing planner-only score in isolation.
 - product-local `order_snapshot.toml` now also preserves operator-requested run truth for `run_mode`, `materialize_requested`, and `build_previews_requested` even when the desktop path executes folder intake first and starts the persisted order afterward
 - Auto Factory planner now also forces fresh foreground coverage before repeating a foreground that is already used in the current batch when another feasible foreground still exists
 - Preview/final render execution is now split into a dedicated factory support module so `services.py` stays under the repo line-count preference without changing public workflow behavior.
 - Auto Factory now also persists that duplicate-risk evidence on successful `materialize` stages and shows it in the `Orders` tab so operators can inspect order truth instead of relying on memory-only planner output.
+- Auto Factory now also persists chosen creative preset evidence on successful `materialize` stages and uses the same persisted truth to enrich preview/final manifest payloads during render execution.
 - Auto Factory local-worker heartbeat updates now also tolerate transient SQLite `database is locked` contention, so one missed heartbeat write no longer kills the heartbeat thread during an otherwise active run.
 - File-backed desktop SQLite runtime now also enables `WAL` plus a `busy_timeout`, reducing write contention between lease heartbeats and persisted stage/event updates.
 - Auto Factory now also surfaces `lease_state`, `recovery_state`, and `suggested_action` truth for reopen-and-continue monitoring, so stale leases are visible as recoverable instead of looking like still-active workers.
@@ -115,6 +118,7 @@
 - Production-order `materialize` stages now also persist that `fingerprint_hash`, and order resume now ignores the same order's already-materialized recipes when rebuilding duplicate history so retryable failures can continue truthfully.
 - Auto Factory `Orders` now also emphasizes persisted planner risk through derived `High` / `Medium` / `Low` / `Unavailable` labels, row highlighting, and operator-facing filter/sort controls instead of showing only raw score text.
 - Auto Factory `Recent Production Orders` now also surfaces persisted planner `Risk Level` plus max raw `Duplicate Risk`, so operators can triage recent orders before opening one.
+- Auto Factory `Recent Production Orders` now also uses combined order-level duplicate truth for the displayed raw score while keeping planner-vs-render interpretation explicit inside selected-order detail.
 - A new corrective execution slice is now active for safer default caption placement bands and longest-contributing-layer duration resolution after real auto-mode preview feedback exposed layout and timeline quality gaps.
 
 ## Delivered In The Latest Loop
@@ -181,7 +185,8 @@
 - delivered persisted `fingerprint_hash` evidence on successful `materialize` stages so future audit and publishing policy can point to one stable exact-duplicate key
 - delivered resume-safe duplicate-guard behavior so a production order with already-materialized recipes can retry preview or later work without blocking itself during replan
 - delivered stronger `Orders`-tab operator triage for duplicate risk through derived risk levels, row emphasis, and risk filter/sort controls backed only by persisted planner evidence
-- delivered recent-orders duplicate-risk summary so the bottom `Recent Production Orders` strip now shows persisted `Risk Level` and raw score per order with the same truthful emphasis palette
+- delivered recent-orders duplicate-risk summary so the bottom `Recent Production Orders` strip now shows persisted `Risk Level` and a combined order-level raw score with the same truthful emphasis palette
+- delivered creative-preset orchestration baseline so product-local `creative_presets.toml`, planner-time preset resolution, persisted preset request truth, materialize-stage preset evidence, manifest-visible preset identity, and Auto Factory preset controls now work end to end
 - delivered background-diversity hardening so early Auto Factory candidate scans no longer hide alternate backgrounds behind a large foreground search space
 - delivered foreground/music diversity hardening so candidate coverage and scoring now push fresh music and foreground sequences earlier when feasible
 - delivered frontier option-pool diversity hardening so large seeded pools are reordered by historical underuse before frontier enumeration
@@ -218,7 +223,7 @@
 4. repeat the new live auto-mode audit seam on more products so `Biothentic0001` does not remain the only proof point
 5. rerun a live `Biothentic0001` preview/final audit after the new policy-aware voice-loop and music-duration-authority slice
 6. rerun a live `Biothentic0001` preview/final audit after the stronger promo-card caption contract tuning
-7. approve and implement the new creative-preset orchestration slice so Auto Factory can diversify whole clip treatments, not only individual asset permutations
+7. validate the delivered creative-preset orchestration baseline on more live products and tune preset families, cooldowns, and batch-share behavior from operator feedback
 8. run one live folder-intake audit against a real product folder arranged in the new `contracts/` plus `assets/` layout
 9. validate whether the new `Audit Only` UI mode needs issue export, filtering, or grouping after broader operator use
 10. validate whether the new selected-product contract inspection pane should grow operator actions such as `Open Contract`, `Copy Path`, or `Open Runs Folder`
@@ -244,5 +249,5 @@
 
 ## Verification Baseline
 
-- `python -m pytest` in `.venv`: `326 passed, 4 warnings`
+- `python -m pytest` in `.venv`: `331 passed, 4 warnings`
 - targeted `QT_QPA_PLATFORM=offscreen` UI/theme coverage for the new `Auto Factory` window and existing app windows: passed

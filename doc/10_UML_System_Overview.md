@@ -93,6 +93,8 @@ classDiagram
         +batch-only uniqueness planning
         +voice-with-bounds duration planning
         +required tag-label filtering by asset type
+        +product-local creative preset resolution
+        +persist chosen preset evidence on planned recipes
         +internal recipe generation
         +batch preview orchestration up to review gate
     }
@@ -102,9 +104,11 @@ classDiagram
         +run_batch_root(batch_root, scan_depth)
         +audit_batch_root(batch_root, scan_depth)
         +parse product.toml + pipeline.toml
+        +parse creative preset request overrides
         +parse tags.toml
         +preflight contracts/assets before automation
         +sync captions.toml into runtime metadata cache
+        +sync creative_presets.toml into runtime metadata cache
         +sync pipeline.toml + context.toml into runtime metadata cache
         +discover product folders up to scan depth
         +create missing products
@@ -116,9 +120,11 @@ classDiagram
 
     class ProductAutomationMetadataStore {
         +sync_caption_contract(product_code, source_file)
+        +sync_creative_preset_contract(product_code, source_file)
         +sync_pipeline_contract(product_code, source_file)
         +sync_runtime_context(product_code, source_product_dir, batch_code)
         +load_caption_contract(product_code)
+        +load_creative_preset_contract(product_code)
         +load_pipeline_contract(product_code)
         +load_runtime_context(product_code)
         +runtime metadata cache under media_root
@@ -163,6 +169,8 @@ classDiagram
         +resume_order(order_id)
         +get_order(order_id)
         +list_orders(...)
+        +persist creative preset request truth per order item
+        +combine planner and render-history duplicate truth per order summary
         +persist order + stage/event truth
     }
 

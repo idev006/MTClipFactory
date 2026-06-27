@@ -55,8 +55,10 @@ def format_product_request_summary(request) -> str:
     summary = (
         f"- {request.product_code}: requested={request.requested_output_count}, "
         f"platform={request.target_platform or 'default'}, ratio={request.target_ratio or 'default'}, "
-        f"duration_mode={request.duration_mode}"
+        f"duration_mode={request.duration_mode}, creative_preset_mode={request.creative_preset_mode}"
     )
+    if request.creative_preset_codes:
+        summary = f"{summary}, preset_codes={', '.join(request.creative_preset_codes)}"
     tag_filter_parts: list[str] = []
     if request.foreground_required_tag_labels:
         tag_filter_parts.append(f"foreground={', '.join(request.foreground_required_tag_labels)}")
@@ -153,6 +155,20 @@ def build_preflight_product_detail_text(product_report) -> str:
             ]
         )
 
+    creative_preset_contract = product_report.creative_preset_contract
+    if creative_preset_contract is not None:
+        lines.extend(
+            [
+                "",
+                "Creative Preset Contract:",
+                f"- Presets: {creative_preset_contract.enabled_preset_count} enabled / {creative_preset_contract.preset_count} total",
+                f"- Preset Codes: {', '.join(creative_preset_contract.preset_codes) or '-'}",
+                f"- Platforms: {creative_preset_contract.platform_count}",
+                f"- Ratios: {creative_preset_contract.ratio_count}",
+                f"- Headline Pools: {creative_preset_contract.headline_pool_name_count}",
+            ]
+        )
+
     lines.extend(["", "Asset Folders:"])
     for asset_audit in product_report.asset_folders:
         lines.append(
@@ -203,6 +219,8 @@ def build_run_product_detail_text(
                 f"- Duration Mode: {request.duration_mode}",
                 f"- Fixed Duration Sec: {format_optional_number(request.fixed_duration_sec)}",
                 f"- Min/Max Duration Sec: {request.min_duration_sec} / {request.max_duration_sec}",
+                f"- Creative Preset Mode: {request.creative_preset_mode}",
+                f"- Creative Preset Codes: {', '.join(request.creative_preset_codes) or '-'}",
                 f"- Selection Tags: {format_selection_tag_summary(request)}",
             ]
         )
@@ -262,6 +280,8 @@ def build_progress_summary_text(snapshot) -> str:
 def build_order_summary_text(order) -> str:
     planner_risk_scores: list[float] = []
     planner_risk_reasons: list[str] = []
+    creative_preset_codes: list[str] = []
+    creative_preset_signatures: list[str] = []
     render_risk_scores: list[float] = []
     render_history_scopes: list[str] = []
     render_signal_codes: list[str] = []
@@ -272,6 +292,12 @@ def build_order_summary_text(order) -> str:
             if stage_score is not None:
                 planner_risk_scores.append(stage_score)
             planner_risk_reasons.extend(_stage_near_duplicate_reasons(stage.detail_json))
+            preset_code = _stage_creative_preset_code(stage.detail_json)
+            if preset_code:
+                creative_preset_codes.append(preset_code)
+            preset_signature = _stage_creative_preset_signature(stage.detail_json)
+            if preset_signature:
+                creative_preset_signatures.append(preset_signature)
             continue
         if stage.stage_name not in {"preview", "review"}:
             continue
@@ -292,6 +318,8 @@ def build_order_summary_text(order) -> str:
     planner_risk_summary = "-" if max_planner_risk_score is None else f"max={max_planner_risk_score:.3f}, recipes={len(planner_risk_scores)}"
     render_risk_summary = "-" if max_render_risk_score is None else f"max={max_render_risk_score:.3f}, stages={len(render_risk_scores)}"
     planner_reasons_summary = ", ".join(dict.fromkeys(planner_risk_reasons)) if planner_risk_reasons else "-"
+    creative_preset_summary = ", ".join(dict.fromkeys(creative_preset_codes)) if creative_preset_codes else "-"
+    creative_signature_summary = ", ".join(dict.fromkeys(creative_preset_signatures)) if creative_preset_signatures else "-"
     history_scope_summary = ", ".join(dict.fromkeys(render_history_scopes)) if render_history_scopes else "-"
     render_signal_summary = ", ".join(dict.fromkeys(render_signal_codes)) if render_signal_codes else "-"
     clip_formula_summary = _summarize_clip_formula_hashes(render_clip_formula_hashes)
@@ -320,6 +348,8 @@ def build_order_summary_text(order) -> str:
             "",
             "Duplicate-Risk Summary:",
             f"- Risk Focus: {risk_focus}",
+            f"- Creative Presets: {creative_preset_summary}",
+            f"- Creative Signatures: {creative_signature_summary}",
             f"- Planner Risk: {planner_risk_summary}",
             f"- Planner Reasons: {planner_reasons_summary}",
             f"- Render-History Risk: {render_risk_summary}",
@@ -522,7 +552,7 @@ def refresh_recent_orders(window) -> None:  # noqa: ANN001
             order.recovery_state,
             order.suggested_action,
             order.risk_level,
-            _format_risk_score(order.max_near_duplicate_score),
+            _format_risk_score(order.max_duplicate_truth_score),
             str(order.item_count),
             order.source_mode,
             order.started_at or "",
@@ -610,6 +640,22 @@ def _stage_render_duplicate_score(detail_json: str | None) -> float | None:
         return float(value)
     except (TypeError, ValueError):
         return None
+
+
+def _stage_creative_preset_code(detail_json: str | None) -> str | None:
+    value = _stage_detail_value(detail_json, "creative_preset_code")
+    if not isinstance(value, str):
+        return None
+    normalized = value.strip()
+    return normalized or None
+
+
+def _stage_creative_preset_signature(detail_json: str | None) -> str | None:
+    value = _stage_detail_value(detail_json, "creative_preset_signature")
+    if not isinstance(value, str):
+        return None
+    normalized = value.strip()
+    return normalized or None
 
 
 def _stage_history_scope(detail_json: str | None) -> str | None:

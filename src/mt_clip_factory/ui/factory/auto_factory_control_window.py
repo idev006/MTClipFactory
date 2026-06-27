@@ -25,6 +25,12 @@ from PySide6.QtWidgets import (
 )
 
 from mt_clip_factory.presentation.factory.auto_factory_control import AutoFactoryControlViewModel
+from mt_clip_factory.factory.creative_preset_runtime import (
+    PRESET_MODE_AUTO_BEST_FIT,
+    PRESET_MODE_BALANCED_CYCLE,
+    PRESET_MODE_LOCKED_PRESET,
+    PRESET_MODE_PRESET_MIX,
+)
 from mt_clip_factory.ui.factory.auto_factory_control_actions import (
     copy_selected_product_summary,
     open_selected_contracts_folder,
@@ -167,11 +173,22 @@ class AutoFactoryControlWindow(QMainWindow):
             self._view_model.RUN_MODE_MATERIALIZE_AND_PREVIEWS,
         )
         self.run_mode_combo.currentIndexChanged.connect(self._refresh_run_mode_hint)
+        self.creative_preset_mode_combo = QComboBox()
+        self.creative_preset_mode_combo.addItem("Auto Best Fit", PRESET_MODE_AUTO_BEST_FIT)
+        self.creative_preset_mode_combo.addItem("Balanced Cycle", PRESET_MODE_BALANCED_CYCLE)
+        self.creative_preset_mode_combo.addItem("Locked Preset", PRESET_MODE_LOCKED_PRESET)
+        self.creative_preset_mode_combo.addItem("Preset Mix", PRESET_MODE_PRESET_MIX)
+        self.creative_preset_codes_input = QLineEdit()
+        self.creative_preset_codes_input.setPlaceholderText(
+            "optional preset codes, comma-separated for locked/mix overrides"
+        )
 
         form_layout.addRow("Root Folder", root_row)
         form_layout.addRow("Batch Code", self.batch_code_input)
         form_layout.addRow("Scan Depth", self.scan_depth_input)
         form_layout.addRow("Run Mode", self.run_mode_combo)
+        form_layout.addRow("Creative Preset Mode", self.creative_preset_mode_combo)
+        form_layout.addRow("Preset Codes", self.creative_preset_codes_input)
         layout.addLayout(form_layout)
 
         self.run_mode_hint_label = QLabel()
@@ -501,6 +518,8 @@ class AutoFactoryControlWindow(QMainWindow):
         self.batch_code_input.setEnabled(not run_active)
         self.scan_depth_input.setEnabled(not run_active)
         self.run_mode_combo.setEnabled(not run_active)
+        self.creative_preset_mode_combo.setEnabled(not run_active)
+        self.creative_preset_codes_input.setEnabled(not run_active)
         self.refresh_orders_button.setEnabled(not run_active)
         self.refresh_progress_button.setEnabled(has_order_context or run_active)
         self.pause_button.setEnabled(
@@ -675,6 +694,8 @@ class AutoFactoryControlWindow(QMainWindow):
                 batch_code=self.batch_code_input.text() or None,
                 scan_depth=self.scan_depth_input.value(),
                 run_mode=str(self.run_mode_combo.currentData()),
+                creative_preset_mode=str(self.creative_preset_mode_combo.currentData()),
+                creative_preset_codes=_parse_creative_preset_codes(self.creative_preset_codes_input.text()),
             )
         except Exception as exc:
             QMessageBox.warning(self, "Auto Factory", str(exc))
@@ -801,3 +822,13 @@ class AutoFactoryControlWindow(QMainWindow):
 
     def _refresh_selected_run_product_details(self) -> None:
         refresh_selected_run_product_details(self)
+
+
+def _parse_creative_preset_codes(raw_text: str) -> tuple[str, ...]:
+    return tuple(
+        dict.fromkeys(
+            part.strip().casefold()
+            for part in raw_text.split(",")
+            if part.strip()
+        )
+    )

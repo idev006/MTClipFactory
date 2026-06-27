@@ -11,6 +11,24 @@ It extends [88_Auto_Factory_Persistent_Foreground_Background_Clip_Policy_2026-06
 - reduce commercially repetitive output by varying the clip formula, not only the individual asset ids
 - keep operator truth explicit: every generated clip should be explainable by one chosen preset, one asset formula, one caption formula, and one persisted risk summary
 
+## Delivered Baseline Status
+
+- `Phase 1` is delivered on the 2026-06-27 baseline:
+  - product-local `creative_presets.toml` parsing and validation
+  - audit visibility for creative-preset contract summaries
+  - runtime metadata sync for creative preset contracts
+- `Phase 2` is delivered on the same baseline:
+  - planner-time preset resolution from product-local runtime metadata
+  - persisted preset request truth on production-order items
+  - persisted chosen preset evidence on materialize stages
+- `Phase 3` is delivered as a baseline:
+  - Auto Factory UI now exposes preset mode selection plus optional preset-code overrides
+  - folder-driven requested-run snapshots persist creative preset request truth
+- `Phase 4` is partially delivered:
+  - preview/final manifest payloads now carry chosen creative preset evidence when materialize-stage truth exists
+  - order-level duplicate summary truth now favors the stronger of planner-time materialize risk and preview/review render-history duplicate risk
+  - broader live tuning, preset-family balancing, and operator feedback loops still remain open
+
 ## Live Findings That Triggered This Slice
 
 Recent live runs improved from `High / 1.000` duplicate-risk outcomes to healthier `Medium` ranges on some orders, but one structural gap remains:
@@ -229,24 +247,28 @@ Minimum new persisted truth:
 - add `creative_presets.toml`
 - parse and validate preset definitions
 - expose preset summaries in Auto Factory product review surfaces
+- status: delivered on 2026-06-27
 
 ### Phase 2: Planner Integration
 
 - add preset eligibility and suitability scoring
 - add deterministic top-band preset selection
 - persist preset evidence on planned recipes and materialize stages
+- status: delivered on 2026-06-27
 
 ### Phase 3: Operator Controls
 
 - add preset mode controls to Auto Factory
 - support `auto_best_fit`, `balanced_cycle`, `locked_preset`, and `preset_mix`
 - surface chosen preset and preset spread in `Orders`
+- status: delivered baseline on 2026-06-27
 
 ### Phase 4: Audit And Tuning
 
 - add preset spread summaries per order
 - add tests and live audits on real campaign products
 - tune cooldowns, max-batch-share, and preset-family balancing with real operator feedback
+- status: partially delivered on 2026-06-27; live tuning still open
 
 ## Acceptance Criteria
 

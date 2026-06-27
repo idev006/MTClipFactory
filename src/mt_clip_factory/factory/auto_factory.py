@@ -31,8 +31,14 @@ from mt_clip_factory.factory.auto_factory_variant_support import (
     _order_role_assets_for_diversity_frontier,
     _resolve_candidate_scan_limit,
 )
-from mt_clip_factory.factory.caption_runtime import CaptionRuntimeService
+from mt_clip_factory.factory.caption_runtime import CaptionRuntimeService, ProductAutomationMetadataStore
 from mt_clip_factory.factory.caption_selection_support import CaptionSelectionSignature
+from mt_clip_factory.factory.creative_preset_runtime import (
+    CreativePresetContractError,
+    ResolvedCreativePresetSelection,
+    parse_creative_preset_contract_text,
+    select_creative_preset_for_assignments,
+)
 from mt_clip_factory.factory.auto_factory_pool_support import (
     _filter_assets_by_required_tags,
     _foreground_sequence_from_recipe_items,
@@ -81,11 +87,13 @@ class AutoFactoryBatchService:
         asset_intake_service: AssetIntakeService,
         video_assembly_factory_service: VideoAssemblyFactoryService,
         caption_runtime_service: CaptionRuntimeService | None = None,
+        automation_metadata_store: ProductAutomationMetadataStore | None = None,
     ) -> None:
         self._product_service = product_service
         self._asset_intake_service = asset_intake_service
         self._video_assembly_factory_service = video_assembly_factory_service
         self._caption_runtime_service = caption_runtime_service
+        self._automation_metadata_store = automation_metadata_store
 
     def plan_batch(
         self,
@@ -321,6 +329,7 @@ class AutoFactoryBatchService:
             product_code=product.product_code,
             excluded_recipe_ids=history_excluded_recipe_ids,
         )
+        creative_preset_definitions = self._load_creative_preset_definitions(product.product_code)
 
         if not foreground_assets or not background_assets:
             limiting_reason = _resolve_required_visual_shortfall_reason(
@@ -382,16 +391,37 @@ class AutoFactoryBatchService:
             voice_assets=voice_assets,
             planning_history=planning_history,
         )
-        recipes = tuple(
-            _blueprint_to_planned_recipe(
-                blueprint,
-                product_id=product.product_id,
-                product_code=product.product_code,
-                batch_code=batch_code,
-                request_index=index + 1,
+        selected_preset_counts: Counter[str] = Counter()
+        selected_preset_last_slots: dict[str, int] = {}
+        recipes: list[PlannedBatchRecipeDTO] = []
+        for index, blueprint in enumerate(planned_variants):
+            creative_preset_selection = select_creative_preset_for_assignments(
+                assignments=blueprint.assignments,
+                mode=product_request.creative_preset_mode,
+                requested_codes=product_request.creative_preset_codes,
+                definitions=creative_preset_definitions,
+                target_platform=blueprint.target_platform,
+                target_ratio=blueprint.target_ratio,
+                duration_sec=blueprint.duration_sec,
+                selected_preset_counts=selected_preset_counts,
+                selected_preset_last_slots=selected_preset_last_slots,
+                slot_position=index,
+                planned_count=len(planned_variants),
             )
-            for index, blueprint in enumerate(planned_variants)
-        )
+            if creative_preset_selection is not None:
+                selected_preset_counts[creative_preset_selection.preset_code] += 1
+                selected_preset_last_slots[creative_preset_selection.preset_code] = index
+            recipes.append(
+                _blueprint_to_planned_recipe(
+                    blueprint,
+                    product_id=product.product_id,
+                    product_code=product.product_code,
+                    batch_code=batch_code,
+                    request_index=index + 1,
+                    creative_preset_selection=creative_preset_selection,
+                )
+            )
+        recipes = tuple(recipes)
         planned_count = len(recipes)
         can_fulfill_exactly = planned_count == product_request.requested_output_count
         fresh_feasible_count = planned_count if not can_fulfill_exactly else feasible_count
@@ -605,6 +635,20 @@ class AutoFactoryBatchService:
             for request_index in range(1, planned_count + 1)
         )
 
+    def _load_creative_preset_definitions(self, product_code: str):
+        if self._automation_metadata_store is None:
+            return ()
+        raw_text = self._automation_metadata_store.load_creative_preset_contract_text(product_code)
+        if raw_text is None or not raw_text.strip():
+            return ()
+        try:
+            return parse_creative_preset_contract_text(
+                raw_text,
+                source_name=str(self._automation_metadata_store.creative_preset_contract_path(product_code)),
+            )
+        except CreativePresetContractError as exc:
+            raise AutoFactoryPlanningError(str(exc)) from exc
+
 
 def _slugify(value: str) -> str:
     normalized = re.sub(r"[^a-z0-9]+", "_", value.strip().lower())
@@ -648,6 +692,7 @@ def _to_assignment(asset: AssetSummaryDTO, *, role: str) -> PlannedBatchAssetAss
         asset_code=asset.asset_code,
         asset_type=asset.asset_type,
         role=role,
+        tag_labels=asset.tag_labels,
     )
 
 
@@ -658,6 +703,7 @@ def _blueprint_to_planned_recipe(
     product_code: str,
     batch_code: str,
     request_index: int,
+    creative_preset_selection: ResolvedCreativePresetSelection | None = None,
 ) -> PlannedBatchRecipeDTO:
     recipe_code = f"{product_code}_{batch_code}_{request_index:03d}"
     return PlannedBatchRecipeDTO(
@@ -676,6 +722,11 @@ def _blueprint_to_planned_recipe(
         near_duplicate_reasons=blueprint.near_duplicate_reasons,
         caption_signature=blueprint.caption_signature,
         main_caption_signature=blueprint.main_caption_signature,
+        creative_preset_code=None if creative_preset_selection is None else creative_preset_selection.preset_code,
+        creative_preset_signature=(
+            None if creative_preset_selection is None else creative_preset_selection.preset_signature
+        ),
+        creative_preset_reasons=() if creative_preset_selection is None else creative_preset_selection.reasons,
     )
 
 

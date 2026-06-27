@@ -16,6 +16,8 @@ class ProductionOrderItemDTO:
     fixed_duration_sec: float | None
     min_duration_sec: float
     max_duration_sec: float
+    creative_preset_mode: str = "auto_best_fit"
+    creative_preset_codes: tuple[str, ...] = ()
 
 
 @dataclass(slots=True, frozen=True)
@@ -52,6 +54,8 @@ class ProductionOrderSummaryDTO:
     suggested_action: str = "inspect"
     risk_level: str = "Unavailable"
     max_near_duplicate_score: float | None = None
+    max_render_duplicate_score: float | None = None
+    max_duplicate_truth_score: float | None = None
 
 
 @dataclass(slots=True, frozen=True)

@@ -71,7 +71,7 @@ The project now uses two roadmap layers:
 - `IR-49` Auto Factory caption-aware same-batch diversity baseline: complete on 2026-06-26
 - `IR-50` Auto Factory pool-normalized duplicate scoring baseline: complete on 2026-06-26
 - `IR-51` Auto Factory requested-run snapshot truth and foreground-balance hardening baseline: complete on 2026-06-27
-- `IR-52` Auto Factory creative preset orchestration baseline: planned on 2026-06-27
+- `IR-52` Auto Factory creative preset orchestration baseline: complete on 2026-06-27
 
 ## Current Execution Stream
 
@@ -115,7 +115,9 @@ The same anti-duplicate stream now also calibrates planner scoring against the f
 
 The same operator-truth and anti-duplicate stream now also keeps `order_snapshot.toml` aligned with the operator-requested run mode even when the desktop path performs intake first, and forces fresh same-batch foreground coverage before repeating another foreground that is already used in the current batch.
 
-The next anti-duplicate and creative-diversity stream should introduce operator-auditable creative preset orchestration so Auto Factory can vary whole ad treatments, not only rotate raw foreground/background/voice/music ids inside one flat selection space.
+The current anti-duplicate and creative-diversity stream now includes a delivered creative preset orchestration baseline so Auto Factory can vary whole ad treatments, not only rotate raw foreground/background/voice/music ids inside one flat selection space.
+
+The next stream should validate that delivered baseline on broader live products, tune preset-family balancing and suitability signals, and decide whether preset-spread summaries should become more explicit at the selected-order and recent-order levels.
 
 Backlog activation rules:
 

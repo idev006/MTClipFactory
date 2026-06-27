@@ -211,6 +211,18 @@ class ProductAutomationMetadataStore:
     def pipeline_contract_path(self, product_code: str) -> Path:
         return self._media_root / "products" / product_code / "automation" / "pipeline.toml"
 
+    def sync_creative_preset_contract(self, *, product_code: str, source_file: Path | None) -> Path | None:
+        target_path = self.creative_preset_contract_path(product_code)
+        if source_file is None or not source_file.exists():
+            target_path.unlink(missing_ok=True)
+            return None
+        target_path.parent.mkdir(parents=True, exist_ok=True)
+        shutil.copy2(source_file, target_path)
+        return target_path
+
+    def creative_preset_contract_path(self, product_code: str) -> Path:
+        return self._media_root / "products" / product_code / "automation" / "creative_presets.toml"
+
     def load_caption_contract_text(self, product_code: str) -> str | None:
         target_path = self.caption_contract_path(product_code)
         if not target_path.exists():
@@ -219,6 +231,12 @@ class ProductAutomationMetadataStore:
 
     def load_pipeline_contract_text(self, product_code: str) -> str | None:
         target_path = self.pipeline_contract_path(product_code)
+        if not target_path.exists():
+            return None
+        return target_path.read_text(encoding="utf-8")
+
+    def load_creative_preset_contract_text(self, product_code: str) -> str | None:
+        target_path = self.creative_preset_contract_path(product_code)
         if not target_path.exists():
             return None
         return target_path.read_text(encoding="utf-8")

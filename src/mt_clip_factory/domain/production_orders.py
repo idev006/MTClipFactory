@@ -42,6 +42,8 @@ class ProductionOrderItem:
     fixed_duration_sec: float | None = None
     min_duration_sec: float = 12.0
     max_duration_sec: float = 30.0
+    creative_preset_mode: str = "auto_best_fit"
+    creative_preset_codes: tuple[str, ...] = ()
     id: int | None = None
 
 

@@ -234,6 +234,8 @@ class ProductionOrderItemModel(Base):
     fixed_duration_sec: Mapped[float | None] = mapped_column(Float, nullable=True)
     min_duration_sec: Mapped[float] = mapped_column(Float, nullable=False, default=12.0)
     max_duration_sec: Mapped[float] = mapped_column(Float, nullable=False, default=30.0)
+    creative_preset_mode: Mapped[str] = mapped_column(String(64), nullable=False, default="auto_best_fit")
+    creative_preset_codes_json: Mapped[str] = mapped_column(Text, nullable=False, default="[]")
 
 
 class ProductionOrderStageModel(Base):

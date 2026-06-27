@@ -87,12 +87,13 @@ def _build_services(unit_of_work_factory, tmp_path: Path, durations_by_name: dic
         preview_renderer=renderer,
         final_renderer=renderer,
     )
+    automation_metadata_store = ProductAutomationMetadataStore(tmp_path / "media_library")
     auto_factory_service = AutoFactoryBatchService(
         product_service=product_service,
         asset_intake_service=asset_service,
         video_assembly_factory_service=factory_service,
+        automation_metadata_store=automation_metadata_store,
     )
-    automation_metadata_store = ProductAutomationMetadataStore(tmp_path / "media_library")
     folder_service = AutoFactoryFolderService(
         product_service=product_service,
         asset_intake_service=asset_service,
@@ -192,6 +193,30 @@ def _write_captions_toml(product_dir: Path, *, main_text: str = "พลังบ
                 "",
                 "[caption_properties.sub]",
                 'font_family = "THSarabun"',
+            ]
+        ),
+        encoding="utf-8",
+    )
+
+
+def _write_creative_presets_toml(product_dir: Path) -> None:
+    contracts_dir = product_dir / "contracts" if (product_dir / "contracts").exists() else product_dir
+    (contracts_dir / "creative_presets.toml").write_text(
+        "\n".join(
+            [
+                "[presets.ugc_proof]",
+                'display_name = "UGC Proof"',
+                'platforms = ["tiktok"]',
+                'target_ratios = ["9:16"]',
+                'preferred_foreground_tags = ["message:hook"]',
+                'headline_pool_names = ["ugc_hook"]',
+                "",
+                "[presets.clinical_clean]",
+                'display_name = "Clinical Clean"',
+                'platforms = ["shopee"]',
+                'target_ratios = ["9:16"]',
+                'preferred_background_tags = ["scene:studio"]',
+                'headline_pool_names = ["clinical_claim"]',
             ]
         ),
         encoding="utf-8",
@@ -339,6 +364,76 @@ def test_folder_service_syncs_pipeline_context_and_writes_run_snapshot(unit_of_w
     assert 'source_product_dir = "' in cached_context_path.read_text(encoding="utf-8")
     assert "requested_output_count = 2" in order_snapshot_path.read_text(encoding="utf-8")
     assert 'event_type = "intake_completed"' in journal_path.read_text(encoding="utf-8")
+
+
+def test_folder_service_surfaces_creative_preset_contract_and_request_truth(unit_of_work_factory, tmp_path) -> None:
+    _, _, _, folder_service, _ = _build_services(unit_of_work_factory, tmp_path, {})
+    batch_root = tmp_path / "batch_root"
+    product_dir = _write_product_folder(
+        batch_root,
+        folder_name="ProductA",
+        product_code="product_a",
+        product_name="Product A",
+        requested_output_count=2,
+    )
+    _write_creative_presets_toml(product_dir)
+    (product_dir / "pipeline.toml").write_text(
+        "\n".join(
+            [
+                "[request]",
+                "requested_output_count = 2",
+                'target_platform = "tiktok"',
+                'target_ratio = "9:16"',
+                "",
+                "[creative]",
+                'preset_mode = "preset_mix"',
+                'preset_codes = ["ugc_proof", "clinical_clean"]',
+            ]
+        ),
+        encoding="utf-8",
+    )
+
+    audit_report = folder_service.audit_batch_root(batch_root)
+    run_report = folder_service.run_batch_root(batch_root, materialize=False)
+
+    audited_product = audit_report.product_reports[0]
+    assert audited_product.creative_preset_contract is not None
+    assert audited_product.creative_preset_contract.preset_count == 2
+    assert audited_product.pipeline_config is not None
+    assert audited_product.pipeline_config.creative_preset_mode == "preset_mix"
+    assert audited_product.pipeline_config.creative_preset_codes == ("ugc_proof", "clinical_clean")
+
+    product_request = run_report.order.product_requests[0]
+    assert product_request.creative_preset_mode == "preset_mix"
+    assert product_request.creative_preset_codes == ("ugc_proof", "clinical_clean")
+
+
+def test_folder_service_run_snapshot_records_creative_preset_overrides(unit_of_work_factory, tmp_path) -> None:
+    _, _, _, folder_service, _ = _build_services(unit_of_work_factory, tmp_path, {})
+    batch_root = tmp_path / "batch_root"
+    product_dir = _write_product_folder(
+        batch_root,
+        folder_name="ProductA",
+        product_code="product_a",
+        product_name="Product A",
+        requested_output_count=1,
+    )
+    _write_creative_presets_toml(product_dir)
+
+    folder_service.run_batch_root(
+        batch_root,
+        batch_code="product_a_preset_override",
+        materialize=False,
+        creative_preset_mode="locked_preset",
+        creative_preset_codes=("ugc_proof",),
+    )
+
+    snapshot_text = (product_dir / "runs" / "product_a_preset_override" / "order_snapshot.toml").read_text(encoding="utf-8")
+    cached_contract_path = tmp_path / "media_library" / "products" / "product_a" / "automation" / "creative_presets.toml"
+
+    assert 'creative_preset_mode = "locked_preset"' in snapshot_text
+    assert 'creative_preset_codes = ["ugc_proof"]' in snapshot_text
+    assert cached_contract_path.exists()
 
 
 def test_folder_service_propagates_capacity_shortfall(unit_of_work_factory, tmp_path) -> None:

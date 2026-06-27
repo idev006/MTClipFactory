@@ -10,6 +10,7 @@ from mt_clip_factory.application.dto import CreateProductCommand
 from mt_clip_factory.application.services import ProductApplicationService
 from mt_clip_factory.domain.entities import utc_now
 from mt_clip_factory.domain.enums import OrchestrationStatus
+from mt_clip_factory.domain.production_orders import ProductionOrderStage
 from mt_clip_factory.factory.audio_composition import PreviewAudioMixPlan
 from mt_clip_factory.factory.auto_factory import AutoFactoryBatchService
 from mt_clip_factory.factory.auto_factory_dto import AutoFactoryBatchOrderDTO, AutoFactoryProductRequestDTO
@@ -175,9 +176,38 @@ def test_production_order_service_persists_and_lists_orders(unit_of_work_factory
     assert summary.status == "queued"
     assert summary.risk_level == "Unavailable"
     assert summary.max_near_duplicate_score is None
+    assert summary.max_duplicate_truth_score is None
     assert details.production_order_id == order_id
     assert details.source_mode == "manual_batch"
     assert details.requested_by == "planner_a"
+    assert details.items[0].creative_preset_mode == "auto_best_fit"
+    assert details.items[0].creative_preset_codes == ()
+
+
+def test_production_order_service_persists_creative_preset_request_truth(unit_of_work_factory, tmp_path) -> None:
+    product_service, _, _, service = _build_services(unit_of_work_factory, tmp_path)
+    product_service.create_product(CreateProductCommand(product_code="serum", product_name="Serum"))
+
+    order_id = service.create_order(
+        AutoFactoryBatchOrderDTO(
+            batch_code="launch_batch",
+            product_requests=(
+                AutoFactoryProductRequestDTO(
+                    product_code="serum",
+                    requested_output_count=2,
+                    creative_preset_mode="preset_mix",
+                    creative_preset_codes=("ugc_proof", "clinical_clean"),
+                ),
+            ),
+        ),
+        source_mode="manual_batch",
+        order_code="launch_batch_creative_001",
+    )
+
+    details = service.get_order(order_id)
+
+    assert details.items[0].creative_preset_mode == "preset_mix"
+    assert details.items[0].creative_preset_codes == ("ugc_proof", "clinical_clean")
     assert len(details.items) == 1
     assert details.items[0].product_code == "serum"
     assert details.stages == ()
@@ -189,7 +219,7 @@ def test_production_order_service_persists_and_lists_orders(unit_of_work_factory
                 product_requests=(AutoFactoryProductRequestDTO(product_code="serum", requested_output_count=1),),
             ),
             source_mode="manual_batch",
-            order_code="launch_batch_001",
+            order_code="launch_batch_creative_001",
         )
 
 
@@ -381,6 +411,60 @@ def test_production_order_service_records_retryable_preview_failure(unit_of_work
     assert details.stages[1].status == "failed_retryable"
     assert details.stages[1].failure_class == "preview_render_failure"
     assert "synthetic preview failure" in (details.stages[1].detail_json or "")
+
+
+def test_production_order_service_recent_orders_use_render_truth_for_duplicate_score(unit_of_work_factory, tmp_path) -> None:
+    product_service, _, _, service = _build_services(unit_of_work_factory, tmp_path)
+    product_service.create_product(CreateProductCommand(product_code="serum", product_name="Serum"))
+
+    order_id = service.create_order(
+        AutoFactoryBatchOrderDTO(
+            batch_code="render_truth_batch",
+            product_requests=(AutoFactoryProductRequestDTO(product_code="serum", requested_output_count=1),),
+        ),
+        source_mode="manual_batch",
+        order_code="render_truth_order_001",
+    )
+
+    with unit_of_work_factory() as uow:
+        item = uow.production_orders.list_items(order_id)[0]
+        order = uow.production_orders.get_by_id(order_id)
+        assert order is not None
+        order.status = OrchestrationStatus.SUCCEEDED
+        uow.production_orders.update(order)
+        uow.production_order_stages.add(
+            ProductionOrderStage(
+                production_order_id=order_id,
+                production_order_item_id=item.id,
+                stage_name="materialize",
+                stage_scope="recipe",
+                status=OrchestrationStatus.SUCCEEDED,
+                sequence_index=1,
+                recipe_id=101,
+                detail_json=json.dumps({"near_duplicate_score": 0.2}),
+            )
+        )
+        uow.production_order_stages.add(
+            ProductionOrderStage(
+                production_order_id=order_id,
+                production_order_item_id=item.id,
+                stage_name="preview",
+                stage_scope="recipe",
+                status=OrchestrationStatus.SUCCEEDED,
+                sequence_index=2,
+                recipe_id=101,
+                output_id=201,
+                detail_json=json.dumps({"duplicate_risk": 0.9, "history_scope": "auto_factory_preview"}),
+            )
+        )
+        uow.commit()
+
+    summary = service.list_orders()[0]
+
+    assert summary.risk_level == "High"
+    assert summary.max_near_duplicate_score == pytest.approx(0.2)
+    assert summary.max_render_duplicate_score == pytest.approx(0.9)
+    assert summary.max_duplicate_truth_score == pytest.approx(0.9)
 
 
 def test_production_order_service_records_terminal_materialization_failure(unit_of_work_factory, tmp_path) -> None:

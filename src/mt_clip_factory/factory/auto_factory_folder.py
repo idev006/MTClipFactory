@@ -15,6 +15,7 @@ from mt_clip_factory.factory.auto_factory_folder_dto import (
     AutoFactoryFolderAssetActionDTO,
     AutoFactoryFolderCaptionContractAuditDTO,
     AutoFactoryFolderContractAuditDTO,
+    AutoFactoryFolderCreativePresetContractAuditDTO,
     AutoFactoryFolderPipelineConfigDTO,
     AutoFactoryFolderPreflightIssueDTO,
     AutoFactoryFolderPreflightProductReportDTO,
@@ -24,6 +25,11 @@ from mt_clip_factory.factory.auto_factory_folder_dto import (
     AutoFactoryFolderRunReportDTO,
 )
 from mt_clip_factory.factory.caption_runtime import ProductAutomationMetadataStore
+from mt_clip_factory.factory.creative_preset_runtime import (
+    CreativePresetContractError,
+    parse_creative_preset_contract_text,
+    summarize_creative_preset_contract,
+)
 from mt_clip_factory.factory.product_run_store import ProductRunArtifactStore
 from mt_clip_factory.time_utils import build_local_timestamp_token
 from mt_clip_factory.library.dto import RegisterAssetCommand
@@ -102,6 +108,8 @@ class AutoFactoryFolderService:
         scan_depth: int = 1,
         materialize: bool = True,
         build_previews: bool = False,
+        creative_preset_mode: str | None = None,
+        creative_preset_codes: tuple[str, ...] = (),
         snapshot_materialize_requested: bool | None = None,
         snapshot_build_previews_requested: bool | None = None,
         snapshot_run_mode: str | None = None,
@@ -112,7 +120,14 @@ class AutoFactoryFolderService:
         root_path = Path(batch_root)
         product_dirs = _discover_product_dirs(root_path, scan_depth=scan_depth)
         product_configs = {product_dir: _load_product_config(product_dir) for product_dir in product_dirs}
-        pipeline_configs = {product_dir: _load_pipeline_config(product_dir) for product_dir in product_dirs}
+        pipeline_configs = {
+            product_dir: _load_pipeline_config(
+                product_dir,
+                creative_preset_mode=creative_preset_mode,
+                creative_preset_codes=creative_preset_codes,
+            )
+            for product_dir in product_dirs
+        }
         effective_batch_code = _resolve_effective_batch_code(batch_code=batch_code, root_path=root_path)
         resolved_snapshot_materialize_requested = (
             materialize if snapshot_materialize_requested is None else snapshot_materialize_requested
@@ -318,6 +333,11 @@ class AutoFactoryFolderService:
             product_code=product_code,
             source_file=source_file,
         )
+        creative_preset_file = _resolve_contract_file(product_dir, "creative_presets.toml", required=False)
+        self._automation_metadata_store.sync_creative_preset_contract(
+            product_code=product_code,
+            source_file=creative_preset_file,
+        )
         pipeline_file = _resolve_contract_file(product_dir, "pipeline.toml", required=False)
         self._automation_metadata_store.sync_pipeline_contract(
             product_code=product_code,
@@ -361,6 +381,8 @@ class AutoFactoryFolderService:
                 "duration_mode": pipeline_config.duration_mode,
                 "min_duration_sec": pipeline_config.min_duration_sec,
                 "max_duration_sec": pipeline_config.max_duration_sec,
+                "creative_preset_mode": pipeline_config.creative_preset_mode,
+                "creative_preset_codes": list(pipeline_config.creative_preset_codes),
                 "created_product": product_report.created_product,
                 "registered_asset_count": product_report.registered_asset_count,
                 "skipped_existing_asset_count": product_report.skipped_existing_asset_count,
@@ -398,6 +420,7 @@ def _audit_product_dir(product_dir: Path) -> AutoFactoryFolderPreflightProductRe
     product_config: AutoFactoryFolderProductConfigDTO | None = None
     pipeline_config: AutoFactoryFolderPipelineConfigDTO | None = None
     caption_contract: AutoFactoryFolderCaptionContractAuditDTO | None = None
+    creative_preset_contract: AutoFactoryFolderCreativePresetContractAuditDTO | None = None
 
     for contract_name in (*_REQUIRED_CONTRACT_FILES, *_OPTIONAL_CONTRACT_FILES):
         required = contract_name in _REQUIRED_CONTRACT_FILES
@@ -450,6 +473,20 @@ def _audit_product_dir(product_dir: Path) -> AutoFactoryFolderPreflightProductRe
                 )
             )
 
+    creative_presets_file = _resolve_contract_file(product_dir, "creative_presets.toml", required=False)
+    if creative_presets_file is not None:
+        try:
+            creative_preset_contract = _summarize_creative_preset_contract(creative_presets_file)
+        except AutoFactoryFolderContractError as exc:
+            issues.append(
+                _preflight_issue(
+                    "error",
+                    "invalid_creative_preset_contract",
+                    str(exc),
+                    location=str(creative_presets_file),
+                )
+            )
+
     prod_detail_file = contract_paths["prod_detail.txt"]
     if prod_detail_file is not None:
         if not prod_detail_file.read_text(encoding="utf-8").strip():
@@ -491,6 +528,7 @@ def _audit_product_dir(product_dir: Path) -> AutoFactoryFolderPreflightProductRe
         product_config=product_config,
         pipeline_config=pipeline_config,
         caption_contract=caption_contract,
+        creative_preset_contract=creative_preset_contract,
         contracts=tuple(contract_audits),
         asset_folders=tuple(asset_audits),
         issues=tuple(issues),
@@ -751,7 +789,12 @@ def _load_product_config(product_dir: Path) -> AutoFactoryFolderProductConfigDTO
     )
 
 
-def _load_pipeline_config(product_dir: Path) -> AutoFactoryFolderPipelineConfigDTO:
+def _load_pipeline_config(
+    product_dir: Path,
+    *,
+    creative_preset_mode: str | None = None,
+    creative_preset_codes: tuple[str, ...] = (),
+) -> AutoFactoryFolderPipelineConfigDTO:
     pipeline_file = _resolve_contract_file(product_dir, "pipeline.toml")
     data = _load_toml(pipeline_file)
     try:
@@ -766,12 +809,23 @@ def _load_pipeline_config(product_dir: Path) -> AutoFactoryFolderPipelineConfigD
         selection_tags_section = {}
     if not isinstance(selection_tags_section, dict):
         raise AutoFactoryFolderContractError(f"Invalid [selection_tags] section in {pipeline_file}")
+    creative_section = data.get("creative")
+    if creative_section is None:
+        creative_section = {}
+    if not isinstance(creative_section, dict):
+        raise AutoFactoryFolderContractError(f"Invalid [creative] section in {pipeline_file}")
 
     requested_output_count = section.get("requested_output_count")
     if not isinstance(requested_output_count, int) or requested_output_count <= 0:
         raise AutoFactoryFolderContractError(
             f"requested_output_count must be a positive integer in {pipeline_file}"
         )
+    requested_creative_preset_mode = _optional_text(creative_section.get("preset_mode")) or "auto_best_fit"
+    requested_creative_preset_codes = _optional_text_list(creative_section.get("preset_codes"))
+    if creative_preset_mode is not None and creative_preset_mode.strip():
+        requested_creative_preset_mode = creative_preset_mode.strip()
+    if creative_preset_codes:
+        requested_creative_preset_codes = tuple(dict.fromkeys(code.casefold() for code in creative_preset_codes if code))
     return AutoFactoryFolderPipelineConfigDTO(
         requested_output_count=requested_output_count,
         target_platform=_optional_text(section.get("target_platform")),
@@ -785,6 +839,8 @@ def _load_pipeline_config(product_dir: Path) -> AutoFactoryFolderPipelineConfigD
         background_required_tag_labels=_optional_text_list(selection_tags_section.get("background")),
         music_required_tag_labels=_optional_text_list(selection_tags_section.get("music")),
         voice_required_tag_labels=_optional_text_list(selection_tags_section.get("voice")),
+        creative_preset_mode=requested_creative_preset_mode,
+        creative_preset_codes=requested_creative_preset_codes,
     )
 
 
@@ -848,6 +904,25 @@ def _summarize_captions_contract(captions_file: Path) -> AutoFactoryFolderCaptio
         sub_style_preset=_optional_text(sub_properties.get("style_preset")),
         main_font_family=_optional_text(main_properties.get("font_family")),
         sub_font_family=_optional_text(sub_properties.get("font_family")),
+    )
+
+
+def _summarize_creative_preset_contract(creative_presets_file: Path) -> AutoFactoryFolderCreativePresetContractAuditDTO:
+    try:
+        definitions = parse_creative_preset_contract_text(
+            creative_presets_file.read_text(encoding="utf-8"),
+            source_name=str(creative_presets_file),
+        )
+    except (OSError, CreativePresetContractError) as exc:
+        raise AutoFactoryFolderContractError(str(exc)) from exc
+    summary = summarize_creative_preset_contract(definitions)
+    return AutoFactoryFolderCreativePresetContractAuditDTO(
+        preset_count=int(summary["preset_count"]),
+        enabled_preset_count=int(summary["enabled_preset_count"]),
+        preset_codes=tuple(summary["preset_codes"]),
+        platform_count=int(summary["platform_count"]),
+        ratio_count=int(summary["ratio_count"]),
+        headline_pool_name_count=int(summary["headline_pool_name_count"]),
     )
 
 
@@ -1042,6 +1117,8 @@ def _to_product_request(
         background_required_tag_labels=pipeline_config.background_required_tag_labels,
         music_required_tag_labels=pipeline_config.music_required_tag_labels,
         voice_required_tag_labels=pipeline_config.voice_required_tag_labels,
+        creative_preset_mode=pipeline_config.creative_preset_mode,
+        creative_preset_codes=pipeline_config.creative_preset_codes,
     )
 
 

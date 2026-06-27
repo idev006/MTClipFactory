@@ -31,6 +31,8 @@ class AutoFactoryControlRunRequest:
     batch_code: str | None
     scan_depth: int
     run_mode: str
+    creative_preset_mode: str = "auto_best_fit"
+    creative_preset_codes: tuple[str, ...] = ()
 
 
 @dataclass(slots=True, frozen=True)
@@ -214,6 +216,8 @@ class AutoFactoryControlViewModel(QObject):
         batch_code: str | None = None,
         scan_depth: int = 1,
         run_mode: str = RUN_MODE_INTAKE_ONLY,
+        creative_preset_mode: str = "auto_best_fit",
+        creative_preset_codes: tuple[str, ...] = (),
     ) -> AutoFactoryControlRunRequest:
         if run_mode not in self.RUN_MODES:
             raise ValueError(f"Unsupported run_mode: {run_mode}")
@@ -228,6 +232,10 @@ class AutoFactoryControlViewModel(QObject):
             batch_code=normalized_batch_code,
             scan_depth=scan_depth,
             run_mode=run_mode,
+            creative_preset_mode=creative_preset_mode.strip() or "auto_best_fit",
+            creative_preset_codes=tuple(
+                dict.fromkeys(code.strip().casefold() for code in creative_preset_codes if code and code.strip())
+            ),
         )
 
     def mark_run_started(self, request: AutoFactoryControlRunRequest) -> None:
@@ -288,6 +296,8 @@ class AutoFactoryControlViewModel(QObject):
             batch_code=request.batch_code,
             scan_depth=request.scan_depth,
             materialize=False,
+            creative_preset_mode=request.creative_preset_mode,
+            creative_preset_codes=request.creative_preset_codes,
             snapshot_materialize_requested=request.run_mode != self.RUN_MODE_INTAKE_ONLY,
             snapshot_build_previews_requested=request.run_mode == self.RUN_MODE_MATERIALIZE_AND_PREVIEWS,
             snapshot_run_mode=request.run_mode,
@@ -524,12 +534,16 @@ class AutoFactoryControlViewModel(QObject):
         batch_code: str | None = None,
         scan_depth: int = 1,
         run_mode: str = RUN_MODE_INTAKE_ONLY,
+        creative_preset_mode: str = "auto_best_fit",
+        creative_preset_codes: tuple[str, ...] = (),
     ) -> None:
         request = self.prepare_run_request(
             root_folder=root_folder,
             batch_code=batch_code,
             scan_depth=scan_depth,
             run_mode=run_mode,
+            creative_preset_mode=creative_preset_mode,
+            creative_preset_codes=creative_preset_codes,
         )
         self.mark_run_started(request)
         try:
@@ -856,11 +870,14 @@ def _request_from_order(
     fallback: AutoFactoryControlRunRequest | None,
 ) -> AutoFactoryControlRunRequest:
     if order.source_root and order.run_mode:
+        first_item = order.items[0] if order.items else None
         return AutoFactoryControlRunRequest(
             root_folder=order.source_root,
             batch_code=order.batch_code,
             scan_depth=0 if fallback is None else fallback.scan_depth,
             run_mode=order.run_mode,
+            creative_preset_mode="auto_best_fit" if first_item is None else first_item.creative_preset_mode,
+            creative_preset_codes=() if first_item is None else first_item.creative_preset_codes,
         )
     if fallback is not None:
         return fallback
@@ -871,6 +888,8 @@ def _request_from_order(
         run_mode=AutoFactoryControlViewModel.RUN_MODE_MATERIALIZE_AND_PREVIEWS
         if order.preview_generation_enabled
         else AutoFactoryControlViewModel.RUN_MODE_MATERIALIZE,
+        creative_preset_mode="auto_best_fit",
+        creative_preset_codes=(),
     )
 
 

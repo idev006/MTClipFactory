@@ -14,6 +14,7 @@ from mt_clip_factory.factory.auto_factory import (
     _order_foreground_sequences_for_diversity_frontier,
     _order_role_assets_for_diversity_frontier,
 )
+from mt_clip_factory.factory.caption_runtime import ProductAutomationMetadataStore
 from mt_clip_factory.factory.auto_factory_dto import (
     AutoFactoryBatchOrderDTO,
     AutoFactoryProductRequestDTO,
@@ -922,6 +923,77 @@ def test_auto_factory_filters_asset_pools_by_required_tag_labels(unit_of_work_fa
         "bg_studio",
         "fg_proof",
     ]
+
+
+def test_auto_factory_assigns_creative_preset_from_runtime_contract(unit_of_work_factory, tmp_path) -> None:
+    product_service = ProductApplicationService(unit_of_work_factory=unit_of_work_factory)
+    product_id = product_service.create_product(
+        CreateProductCommand(product_code="presettea", product_name="Preset Tea", default_platform="tiktok")
+    )
+    asset_service = _build_asset_service(unit_of_work_factory, tmp_path / "media_library", {})
+    tag_service = TagManagementService(unit_of_work_factory=unit_of_work_factory)
+    fg_id = _register_asset(
+        asset_service,
+        product_id=product_id,
+        tmp_path=tmp_path,
+        asset_type="foreground_video",
+        asset_code="fg_hook",
+        file_name="fg_hook.mp4",
+    )
+    bg_id = _register_asset(
+        asset_service,
+        product_id=product_id,
+        tmp_path=tmp_path,
+        asset_type="background_video",
+        asset_code="bg_studio",
+        file_name="bg_studio.mp4",
+    )
+    _assign_tag_to_asset(tag_service, asset_id=fg_id, tag_group="message", tag_name="hook")
+    _assign_tag_to_asset(tag_service, asset_id=bg_id, tag_group="scene", tag_name="studio")
+    metadata_store = ProductAutomationMetadataStore(tmp_path / "media_library")
+    creative_preset_path = metadata_store.creative_preset_contract_path("presettea")
+    creative_preset_path.parent.mkdir(parents=True, exist_ok=True)
+    creative_preset_path.write_text(
+        "\n".join(
+            [
+                "[presets.ugc_hook]",
+                'platforms = ["tiktok"]',
+                'target_ratios = ["9:16"]',
+                'preferred_foreground_tags = ["message:hook"]',
+                'preferred_background_tags = ["scene:studio"]',
+                'headline_pool_names = ["ugc"]',
+            ]
+        ),
+        encoding="utf-8",
+    )
+    service = AutoFactoryBatchService(
+        product_service=product_service,
+        asset_intake_service=asset_service,
+        video_assembly_factory_service=_build_factory_service(unit_of_work_factory, tmp_path / "previews"),
+        automation_metadata_store=metadata_store,
+    )
+
+    plan = service.plan_batch(
+        AutoFactoryBatchOrderDTO(
+            batch_code="preset_batch",
+            product_requests=(
+                AutoFactoryProductRequestDTO(
+                    product_code="presettea",
+                    requested_output_count=1,
+                    fixed_duration_sec=15.0,
+                    target_platform="tiktok",
+                    target_ratio="9:16",
+                    creative_preset_mode="locked_preset",
+                    creative_preset_codes=("ugc_hook",),
+                ),
+            ),
+        )
+    )
+
+    assert plan.planned_recipes[0].creative_preset_code == "ugc_hook"
+    assert plan.planned_recipes[0].creative_preset_signature is not None
+    assert "preset_mode:locked_preset" in plan.planned_recipes[0].creative_preset_reasons
+    assert "tag_fit:background/foreground" in plan.planned_recipes[0].creative_preset_reasons
 
 
 def test_auto_factory_reports_truthful_shortfall_when_tag_filters_remove_visual_assets(unit_of_work_factory, tmp_path) -> None:

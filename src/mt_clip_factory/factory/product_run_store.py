@@ -147,6 +147,9 @@ def _dump_flat_toml(data: dict[str, object]) -> str:
 
 
 def _toml_line(key: str, value: object) -> str:
+    if isinstance(value, (list, tuple)):
+        rendered_items = ", ".join(_toml_array_item(item) for item in value)
+        return f"{key} = [{rendered_items}]"
     if isinstance(value, bool):
         return f"{key} = {'true' if value else 'false'}"
     if isinstance(value, int):
@@ -158,3 +161,13 @@ def _toml_line(key: str, value: object) -> str:
 
 def _escape_toml(value: str) -> str:
     return value.replace("\\", "\\\\").replace('"', '\\"')
+
+
+def _toml_array_item(value: object) -> str:
+    if isinstance(value, bool):
+        return "true" if value else "false"
+    if isinstance(value, int):
+        return str(value)
+    if isinstance(value, float):
+        return str(value)
+    return f'"{_escape_toml(str(value))}"'

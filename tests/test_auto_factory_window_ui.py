@@ -78,12 +78,23 @@ class FakeAutoFactoryControlViewModel(QObject):
         self.progress_changed.emit()
         self.run_active_changed.emit()
 
-    def prepare_run_request(self, *, root_folder: str, batch_code=None, scan_depth=1, run_mode=RUN_MODE_INTAKE_ONLY):  # noqa: ANN001
+    def prepare_run_request(
+        self,
+        *,
+        root_folder: str,
+        batch_code=None,
+        scan_depth=1,
+        run_mode=RUN_MODE_INTAKE_ONLY,
+        creative_preset_mode="auto_best_fit",
+        creative_preset_codes=(),
+    ):  # noqa: ANN001
         return AutoFactoryControlRunRequest(
             root_folder=root_folder,
             batch_code=batch_code,
             scan_depth=scan_depth,
             run_mode=run_mode,
+            creative_preset_mode=creative_preset_mode,
+            creative_preset_codes=creative_preset_codes,
         )
 
     def mark_run_started(self, request: AutoFactoryControlRunRequest) -> None:
@@ -493,6 +504,7 @@ def test_auto_factory_window_shows_risk_summary_in_recent_orders_strip(qapp: QAp
                     suggested_action="inspect",
                     risk_level="High",
                     max_near_duplicate_score=0.775,
+                    max_duplicate_truth_score=0.775,
                 ),
             )
         )

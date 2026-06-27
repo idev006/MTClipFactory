@@ -11,6 +11,7 @@ from mt_clip_factory.factory.output_history import (
     resolve_output_history_scope,
 )
 from mt_clip_factory.factory.preview_composition import build_segmented_preview_composition
+from mt_clip_factory.factory.production_order_detail_support import stage_detail_value
 from mt_clip_factory.factory.review_gate import (
     apply_review_gate,
     assess_review_gate,
@@ -451,6 +452,9 @@ def _build_render_review_payload(service, uow, *, recipe, composition, persisted
         audio_mix_summary=rendered_output.audio_mix_summary,
     )
     manifest_payload = dict(composition.manifest_payload)
+    creative_preset_payload = _materialize_creative_preset_payload(uow, recipe_id=recipe.id)
+    if creative_preset_payload is not None:
+        manifest_payload["creative_preset"] = creative_preset_payload
     clip_formula_hash = extract_clip_formula_hash(manifest_payload)
     duplicate_count = historical_render_duplicate_count(
         uow,
@@ -468,6 +472,29 @@ def _build_render_review_payload(service, uow, *, recipe, composition, persisted
     if rendered_output.visual_composite_summary is not None:
         manifest_payload["visual_composite"] = rendered_output.visual_composite_summary
     return review_assessment, manifest_payload, clip_formula_hash, duplicate_count
+
+
+def _materialize_creative_preset_payload(uow, *, recipe_id: int) -> dict[str, object] | None:  # noqa: ANN001
+    materialize_stages = uow.production_order_stages.list_by_recipe(recipe_id, stage_name="materialize")
+    for stage in reversed(materialize_stages):
+        if stage.status.value != "succeeded":
+            continue
+        preset_code = stage_detail_value(stage.detail_json, "creative_preset_code")
+        preset_signature = stage_detail_value(stage.detail_json, "creative_preset_signature")
+        preset_reasons = stage_detail_value(stage.detail_json, "creative_preset_reasons")
+        reasons = [
+            str(reason).strip()
+            for reason in preset_reasons
+            if isinstance(reason, str) and str(reason).strip()
+        ] if isinstance(preset_reasons, list) else []
+        if not isinstance(preset_code, str) or not preset_code.strip():
+            continue
+        return {
+            "preset_code": preset_code.strip(),
+            "preset_signature": None if not isinstance(preset_signature, str) or not preset_signature.strip() else preset_signature.strip(),
+            "selection_reasons": reasons,
+        }
+    return None
 
 
 def _fail_render_job(service, uow, *, job, product_code: str, batch_code: str | None, event_type: str, recipe_code: str, exc: Exception) -> None:  # noqa: ANN001,E501

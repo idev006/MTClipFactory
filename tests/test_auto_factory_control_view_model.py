@@ -26,7 +26,7 @@ from mt_clip_factory.presentation.factory.auto_factory_control import (
 
 class FakeAutoFactoryFolderService:
     def __init__(self) -> None:
-        self.calls: list[tuple[str, str | None, int, bool, bool | None, bool | None, str | None]] = []
+        self.calls: list[tuple[str, str | None, int, bool, str | None, tuple[str, ...], bool | None, bool | None, str | None]] = []
         self.audit_calls: list[tuple[str, int]] = []
 
     def run_batch_root(
@@ -37,6 +37,8 @@ class FakeAutoFactoryFolderService:
         scan_depth: int = 1,
         materialize: bool = True,
         build_previews: bool = False,
+        creative_preset_mode: str | None = None,
+        creative_preset_codes: tuple[str, ...] = (),
         snapshot_materialize_requested: bool | None = None,
         snapshot_build_previews_requested: bool | None = None,
         snapshot_run_mode: str | None = None,
@@ -47,6 +49,8 @@ class FakeAutoFactoryFolderService:
                 batch_code,
                 scan_depth,
                 materialize,
+                creative_preset_mode,
+                creative_preset_codes,
                 snapshot_materialize_requested,
                 snapshot_build_previews_requested,
                 snapshot_run_mode,
@@ -313,6 +317,8 @@ def test_auto_factory_control_view_model_runs_intake_only_without_order_creation
             None,
             2,
             False,
+            "auto_best_fit",
+            (),
             False,
             False,
             AutoFactoryControlViewModel.RUN_MODE_INTAKE_ONLY,
@@ -366,6 +372,8 @@ def test_auto_factory_control_view_model_runs_materialization_with_preview_mode(
             "campaign_launch",
             1,
             False,
+            "auto_best_fit",
+            (),
             True,
             True,
             AutoFactoryControlViewModel.RUN_MODE_MATERIALIZE_AND_PREVIEWS,

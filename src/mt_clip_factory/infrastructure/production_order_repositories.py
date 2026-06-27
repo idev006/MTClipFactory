@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 from collections.abc import Sequence
+import json
 
 from sqlalchemy import func, select
 from sqlalchemy.orm import Session
@@ -146,6 +147,8 @@ class SqlAlchemyProductionOrderRepository:
             fixed_duration_sec=item.fixed_duration_sec,
             min_duration_sec=item.min_duration_sec,
             max_duration_sec=item.max_duration_sec,
+            creative_preset_mode=item.creative_preset_mode,
+            creative_preset_codes_json=json.dumps(list(item.creative_preset_codes)),
         )
         self._session.add(model)
         self._session.flush()
@@ -219,6 +222,22 @@ class SqlAlchemyProductionOrderStageRepository:
         rows = self._session.execute(statement).scalars().all()
         return [_to_stage(row) for row in rows]
 
+    def list_by_recipe(
+        self,
+        recipe_id: int,
+        *,
+        stage_name: str | None = None,
+    ) -> Sequence[ProductionOrderStage]:
+        statement = (
+            select(ProductionOrderStageModel)
+            .where(ProductionOrderStageModel.recipe_id == recipe_id)
+            .order_by(ProductionOrderStageModel.sequence_index.asc(), ProductionOrderStageModel.id.asc())
+        )
+        if stage_name is not None:
+            statement = statement.where(ProductionOrderStageModel.stage_name == stage_name)
+        rows = self._session.execute(statement).scalars().all()
+        return [_to_stage(row) for row in rows]
+
 
 class SqlAlchemyProductionOrderEventRepository:
     def __init__(self, session: Session) -> None:
@@ -276,6 +295,17 @@ def _to_order(model: ProductionOrderModel) -> ProductionOrder:
 
 
 def _to_item(model: ProductionOrderItemModel) -> ProductionOrderItem:
+    creative_preset_codes: tuple[str, ...]
+    try:
+        payload = json.loads(model.creative_preset_codes_json or "[]")
+    except json.JSONDecodeError:
+        creative_preset_codes = ()
+    else:
+        creative_preset_codes = tuple(
+            str(code).strip().casefold()
+            for code in payload
+            if isinstance(code, str) and str(code).strip()
+        )
     return ProductionOrderItem(
         id=model.id,
         production_order_id=model.production_order_id,
@@ -289,6 +319,8 @@ def _to_item(model: ProductionOrderItemModel) -> ProductionOrderItem:
         fixed_duration_sec=model.fixed_duration_sec,
         min_duration_sec=model.min_duration_sec,
         max_duration_sec=model.max_duration_sec,
+        creative_preset_mode=model.creative_preset_mode,
+        creative_preset_codes=creative_preset_codes,
     )
 
 

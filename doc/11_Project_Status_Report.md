@@ -4,7 +4,7 @@
 
 - Report date: 2026-06-27
 - Overall status: In Progress
-- Current phase: Phase 6, operator-grade local-worker auto-factory control baseline delivered; distributed execution and deeper recovery-facing UX still pending
+- Current phase: Phase 6, operator-grade local-worker auto-factory control plus creative-preset orchestration baseline delivered; distributed execution, broader live preset tuning, and deeper recovery-facing UX still pending
 - Delivery mode: document-led SSOT with code and tests kept in sync
 
 ## What Is Done
@@ -127,11 +127,14 @@
 - Auto Factory planner now also applies a bounded fresh-headline diversity credit, letting widened headline pools reduce same-batch risk without hiding the remaining reuse reasons
 - new blank-`Batch Code` defaults and derived auto-generated order labels now also use local operator timestamp tokens, while product-local run journals keep explicit UTC `Z` timestamps for audit truth
 - successful auto-factory `materialize` stages now also persist planner duplicate-risk evidence, and the desktop `Auto Factory` `Orders` tab now surfaces that persisted risk truth for operators
+- Auto Factory now also supports product-local creative preset contracts, planner-time preset resolution, persisted preset request truth on production-order items, chosen-preset evidence on materialize stages, and manifest-visible preset identity during preview/final rendering
+- the desktop `Auto Factory` screen now also exposes creative preset mode selection plus optional preset-code overrides, and product-local `order_snapshot.toml` now preserves that requested preset truth for later audit
 - auto-factory planning now also computes and hard-blocks one canonical `fingerprint_hash` against persisted same-product recipe history, so exact internal recipe formulas are not silently materialized again when no fresh variant exists
 - successful auto-factory `materialize` stages now also persist both human-readable `fingerprint` and canonical `fingerprint_hash` evidence for later audit
 - production-order resume now excludes the same order's already-materialized recipes from duplicate-guard history rebuilding, so retryable preview failures can resume truthfully without self-blocking
 - the desktop `Auto Factory` `Orders` tab now also derives `High` / `Medium` / `Low` / `Unavailable` planner-risk emphasis, supports duplicate-risk filtering and sorting, and highlights riskier product/stage rows for faster operator triage
 - the desktop `Auto Factory` `Recent Production Orders` strip now also surfaces persisted `Risk Level` plus max raw `Duplicate Risk` per order and highlights riskier recent orders for faster operator triage
+- the desktop `Auto Factory` `Recent Production Orders` strip now also reflects combined order-level duplicate truth from materialize-stage planner evidence plus preview/review render-history evidence instead of showing planner-only score in isolation
 - local-worker production-order heartbeat updates now also tolerate transient SQLite `database is locked` contention, so one skipped heartbeat attempt no longer crashes the background heartbeat thread during active Auto Factory runs
 - file-backed desktop SQLite runtime now also enables `WAL` plus a `busy_timeout`, reducing lease-heartbeat versus stage/event write contention during local Auto Factory execution
 - Auto Factory now also exposes operator-facing reopen-and-continue recovery truth, including stale-versus-active lease state, recovery-state summary, and suggested action visibility in recent-order and selected-order surfaces
@@ -181,7 +184,7 @@
 
 ## Verification Baseline
 
-- `python -m pytest` via `.venv`: `326 passed, 4 warnings`
+- `python -m pytest` via `.venv`: `331 passed, 4 warnings`
 - targeted `QT_QPA_PLATFORM=offscreen` UI coverage for the new `Auto Factory` window and existing themed windows: passed
 
 ## Current Focus
@@ -210,7 +213,7 @@
 - validate whether the new pool-normalized duplicate-scoring math stays truthful across products with very uneven ready pools, especially one-voice or low-foreground catalogs
 - validate whether the new requested-run snapshot truth is sufficient for product-local audit and whether later order identifiers should also be mirrored into `order_snapshot.toml`
 - validate whether the new same-batch foreground coverage pressure lowers commercial duplicate feel on real campaign batches without over-favoring historically overused foregrounds
-- review and approve the new creative-preset orchestration design so the next diversity slice can vary whole ad treatments instead of only rotating raw asset ids
+- validate the delivered creative-preset orchestration baseline on more live products and tune preset families, cooldowns, and batch-share behavior from operator feedback
 - validate whether the new background-diversity hardening is strong enough on real campaign batches or whether future policy needs per-product cooldown knobs for backgrounds
 - validate whether the new foreground/music diversity hardening is strong enough on real campaign batches or whether product-level cooldown knobs are needed for sequence families or music reuse
 - validate whether the new frontier option-pool reordering is strong enough on real large-pool products or whether future policy needs explicit per-role cooldown windows or operator-tunable diversity budgets
@@ -258,6 +261,8 @@
 8. Validate whether the new exact `fingerprint_hash` guard prevents commercially unacceptable exact repeats in real Shopee/TikTok publishing batches without over-blocking useful variants.
 9. Validate whether the new pool-normalized duplicate-scoring math keeps `Medium` versus `High` operator truth aligned with real constrained pools across additional products.
 10. Validate whether the new requested-run snapshot truth reduces operator confusion when product-local run artifacts are inspected outside the UI.
+11. Validate whether the new creative-preset resolver is commercially distinct enough on real Shopee/TikTok batches or whether more preset families and stronger suitability signals are needed next.
+12. Validate whether the new order-level combined duplicate truth in the recent-orders strip reduces operator confusion compared with planner-only score summaries.
 11. Validate whether the new same-batch foreground coverage pressure reduces repeated-foreground feel on real Shopee/TikTok publishing batches before adding any future operator-tunable cooldown knobs.
 12. Review and approve the planned creative-preset orchestration slice so the next implementation loop can add preset catalogs, suitability scoring, balanced preset spread, and persisted preset audit truth.
 13. Validate whether the new `Orders`-tab risk filter, sort, and level emphasis actually reduce operator triage time on real campaign batches.
