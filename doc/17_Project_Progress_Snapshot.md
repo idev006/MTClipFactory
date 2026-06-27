@@ -218,19 +218,20 @@
 4. repeat the new live auto-mode audit seam on more products so `Biothentic0001` does not remain the only proof point
 5. rerun a live `Biothentic0001` preview/final audit after the new policy-aware voice-loop and music-duration-authority slice
 6. rerun a live `Biothentic0001` preview/final audit after the stronger promo-card caption contract tuning
-7. run one live folder-intake audit against a real product folder arranged in the new `contracts/` plus `assets/` layout
-8. validate whether the new `Audit Only` UI mode needs issue export, filtering, or grouping after broader operator use
-9. validate whether the new selected-product contract inspection pane should grow operator actions such as `Open Contract`, `Copy Path`, or `Open Runs Folder`
-10. validate whether operators want direct file-level shortcuts for `captions.toml`, `pipeline.toml`, and `product.toml` after using the new folder-level actions
-11. validate whether the new tabbed `Auto Factory` workspace gives operators enough at-a-glance context or needs split-view refinements after live use
-12. decide whether the append-only order-event journal should grow into a richer operator-facing event view with filtering, grouping, or export
-13. validate the new top-band face-safe clamp on more presenter-led products and decide whether future work should add subject-aware or face-detection-driven placement beyond the current contract-only geometry model
-14. validate the new Qt caption bitmap overlay on more Thai-heavy products and decide whether any remaining issues are font-specific rather than render-path-specific
-15. validate whether the new pool-normalized near-duplicate similarity score stays calibrated tightly enough for Shopee/TikTok publishing batches and decide whether future policy thresholds should be operator-configurable
-16. validate whether the new exact `fingerprint_hash` basis should stay limited to platform/ratio/duration plus assignments or whether future work should include more contract dimensions
-17. validate whether the new `Orders`-tab emphasis thresholds and row-highlighting choices are strong enough on real operator sessions or need tuning
-18. validate whether the new recent-orders duplicate-risk summary is sufficient for top-level order triage or whether the strip also needs quick filters next
-19. validate whether the new background-diversity hardening is enough for real publishing batches or whether operator-tunable background cooldown policy is needed next
+7. approve and implement the new creative-preset orchestration slice so Auto Factory can diversify whole clip treatments, not only individual asset permutations
+8. run one live folder-intake audit against a real product folder arranged in the new `contracts/` plus `assets/` layout
+9. validate whether the new `Audit Only` UI mode needs issue export, filtering, or grouping after broader operator use
+10. validate whether the new selected-product contract inspection pane should grow operator actions such as `Open Contract`, `Copy Path`, or `Open Runs Folder`
+11. validate whether operators want direct file-level shortcuts for `captions.toml`, `pipeline.toml`, and `product.toml` after using the new folder-level actions
+12. validate whether the new tabbed `Auto Factory` workspace gives operators enough at-a-glance context or needs split-view refinements after live use
+13. decide whether the append-only order-event journal should grow into a richer operator-facing event view with filtering, grouping, or export
+14. validate the new top-band face-safe clamp on more presenter-led products and decide whether future work should add subject-aware or face-detection-driven placement beyond the current contract-only geometry model
+15. validate the new Qt caption bitmap overlay on more Thai-heavy products and decide whether any remaining issues are font-specific rather than render-path-specific
+16. validate whether the new pool-normalized near-duplicate similarity score stays calibrated tightly enough for Shopee/TikTok publishing batches and decide whether future policy thresholds should be operator-configurable
+17. validate whether the new exact `fingerprint_hash` basis should stay limited to platform/ratio/duration plus assignments or whether future work should include more contract dimensions
+18. validate whether the new `Orders`-tab emphasis thresholds and row-highlighting choices are strong enough on real operator sessions or need tuning
+19. validate whether the new recent-orders duplicate-risk summary is sufficient for top-level order triage or whether the strip also needs quick filters next
+20. validate whether the new background-diversity hardening is enough for real publishing batches or whether operator-tunable background cooldown policy is needed next
 20. validate whether the new foreground/music diversity hardening is enough for real publishing batches or whether operator-tunable foreground/music cooldown policy is needed next
 21. validate whether the new frontier option-pool reordering is enough for large-pool products or whether explicit per-role cooldown windows are still needed next
 22. validate whether the new persistent foreground/background clip policy is enough to reduce same-clip duplicate feel on real campaign outputs without sacrificing cross-output diversity

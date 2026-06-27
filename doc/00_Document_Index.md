@@ -104,6 +104,7 @@ When code changes, the related Markdown documents in this folder must be updated
 96. [96_Auto_Factory_Pool_Normalized_Duplicate_Scoring_Workflow_2026-06-26.md](/F:/programming/python/MTClipFactory/doc/96_Auto_Factory_Pool_Normalized_Duplicate_Scoring_Workflow_2026-06-26.md)
 97. [97_Biothentic0001_Pool_Normalized_Planner_Audit_2026-06-26.md](/F:/programming/python/MTClipFactory/doc/97_Biothentic0001_Pool_Normalized_Planner_Audit_2026-06-26.md)
 98. [98_Auto_Factory_Requested_Run_Snapshot_And_Foreground_Balance_Workflow_2026-06-27.md](/F:/programming/python/MTClipFactory/doc/98_Auto_Factory_Requested_Run_Snapshot_And_Foreground_Balance_Workflow_2026-06-27.md)
+99. [99_Auto_Factory_Creative_Preset_Orchestration_Workflow_2026-06-27.md](/F:/programming/python/MTClipFactory/doc/99_Auto_Factory_Creative_Preset_Orchestration_Workflow_2026-06-27.md)
 
 ## Governance
 
