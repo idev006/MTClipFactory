@@ -251,25 +251,27 @@ It complements [07_Testing_Strategy.md](/F:/programming/python/MTClipFactory/doc
 41. Confirm Auto Factory UI can pass preset mode plus optional preset-code overrides into a folder-driven run and that `order_snapshot.toml` preserves that requested preset truth.
 42. Confirm preview/final manifests expose chosen creative preset identity when materialize-stage preset truth exists for the recipe.
 43. Confirm the recent-orders duplicate-risk strip uses combined order-level truth from planner-time materialize evidence plus preview/review render-history evidence instead of planner-only score.
-44. Confirm Auto Factory uses more than one feasible `background_video` across early batch outputs when alternatives exist, even if the product has a large foreground search space.
-45. Confirm Auto Factory can surface a fresh `background_music` alternative early enough to choose it when the default early scan would otherwise be dominated by other dimensions.
-46. Confirm the planner uses every feasible foreground at least once before repeating another foreground that is already used in the same batch when a fresh foreground still exists.
-47. Confirm Auto Factory deprioritizes a historically repeated foreground sequence when a feasible fresh sequence exists.
-48. Confirm large ready asset pools reorder `background`, `music`, or `voice` options by historical underuse before frontier enumeration.
-49. Confirm equal-history role assets preserve deterministic seeded tie order after the new frontier option-pool reordering.
-50. Confirm a large ready background pool prefers fresher backgrounds before falling back to historically reused ones.
-51. Confirm Auto Factory planned recipes contain exactly one `foreground` assignment and one `background` assignment per clip.
-52. Confirm Auto Factory never switches foreground assets mid-clip and instead loops the same foreground asset when timeline fill is needed.
-53. Confirm missing ready `foreground` or `background` assets produce truthful Auto Factory shortfall or terminal-order status instead of silent partial visual fallback.
-54. Confirm semantic foreground roles such as `hook`, `problem`, `benefit`, `proof`, and `cta` still render on the matching timeline segments for explicit/manual recipe paths.
-55. Confirm older non-semantic foreground roles still keep the persistent recipe-wide foreground fallback behavior.
-56. Confirm preview/final manifests expose `composition.segment_inventory` with per-segment asset, timing, fill-mode, and source-duration evidence.
-57. Confirm the same manifest also keeps a backward-safe top-level `segment_inventory` alias.
-51. Confirm each manifest inventory exposes deterministic segment and clip formula hashes.
-52. Confirm the `Tags` screen shows current asset tag labels and supports `Asset Type` filtering during assignment work.
-53. Confirm the `Tags` screen keeps a selected asset in focus and allows `Create And Attach` plus existing-tag attach from the same workflow.
-54. Confirm the `Tags` screen can multi-select assets and attach one existing tag across the selected asset set.
-55. Confirm `Create And Attach` can create one tag and apply it across the selected asset set while preserving one primary selected-asset detail panel.
+44. Confirm the selected-order summary exposes requested preset mode, requested preset codes, chosen preset spread, and preset concentration from persisted successful `materialize` stage truth without guessing when no preset evidence exists yet.
+45. Confirm a live product-local `creative_presets.toml` plus preset-aware asset-tag tuning can be audited and used without repo code edits beyond the preset baseline itself.
+46. Confirm Auto Factory uses more than one feasible `background_video` across early batch outputs when alternatives exist, even if the product has a large foreground search space.
+47. Confirm Auto Factory can surface a fresh `background_music` alternative early enough to choose it when the default early scan would otherwise be dominated by other dimensions.
+48. Confirm the planner uses every feasible foreground at least once before repeating another foreground that is already used in the same batch when a fresh foreground still exists.
+49. Confirm Auto Factory deprioritizes a historically repeated foreground sequence when a feasible fresh sequence exists.
+50. Confirm large ready asset pools reorder `background`, `music`, or `voice` options by historical underuse before frontier enumeration.
+51. Confirm equal-history role assets preserve deterministic seeded tie order after the new frontier option-pool reordering.
+52. Confirm a large ready background pool prefers fresher backgrounds before falling back to historically reused ones.
+53. Confirm Auto Factory planned recipes contain exactly one `foreground` assignment and one `background` assignment per clip.
+54. Confirm Auto Factory never switches foreground assets mid-clip and instead loops the same foreground asset when timeline fill is needed.
+55. Confirm missing ready `foreground` or `background` assets produce truthful Auto Factory shortfall or terminal-order status instead of silent partial visual fallback.
+56. Confirm semantic foreground roles such as `hook`, `problem`, `benefit`, `proof`, and `cta` still render on the matching timeline segments for explicit/manual recipe paths.
+57. Confirm older non-semantic foreground roles still keep the persistent recipe-wide foreground fallback behavior.
+58. Confirm preview/final manifests expose `composition.segment_inventory` with per-segment asset, timing, fill-mode, and source-duration evidence.
+59. Confirm the same manifest also keeps a backward-safe top-level `segment_inventory` alias.
+60. Confirm each manifest inventory exposes deterministic segment and clip formula hashes.
+61. Confirm the `Tags` screen shows current asset tag labels and supports `Asset Type` filtering during assignment work.
+62. Confirm the `Tags` screen keeps a selected asset in focus and allows `Create And Attach` plus existing-tag attach from the same workflow.
+63. Confirm the `Tags` screen can multi-select assets and attach one existing tag across the selected asset set.
+64. Confirm `Create And Attach` can create one tag and apply it across the selected asset set while preserving one primary selected-asset detail panel.
 56. Confirm folder-driven intake can read `tags.toml` global and per-file tag metadata, create missing tags, and assign them to matching assets.
 57. Confirm rerunning folder-driven intake does not duplicate tag assignment links for existing assets.
 58. Confirm invalid `tags.toml` labels fail truthfully.

@@ -1,10 +1,17 @@
 from __future__ import annotations
 
 import json
-from dataclasses import dataclass
 
 from PySide6.QtGui import QColor
 from PySide6.QtWidgets import QTableWidget, QTableWidgetItem
+
+from mt_clip_factory.ui.factory.auto_factory_order_risk_support import (
+    OrderProductRiskRow,
+    OrderStageRiskRow,
+    build_order_product_rows,
+    build_order_stage_rows,
+    build_order_summary_text,
+)
 
 ORDER_RISK_FILTER_ALL = "all"
 ORDER_RISK_FILTER_HIGH_ONLY = "high_only"
@@ -24,31 +31,6 @@ _RISK_LEVEL_HIGH = "High"
 _RISK_LEVEL_MEDIUM = "Medium"
 _RISK_LEVEL_LOW = "Low"
 _RISK_LEVEL_UNAVAILABLE = "Unavailable"
-
-
-@dataclass(slots=True, frozen=True)
-class OrderProductRiskRow:
-    product_code: str
-    requested_outputs: int
-    last_stage: str
-    status: str
-    risk_level: str
-    risk_score: float | None
-
-
-@dataclass(slots=True, frozen=True)
-class OrderStageRiskRow:
-    sequence_index: int
-    stage_name: str
-    stage_scope: str
-    status: str
-    production_order_item_id: int | None
-    recipe_id: int | None
-    job_id: int | None
-    failure_class: str
-    risk_level: str
-    risk_score: float | None
-    risk_reasons: str
 
 
 def format_product_request_summary(request) -> str:
@@ -277,144 +259,6 @@ def build_progress_summary_text(snapshot) -> str:
     return "\n".join(lines)
 
 
-def build_order_summary_text(order) -> str:
-    planner_risk_scores: list[float] = []
-    planner_risk_reasons: list[str] = []
-    creative_preset_codes: list[str] = []
-    creative_preset_signatures: list[str] = []
-    render_risk_scores: list[float] = []
-    render_history_scopes: list[str] = []
-    render_signal_codes: list[str] = []
-    render_clip_formula_hashes: list[str] = []
-    for stage in _effective_order_stages(order.stages):
-        if stage.stage_name == "materialize" and stage.status == "succeeded":
-            stage_score = _stage_near_duplicate_score(stage.detail_json)
-            if stage_score is not None:
-                planner_risk_scores.append(stage_score)
-            planner_risk_reasons.extend(_stage_near_duplicate_reasons(stage.detail_json))
-            preset_code = _stage_creative_preset_code(stage.detail_json)
-            if preset_code:
-                creative_preset_codes.append(preset_code)
-            preset_signature = _stage_creative_preset_signature(stage.detail_json)
-            if preset_signature:
-                creative_preset_signatures.append(preset_signature)
-            continue
-        if stage.stage_name not in {"preview", "review"}:
-            continue
-        stage_score = _stage_render_duplicate_score(stage.detail_json)
-        if stage_score is not None:
-            render_risk_scores.append(stage_score)
-        history_scope = _stage_history_scope(stage.detail_json)
-        if history_scope:
-            render_history_scopes.append(history_scope)
-        render_signal_codes.extend(_stage_review_signal_codes(stage.detail_json))
-        clip_formula_hash = _stage_clip_formula_hash(stage.detail_json)
-        if clip_formula_hash:
-            render_clip_formula_hashes.append(clip_formula_hash)
-    max_planner_risk_score = None if not planner_risk_scores else max(planner_risk_scores)
-    max_render_risk_score = None if not render_risk_scores else max(render_risk_scores)
-    combined_risk_candidates = [score for score in (max_planner_risk_score, max_render_risk_score) if score is not None]
-    combined_risk_score = None if not combined_risk_candidates else max(combined_risk_candidates)
-    planner_risk_summary = "-" if max_planner_risk_score is None else f"max={max_planner_risk_score:.3f}, recipes={len(planner_risk_scores)}"
-    render_risk_summary = "-" if max_render_risk_score is None else f"max={max_render_risk_score:.3f}, stages={len(render_risk_scores)}"
-    planner_reasons_summary = ", ".join(dict.fromkeys(planner_risk_reasons)) if planner_risk_reasons else "-"
-    creative_preset_summary = ", ".join(dict.fromkeys(creative_preset_codes)) if creative_preset_codes else "-"
-    creative_signature_summary = ", ".join(dict.fromkeys(creative_preset_signatures)) if creative_preset_signatures else "-"
-    history_scope_summary = ", ".join(dict.fromkeys(render_history_scopes)) if render_history_scopes else "-"
-    render_signal_summary = ", ".join(dict.fromkeys(render_signal_codes)) if render_signal_codes else "-"
-    clip_formula_summary = _summarize_clip_formula_hashes(render_clip_formula_hashes)
-    risk_focus = _risk_level_label(combined_risk_score)
-    return "\n".join(
-        [
-            f"Order ID: {order.production_order_id}",
-            f"Order Code: {order.order_code}",
-            f"Batch Code: {order.batch_code}",
-            f"Source Mode: {order.source_mode}",
-            f"Run Mode: {order.run_mode or '-'}",
-            f"Source Root: {order.source_root or '-'}",
-            f"Build Previews: {'yes' if order.preview_generation_enabled else 'no'}",
-            f"Status: {order.status}",
-            f"Lease Owner: {order.lease_owner or '-'}",
-            f"Lease State: {order.lease_state}",
-            f"Lease Heartbeat: {order.lease_heartbeat_at or '-'}",
-            f"Lease Expires: {order.lease_expires_at or '-'}",
-            f"Recovery State: {order.recovery_state}",
-            f"Suggested Action: {order.suggested_action}",
-            f"Blocking Reason: {order.blocking_reason or '-'}",
-            f"Strict Fulfillment: {order.strict_fulfillment}",
-            f"Created At: {order.created_at}",
-            f"Started At: {order.started_at or 'not started'}",
-            f"Finished At: {order.finished_at or 'not finished'}",
-            "",
-            "Duplicate-Risk Summary:",
-            f"- Risk Focus: {risk_focus}",
-            f"- Creative Presets: {creative_preset_summary}",
-            f"- Creative Signatures: {creative_signature_summary}",
-            f"- Planner Risk: {planner_risk_summary}",
-            f"- Planner Reasons: {planner_reasons_summary}",
-            f"- Render-History Risk: {render_risk_summary}",
-            f"- History Scopes: {history_scope_summary}",
-            f"- Review Signals: {render_signal_summary}",
-            f"- Clip Formula Hashes: {clip_formula_summary}",
-            "- Risk Legend: High >= 0.600 | Medium >= 0.250 | Low < 0.250 | Unavailable = no persisted evidence.",
-            "- Interpretation: planner and render-history evidence only, not a platform verdict.",
-        ]
-    )
-
-
-def build_order_product_rows(order) -> list[OrderProductRiskRow]:
-    latest_stage_by_item_id: dict[int, object] = {}
-    risk_scores_by_item_id: dict[int, list[float]] = {}
-    for stage in _effective_order_stages(order.stages):
-        if stage.production_order_item_id is None:
-            continue
-        latest_stage_by_item_id[stage.production_order_item_id] = stage
-        stage_score = _stage_display_risk_score(stage)
-        if stage_score is None:
-            continue
-        risk_scores_by_item_id.setdefault(stage.production_order_item_id, []).append(stage_score)
-
-    rows: list[OrderProductRiskRow] = []
-    for item in order.items:
-        latest_stage = latest_stage_by_item_id.get(item.production_order_item_id)
-        stage_scores = risk_scores_by_item_id.get(item.production_order_item_id, [])
-        risk_score = None if not stage_scores else max(stage_scores)
-        rows.append(
-            OrderProductRiskRow(
-                product_code=item.product_code,
-                requested_outputs=item.requested_output_count,
-                last_stage="-" if latest_stage is None else latest_stage.stage_name,
-                status="queued" if latest_stage is None else latest_stage.status,
-                risk_level=_risk_level_label(risk_score),
-                risk_score=risk_score,
-            )
-        )
-    return rows
-
-
-def build_order_stage_rows(order) -> list[OrderStageRiskRow]:
-    rows: list[OrderStageRiskRow] = []
-    for stage in order.stages:
-        risk_score = _stage_display_risk_score(stage)
-        risk_reasons = ", ".join(_stage_display_risk_reasons(stage))
-        rows.append(
-            OrderStageRiskRow(
-                sequence_index=stage.sequence_index,
-                stage_name=stage.stage_name,
-                stage_scope=stage.stage_scope,
-                status=stage.status,
-                production_order_item_id=stage.production_order_item_id,
-                recipe_id=stage.recipe_id,
-                job_id=stage.job_id,
-                failure_class=stage.failure_class or "",
-                risk_level=_risk_level_label(risk_score),
-                risk_score=risk_score,
-                risk_reasons=risk_reasons,
-            )
-        )
-    return rows
-
-
 def refresh_selected_preflight_product_details(window) -> None:  # noqa: ANN001
     preflight_report = window._view_model.preflight_report
     if preflight_report is None:
@@ -615,110 +459,6 @@ def _stage_detail_value(detail_json: str | None, key: str) -> object | None:
     return payload.get(key)
 
 
-def _stage_near_duplicate_score(detail_json: str | None) -> float | None:
-    value = _stage_detail_value(detail_json, "near_duplicate_score")
-    if value is None:
-        return None
-    try:
-        return float(value)
-    except (TypeError, ValueError):
-        return None
-
-
-def _stage_near_duplicate_reasons(detail_json: str | None) -> tuple[str, ...]:
-    value = _stage_detail_value(detail_json, "near_duplicate_reasons")
-    if not isinstance(value, list):
-        return ()
-    return tuple(reason for reason in value if isinstance(reason, str) and reason.strip())
-
-
-def _stage_render_duplicate_score(detail_json: str | None) -> float | None:
-    value = _stage_detail_value(detail_json, "duplicate_risk")
-    if value is None:
-        return None
-    try:
-        return float(value)
-    except (TypeError, ValueError):
-        return None
-
-
-def _stage_creative_preset_code(detail_json: str | None) -> str | None:
-    value = _stage_detail_value(detail_json, "creative_preset_code")
-    if not isinstance(value, str):
-        return None
-    normalized = value.strip()
-    return normalized or None
-
-
-def _stage_creative_preset_signature(detail_json: str | None) -> str | None:
-    value = _stage_detail_value(detail_json, "creative_preset_signature")
-    if not isinstance(value, str):
-        return None
-    normalized = value.strip()
-    return normalized or None
-
-
-def _stage_history_scope(detail_json: str | None) -> str | None:
-    value = _stage_detail_value(detail_json, "history_scope")
-    if not isinstance(value, str):
-        return None
-    normalized = value.strip()
-    return normalized or None
-
-
-def _stage_clip_formula_hash(detail_json: str | None) -> str | None:
-    value = _stage_detail_value(detail_json, "clip_formula_hash")
-    if not isinstance(value, str):
-        return None
-    normalized = value.strip()
-    return normalized or None
-
-
-def _stage_review_signal_codes(detail_json: str | None) -> tuple[str, ...]:
-    value = _stage_detail_value(detail_json, "review_signal_codes")
-    if not isinstance(value, list):
-        return ()
-    return tuple(code.strip() for code in value if isinstance(code, str) and code.strip())
-
-
-def _stage_display_risk_score(stage) -> float | None:  # noqa: ANN001
-    return _stage_near_duplicate_score(stage.detail_json) if stage.stage_name == "materialize" else _stage_render_duplicate_score(stage.detail_json)
-
-
-def _stage_display_risk_reasons(stage) -> tuple[str, ...]:  # noqa: ANN001
-    parts: list[str] = []
-    if stage.stage_name == "materialize":
-        parts.extend(_stage_near_duplicate_reasons(stage.detail_json))
-    signal_codes = _stage_review_signal_codes(stage.detail_json)
-    if signal_codes:
-        parts.extend(signal_codes)
-    history_scope = _stage_history_scope(stage.detail_json)
-    if history_scope is not None:
-        parts.append(f"history_scope:{history_scope}")
-    clip_formula_hash = _stage_clip_formula_hash(stage.detail_json)
-    if clip_formula_hash is not None:
-        parts.append(f"clip_formula_hash:{clip_formula_hash[:12]}")
-    render_duplicate_score = _stage_render_duplicate_score(stage.detail_json)
-    if (
-        stage.stage_name in {"preview", "review"}
-        and render_duplicate_score is not None
-        and render_duplicate_score > 0.0
-        and not signal_codes
-    ):
-        parts.append("render_duplicate_risk")
-    return tuple(dict.fromkeys(parts))
-
-
-def _summarize_clip_formula_hashes(values: list[str]) -> str:
-    if not values:
-        return "-"
-    unique_values = list(dict.fromkeys(values))
-    preview = ", ".join(value[:12] for value in unique_values[:3])
-    if len(unique_values) > 3:
-        return f"{preview} (+{len(unique_values) - 3} more)"
-    return preview
-
-
 def filter_order_product_rows(
     rows: list[OrderProductRiskRow],
     *,
@@ -806,16 +546,6 @@ def join_optional(left: str | None, right: str | None) -> str:
     if left and right:
         return f"{left} / {right}"
     return left or right or "-"
-
-
-def _risk_level_label(score: float | None) -> str:
-    if score is None:
-        return _RISK_LEVEL_UNAVAILABLE
-    if score >= 0.6:
-        return _RISK_LEVEL_HIGH
-    if score >= 0.25:
-        return _RISK_LEVEL_MEDIUM
-    return _RISK_LEVEL_LOW
 
 
 def _risk_level_priority(level: str) -> int:

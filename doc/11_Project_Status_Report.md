@@ -129,6 +129,7 @@
 - successful auto-factory `materialize` stages now also persist planner duplicate-risk evidence, and the desktop `Auto Factory` `Orders` tab now surfaces that persisted risk truth for operators
 - Auto Factory now also supports product-local creative preset contracts, planner-time preset resolution, persisted preset request truth on production-order items, chosen-preset evidence on materialize stages, and manifest-visible preset identity during preview/final rendering
 - the desktop `Auto Factory` screen now also exposes creative preset mode selection plus optional preset-code overrides, and product-local `order_snapshot.toml` now preserves that requested preset truth for later audit
+- Auto Factory selected-order summaries now also surface requested preset policy plus persisted chosen-preset spread/concentration, and the live `Biothentic0001` product contract now carries a real preset catalog with `balanced_cycle` defaults plus preset-relevant foreground/music tag tuning
 - auto-factory planning now also computes and hard-blocks one canonical `fingerprint_hash` against persisted same-product recipe history, so exact internal recipe formulas are not silently materialized again when no fresh variant exists
 - successful auto-factory `materialize` stages now also persist both human-readable `fingerprint` and canonical `fingerprint_hash` evidence for later audit
 - production-order resume now excludes the same order's already-materialized recipes from duplicate-guard history rebuilding, so retryable preview failures can resume truthfully without self-blocking
@@ -214,6 +215,7 @@
 - validate whether the new requested-run snapshot truth is sufficient for product-local audit and whether later order identifiers should also be mirrored into `order_snapshot.toml`
 - validate whether the new same-batch foreground coverage pressure lowers commercial duplicate feel on real campaign batches without over-favoring historically overused foregrounds
 - validate the delivered creative-preset orchestration baseline on more live products and tune preset families, cooldowns, and batch-share behavior from operator feedback
+- validate whether preset contract fields such as `headline_pool_names` should remain planner/audit metadata or be promoted into a deeper caption-runtime override path in a later slice
 - validate whether the new background-diversity hardening is strong enough on real campaign batches or whether future policy needs per-product cooldown knobs for backgrounds
 - validate whether the new foreground/music diversity hardening is strong enough on real campaign batches or whether product-level cooldown knobs are needed for sequence families or music reuse
 - validate whether the new frontier option-pool reordering is strong enough on real large-pool products or whether future policy needs explicit per-role cooldown windows or operator-tunable diversity budgets
