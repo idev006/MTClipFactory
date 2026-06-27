@@ -60,6 +60,8 @@ def _write_creative_preset_contract(
     sub_style_preset: str = "benefit_stack",
     headline_pool_names: tuple[str, ...] = (),
     cta_pool_names: tuple[str, ...] = (),
+    caption_density: str | None = None,
+    segment_profile: str | None = None,
 ) -> Path:
     creative_preset_file = product_dir / "creative_presets.toml"
     lines = [
@@ -68,6 +70,10 @@ def _write_creative_preset_contract(
         f'main_style_preset = "{main_style_preset}"',
         f'sub_style_preset = "{sub_style_preset}"',
     ]
+    if caption_density is not None:
+        lines.append(f'caption_density = "{caption_density}"')
+    if segment_profile is not None:
+        lines.append(f'segment_profile = "{segment_profile}"')
     if headline_pool_names:
         quoted_headline_pools = ", ".join(f'"{pool_name}"' for pool_name in headline_pool_names)
         lines.append(f"headline_pool_names = [{quoted_headline_pools}]")
@@ -495,6 +501,237 @@ def test_caption_runtime_falls_back_to_segment_pool_when_named_preset_pool_missi
     assert hook_main_role.pool_names == ("hook",)
     assert hook_main_role.pool_resolution_mode == "preset_headline_pool_names_fallback_to_segment_default"
     assert hook_main_role.pool_warning == "missing_preset_pool_names:missing_hook_pool"
+
+
+def test_caption_runtime_applies_caption_density_to_runtime_and_signature(tmp_path) -> None:
+    media_root = tmp_path / "media_library"
+    fonts_root = tmp_path / "fonts"
+    fonts_root.mkdir(parents=True, exist_ok=True)
+    (fonts_root / "THSarabun.ttf").write_bytes(b"font")
+    product_dir = tmp_path / "product_density"
+    product_dir.mkdir(parents=True, exist_ok=True)
+    caption_file = product_dir / "captions.toml"
+    caption_file.write_text(
+        "\n".join(
+            [
+                "[caption_pools.hook]",
+                'main = ["hook main"]',
+                'sub = ["hook sub"]',
+                "",
+                "[caption_pools.problem]",
+                'main = ["problem main"]',
+                'sub = ["problem sub"]',
+                "",
+                "[caption_pools.benefit]",
+                'main = ["benefit main"]',
+                'sub = ["benefit sub"]',
+                "",
+                "[caption_pools.cta]",
+                'main = ["cta main"]',
+                'sub = ["cta sub"]',
+                "",
+                "[caption_properties.main]",
+                'font_family = "THSarabun"',
+                "",
+                "[caption_properties.sub]",
+                'font_family = "THSarabun"',
+            ]
+        ),
+        encoding="utf-8",
+    )
+    creative_preset_file = _write_creative_preset_contract(
+        product_dir,
+        preset_code="medium_story",
+        caption_density="medium",
+    )
+    store = ProductAutomationMetadataStore(media_root)
+    store.sync_caption_contract(product_code="product_density", source_file=caption_file)
+    store.sync_creative_preset_contract(product_code="product_density", source_file=creative_preset_file)
+    service = CaptionRuntimeService(metadata_store=store, fonts_root=fonts_root)
+    segments = (
+        TimelineSegment(recipe_id=1, segment_type="hook", sequence_index=1, start_sec=0.0, end_sec=2.0, target_duration_sec=2.0),
+        TimelineSegment(recipe_id=1, segment_type="problem", sequence_index=2, start_sec=2.0, end_sec=4.0, target_duration_sec=2.0),
+        TimelineSegment(recipe_id=1, segment_type="benefit", sequence_index=3, start_sec=4.0, end_sec=6.0, target_duration_sec=2.0),
+        TimelineSegment(recipe_id=1, segment_type="cta", sequence_index=4, start_sec=6.0, end_sec=8.0, target_duration_sec=2.0),
+    )
+
+    resolved = service.resolve_for_segments(
+        product_code="product_density",
+        recipe_code="product_density_batch_001",
+        segments=segments,
+        creative_preset_code="medium_story",
+    )
+    signature = service.resolve_caption_selection_signature(
+        product_code="product_density",
+        recipe_code="product_density_batch_001",
+        creative_preset_code="medium_story",
+    )
+
+    assert [len(segment.roles) for segment in resolved] == [1, 1, 2, 2]
+    assert signature is not None
+    assert ("hook", "sub", "hook sub") not in signature.role_texts
+    assert ("problem", "sub", "problem sub") not in signature.role_texts
+    assert ("benefit", "sub", "benefit sub") in signature.role_texts
+    assert ("cta", "sub", "cta sub") in signature.role_texts
+
+
+def test_caption_runtime_uses_segment_profile_for_signature_defaults(tmp_path) -> None:
+    media_root = tmp_path / "media_library"
+    fonts_root = tmp_path / "fonts"
+    fonts_root.mkdir(parents=True, exist_ok=True)
+    (fonts_root / "THSarabun.ttf").write_bytes(b"font")
+    product_dir = tmp_path / "product_segment_profile"
+    product_dir.mkdir(parents=True, exist_ok=True)
+    caption_file = product_dir / "captions.toml"
+    caption_file.write_text(
+        "\n".join(
+            [
+                "[caption_pools.hook]",
+                'main = ["hook main"]',
+                "",
+                "[caption_pools.problem]",
+                'main = ["problem main"]',
+                "",
+                "[caption_pools.benefit]",
+                'main = ["benefit main"]',
+                "",
+                "[caption_pools.proof]",
+                'main = ["proof main"]',
+                "",
+                "[caption_pools.cta]",
+                'main = ["cta main"]',
+                "",
+                "[caption_properties.main]",
+                'font_family = "THSarabun"',
+                "",
+                "[caption_properties.sub]",
+                'font_family = "THSarabun"',
+            ]
+        ),
+        encoding="utf-8",
+    )
+    creative_preset_file = _write_creative_preset_contract(
+        product_dir,
+        preset_code="proof_story",
+        segment_profile="proof_focus",
+    )
+    store = ProductAutomationMetadataStore(media_root)
+    store.sync_caption_contract(product_code="product_segment_profile", source_file=caption_file)
+    store.sync_creative_preset_contract(product_code="product_segment_profile", source_file=creative_preset_file)
+    service = CaptionRuntimeService(metadata_store=store, fonts_root=fonts_root)
+
+    signature = service.resolve_caption_selection_signature(
+        product_code="product_segment_profile",
+        recipe_code="product_segment_profile_batch_001",
+        creative_preset_code="proof_story",
+    )
+
+    assert signature is not None
+    assert [segment_type for segment_type, _text in signature.main_role_texts] == ["proof", "benefit", "cta"]
+
+
+def test_caption_runtime_keeps_visible_gap_between_per_line_boxes(tmp_path) -> None:
+    media_root = tmp_path / "media_library"
+    fonts_root = tmp_path / "fonts"
+    fonts_root.mkdir(parents=True, exist_ok=True)
+    (fonts_root / "THSarabun.ttf").write_bytes(b"font")
+    product_dir = tmp_path / "product_line_box_gap"
+    product_dir.mkdir(parents=True, exist_ok=True)
+    caption_file = product_dir / "captions.toml"
+    caption_file.write_text(
+        "\n".join(
+            [
+                "[caption_pools.hook]",
+                'main = ["one\\ntwo\\nthree"]',
+                "",
+                "[caption_properties.main]",
+                'font_family = "THSarabun"',
+                'textbox_mode = "per_line"',
+                "font_size = 72",
+                "padding = 20",
+                "line_spacing_ratio = 0.12",
+                "",
+                "[caption_properties.sub]",
+                'font_family = "THSarabun"',
+            ]
+        ),
+        encoding="utf-8",
+    )
+    store = ProductAutomationMetadataStore(media_root)
+    store.sync_caption_contract(product_code="product_line_box_gap", source_file=caption_file)
+    service = CaptionRuntimeService(metadata_store=store, fonts_root=fonts_root)
+
+    resolved = service.resolve_for_segments(
+        product_code="product_line_box_gap",
+        recipe_code="product_line_box_gap_batch_001",
+        segments=(
+            TimelineSegment(recipe_id=1, segment_type="hook", sequence_index=1, start_sec=0.0, end_sec=3.0, target_duration_sec=3.0),
+        ),
+        frame_width_px=1080,
+        frame_height_px=1920,
+    )
+    role = resolved[0].roles[0]
+    gaps = [
+        role.line_box_top_positions_px[index + 1]
+        - (role.line_box_top_positions_px[index] + role.line_box_heights_px[index])
+        for index in range(len(role.line_box_top_positions_px) - 1)
+    ]
+
+    assert gaps
+    assert min(gaps) >= 2
+
+
+def test_caption_runtime_shifts_upper_main_caption_away_from_presenter_safe_center_zone(tmp_path) -> None:
+    media_root = tmp_path / "media_library"
+    fonts_root = tmp_path / "fonts"
+    fonts_root.mkdir(parents=True, exist_ok=True)
+    (fonts_root / "THSarabun.ttf").write_bytes(b"font")
+    product_dir = tmp_path / "product_presenter_safe"
+    product_dir.mkdir(parents=True, exist_ok=True)
+    caption_file = product_dir / "captions.toml"
+    caption_file.write_text(
+        "\n".join(
+            [
+                "[caption_pools.hook]",
+                'main = ["focus\\non benefits\\nright now"]',
+                "",
+                "[caption_properties.main]",
+                'font_family = "THSarabun"',
+                'textbox_mode = "per_line"',
+                "font_size = 72",
+                "padding = 20",
+                'position = "top"',
+                'textbox_alignment = "center"',
+                "textbox_width_ratio = 0.56",
+                "safe_top_ratio = 0.10",
+                "safe_bottom_ratio = 0.30",
+                "max_safe_band_height_ratio = 0.20",
+                "",
+                "[caption_properties.sub]",
+                'font_family = "THSarabun"',
+            ]
+        ),
+        encoding="utf-8",
+    )
+    store = ProductAutomationMetadataStore(media_root)
+    store.sync_caption_contract(product_code="product_presenter_safe", source_file=caption_file)
+    service = CaptionRuntimeService(metadata_store=store, fonts_root=fonts_root)
+
+    resolved = service.resolve_for_segments(
+        product_code="product_presenter_safe",
+        recipe_code="product_presenter_safe_batch_001",
+        segments=(
+            TimelineSegment(recipe_id=1, segment_type="hook", sequence_index=1, start_sec=0.0, end_sec=3.0, target_duration_sec=3.0),
+        ),
+        frame_width_px=1080,
+        frame_height_px=1920,
+    )
+    role = resolved[0].roles[0]
+    centered_left_px = round((role.frame_width_px - role.box_width_px) / 2)
+
+    assert role.box_top_px < 400
+    assert role.box_left_px != centered_left_px
+    assert abs(role.box_left_px - centered_left_px) >= 80
 
 
 def test_caption_runtime_places_default_main_and_sub_in_separate_safe_bands(tmp_path) -> None:

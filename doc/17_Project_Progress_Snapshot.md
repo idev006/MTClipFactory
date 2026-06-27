@@ -108,6 +108,8 @@
 - Auto Factory preview/final render now also applies the materialized creative preset's caption-style override truth, so per-clip chosen presets can change rendered `main` / `sub` caption card styling instead of remaining planner-only metadata.
 - Auto Factory preview/final render now also routes `hook` and `cta` caption text through preset-named `caption_pools.*` entries when the selected preset defines `headline_pool_names` or `cta_pool_names`, and caption manifests now report pool-source truth plus fallback warnings when named preset pools are missing.
 - Auto Factory planner now also uses those same chosen preset caption-pool overrides when predicting deterministic caption signatures, so preset-driven hook/CTA copy diversity now affects same-batch duplicate scoring before recipes are materialized.
+- Auto Factory preview/final render now also applies preset-driven `caption_density` role gating and preset-driven `segment_profile` timeline construction, so chosen presets can change segment order and visible caption-role coverage instead of stopping at style/pool overrides.
+- per-line caption-card geometry now also enforces a visible inter-card gap, and upper-band per-line `main` caption stacks can shift away from the centered presenter-safe zone when they would otherwise sit over the face.
 - Auto Factory recent-order summary now also reflects combined order-level duplicate truth from materialize-stage planner evidence plus preview/review render-history evidence instead of showing planner-only score in isolation.
 - Auto Factory selected-order summaries now also report requested preset policy plus persisted chosen-preset spread/concentration, and the live `Biothentic0001` contract now includes a real preset catalog with `balanced_cycle` defaults plus preset-aware foreground/music tag tuning.
 - product-local `order_snapshot.toml` now also preserves operator-requested run truth for `run_mode`, `materialize_requested`, and `build_previews_requested` even when the desktop path executes folder intake first and starts the persisted order afterward
@@ -238,7 +240,7 @@
 11. validate whether operators want direct file-level shortcuts for `captions.toml`, `pipeline.toml`, and `product.toml` after using the new folder-level actions
 12. validate whether the new tabbed `Auto Factory` workspace gives operators enough at-a-glance context or needs split-view refinements after live use
 13. decide whether the append-only order-event journal should grow into a richer operator-facing event view with filtering, grouping, or export
-14. validate the new top-band face-safe clamp on more presenter-led products and decide whether future work should add subject-aware or face-detection-driven placement beyond the current contract-only geometry model
+14. validate the new top-band face-safe clamp plus upper-band per-line presenter-safe shift on more presenter-led products and decide whether future work should add subject-aware or face-detection-driven placement beyond the current contract-only geometry model
 15. validate the new Qt caption bitmap overlay on more Thai-heavy products and decide whether any remaining issues are font-specific rather than render-path-specific
 16. validate whether the new pool-normalized near-duplicate similarity score stays calibrated tightly enough for Shopee/TikTok publishing batches and decide whether future policy thresholds should be operator-configurable
 17. validate whether the new exact `fingerprint_hash` basis should stay limited to platform/ratio/duration plus assignments or whether future work should include more contract dimensions
@@ -257,5 +259,5 @@
 
 ## Verification Baseline
 
-- `python -m pytest` in `.venv`: `339 passed, 4 warnings`
+- `python -m pytest` in `.venv`: `345 passed, 4 warnings`
 - targeted `QT_QPA_PLATFORM=offscreen` UI/theme coverage for the new `Auto Factory` window and existing app windows: passed

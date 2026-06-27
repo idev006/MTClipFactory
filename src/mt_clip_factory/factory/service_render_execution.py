@@ -77,14 +77,23 @@ def run_preview_job(service, job_id: int) -> None:  # noqa: ANN001
             if not items:
                 raise PreviewBuildInputError(f"Recipe {recipe.recipe_code} has no items.")
 
+            creative_preset_code = _materialize_creative_preset_code(uow, recipe_id=recipe.id)
+            creative_preset = (
+                None
+                if service._caption_runtime_service is None
+                else service._caption_runtime_service.resolve_creative_preset_definition(
+                    product_code=product.product_code,
+                    creative_preset_code=creative_preset_code,
+                )
+            )
             persisted = persist_composition(
                 uow,
                 recipe=recipe,
                 items=items,
                 assets=assets,
                 fill_policies=fill_policies,
+                segment_profile=None if creative_preset is None else creative_preset.segment_profile,
             )
-            creative_preset_code = _materialize_creative_preset_code(uow, recipe_id=recipe.id)
             composition = build_segmented_preview_composition(
                 recipe=recipe,
                 product_code=product.product_code,
@@ -265,14 +274,23 @@ def run_final_render_job(service, job_id: int) -> None:  # noqa: ANN001
                 raise FinalRenderPrerequisiteError(f"Recipe {recipe.recipe_code} has no items.")
 
             source_output = approved_outputs[0]
+            creative_preset_code = _materialize_creative_preset_code(uow, recipe_id=recipe.id)
+            creative_preset = (
+                None
+                if service._caption_runtime_service is None
+                else service._caption_runtime_service.resolve_creative_preset_definition(
+                    product_code=product.product_code,
+                    creative_preset_code=creative_preset_code,
+                )
+            )
             persisted = persist_composition(
                 uow,
                 recipe=recipe,
                 items=items,
                 assets=assets,
                 fill_policies=fill_policies,
+                segment_profile=None if creative_preset is None else creative_preset.segment_profile,
             )
-            creative_preset_code = _materialize_creative_preset_code(uow, recipe_id=recipe.id)
             composition = build_segmented_preview_composition(
                 recipe=recipe,
                 product_code=product.product_code,

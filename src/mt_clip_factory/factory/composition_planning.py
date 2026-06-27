@@ -10,6 +10,7 @@ from mt_clip_factory.domain.recipes import Recipe, RecipeItem
 from mt_clip_factory.domain.render_decisions import RenderDecision
 from mt_clip_factory.domain.timeline_segments import TimelineSegment, validate_timeline_segments
 from mt_clip_factory.factory.automation_policy import ProductAutomationFillPolicies, default_fill_policies
+from mt_clip_factory.factory.creative_preset_policy import resolve_segment_profile_types
 
 
 LAYER_ORDER = (
@@ -34,12 +35,17 @@ def build_default_composition(
     assets: dict[int, Asset],
     *,
     fill_policies: ProductAutomationFillPolicies | None = None,
+    segment_profile: str | None = None,
 ) -> PlannedComposition:
     effective_fill_policies = fill_policies or default_fill_policies()
     layer_assignments = tuple(_build_layer_assignments(items, assets))
     layer_duration_extents = _layer_duration_extents(items, assets, fill_policies=effective_fill_policies)
     resolved_duration_sec, duration_source = _resolve_duration(recipe, items, assets, layer_duration_extents=layer_duration_extents)
-    timeline_segments = _build_timeline_segments(recipe, resolved_duration_sec)
+    timeline_segments = _build_timeline_segments(
+        recipe,
+        resolved_duration_sec,
+        segment_profile=segment_profile,
+    )
     plan = CompositionPlan(
         recipe_id=recipe.id or 0,
         duration_source=duration_source,
@@ -180,11 +186,20 @@ def _layer_decisions(recipe_id: int, layer_assignments: tuple[CompositionLayerAs
     ]
 
 
-def _build_timeline_segments(recipe: Recipe, resolved_duration_sec: float | None) -> tuple[TimelineSegment, ...]:
+def _build_timeline_segments(
+    recipe: Recipe,
+    resolved_duration_sec: float | None,
+    *,
+    segment_profile: str | None,
+) -> tuple[TimelineSegment, ...]:
     if resolved_duration_sec is None or resolved_duration_sec <= 0:
         return ()
 
-    segment_specs = _resolve_segment_specs(recipe, resolved_duration_sec)
+    segment_specs = _resolve_segment_specs(
+        recipe,
+        resolved_duration_sec,
+        segment_profile=segment_profile,
+    )
     cursor = 0.0
     segments: list[TimelineSegment] = []
     for index, spec in enumerate(segment_specs, start=1):
@@ -212,7 +227,15 @@ def _build_timeline_segments(recipe: Recipe, resolved_duration_sec: float | None
     return validate_timeline_segments(segments, resolved_duration_sec=resolved_duration_sec)
 
 
-def _resolve_segment_specs(recipe: Recipe, resolved_duration_sec: float) -> tuple[dict[str, object], ...]:
+def _resolve_segment_specs(
+    recipe: Recipe,
+    resolved_duration_sec: float,
+    *,
+    segment_profile: str | None,
+) -> tuple[dict[str, object], ...]:
+    preset_specs = _resolve_preset_segment_specs(recipe, segment_profile=segment_profile)
+    if preset_specs is not None:
+        return preset_specs
     if resolved_duration_sec < 12:
         return (
             _segment_spec("hook", 0.25, recipe.hook_text or recipe.recipe_code, ("primary_voice", "text_overlay", "product_focus_visual"), "headline_priority"),
@@ -235,6 +258,36 @@ def _resolve_segment_specs(recipe: Recipe, resolved_duration_sec: float) -> tupl
     )
 
 
+def _resolve_preset_segment_specs(
+    recipe: Recipe,
+    *,
+    segment_profile: str | None,
+) -> tuple[dict[str, object], ...] | None:
+    segment_types = resolve_segment_profile_types(segment_profile=segment_profile)
+    if not segment_types:
+        return None
+    preset_weights = {
+        "hook_benefit_cta": (0.25, 0.5, 0.25),
+        "benefit_proof_cta": (0.38, 0.32, 0.3),
+        "proof_focus": (0.4, 0.34, 0.26),
+        "benefit_cta": (0.62, 0.38),
+    }
+    normalized_profile = segment_profile.strip().casefold() if segment_profile else ""
+    weights = preset_weights.get(normalized_profile)
+    if weights is None or len(weights) != len(segment_types):
+        return None
+    return tuple(
+        _segment_spec(
+            segment_type,
+            weight,
+            _segment_message_text(recipe, segment_type=segment_type),
+            _segment_preferred_layers(segment_type=segment_type),
+            _segment_text_rule(segment_type=segment_type),
+        )
+        for segment_type, weight in zip(segment_types, weights, strict=True)
+    )
+
+
 def _segment_spec(
     segment_type: str,
     weight: float,
@@ -250,6 +303,39 @@ def _segment_spec(
         "text_rule": text_rule,
         "audio_policy": "voice_priority_with_music_duck",
     }
+
+
+def _segment_message_text(recipe: Recipe, *, segment_type: str) -> str | None:
+    mapping = {
+        "hook": recipe.hook_text or recipe.recipe_code,
+        "problem": recipe.target_audience or recipe.script_angle,
+        "benefit": recipe.script_angle or recipe.mood,
+        "proof": recipe.mood or recipe.target_platform,
+        "cta": recipe.cta_text or recipe.target_platform,
+    }
+    return mapping.get(segment_type)
+
+
+def _segment_preferred_layers(*, segment_type: str) -> tuple[str, ...]:
+    mapping = {
+        "hook": ("primary_voice", "text_overlay", "product_focus_visual"),
+        "problem": ("primary_voice", "background_visual", "text_overlay"),
+        "benefit": ("primary_voice", "product_focus_visual", "text_overlay"),
+        "proof": ("product_focus_visual", "subtitle", "primary_voice"),
+        "cta": ("text_overlay", "product_focus_visual", "primary_voice"),
+    }
+    return mapping.get(segment_type, ("primary_voice", "text_overlay"))
+
+
+def _segment_text_rule(*, segment_type: str) -> str:
+    mapping = {
+        "hook": "headline_priority",
+        "problem": "problem_caption",
+        "benefit": "benefit_overlay",
+        "proof": "proof_support",
+        "cta": "cta_emphasis",
+    }
+    return mapping.get(segment_type, "headline_priority")
 
 
 def _segment_decisions(recipe_id: int, timeline_segments: tuple[TimelineSegment, ...]) -> list[RenderDecision]:

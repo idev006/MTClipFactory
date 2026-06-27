@@ -141,10 +141,15 @@ def ordered_caption_segment_types(
     configured_segment_types: tuple[str, ...],
     requested_segment_types: tuple[str, ...] | None,
 ) -> tuple[str, ...]:
+    normalized_configured = tuple(segment.casefold() for segment in configured_segment_types)
     normalized_requested = None if requested_segment_types is None else tuple(segment.casefold() for segment in requested_segment_types)
-    allowed = set(configured_segment_types if normalized_requested is None else normalized_requested)
+    if normalized_requested is not None:
+        return tuple(
+            dict.fromkeys(segment for segment in normalized_requested if segment in normalized_configured)
+        )
+    allowed = set(normalized_configured)
     ordered_known = tuple(segment for segment in ("hook", "problem", "benefit", "proof", "cta") if segment in allowed)
-    extra_segments = tuple(sorted(segment for segment in configured_segment_types if segment in allowed and segment not in ordered_known))
+    extra_segments = tuple(sorted(segment for segment in normalized_configured if segment not in ordered_known))
     return ordered_known + extra_segments
 
 

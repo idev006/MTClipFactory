@@ -23,7 +23,7 @@ It extends [103_Auto_Factory_Preset_Driven_Caption_Rendering_2026-06-27.md](/F:/
 ## Truth Boundary
 
 - this slice changes rendered caption text selection for `hook` and `cta` when the selected preset points to existing named pools
-- this slice does not yet make `caption_density` or `segment_profile` live render-time behavior
+- `caption_density` and `segment_profile` are now delivered separately in [106_Auto_Factory_Preset_Density_Profile_And_Presenter_Safe_Caption_Workflow_2026-06-27.md](/F:/programming/python/MTClipFactory/doc/106_Auto_Factory_Preset_Density_Profile_And_Presenter_Safe_Caption_Workflow_2026-06-27.md), so this document should now be read as the named-pool routing slice only
 - this slice does not yet push preset-specific caption-pool routing back into the current planner duplicate-scoring path unless a later SSOT slice explicitly extends that planner seam
 - if a preset references named pools that are absent from `captions.toml`, render should keep running on the segment-default pool and emit manifest-visible fallback evidence
 

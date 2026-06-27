@@ -270,6 +270,8 @@ def _write_runtime_creative_preset_contract(
     sub_style_preset: str = "dark_lower_third",
     headline_pool_names: tuple[str, ...] = (),
     cta_pool_names: tuple[str, ...] = (),
+    caption_density: str | None = None,
+    segment_profile: str | None = None,
 ) -> None:
     source_dir = media_root.parent / "product_contract"
     source_dir.mkdir(parents=True, exist_ok=True)
@@ -286,6 +288,10 @@ def _write_runtime_creative_preset_contract(
         encoding="utf-8",
     )
     extra_preset_lines: list[str] = []
+    if caption_density is not None:
+        extra_preset_lines.append(f'caption_density = "{caption_density}"')
+    if segment_profile is not None:
+        extra_preset_lines.append(f'segment_profile = "{segment_profile}"')
     if headline_pool_names:
         quoted_headline_pools = ", ".join(f'"{pool_name}"' for pool_name in headline_pool_names)
         extra_preset_lines.append(f"headline_pool_names = [{quoted_headline_pools}]")
@@ -528,6 +534,123 @@ def test_factory_service_applies_materialized_creative_preset_to_caption_manifes
     assert final_segment_roles[0]["source_text"] == "buy now"
     assert final_segment_roles[0]["pool_names"] == ["flash_sale_cta"]
     assert final_segment_roles[0]["pool_resolution_mode"] == "preset_cta_pool_names"
+
+
+def test_factory_service_uses_materialized_segment_profile_and_caption_density_in_preview(unit_of_work_factory, tmp_path) -> None:
+    media_root = tmp_path / "media_library"
+    product_id, asset_id = _register_ready_asset(unit_of_work_factory, tmp_path)
+    source_dir = tmp_path / "product_contract"
+    source_dir.mkdir(parents=True, exist_ok=True)
+    caption_source = source_dir / "captions.toml"
+    caption_source.write_text(
+        "\n".join(
+            [
+                "[caption_selection]",
+                'mode = "random_with_seed"',
+                "",
+                "[caption_pools.proof]",
+                'main = ["proof main"]',
+                'sub = ["proof sub"]',
+                "",
+                "[caption_pools.benefit]",
+                'main = ["benefit main"]',
+                'sub = ["benefit sub"]',
+                "",
+                "[caption_pools.cta]",
+                'main = ["cta main"]',
+                'sub = ["cta sub"]',
+                "",
+                "[caption_properties.main]",
+                'font_family = "THSarabun"',
+                "",
+                "[caption_properties.sub]",
+                'font_family = "THSarabun"',
+            ]
+        ),
+        encoding="utf-8",
+    )
+    creative_preset_source = source_dir / "creative_presets.toml"
+    creative_preset_source.write_text(
+        "\n".join(
+            [
+                "[presets.proof_story]",
+                'display_name = "Proof Story"',
+                'main_style_preset = "clean_cta"',
+                'sub_style_preset = "dark_lower_third"',
+                'caption_density = "light"',
+                'segment_profile = "proof_focus"',
+            ]
+        ),
+        encoding="utf-8",
+    )
+    fonts_root = tmp_path / "fonts"
+    fonts_root.mkdir(parents=True, exist_ok=True)
+    (fonts_root / "THSarabun.ttf").write_bytes(b"font")
+    metadata_store = ProductAutomationMetadataStore(media_root)
+    metadata_store.sync_caption_contract(product_code="honey", source_file=caption_source)
+    metadata_store.sync_creative_preset_contract(product_code="honey", source_file=creative_preset_source)
+    caption_runtime_service = CaptionRuntimeService(metadata_store=metadata_store, fonts_root=fonts_root)
+    service = _build_factory_service(
+        unit_of_work_factory,
+        tmp_path / "previews",
+        caption_runtime_service=caption_runtime_service,
+    )
+    recipe_id = service.create_recipe(CreateRecipeCommand(product_id=product_id, recipe_code="Preset Profile Render"))
+    service.assign_asset_to_recipe(AssignAssetToRecipeCommand(recipe_id=recipe_id, asset_id=asset_id, role="hero"))
+
+    with unit_of_work_factory() as uow:
+        order = uow.production_orders.add(
+            ProductionOrder(
+                order_code="caption_profile_order_001",
+                batch_code="caption_profile_batch",
+                source_mode="test_runtime",
+            )
+        )
+        assert order.id is not None
+        order_item = uow.production_orders.add_item(
+            ProductionOrderItem(
+                production_order_id=order.id,
+                product_id=product_id,
+                product_code_snapshot="honey",
+                requested_output_count=1,
+            )
+        )
+        assert order_item.id is not None
+        uow.production_order_stages.add(
+            ProductionOrderStage(
+                production_order_id=order.id,
+                production_order_item_id=order_item.id,
+                stage_name="materialize",
+                stage_scope="recipe",
+                status=OrchestrationStatus.SUCCEEDED,
+                sequence_index=1,
+                recipe_id=recipe_id,
+                detail_json=json.dumps(
+                    {
+                        "creative_preset_code": "proof_story",
+                        "creative_preset_signature": "proof_story|proof_focus|light|-|clean_cta|dark_lower_third",
+                        "creative_preset_reasons": ["preset_mode:locked_preset"],
+                    }
+                ),
+            )
+        )
+        uow.commit()
+
+    job_id = service.enqueue_preview_job(
+        recipe_id,
+        batch_code="caption_profile_batch",
+        source_mode="folder_control_surface",
+    )
+    service.run_preview_job(job_id)
+
+    output = service.list_outputs(recipe_id=recipe_id)[0]
+    manifest_payload = json.loads(Path(output.manifest_path).read_text(encoding="utf-8"))
+
+    assert [segment["segment_type"] for segment in manifest_payload["segments"]] == ["proof", "benefit", "cta"]
+    assert [segment["segment_type"] for segment in manifest_payload["captions"]["segments"]] == ["proof", "benefit", "cta"]
+    assert all(len(segment["roles"]) == 1 for segment in manifest_payload["captions"]["segments"])
+    assert all(segment["roles"][0]["role"] == "main" for segment in manifest_payload["captions"]["segments"])
+    assert manifest_payload["creative_preset"]["preset_code"] == "proof_story"
 
 
 def test_factory_service_writes_runtime_audio_mix_summary_to_manifest(unit_of_work_factory, tmp_path) -> None:

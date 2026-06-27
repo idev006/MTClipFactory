@@ -21,8 +21,7 @@ It extends [94_Auto_Factory_Caption_Aware_Same_Batch_Diversity_Workflow_2026-06-
 ## Truth Boundary
 
 - this slice makes preset-driven `headline_pool_names` and `cta_pool_names` affect both planner duplicate scoring and preview/final caption selection
-- this slice does not yet make `caption_density` live render-time or planner-time behavior
-- this slice does not yet make `segment_profile` change timeline construction or caption enablement behavior
+- `caption_density` and `segment_profile` are now delivered separately in [106_Auto_Factory_Preset_Density_Profile_And_Presenter_Safe_Caption_Workflow_2026-06-27.md](/F:/programming/python/MTClipFactory/doc/106_Auto_Factory_Preset_Density_Profile_And_Presenter_Safe_Caption_Workflow_2026-06-27.md), so this document should now be read as the hook/CTA pool-aware signature slice that preceded that broader runtime behavior
 - operators must still treat preset identity, planner duplicate scoring, and rendered-history duplicate truth as related but separate audit seams
 
 ## Workflow

@@ -75,6 +75,7 @@ The project now uses two roadmap layers:
 - `IR-53` Auto Factory preset-spread operator summary and live product contract baseline: complete on 2026-06-27
 - `IR-54` Auto Factory preset-driven caption pool routing baseline: complete on 2026-06-27
 - `IR-55` Auto Factory preset-aware caption signature planning baseline: complete on 2026-06-27
+- `IR-56` Auto Factory preset density/profile runtime plus presenter-safe caption baseline: complete on 2026-06-27
 
 ## Current Execution Stream
 
@@ -126,7 +127,7 @@ The same creative-diversity stream now also routes rendered `hook` and `cta` cap
 
 The same creative-diversity stream now also feeds those preset-driven hook/CTA caption-pool overrides back into planner caption-signature scoring, keeping headline reuse pressure aligned with the chosen preset instead of deferring the difference until render time.
 
-The next stream should validate that broader planner-plus-render baseline on live products and decide whether remaining preset fields such as `caption_density` or `segment_profile` should later drive deeper runtime behavior.
+The same planner-plus-render baseline now also makes chosen preset `caption_density` and `segment_profile` affect live runtime behavior, while adding presenter-safer upper per-line caption placement and clearer stacked-card separation for live outputs.
 
 Backlog activation rules:
 

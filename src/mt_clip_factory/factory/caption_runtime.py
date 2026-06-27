@@ -14,6 +14,11 @@ from mt_clip_factory.factory.caption_selection_support import (
 )
 from mt_clip_factory.factory.caption_layout import CaptionFrameContext, resolve_caption_layout
 from mt_clip_factory.factory.caption_line_pair_spacing import LinePairSpacingDetail
+from mt_clip_factory.factory.caption_presenter_safe import resolve_presenter_safe_shift_px
+from mt_clip_factory.factory.creative_preset_policy import (
+    role_enabled_for_density,
+    resolve_signature_segment_types,
+)
 from mt_clip_factory.factory.caption_runtime_support import (
     CaptionContractError,
     _bounded_float,
@@ -32,8 +37,6 @@ from mt_clip_factory.factory.creative_preset_runtime import (
     CreativePresetDefinition,
     parse_creative_preset_contract_text,
 )
-
-_DEFAULT_SIGNATURE_SEGMENT_TYPES = ("hook", "problem", "benefit", "proof", "cta")
 
 
 @dataclass(slots=True, frozen=True)
@@ -355,7 +358,11 @@ class CaptionRuntimeService:
                         pool_resolution=resolved_pool,
                     )
                 )
-            if resolved_pool.pool.sub:
+            if resolved_pool.pool.sub and role_enabled_for_density(
+                segment_type=segment.segment_type,
+                role="sub",
+                creative_preset=creative_preset,
+            ):
                 roles.append(
                     self._resolve_role(
                         product_code=product_code,
@@ -394,17 +401,24 @@ class CaptionRuntimeService:
         contract = self._load_contract(product_code, creative_preset=creative_preset)
         if contract is None:
             return None
-        resolved_segment_types = (
-            tuple(
-                segment_type
-                for segment_type in _DEFAULT_SIGNATURE_SEGMENT_TYPES
-                if segment_type in contract.pools
-            )
-            if segment_types is None
-            else segment_types
+        resolved_segment_types = resolve_signature_segment_types(
+            requested_segment_types=segment_types,
+            configured_segment_types=tuple(contract.pools),
+            creative_preset=creative_preset,
         )
         resolved_pools = {
-            segment_type: resolved_pool.pool
+            segment_type: CaptionPool(
+                main=resolved_pool.pool.main,
+                sub=(
+                    resolved_pool.pool.sub
+                    if role_enabled_for_density(
+                        segment_type=segment_type,
+                        role="sub",
+                        creative_preset=creative_preset,
+                    )
+                    else ()
+                ),
+            )
             for segment_type in ordered_caption_segment_types(
                 configured_segment_types=tuple(contract.pools),
                 requested_segment_types=resolved_segment_types,
@@ -424,6 +438,17 @@ class CaptionRuntimeService:
             product_code=product_code,
             recipe_code=recipe_code,
             segment_types=resolved_segment_types,
+        )
+
+    def resolve_creative_preset_definition(
+        self,
+        *,
+        product_code: str,
+        creative_preset_code: str | None,
+    ) -> CreativePresetDefinition | None:
+        return self._load_creative_preset_definition(
+            product_code,
+            creative_preset_code=creative_preset_code,
         )
 
     def _load_contract(
@@ -558,7 +583,7 @@ class CaptionRuntimeService:
             review_required_if_overflow=style.review_required_if_overflow,
         )
         font_source = str(font_file) if font_file is not None else resolved_font_name
-        return ResolvedCaptionRole(
+        resolved_role = ResolvedCaptionRole(
             role=role,
             source_text=source_text,
             rendered_text=layout.rendered_text,
@@ -639,6 +664,7 @@ class CaptionRuntimeService:
             review_required=layout.review_required,
             truncated_for_runtime=layout.truncated_for_runtime,
         )
+        return _apply_presenter_safe_shift(resolved_role)
 
 
 def _resolve_segment_pool(
@@ -709,6 +735,28 @@ def _resolve_named_pool_override(
         pool_names=(segment_type,),
         resolution_mode=f"{resolution_mode}_fallback_to_segment_default",
         warning=warning,
+    )
+
+
+def _apply_presenter_safe_shift(role: ResolvedCaptionRole) -> ResolvedCaptionRole:
+    shift_px = resolve_presenter_safe_shift_px(
+        role=role.role,
+        textbox_mode=role.textbox_mode,
+        frame_width_px=role.frame_width_px,
+        frame_height_px=role.frame_height_px,
+        box_left_px=role.box_left_px,
+        box_top_px=role.box_top_px,
+        box_width_px=role.box_width_px,
+        box_height_px=role.box_height_px,
+        effective_safe_bottom_ratio=role.effective_safe_bottom_ratio,
+    )
+    if shift_px == 0:
+        return role
+    return replace(
+        role,
+        box_left_px=role.box_left_px + shift_px,
+        line_left_positions_px=tuple(value + shift_px for value in role.line_left_positions_px),
+        line_box_left_positions_px=tuple(value + shift_px for value in role.line_box_left_positions_px),
     )
 
 

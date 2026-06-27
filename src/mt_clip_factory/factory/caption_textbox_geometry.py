@@ -169,9 +169,48 @@ def resolve_line_box_geometry(
         tops.append(box_top_px)
         widths.append(box_width_px)
         heights.append(box_height_px)
+    _enforce_line_box_gap(
+        tops=tops,
+        heights=heights,
+        line_top_positions_px=line_top_positions_px,
+        line_heights_px=line_heights_px,
+        min_gap_px=max(2, round(vertical_padding_px * 0.5)),
+    )
     return LineBoxGeometry(
         left_positions_px=tuple(lefts),
         top_positions_px=tuple(tops),
         widths_px=tuple(widths),
         heights_px=tuple(heights),
     )
+
+
+def _enforce_line_box_gap(
+    *,
+    tops: list[int],
+    heights: list[int],
+    line_top_positions_px: tuple[int, ...],
+    line_heights_px: tuple[int, ...],
+    min_gap_px: int,
+) -> None:
+    for index in range(len(tops) - 1):
+        current_bottom_px = tops[index] + heights[index]
+        next_top_px = tops[index + 1]
+        required_gap_px = current_bottom_px + min_gap_px - next_top_px
+        if required_gap_px <= 0:
+            continue
+        current_line_bottom_px = line_top_positions_px[index] + line_heights_px[index]
+        current_bottom_padding_px = max(0, current_bottom_px - current_line_bottom_px)
+        next_top_padding_px = max(0, line_top_positions_px[index + 1] - next_top_px)
+        shrink_current_px = min(current_bottom_padding_px, round(required_gap_px / 2))
+        push_next_px = min(next_top_padding_px, required_gap_px - shrink_current_px)
+        remaining_px = required_gap_px - shrink_current_px - push_next_px
+        if remaining_px > 0:
+            extra_current_px = min(current_bottom_padding_px - shrink_current_px, remaining_px)
+            shrink_current_px += extra_current_px
+            remaining_px -= extra_current_px
+        if remaining_px > 0:
+            extra_next_px = min(next_top_padding_px - push_next_px, remaining_px)
+            push_next_px += extra_next_px
+        heights[index] -= shrink_current_px
+        tops[index + 1] += push_next_px
+        heights[index + 1] -= push_next_px

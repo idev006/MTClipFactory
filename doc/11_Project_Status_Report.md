@@ -122,6 +122,8 @@
 - Auto Factory preview/final render now also applies materialized creative preset caption-style overrides, so chosen presets can change rendered `main` / `sub` card treatment instead of remaining planner-only metadata
 - Auto Factory preview/final render now also routes `hook` and `cta` caption text through preset-named `caption_pools.*` entries when `headline_pool_names` or `cta_pool_names` resolve successfully, while manifest evidence reports truthful fallback to the segment-default pool when named preset pools are missing
 - Auto Factory planner now also resolves preset-aware caption signatures from the same chosen `creative_preset_code`, so preset-driven hook/CTA pool changes influence duplicate scoring before materialization instead of appearing only at render time
+- Auto Factory preview/final render now also applies preset-driven `caption_density` role gating plus preset-driven `segment_profile` timeline construction, so chosen presets can change visible caption-role coverage and segment order instead of stopping at style/pool variation
+- per-line promo-card caption geometry now also enforces a visible inter-card gap, and upper-band per-line `main` caption stacks can clamp away from the centered presenter-safe zone when they would otherwise stay directly over the face
 - output history now also persists rendered `clip_formula_hash` plus explicit `history_scope`, so usable Auto Factory render history can be separated from manual draft previews before future duplicate checks run
 - Auto Factory selected-order surfaces now also expose that persisted render-history truth directly, including `history_scope`, rendered `clip_formula_hash`, and historical duplicate review signals in addition to planner-time risk
 - Recipe Builder output details now also surface output-level `history_scope`, direct `clip_formula_hash`, and a clearer explanation when review came from `historical_render_duplicate`
@@ -189,7 +191,7 @@
 
 ## Verification Baseline
 
-- `python -m pytest` via `.venv`: `339 passed, 4 warnings`
+- `python -m pytest` via `.venv`: `345 passed, 4 warnings`
 - targeted `QT_QPA_PLATFORM=offscreen` UI coverage for the new `Auto Factory` window and existing themed windows: passed
 
 ## Current Focus
@@ -220,7 +222,7 @@
 - validate whether the new same-batch foreground coverage pressure lowers commercial duplicate feel on real campaign batches without over-favoring historically overused foregrounds
 - validate the delivered creative-preset orchestration baseline on more live products and tune preset families, cooldowns, and batch-share behavior from operator feedback
 - validate whether the new preset-aware planner caption-signature parity is commercially strong enough on live products or whether operators still need richer pool-source summaries in `Orders` or manifests
-- validate whether preset contract fields such as `caption_density` and `segment_profile` should remain planner/audit metadata or be promoted into a deeper caption-runtime override path in a later slice
+- validate whether the delivered `caption_density` and `segment_profile` semantics are commercially strong enough on more live products or whether later policy needs finer per-role or per-segment controls
 - validate whether the new background-diversity hardening is strong enough on real campaign batches or whether future policy needs per-product cooldown knobs for backgrounds
 - validate whether the new foreground/music diversity hardening is strong enough on real campaign batches or whether product-level cooldown knobs are needed for sequence families or music reuse
 - validate whether the new frontier option-pool reordering is strong enough on real large-pool products or whether future policy needs explicit per-role cooldown windows or operator-tunable diversity budgets
@@ -254,7 +256,7 @@
 - validate whether the new review-surface shortcuts are enough or whether direct `Open captions.toml` / `Open pipeline.toml` actions are needed next
 - validate whether operators prefer the new tabbed `Auto Factory` workspace or still want some audit/intake surfaces visible side by side in later revisions
 - validate whether the new append-only order-event history is sufficient for operator recovery and whether filtering or richer event summaries are needed next
-- validate whether the new top-band face-safe clamp plus no-growth grouped headline rule is sufficient across more presenter-led products beyond the current Biothentic preview samples
+- validate whether the new top-band face-safe clamp plus upper-band per-line presenter-safe shift is sufficient across more presenter-led products beyond the current Biothentic preview samples
 
 ## Next Steps
 

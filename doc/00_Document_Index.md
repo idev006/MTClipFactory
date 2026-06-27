@@ -111,6 +111,7 @@ When code changes, the related Markdown documents in this folder must be updated
 103. [103_Auto_Factory_Preset_Driven_Caption_Rendering_2026-06-27.md](/F:/programming/python/MTClipFactory/doc/103_Auto_Factory_Preset_Driven_Caption_Rendering_2026-06-27.md)
 104. [104_Auto_Factory_Preset_Driven_Caption_Pool_Routing_2026-06-27.md](/F:/programming/python/MTClipFactory/doc/104_Auto_Factory_Preset_Driven_Caption_Pool_Routing_2026-06-27.md)
 105. [105_Auto_Factory_Preset_Aware_Caption_Signature_Planning_2026-06-27.md](/F:/programming/python/MTClipFactory/doc/105_Auto_Factory_Preset_Aware_Caption_Signature_Planning_2026-06-27.md)
+106. [106_Auto_Factory_Preset_Density_Profile_And_Presenter_Safe_Caption_Workflow_2026-06-27.md](/F:/programming/python/MTClipFactory/doc/106_Auto_Factory_Preset_Density_Profile_And_Presenter_Safe_Caption_Workflow_2026-06-27.md)
 
 ## Governance
 

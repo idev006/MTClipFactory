@@ -27,8 +27,15 @@ def persist_composition(
     items: Sequence[RecipeItem],
     assets: dict[int, Asset],
     fill_policies: ProductAutomationFillPolicies | None = None,
+    segment_profile: str | None = None,
 ) -> PersistedComposition:
-    planned = build_default_composition(recipe, list(items), assets, fill_policies=fill_policies)
+    planned = build_default_composition(
+        recipe,
+        list(items),
+        assets,
+        fill_policies=fill_policies,
+        segment_profile=segment_profile,
+    )
     plan = uow.composition_plans.upsert(planned.plan)
     if plan.id is None:
         raise RuntimeError("Composition plan identifier was not assigned.")

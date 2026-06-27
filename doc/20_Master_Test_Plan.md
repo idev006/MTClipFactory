@@ -52,6 +52,8 @@ It complements [07_Testing_Strategy.md](/F:/programming/python/MTClipFactory/doc
 - creative-preset orchestration baseline, including product-local `creative_presets.toml`, planner-time preset resolution, persisted preset request truth, and manifest-visible preset identity
 - preset-driven hook/CTA caption-pool routing, including named `caption_pools.*` selection from `headline_pool_names` / `cta_pool_names` plus truthful fallback evidence when a preset references missing named pools
 - preset-aware planner caption-signature parity so chosen creative presets can change deterministic same-batch headline signatures before recipe materialization
+- preset-driven `caption_density` role gating plus preset-driven `segment_profile` timeline construction during preview/final render and planner caption-signature prediction
+- visible per-line caption-card gap enforcement plus presenter-safe upper-band horizontal shift for stacked `main` promo captions
 - order-level duplicate-truth summarization so recent-order raw score reflects the stronger of materialize planner evidence and preview/review render-history evidence
 - Auto Factory local-time truth so recent-order and selected-order timestamp display aligns with the operator's local wall clock while persisted audit artifacts stay timezone-explicit
 - background-diversity hardening so batches with multiple feasible backgrounds do not collapse onto one repeated background unnecessarily
