@@ -193,6 +193,9 @@ def _write_runtime_caption_contract(
     main_text: str,
     max_lines: int = 3,
     max_chars_per_line: int = 18,
+    hook_pool_name: str = "hook",
+    cta_text: str | None = None,
+    cta_pool_name: str = "cta",
 ) -> CaptionRuntimeService:
     source_dir = media_root.parent / "product_contract"
     source_dir.mkdir(parents=True, exist_ok=True)
@@ -228,6 +231,28 @@ def _write_runtime_caption_contract(
         ),
         encoding="utf-8",
     )
+    extra_caption_lines: list[str] = []
+    if hook_pool_name != "hook":
+        extra_caption_lines.extend(
+            [
+                "",
+                f"[caption_pools.{hook_pool_name}]",
+                f'main = ["{main_text}"]',
+                'sub = ["hook support"]',
+            ]
+        )
+    if cta_text is not None:
+        extra_caption_lines.extend(
+            [
+                "",
+                f"[caption_pools.{cta_pool_name}]",
+                f'main = ["{cta_text}"]',
+                'sub = ["cta support"]',
+            ]
+        )
+    if extra_caption_lines:
+        with caption_source.open("a", encoding="utf-8") as handle:
+            handle.write("\n".join(extra_caption_lines) + "\n")
     fonts_root = media_root.parent / "fonts"
     fonts_root.mkdir(parents=True, exist_ok=True)
     (fonts_root / "THSarabun.ttf").write_bytes(b"font")
@@ -243,6 +268,8 @@ def _write_runtime_creative_preset_contract(
     preset_code: str = "clean_story",
     main_style_preset: str = "clean_cta",
     sub_style_preset: str = "dark_lower_third",
+    headline_pool_names: tuple[str, ...] = (),
+    cta_pool_names: tuple[str, ...] = (),
 ) -> None:
     source_dir = media_root.parent / "product_contract"
     source_dir.mkdir(parents=True, exist_ok=True)
@@ -258,6 +285,16 @@ def _write_runtime_creative_preset_contract(
         ),
         encoding="utf-8",
     )
+    extra_preset_lines: list[str] = []
+    if headline_pool_names:
+        quoted_headline_pools = ", ".join(f'"{pool_name}"' for pool_name in headline_pool_names)
+        extra_preset_lines.append(f"headline_pool_names = [{quoted_headline_pools}]")
+    if cta_pool_names:
+        quoted_cta_pools = ", ".join(f'"{pool_name}"' for pool_name in cta_pool_names)
+        extra_preset_lines.append(f"cta_pool_names = [{quoted_cta_pools}]")
+    if extra_preset_lines:
+        with creative_preset_source.open("a", encoding="utf-8") as handle:
+            handle.write("\n" + "\n".join(extra_preset_lines) + "\n")
     metadata_store = ProductAutomationMetadataStore(media_root)
     metadata_store.sync_creative_preset_contract(product_code=product_code, source_file=creative_preset_source)
 
@@ -408,6 +445,9 @@ def test_factory_service_applies_materialized_creative_preset_to_caption_manifes
         media_root=media_root,
         product_code="honey",
         main_text="caption preset hook",
+        hook_pool_name="ugc_hook",
+        cta_text="buy now",
+        cta_pool_name="flash_sale_cta",
     )
     _write_runtime_creative_preset_contract(
         media_root=media_root,
@@ -415,6 +455,8 @@ def test_factory_service_applies_materialized_creative_preset_to_caption_manifes
         preset_code="clean_story",
         main_style_preset="clean_cta",
         sub_style_preset="dark_lower_third",
+        headline_pool_names=("ugc_hook",),
+        cta_pool_names=("flash_sale_cta",),
     )
     service = _build_factory_service(
         unit_of_work_factory,
@@ -472,13 +514,20 @@ def test_factory_service_applies_materialized_creative_preset_to_caption_manifes
     output = service.list_outputs(recipe_id=recipe_id)[0]
     manifest_payload = json.loads(Path(output.manifest_path).read_text(encoding="utf-8"))
     first_segment_roles = manifest_payload["captions"]["segments"][0]["roles"]
+    final_segment_roles = manifest_payload["captions"]["segments"][-1]["roles"]
 
     assert manifest_payload["creative_preset"]["preset_code"] == "clean_story"
+    assert manifest_payload["captions"]["preset_pool_override_role_count"] == 4
     assert first_segment_roles[0]["style_preset"] == "clean_cta"
+    assert first_segment_roles[0]["pool_names"] == ["ugc_hook"]
+    assert first_segment_roles[0]["pool_resolution_mode"] == "preset_headline_pool_names"
     assert first_segment_roles[0]["position"] == "center"
     assert first_segment_roles[0]["background_color"] == "#0F172A"
     assert first_segment_roles[1]["style_preset"] == "dark_lower_third"
     assert first_segment_roles[1]["background_color"] == "#0F172A"
+    assert final_segment_roles[0]["source_text"] == "buy now"
+    assert final_segment_roles[0]["pool_names"] == ["flash_sale_cta"]
+    assert final_segment_roles[0]["pool_resolution_mode"] == "preset_cta_pool_names"
 
 
 def test_factory_service_writes_runtime_audio_mix_summary_to_manifest(unit_of_work_factory, tmp_path) -> None:

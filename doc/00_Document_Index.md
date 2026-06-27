@@ -109,6 +109,7 @@ When code changes, the related Markdown documents in this folder must be updated
 101. [101_Biothentic0001_Creative_Preset_Live_Audit_2026-06-27.md](/F:/programming/python/MTClipFactory/doc/101_Biothentic0001_Creative_Preset_Live_Audit_2026-06-27.md)
 102. [102_Auto_Factory_Foreground_Family_Diversity_Guard_2026-06-27.md](/F:/programming/python/MTClipFactory/doc/102_Auto_Factory_Foreground_Family_Diversity_Guard_2026-06-27.md)
 103. [103_Auto_Factory_Preset_Driven_Caption_Rendering_2026-06-27.md](/F:/programming/python/MTClipFactory/doc/103_Auto_Factory_Preset_Driven_Caption_Rendering_2026-06-27.md)
+104. [104_Auto_Factory_Preset_Driven_Caption_Pool_Routing_2026-06-27.md](/F:/programming/python/MTClipFactory/doc/104_Auto_Factory_Preset_Driven_Caption_Pool_Routing_2026-06-27.md)
 
 ## Governance
 

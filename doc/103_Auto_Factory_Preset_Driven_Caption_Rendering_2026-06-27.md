@@ -26,7 +26,8 @@ It extends [99_Auto_Factory_Creative_Preset_Orchestration_Workflow_2026-06-27.md
 
 - this slice makes per-clip caption style variation real when `creative_presets.toml` provides `main_style_preset` and/or `sub_style_preset`
 - this slice does not yet make every preset field a live runtime override
-- fields such as `headline_pool_names`, `cta_pool_names`, `caption_density`, and `segment_profile` may still remain planner/audit guidance until explicitly wired into render/runtime behavior
+- the style-override slice in this document is delivered; the follow-up hook/CTA named-pool routing slice is now documented separately in [104_Auto_Factory_Preset_Driven_Caption_Pool_Routing_2026-06-27.md](/F:/programming/python/MTClipFactory/doc/104_Auto_Factory_Preset_Driven_Caption_Pool_Routing_2026-06-27.md)
+- fields such as `caption_density` and `segment_profile` may still remain planner/audit guidance until explicitly wired into render/runtime behavior
 - operators must not assume that chosen preset codes already imply a fully different motion-graphics template, camera rhythm, or copy structure unless those dimensions are separately implemented
 
 ## Workflow

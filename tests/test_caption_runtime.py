@@ -58,17 +58,24 @@ def _write_creative_preset_contract(
     preset_code: str = "clean_story",
     main_style_preset: str = "clean_cta",
     sub_style_preset: str = "benefit_stack",
+    headline_pool_names: tuple[str, ...] = (),
+    cta_pool_names: tuple[str, ...] = (),
 ) -> Path:
     creative_preset_file = product_dir / "creative_presets.toml"
+    lines = [
+        f"[presets.{preset_code}]",
+        f'display_name = "{preset_code.replace("_", " ").title()}"',
+        f'main_style_preset = "{main_style_preset}"',
+        f'sub_style_preset = "{sub_style_preset}"',
+    ]
+    if headline_pool_names:
+        quoted_headline_pools = ", ".join(f'"{pool_name}"' for pool_name in headline_pool_names)
+        lines.append(f"headline_pool_names = [{quoted_headline_pools}]")
+    if cta_pool_names:
+        quoted_cta_pools = ", ".join(f'"{pool_name}"' for pool_name in cta_pool_names)
+        lines.append(f"cta_pool_names = [{quoted_cta_pools}]")
     creative_preset_file.write_text(
-        "\n".join(
-            [
-                f"[presets.{preset_code}]",
-                f'display_name = "{preset_code.replace("_", " ").title()}"',
-                f'main_style_preset = "{main_style_preset}"',
-                f'sub_style_preset = "{sub_style_preset}"',
-            ]
-        ),
+        "\n".join(lines),
         encoding="utf-8",
     )
     return creative_preset_file
@@ -326,6 +333,168 @@ def test_caption_runtime_applies_creative_preset_style_override_to_rendered_role
     assert overridden[0].roles[1].style_preset == "dark_lower_third"
     assert overridden[0].roles[1].background_color == "#0F172A"
     assert overridden[0].roles[1].textbox_width_ratio == pytest.approx(0.94)
+
+
+def test_caption_runtime_routes_hook_and_cta_to_named_preset_pools(tmp_path) -> None:
+    media_root = tmp_path / "media_library"
+    fonts_root = tmp_path / "fonts"
+    fonts_root.mkdir(parents=True, exist_ok=True)
+    (fonts_root / "THSarabun.ttf").write_bytes(b"font")
+    product_dir = tmp_path / "product_preset_pool_override"
+    product_dir.mkdir(parents=True, exist_ok=True)
+    caption_file = product_dir / "captions.toml"
+    caption_file.write_text(
+        "\n".join(
+            [
+                "[caption_selection]",
+                'mode = "random_with_seed"',
+                "",
+                "[caption_pools.hook]",
+                'main = ["base hook"]',
+                'sub = ["base hook sub"]',
+                "",
+                "[caption_pools.cta]",
+                'main = ["base cta"]',
+                'sub = ["base cta sub"]',
+                "",
+                "[caption_pools.ugc_hook]",
+                'main = ["ugc hook"]',
+                'sub = ["ugc hook sub"]',
+                "",
+                "[caption_pools.flash_sale_cta]",
+                'main = ["flash sale cta"]',
+                'sub = ["flash sale cta sub"]',
+                "",
+                "[caption_properties.main]",
+                'font_family = "THSarabun"',
+                "",
+                "[caption_properties.sub]",
+                'font_family = "THSarabun"',
+            ]
+        ),
+        encoding="utf-8",
+    )
+    creative_preset_file = _write_creative_preset_contract(
+        product_dir,
+        preset_code="clean_story",
+        main_style_preset="clean_cta",
+        sub_style_preset="dark_lower_third",
+        headline_pool_names=("ugc_hook",),
+        cta_pool_names=("flash_sale_cta",),
+    )
+    store = ProductAutomationMetadataStore(media_root)
+    store.sync_caption_contract(product_code="product_preset_pool_override", source_file=caption_file)
+    store.sync_creative_preset_contract(
+        product_code="product_preset_pool_override",
+        source_file=creative_preset_file,
+    )
+    service = CaptionRuntimeService(metadata_store=store, fonts_root=fonts_root)
+    segments = (
+        TimelineSegment(
+            recipe_id=1,
+            segment_type="hook",
+            sequence_index=1,
+            start_sec=0.0,
+            end_sec=3.0,
+            target_duration_sec=3.0,
+        ),
+        TimelineSegment(
+            recipe_id=1,
+            segment_type="cta",
+            sequence_index=2,
+            start_sec=3.0,
+            end_sec=6.0,
+            target_duration_sec=3.0,
+        ),
+    )
+
+    resolved = service.resolve_for_segments(
+        product_code="product_preset_pool_override",
+        recipe_code="product_preset_pool_override_batch_001",
+        segments=segments,
+        creative_preset_code="clean_story",
+    )
+
+    hook_main_role = resolved[0].roles[0]
+    cta_main_role = resolved[1].roles[0]
+    assert hook_main_role.source_text == "ugc hook"
+    assert hook_main_role.pool_names == ("ugc_hook",)
+    assert hook_main_role.pool_resolution_mode == "preset_headline_pool_names"
+    assert hook_main_role.pool_warning is None
+    assert cta_main_role.source_text == "flash sale cta"
+    assert cta_main_role.pool_names == ("flash_sale_cta",)
+    assert cta_main_role.pool_resolution_mode == "preset_cta_pool_names"
+    assert cta_main_role.pool_warning is None
+
+    signature = service.resolve_caption_selection_signature(
+        product_code="product_preset_pool_override",
+        recipe_code="product_preset_pool_override_batch_001",
+        creative_preset_code="clean_story",
+    )
+    assert signature is not None
+    assert ("hook", "ugc hook") in signature.main_role_texts
+    assert ("cta", "flash sale cta") in signature.main_role_texts
+
+
+def test_caption_runtime_falls_back_to_segment_pool_when_named_preset_pool_missing(tmp_path) -> None:
+    media_root = tmp_path / "media_library"
+    fonts_root = tmp_path / "fonts"
+    fonts_root.mkdir(parents=True, exist_ok=True)
+    (fonts_root / "THSarabun.ttf").write_bytes(b"font")
+    product_dir = tmp_path / "product_preset_pool_fallback"
+    product_dir.mkdir(parents=True, exist_ok=True)
+    caption_file = product_dir / "captions.toml"
+    caption_file.write_text(
+        "\n".join(
+            [
+                "[caption_pools.hook]",
+                'main = ["base hook"]',
+                'sub = ["base hook sub"]',
+                "",
+                "[caption_properties.main]",
+                'font_family = "THSarabun"',
+                "",
+                "[caption_properties.sub]",
+                'font_family = "THSarabun"',
+            ]
+        ),
+        encoding="utf-8",
+    )
+    creative_preset_file = _write_creative_preset_contract(
+        product_dir,
+        preset_code="clean_story",
+        headline_pool_names=("missing_hook_pool",),
+    )
+    store = ProductAutomationMetadataStore(media_root)
+    store.sync_caption_contract(product_code="product_preset_pool_fallback", source_file=caption_file)
+    store.sync_creative_preset_contract(
+        product_code="product_preset_pool_fallback",
+        source_file=creative_preset_file,
+    )
+    service = CaptionRuntimeService(metadata_store=store, fonts_root=fonts_root)
+    segments = (
+        TimelineSegment(
+            recipe_id=1,
+            segment_type="hook",
+            sequence_index=1,
+            start_sec=0.0,
+            end_sec=3.0,
+            target_duration_sec=3.0,
+        ),
+    )
+
+    resolved = service.resolve_for_segments(
+        product_code="product_preset_pool_fallback",
+        recipe_code="product_preset_pool_fallback_batch_001",
+        segments=segments,
+        creative_preset_code="clean_story",
+    )
+
+    hook_main_role = resolved[0].roles[0]
+    assert hook_main_role.source_text == "base hook"
+    assert hook_main_role.pool_names == ("hook",)
+    assert hook_main_role.pool_resolution_mode == "preset_headline_pool_names_fallback_to_segment_default"
+    assert hook_main_role.pool_warning == "missing_preset_pool_names:missing_hook_pool"
 
 
 def test_caption_runtime_places_default_main_and_sub_in_separate_safe_bands(tmp_path) -> None:

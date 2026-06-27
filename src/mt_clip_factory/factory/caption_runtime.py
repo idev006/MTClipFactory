@@ -8,6 +8,7 @@ import tomllib
 from mt_clip_factory.domain.timeline_segments import TimelineSegment
 from mt_clip_factory.factory.caption_selection_support import (
     CaptionSelectionSignature,
+    ordered_caption_segment_types,
     resolve_caption_selection_signature,
     select_caption_index,
 )
@@ -31,6 +32,8 @@ from mt_clip_factory.factory.creative_preset_runtime import (
     CreativePresetDefinition,
     parse_creative_preset_contract_text,
 )
+
+_DEFAULT_SIGNATURE_SEGMENT_TYPES = ("hook", "problem", "benefit", "proof", "cta")
 
 
 @dataclass(slots=True, frozen=True)
@@ -94,6 +97,15 @@ class ProductCaptionContract:
 
 
 @dataclass(slots=True, frozen=True)
+class ResolvedCaptionPool:
+    segment_type: str
+    pool: CaptionPool
+    pool_names: tuple[str, ...]
+    resolution_mode: str
+    warning: str | None = None
+
+
+@dataclass(slots=True, frozen=True)
 class ResolvedCaptionRole:
     role: str
     source_text: str
@@ -117,6 +129,9 @@ class ResolvedCaptionRole:
     font_file: Path | None
     font_resolution_mode: str
     font_resolution_target: str
+    pool_names: tuple[str, ...]
+    pool_resolution_mode: str
+    pool_warning: str | None
     position: str
     alignment: str
     vertical_alignment: str
@@ -304,10 +319,11 @@ class CaptionRuntimeService:
         frame_width_px: int | None = None,
         frame_height_px: int | None = None,
     ) -> tuple[ResolvedSegmentCaptions, ...]:
-        contract = self._load_contract(
+        creative_preset = self._load_creative_preset_definition(
             product_code,
             creative_preset_code=creative_preset_code,
         )
+        contract = self._load_contract(product_code, creative_preset=creative_preset)
         if contract is None:
             return ()
         frame = (
@@ -317,34 +333,40 @@ class CaptionRuntimeService:
         )
         resolved_segments: list[ResolvedSegmentCaptions] = []
         for segment in segments:
-            pool = contract.pools.get(segment.segment_type)
-            if pool is None:
+            resolved_pool = _resolve_segment_pool(
+                contract=contract,
+                creative_preset=creative_preset,
+                segment_type=segment.segment_type,
+            )
+            if resolved_pool is None:
                 continue
             roles: list[ResolvedCaptionRole] = []
-            if pool.main:
+            if resolved_pool.pool.main:
                 roles.append(
                     self._resolve_role(
                         product_code=product_code,
                         recipe_code=recipe_code,
                         segment=segment,
                         role="main",
-                        options=pool.main,
+                        options=resolved_pool.pool.main,
                         style=contract.main_style,
                         selection=contract.selection,
                         frame=frame,
+                        pool_resolution=resolved_pool,
                     )
                 )
-            if pool.sub:
+            if resolved_pool.pool.sub:
                 roles.append(
                     self._resolve_role(
                         product_code=product_code,
                         recipe_code=recipe_code,
                         segment=segment,
                         role="sub",
-                        options=pool.sub,
+                        options=resolved_pool.pool.sub,
                         style=contract.sub_style,
                         selection=contract.selection,
                         frame=frame,
+                        pool_resolution=resolved_pool,
                     )
                 )
             if roles:
@@ -363,23 +385,52 @@ class CaptionRuntimeService:
         product_code: str,
         recipe_code: str,
         segment_types: tuple[str, ...] | None = None,
+        creative_preset_code: str | None = None,
     ) -> CaptionSelectionSignature | None:
-        contract = self._load_contract(product_code)
+        creative_preset = self._load_creative_preset_definition(
+            product_code,
+            creative_preset_code=creative_preset_code,
+        )
+        contract = self._load_contract(product_code, creative_preset=creative_preset)
         if contract is None:
             return None
+        resolved_segment_types = (
+            tuple(
+                segment_type
+                for segment_type in _DEFAULT_SIGNATURE_SEGMENT_TYPES
+                if segment_type in contract.pools
+            )
+            if segment_types is None
+            else segment_types
+        )
+        resolved_pools = {
+            segment_type: resolved_pool.pool
+            for segment_type in ordered_caption_segment_types(
+                configured_segment_types=tuple(contract.pools),
+                requested_segment_types=resolved_segment_types,
+            )
+            for resolved_pool in [
+                _resolve_segment_pool(
+                    contract=contract,
+                    creative_preset=creative_preset,
+                    segment_type=segment_type,
+                )
+            ]
+            if resolved_pool is not None
+        }
         return resolve_caption_selection_signature(
-            pools=contract.pools,
+            pools=resolved_pools,
             seed_scope=contract.selection.seed_scope,
             product_code=product_code,
             recipe_code=recipe_code,
-            segment_types=segment_types,
+            segment_types=resolved_segment_types,
         )
 
     def _load_contract(
         self,
         product_code: str,
         *,
-        creative_preset_code: str | None = None,
+        creative_preset: CreativePresetDefinition | None = None,
     ) -> ProductCaptionContract | None:
         raw_text = self._metadata_store.load_caption_contract_text(product_code)
         if raw_text is None:
@@ -408,10 +459,6 @@ class CaptionRuntimeService:
             },
             main_style=_parse_role_style(properties_section.get("main"), role="main"),
             sub_style=_parse_role_style(properties_section.get("sub"), role="sub"),
-        )
-        creative_preset = self._load_creative_preset_definition(
-            product_code,
-            creative_preset_code=creative_preset_code,
         )
         if creative_preset is None:
             return contract
@@ -465,6 +512,7 @@ class CaptionRuntimeService:
         style: CaptionRoleStyle,
         selection: CaptionSelectionPolicy,
         frame: CaptionFrameContext | None,
+        pool_resolution: ResolvedCaptionPool,
     ) -> ResolvedCaptionRole:
         selection_index, seed_key = select_caption_index(
             option_count=len(options),
@@ -533,6 +581,9 @@ class CaptionRuntimeService:
             font_file=font_file,
             font_resolution_mode=resolution_mode,
             font_resolution_target=resolved_font_name,
+            pool_names=pool_resolution.pool_names,
+            pool_resolution_mode=pool_resolution.resolution_mode,
+            pool_warning=pool_resolution.warning,
             position=style.position,
             alignment=style.alignment,
             vertical_alignment=style.vertical_alignment,
@@ -588,6 +639,99 @@ class CaptionRuntimeService:
             review_required=layout.review_required,
             truncated_for_runtime=layout.truncated_for_runtime,
         )
+
+
+def _resolve_segment_pool(
+    *,
+    contract: ProductCaptionContract,
+    creative_preset: CreativePresetDefinition | None,
+    segment_type: str,
+) -> ResolvedCaptionPool | None:
+    default_pool = contract.pools.get(segment_type)
+    if creative_preset is None:
+        return _build_default_resolved_pool(segment_type=segment_type, default_pool=default_pool)
+    if segment_type == "hook" and creative_preset.headline_pool_names:
+        return _resolve_named_pool_override(
+            contract=contract,
+            segment_type=segment_type,
+            named_pool_names=creative_preset.headline_pool_names,
+            resolution_mode="preset_headline_pool_names",
+        )
+    if segment_type == "cta" and creative_preset.cta_pool_names:
+        return _resolve_named_pool_override(
+            contract=contract,
+            segment_type=segment_type,
+            named_pool_names=creative_preset.cta_pool_names,
+            resolution_mode="preset_cta_pool_names",
+        )
+    return _build_default_resolved_pool(segment_type=segment_type, default_pool=default_pool)
+
+
+def _resolve_named_pool_override(
+    *,
+    contract: ProductCaptionContract,
+    segment_type: str,
+    named_pool_names: tuple[str, ...],
+    resolution_mode: str,
+) -> ResolvedCaptionPool | None:
+    default_pool = contract.pools.get(segment_type)
+    resolved_names: list[str] = []
+    missing_names: list[str] = []
+    merged_main: list[str] = []
+    merged_sub: list[str] = []
+    for pool_name in named_pool_names:
+        pool = contract.pools.get(pool_name)
+        if pool is None:
+            missing_names.append(pool_name)
+            continue
+        resolved_names.append(pool_name)
+        merged_main.extend(pool.main)
+        merged_sub.extend(pool.sub)
+    warning = None
+    if missing_names:
+        warning = f"missing_preset_pool_names:{','.join(missing_names)}"
+    if resolved_names:
+        return ResolvedCaptionPool(
+            segment_type=segment_type,
+            pool=CaptionPool(
+                main=_dedupe_texts(merged_main),
+                sub=_dedupe_texts(merged_sub),
+            ),
+            pool_names=tuple(resolved_names),
+            resolution_mode=resolution_mode,
+            warning=warning,
+        )
+    if default_pool is None:
+        return None
+    return ResolvedCaptionPool(
+        segment_type=segment_type,
+        pool=default_pool,
+        pool_names=(segment_type,),
+        resolution_mode=f"{resolution_mode}_fallback_to_segment_default",
+        warning=warning,
+    )
+
+
+def _build_default_resolved_pool(*, segment_type: str, default_pool: CaptionPool | None) -> ResolvedCaptionPool | None:
+    if default_pool is None:
+        return None
+    return ResolvedCaptionPool(
+        segment_type=segment_type,
+        pool=default_pool,
+        pool_names=(segment_type,),
+        resolution_mode="segment_default",
+    )
+
+
+def _dedupe_texts(values: list[str]) -> tuple[str, ...]:
+    ordered: list[str] = []
+    seen: set[str] = set()
+    for value in values:
+        if value in seen:
+            continue
+        seen.add(value)
+        ordered.append(value)
+    return tuple(ordered)
 
 
 def _expect_table(value, *, table_name: str, required: bool) -> dict[str, object]:

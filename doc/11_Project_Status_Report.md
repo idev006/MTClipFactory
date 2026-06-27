@@ -4,7 +4,7 @@
 
 - Report date: 2026-06-27
 - Overall status: In Progress
-- Current phase: Phase 6, operator-grade local-worker auto-factory control plus creative-preset orchestration baseline delivered; distributed execution, broader live preset tuning, and deeper recovery-facing UX still pending
+- Current phase: Phase 6, operator-grade local-worker auto-factory control plus creative-preset orchestration and preset-driven caption-style/pool rendering baseline delivered; distributed execution, broader live preset tuning, and deeper recovery-facing UX still pending
 - Delivery mode: document-led SSOT with code and tests kept in sync
 
 ## What Is Done
@@ -119,7 +119,8 @@
 - preview and final manifests now also expose `composition.segment_inventory`, including per-segment asset/timing evidence, distinct visual-asset counts, and a deterministic clip formula hash for audit and future duplicate hardening
 - Auto Factory now also converts persisted order timestamps into local operator display time before populating recent-order and selected-order UI surfaces, so live monitoring no longer looks several hours behind the actual desktop session
 - Auto Factory planning now also resolves a family-aware `diversity_key` per asset, so different foreground asset codes that point to the same file content or the same explicit presenter family no longer overstate creative diversity during batch planning
-- creative preset planner selection is already persisted and auditable, but preset-driven per-clip caption rendering remains the next active implementation slice until chosen presets can change preview/final caption visuals directly
+- Auto Factory preview/final render now also applies materialized creative preset caption-style overrides, so chosen presets can change rendered `main` / `sub` card treatment instead of remaining planner-only metadata
+- Auto Factory preview/final render now also routes `hook` and `cta` caption text through preset-named `caption_pools.*` entries when `headline_pool_names` or `cta_pool_names` resolve successfully, while manifest evidence reports truthful fallback to the segment-default pool when named preset pools are missing
 - output history now also persists rendered `clip_formula_hash` plus explicit `history_scope`, so usable Auto Factory render history can be separated from manual draft previews before future duplicate checks run
 - Auto Factory selected-order surfaces now also expose that persisted render-history truth directly, including `history_scope`, rendered `clip_formula_hash`, and historical duplicate review signals in addition to planner-time risk
 - Recipe Builder output details now also surface output-level `history_scope`, direct `clip_formula_hash`, and a clearer explanation when review came from `historical_render_duplicate`
@@ -187,7 +188,7 @@
 
 ## Verification Baseline
 
-- `python -m pytest` via `.venv`: `331 passed, 4 warnings`
+- `python -m pytest` via `.venv`: `338 passed, 4 warnings`
 - targeted `QT_QPA_PLATFORM=offscreen` UI coverage for the new `Auto Factory` window and existing themed windows: passed
 
 ## Current Focus
@@ -217,7 +218,8 @@
 - validate whether the new requested-run snapshot truth is sufficient for product-local audit and whether later order identifiers should also be mirrored into `order_snapshot.toml`
 - validate whether the new same-batch foreground coverage pressure lowers commercial duplicate feel on real campaign batches without over-favoring historically overused foregrounds
 - validate the delivered creative-preset orchestration baseline on more live products and tune preset families, cooldowns, and batch-share behavior from operator feedback
-- validate whether preset contract fields such as `headline_pool_names` should remain planner/audit metadata or be promoted into a deeper caption-runtime override path in a later slice
+- validate whether the new preset-driven `hook` / `cta` pool routing needs explicit planner duplicate-scoring parity or richer operator-visible pool-source summaries on live products
+- validate whether preset contract fields such as `caption_density` and `segment_profile` should remain planner/audit metadata or be promoted into a deeper caption-runtime override path in a later slice
 - validate whether the new background-diversity hardening is strong enough on real campaign batches or whether future policy needs per-product cooldown knobs for backgrounds
 - validate whether the new foreground/music diversity hardening is strong enough on real campaign batches or whether product-level cooldown knobs are needed for sequence families or music reuse
 - validate whether the new frontier option-pool reordering is strong enough on real large-pool products or whether future policy needs explicit per-role cooldown windows or operator-tunable diversity budgets
@@ -268,7 +270,7 @@
 11. Validate whether the new creative-preset resolver is commercially distinct enough on real Shopee/TikTok batches or whether more preset families and stronger suitability signals are needed next.
 12. Validate whether the new order-level combined duplicate truth in the recent-orders strip reduces operator confusion compared with planner-only score summaries.
 11. Validate whether the new same-batch foreground coverage pressure reduces repeated-foreground feel on real Shopee/TikTok publishing batches before adding any future operator-tunable cooldown knobs.
-12. Review and approve the planned creative-preset orchestration slice so the next implementation loop can add preset catalogs, suitability scoring, balanced preset spread, and persisted preset audit truth.
+12. Validate whether the new preset-driven `hook` / `cta` caption-pool routing is commercially distinct enough on live products and whether later work should extend the same preset truth into planner caption-signature scoring.
 13. Validate whether the new `Orders`-tab risk filter, sort, and level emphasis actually reduce operator triage time on real campaign batches.
 14. Validate whether the new recent-orders risk summary strip reduces operator click-through time when scanning recent production history.
 15. Validate whether the new background-diversity hardening actually reduces same-background repetition on real Shopee/TikTok publishing batches.

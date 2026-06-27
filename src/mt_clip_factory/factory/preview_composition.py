@@ -456,6 +456,10 @@ def _build_caption_manifest_payload(resolved_captions: dict[int, ResolvedSegment
         "role_count": len(all_roles),
         "overflow_role_count": sum(1 for role in all_roles if role.overflowed),
         "review_required_role_count": sum(1 for role in all_roles if role.review_required),
+        "preset_pool_override_role_count": sum(
+            1 for role in all_roles if role.pool_resolution_mode != "segment_default"
+        ),
+        "pool_warning_role_count": sum(1 for role in all_roles if role.pool_warning is not None),
         "segments": [
             {
                 "sequence_index": segment.sequence_index,
@@ -476,6 +480,9 @@ def _build_caption_manifest_payload(resolved_captions: dict[int, ResolvedSegment
                         "font_resolution_mode": role.font_resolution_mode,
                         "font_resolution_target": role.font_resolution_target,
                         "font_file": None if role.font_file is None else str(role.font_file),
+                        "pool_names": list(role.pool_names),
+                        "pool_resolution_mode": role.pool_resolution_mode,
+                        "pool_warning": role.pool_warning,
                         "render_engine": "qt_bitmap_overlay",
                         "font_size": role.font_size,
                         "requested_font_size": role.requested_font_size,

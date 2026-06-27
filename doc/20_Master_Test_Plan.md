@@ -50,6 +50,7 @@ It complements [07_Testing_Strategy.md](/F:/programming/python/MTClipFactory/doc
 - `Orders`-tab duplicate-risk emphasis, including derived risk levels plus operator filter/sort controls
 - recent-orders duplicate-risk summary, including persisted risk level plus raw score visibility in the lower history strip
 - creative-preset orchestration baseline, including product-local `creative_presets.toml`, planner-time preset resolution, persisted preset request truth, and manifest-visible preset identity
+- preset-driven hook/CTA caption-pool routing, including named `caption_pools.*` selection from `headline_pool_names` / `cta_pool_names` plus truthful fallback evidence when a preset references missing named pools
 - order-level duplicate-truth summarization so recent-order raw score reflects the stronger of materialize planner evidence and preview/review render-history evidence
 - Auto Factory local-time truth so recent-order and selected-order timestamp display aligns with the operator's local wall clock while persisted audit artifacts stay timezone-explicit
 - background-diversity hardening so batches with multiple feasible backgrounds do not collapse onto one repeated background unnecessarily
@@ -296,6 +297,8 @@ It complements [07_Testing_Strategy.md](/F:/programming/python/MTClipFactory/doc
 77. Confirm the desktop `Auto Factory` screen can run `Audit Only` and show dedicated preflight product summaries plus actionable issue rows without creating a production order.
 78. Confirm grouped top-band promo headlines respect `max_safe_band_height_ratio` and shrink before covering the presenter eye line.
 79. Confirm grouped multi-line captions do not grow above the requested contract font size, while short single-line best-fit captions may still upscale intentionally.
+80. Confirm a chosen preset can route rendered `hook` and `cta` text through named `caption_pools.*` entries instead of the segment-default pool when the named pools exist in `captions.toml`.
+81. Confirm missing named preset pools fall back truthfully to the segment-default `hook` or `cta` pool and that the manifest records pool-source and warning evidence instead of silently inventing text.
 
 ### C. Review And Approval Flow
 

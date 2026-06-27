@@ -145,6 +145,7 @@ classDiagram
     class CaptionRuntimeService {
         +resolve_for_segments(product_code, recipe_code, segments)
         +deterministic main/sub selection
+        +preset-driven hook/cta named-pool routing
         +manual newline preservation
         +font-file resolution from workspace fonts
         +config-driven promo line-advance compression
@@ -152,6 +153,7 @@ classDiagram
         +Qt-measured caption geometry
         +support helpers split below 800-line guardrail
         +overflow risk reporting
+        +manifest-visible pool-source fallback evidence
     }
 
     class CaptionBitmapRenderer {
@@ -1269,16 +1271,19 @@ sequenceDiagram
 
     Operator->>FolderSvc: run_batch_root(...)
     FolderSvc->>Meta: sync captions.toml into media-root runtime cache
+    FolderSvc->>Meta: sync creative_presets.toml into media-root runtime cache
     FolderSvc->>Factory: materialize/build preview
-    Factory->>Caption: resolve_for_segments(product_code, recipe_code, segments)
+    Factory->>Caption: resolve_for_segments(product_code, recipe_code, segments, creative_preset_code)
     Caption->>Meta: load_caption_contract(product_code)
+    Caption->>Meta: load_creative_preset_contract(product_code)
+    Caption->>Caption: route hook/cta through named preset pools when available
     Caption->>Caption: choose main/sub with stable seed
     Caption->>Caption: clamp top-band headline height before eye-line overlap
-    Caption-->>Factory: resolved caption instructions + overflow evidence
+    Caption-->>Factory: resolved caption instructions + overflow evidence + pool-source truth
     Factory->>Render: render_output(..., segment_clips with captions)
     Render->>Bitmap: render transparent caption bitmap in Qt
     Render->>Render: overlay caption bitmap on the segment video
-    Factory->>Manifest: write caption selection + font/fallback + fit evidence
+    Factory->>Manifest: write caption selection + pool-source + font/fallback + fit evidence
 ```
 
 ## Product Folder Preflight Sequence
