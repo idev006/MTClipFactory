@@ -24,6 +24,10 @@ from mt_clip_factory.factory.auto_factory_fingerprint import (
     build_planned_recipe_fingerprint,
     build_planned_recipe_fingerprint_hash,
 )
+from mt_clip_factory.factory.auto_factory_preset_caption_planning import (
+    build_caption_planning_signature_lookup,
+    resolve_caption_planning_context,
+)
 from mt_clip_factory.factory.auto_factory_variant_support import (
     _build_persistent_foreground_sequences,
     _enumerate_variant_dimension_selections,
@@ -40,9 +44,7 @@ from mt_clip_factory.factory.caption_runtime import CaptionRuntimeService, Produ
 from mt_clip_factory.factory.caption_selection_support import CaptionSelectionSignature
 from mt_clip_factory.factory.creative_preset_runtime import (
     CreativePresetContractError,
-    ResolvedCreativePresetSelection,
     parse_creative_preset_contract_text,
-    select_creative_preset_for_assignments,
 )
 from mt_clip_factory.factory.auto_factory_pool_support import (
     _filter_assets_by_required_tags,
@@ -402,27 +404,10 @@ class AutoFactoryBatchService:
             music_assets=music_assets,
             voice_assets=voice_assets,
             planning_history=planning_history,
+            creative_preset_definitions=creative_preset_definitions,
         )
-        selected_preset_counts: Counter[str] = Counter()
-        selected_preset_last_slots: dict[str, int] = {}
         recipes: list[PlannedBatchRecipeDTO] = []
         for index, blueprint in enumerate(planned_variants):
-            creative_preset_selection = select_creative_preset_for_assignments(
-                assignments=blueprint.assignments,
-                mode=product_request.creative_preset_mode,
-                requested_codes=product_request.creative_preset_codes,
-                definitions=creative_preset_definitions,
-                target_platform=blueprint.target_platform,
-                target_ratio=blueprint.target_ratio,
-                duration_sec=blueprint.duration_sec,
-                selected_preset_counts=selected_preset_counts,
-                selected_preset_last_slots=selected_preset_last_slots,
-                slot_position=index,
-                planned_count=len(planned_variants),
-            )
-            if creative_preset_selection is not None:
-                selected_preset_counts[creative_preset_selection.preset_code] += 1
-                selected_preset_last_slots[creative_preset_selection.preset_code] = index
             recipes.append(
                 _blueprint_to_planned_recipe(
                     blueprint,
@@ -430,7 +415,6 @@ class AutoFactoryBatchService:
                     product_code=product.product_code,
                     batch_code=batch_code,
                     request_index=index + 1,
-                    creative_preset_selection=creative_preset_selection,
                 )
             )
         recipes = tuple(recipes)
@@ -467,6 +451,7 @@ class AutoFactoryBatchService:
         music_assets: tuple[AssetSummaryDTO, ...],
         voice_assets: tuple[AssetSummaryDTO, ...],
         planning_history: _PlanningHistory,
+        creative_preset_definitions: tuple = (),
     ) -> tuple[_VariantBlueprint, ...]:
         if planned_count <= 0:
             return ()
@@ -482,12 +467,12 @@ class AutoFactoryBatchService:
             music_options=music_options,
             voice_options=voice_options,
         )
-        caption_signatures_by_slot = tuple(
-            self._resolve_caption_signatures_for_slots(
-                product_code=product.product_code,
-                batch_code=batch_code,
-                planned_count=planned_count,
-            )
+        caption_signature_lookup = build_caption_planning_signature_lookup(
+            resolve_signatures_for_slots=self._resolve_caption_signatures_for_slots,
+            product_code=product.product_code,
+            batch_code=batch_code,
+            planned_count=planned_count,
+            creative_preset_definitions=creative_preset_definitions,
         )
         candidate_blueprints = tuple(
             self._build_variant_blueprint(
@@ -496,7 +481,8 @@ class AutoFactoryBatchService:
                 product_request=product_request,
                 foreground_assets=foreground_assets,
                 selected_dimensions=selected_dimensions,
-                caption_signatures_by_slot=caption_signatures_by_slot,
+                caption_signatures_by_slot=caption_signature_lookup.default_signatures_by_slot,
+                pool_profile_caption_signatures=caption_signature_lookup.pool_profile_signatures,
             )
             for variant_index, selected_dimensions in enumerate(candidate_dimension_selections)
         )
@@ -504,6 +490,23 @@ class AutoFactoryBatchService:
             candidate_blueprints,
             planned_count=planned_count,
             planning_history=planning_history,
+            planning_context_resolver=lambda blueprint, slot_position, selected_preset_counts, selected_preset_last_slots: (
+                (
+                    context := resolve_caption_planning_context(
+                        blueprint=blueprint,
+                        slot_position=slot_position,
+                        planned_count=planned_count,
+                        product_request=product_request,
+                        creative_preset_definitions=creative_preset_definitions,
+                        selected_preset_counts=selected_preset_counts,
+                        selected_preset_last_slots=selected_preset_last_slots,
+                        signature_lookup=caption_signature_lookup,
+                    )
+                ).slot_signature,
+                context.creative_preset_code,
+                context.creative_preset_signature,
+                context.creative_preset_reasons,
+            ),
         )
 
     def _build_variant_blueprint(
@@ -515,6 +518,7 @@ class AutoFactoryBatchService:
         foreground_assets: tuple[AssetSummaryDTO, ...],
         selected_dimensions: dict[str, object],
         caption_signatures_by_slot: tuple[CaptionSelectionSignature | None, ...],
+        pool_profile_caption_signatures: tuple[CaptionSelectionSignature | None, ...],
     ) -> _VariantBlueprint:
         sequence = tuple(selected_dimensions["foreground_sequence"])
         background_asset = selected_dimensions["background"]
@@ -561,6 +565,7 @@ class AutoFactoryBatchService:
             foreground_sequence=tuple(sequence),
             variant_index=variant_index,
             caption_signatures_by_slot=caption_signatures_by_slot,
+            pool_profile_caption_signatures=pool_profile_caption_signatures,
         )
 
     def _load_planning_history(
@@ -642,6 +647,7 @@ class AutoFactoryBatchService:
         product_code: str,
         batch_code: str,
         planned_count: int,
+        creative_preset_code: str | None = None,
     ) -> tuple[CaptionSelectionSignature | None, ...]:
         if self._caption_runtime_service is None or planned_count <= 0:
             return ()
@@ -649,6 +655,7 @@ class AutoFactoryBatchService:
             self._caption_runtime_service.resolve_caption_selection_signature(
                 product_code=product_code,
                 recipe_code=f"{product_code}_{batch_code}_{request_index:03d}",
+                creative_preset_code=creative_preset_code,
             )
             for request_index in range(1, planned_count + 1)
         )
@@ -728,7 +735,6 @@ def _blueprint_to_planned_recipe(
     product_code: str,
     batch_code: str,
     request_index: int,
-    creative_preset_selection: ResolvedCreativePresetSelection | None = None,
 ) -> PlannedBatchRecipeDTO:
     recipe_code = f"{product_code}_{batch_code}_{request_index:03d}"
     return PlannedBatchRecipeDTO(
@@ -747,11 +753,9 @@ def _blueprint_to_planned_recipe(
         near_duplicate_reasons=blueprint.near_duplicate_reasons,
         caption_signature=blueprint.caption_signature,
         main_caption_signature=blueprint.main_caption_signature,
-        creative_preset_code=None if creative_preset_selection is None else creative_preset_selection.preset_code,
-        creative_preset_signature=(
-            None if creative_preset_selection is None else creative_preset_selection.preset_signature
-        ),
-        creative_preset_reasons=() if creative_preset_selection is None else creative_preset_selection.reasons,
+        creative_preset_code=blueprint.creative_preset_code,
+        creative_preset_signature=blueprint.creative_preset_signature,
+        creative_preset_reasons=blueprint.creative_preset_reasons,
     )
 
 

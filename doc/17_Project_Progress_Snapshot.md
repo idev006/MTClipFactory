@@ -107,6 +107,7 @@
 - Auto Factory now also supports product-local creative preset contracts, planner-time preset resolution, persisted preset request truth on production-order items, chosen-preset evidence on materialize stages, manifest-visible preset identity, and desktop preset-mode/operator-override controls.
 - Auto Factory preview/final render now also applies the materialized creative preset's caption-style override truth, so per-clip chosen presets can change rendered `main` / `sub` caption card styling instead of remaining planner-only metadata.
 - Auto Factory preview/final render now also routes `hook` and `cta` caption text through preset-named `caption_pools.*` entries when the selected preset defines `headline_pool_names` or `cta_pool_names`, and caption manifests now report pool-source truth plus fallback warnings when named preset pools are missing.
+- Auto Factory planner now also uses those same chosen preset caption-pool overrides when predicting deterministic caption signatures, so preset-driven hook/CTA copy diversity now affects same-batch duplicate scoring before recipes are materialized.
 - Auto Factory recent-order summary now also reflects combined order-level duplicate truth from materialize-stage planner evidence plus preview/review render-history evidence instead of showing planner-only score in isolation.
 - Auto Factory selected-order summaries now also report requested preset policy plus persisted chosen-preset spread/concentration, and the live `Biothentic0001` contract now includes a real preset catalog with `balanced_cycle` defaults plus preset-aware foreground/music tag tuning.
 - product-local `order_snapshot.toml` now also preserves operator-requested run truth for `run_mode`, `materialize_requested`, and `build_previews_requested` even when the desktop path executes folder intake first and starts the persisted order afterward
@@ -230,7 +231,7 @@
 5. rerun a live `Biothentic0001` preview/final audit after the new policy-aware voice-loop and music-duration-authority slice
 6. rerun a live `Biothentic0001` preview/final audit after the stronger promo-card caption contract tuning
 7. validate the delivered creative-preset orchestration baseline on more live products and tune preset families, cooldowns, and batch-share behavior from operator feedback
-8. validate whether preset-driven `hook` / `cta` pool routing should also feed the current planner caption-signature scoring path instead of remaining render-time only on this baseline
+8. validate whether the new preset-aware planner caption-signature parity is strong enough on live products or whether richer pool-source summaries should also surface in operator workflows
 9. run one live folder-intake audit against a real product folder arranged in the new `contracts/` plus `assets/` layout
 9. validate whether the new `Audit Only` UI mode needs issue export, filtering, or grouping after broader operator use
 10. validate whether the new selected-product contract inspection pane should grow operator actions such as `Open Contract`, `Copy Path`, or `Open Runs Folder`
@@ -256,5 +257,5 @@
 
 ## Verification Baseline
 
-- `python -m pytest` in `.venv`: `338 passed, 4 warnings`
+- `python -m pytest` in `.venv`: `339 passed, 4 warnings`
 - targeted `QT_QPA_PLATFORM=offscreen` UI/theme coverage for the new `Auto Factory` window and existing app windows: passed

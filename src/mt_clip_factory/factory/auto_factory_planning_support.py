@@ -36,10 +36,14 @@ class _VariantBlueprint:
     foreground_sequence: tuple[int, ...]
     variant_index: int
     caption_signatures_by_slot: tuple[CaptionSelectionSignature | None, ...] = ()
+    pool_profile_caption_signatures: tuple[CaptionSelectionSignature | None, ...] = ()
     near_duplicate_score: float = 0.0
     near_duplicate_reasons: tuple[str, ...] = ()
     caption_signature: tuple[tuple[str, str, str], ...] = ()
     main_caption_signature: tuple[tuple[str, str], ...] = ()
+    creative_preset_code: str | None = None
+    creative_preset_signature: str | None = None
+    creative_preset_reasons: tuple[str, ...] = ()
 
 
 @dataclass(slots=True, frozen=True)
@@ -85,6 +89,7 @@ def _select_blueprints_greedily(
     *,
     planned_count: int,
     planning_history: _PlanningHistory,
+    planning_context_resolver=None,
 ) -> tuple[_VariantBlueprint, ...]:
     remaining = list(candidate_blueprints)
     pool_profile = _build_planning_pool_profile(candidate_blueprints)
@@ -97,6 +102,8 @@ def _select_blueprints_greedily(
     selected_main_caption_counts: Counter = Counter()
     selected_headline_foreground_counts: Counter = Counter()
     selected_headline_music_counts: Counter = Counter()
+    selected_preset_counts: Counter = Counter()
+    selected_preset_last_slots: dict[str, int] = {}
 
     while remaining and len(selected) < planned_count:
         slot_position = len(selected)
@@ -108,8 +115,22 @@ def _select_blueprints_greedily(
         ]
         if not eligible:
             break
-        best_index, best_blueprint = min(
-            eligible,
+        eligible_with_context = [
+            (
+                index,
+                blueprint,
+                _resolve_planning_context(
+                    blueprint,
+                    slot_position=slot_position,
+                    selected_preset_counts=selected_preset_counts,
+                    selected_preset_last_slots=selected_preset_last_slots,
+                    planning_context_resolver=planning_context_resolver,
+                ),
+            )
+            for index, blueprint in eligible
+        ]
+        best_index, best_blueprint, best_context = min(
+            eligible_with_context,
             key=lambda entry: _selection_score(
                 entry[1],
                 planning_history=planning_history,
@@ -122,10 +143,10 @@ def _select_blueprints_greedily(
                 selected_headline_music_counts=selected_headline_music_counts,
                 pool_profile=pool_profile,
                 slot_position=slot_position,
+                slot_signature=entry[2][0],
             ),
         )
         remaining.pop(best_index)
-        slot_signature = _resolve_slot_caption_signature(best_blueprint, slot_position=slot_position)
         similarity = _assess_near_duplicate(
             best_blueprint,
             planning_history=planning_history,
@@ -137,14 +158,17 @@ def _select_blueprints_greedily(
             selected_headline_foreground_counts=selected_headline_foreground_counts,
             selected_headline_music_counts=selected_headline_music_counts,
             pool_profile=pool_profile,
-            slot_signature=slot_signature,
+            slot_signature=best_context[0],
         )
         selected_blueprint = replace(
             best_blueprint,
             near_duplicate_score=similarity.score,
             near_duplicate_reasons=similarity.reasons,
-            caption_signature=() if slot_signature is None else slot_signature.role_texts,
-            main_caption_signature=() if slot_signature is None else slot_signature.main_role_texts,
+            caption_signature=() if best_context[0] is None else best_context[0].role_texts,
+            main_caption_signature=() if best_context[0] is None else best_context[0].main_role_texts,
+            creative_preset_code=best_context[1],
+            creative_preset_signature=best_context[2],
+            creative_preset_reasons=best_context[3],
         )
         selected.append(selected_blueprint)
         selected_fingerprint_hashes.add(selected_blueprint.fingerprint_hash)
@@ -163,6 +187,9 @@ def _select_blueprints_greedily(
             music_asset_id = _role_asset_id(selected_blueprint, role_name="music")
             if music_asset_id is not None:
                 selected_headline_music_counts[(selected_blueprint.main_caption_signature, music_asset_id)] += 1
+        if selected_blueprint.creative_preset_code:
+            selected_preset_counts[selected_blueprint.creative_preset_code] += 1
+            selected_preset_last_slots[selected_blueprint.creative_preset_code] = slot_position
 
     return tuple(selected)
 
@@ -180,8 +207,8 @@ def _selection_score(
     selected_headline_music_counts: Counter,
     pool_profile: _PlanningPoolProfile,
     slot_position: int,
+    slot_signature: CaptionSelectionSignature | None,
 ) -> tuple[float, int]:
-    slot_signature = _resolve_slot_caption_signature(blueprint, slot_position=slot_position)
     similarity = _assess_near_duplicate(
         blueprint,
         planning_history=planning_history,
@@ -546,6 +573,24 @@ def _resolve_slot_caption_signature(
     return signature if isinstance(signature, CaptionSelectionSignature) else None
 
 
+def _resolve_planning_context(
+    blueprint: _VariantBlueprint,
+    *,
+    slot_position: int,
+    selected_preset_counts: Counter,
+    selected_preset_last_slots: dict[str, int],
+    planning_context_resolver,
+) -> tuple[CaptionSelectionSignature | None, str | None, str | None, tuple[str, ...]]:
+    if planning_context_resolver is None:
+        return (_resolve_slot_caption_signature(blueprint, slot_position=slot_position), None, None, ())
+    return planning_context_resolver(
+        blueprint,
+        slot_position,
+        selected_preset_counts,
+        selected_preset_last_slots,
+    )
+
+
 def _role_asset_id(blueprint: _VariantBlueprint, *, role_name: str) -> int | None:
     for assignment in blueprint.assignments:
         if assignment.role == role_name:
@@ -618,7 +663,8 @@ def _build_planning_pool_profile(
             if is_collapsed_diversity_key(assignment.diversity_key):
                 role_family_keys.setdefault(assignment.role, set()).add(assignment.diversity_key)
                 role_family_asset_ids.setdefault((assignment.role, assignment.diversity_key), set()).add(assignment.asset_id)
-        for slot_signature in blueprint.caption_signatures_by_slot:
+        signature_samples = blueprint.pool_profile_caption_signatures or blueprint.caption_signatures_by_slot
+        for slot_signature in signature_samples:
             if slot_signature is None or not slot_signature.main_role_texts:
                 continue
             main_caption_signatures.add(slot_signature.main_role_texts)

@@ -94,6 +94,7 @@ classDiagram
         +voice-with-bounds duration planning
         +required tag-label filtering by asset type
         +product-local creative preset resolution
+        +preset-aware caption signature planning
         +persist chosen preset evidence on planned recipes
         +internal recipe generation
         +batch preview orchestration up to review gate
@@ -144,6 +145,7 @@ classDiagram
 
     class CaptionRuntimeService {
         +resolve_for_segments(product_code, recipe_code, segments)
+        +resolve_caption_selection_signature(..., creative_preset_code)
         +deterministic main/sub selection
         +preset-driven hook/cta named-pool routing
         +manual newline preservation
@@ -1443,4 +1445,24 @@ sequenceDiagram
     Runtime->>Resolver: resolve style_preset for role
     Resolver-->>Runtime: role defaults
     Runtime->>Runtime: apply product overrides
+```
+
+## Preset-Aware Caption Signature Planning
+
+```mermaid
+sequenceDiagram
+    participant Planner as "AutoFactoryBatchService"
+    participant Presets as "Creative Preset Selector"
+    participant Caption as "CaptionRuntimeService"
+    participant Score as "Duplicate Scoring"
+
+    Planner->>Caption: resolve default and preset-aware slot signatures
+    loop Current batch slot candidate
+        Planner->>Presets: resolve candidate preset for assignments + slot
+        Presets-->>Planner: chosen preset code
+        Planner->>Caption: reuse matching preset-aware slot signature
+        Caption-->>Planner: deterministic caption signature
+        Planner->>Score: score headline reuse with preset-aware signature
+    end
+    Score-->>Planner: selected blueprint + chosen preset truth
 ```

@@ -14,7 +14,7 @@ from mt_clip_factory.factory.auto_factory import (
     _order_foreground_sequences_for_diversity_frontier,
     _order_role_assets_for_diversity_frontier,
 )
-from mt_clip_factory.factory.caption_runtime import ProductAutomationMetadataStore
+from mt_clip_factory.factory.caption_runtime import CaptionRuntimeService, ProductAutomationMetadataStore
 from mt_clip_factory.factory.auto_factory_dto import (
     AutoFactoryBatchOrderDTO,
     AutoFactoryProductRequestDTO,
@@ -1068,6 +1068,125 @@ def test_auto_factory_assigns_creative_preset_from_runtime_contract(unit_of_work
     assert plan.planned_recipes[0].creative_preset_signature is not None
     assert "preset_mode:locked_preset" in plan.planned_recipes[0].creative_preset_reasons
     assert "tag_fit:background/foreground" in plan.planned_recipes[0].creative_preset_reasons
+
+
+def test_auto_factory_planner_uses_preset_aware_caption_signatures(unit_of_work_factory, tmp_path) -> None:
+    product_service = ProductApplicationService(unit_of_work_factory=unit_of_work_factory)
+    product_id = product_service.create_product(
+        CreateProductCommand(product_code="presetcaption", product_name="Preset Caption", default_platform="tiktok")
+    )
+    asset_service = _build_asset_service(unit_of_work_factory, tmp_path / "media_library", {})
+    _register_asset(
+        asset_service,
+        product_id=product_id,
+        tmp_path=tmp_path,
+        asset_type="foreground_video",
+        asset_code="fg_hero",
+        file_name="fg_hero.mp4",
+    )
+    _register_asset(
+        asset_service,
+        product_id=product_id,
+        tmp_path=tmp_path,
+        asset_type="background_video",
+        asset_code="bg_a",
+        file_name="bg_a.mp4",
+    )
+    _register_asset(
+        asset_service,
+        product_id=product_id,
+        tmp_path=tmp_path,
+        asset_type="background_video",
+        asset_code="bg_b",
+        file_name="bg_b.mp4",
+    )
+
+    media_root = tmp_path / "media_library"
+    metadata_store = ProductAutomationMetadataStore(media_root)
+    contract_dir = tmp_path / "product_contract"
+    contract_dir.mkdir(parents=True, exist_ok=True)
+    caption_source = contract_dir / "captions.toml"
+    caption_source.write_text(
+        "\n".join(
+            [
+                "[caption_selection]",
+                'seed_scope = "batch"',
+                "",
+                "[caption_pools.hook]",
+                'main = ["base hook"]',
+                "",
+                "[caption_pools.cta]",
+                'main = ["base cta"]',
+                "",
+                "[caption_pools.ugc_hook]",
+                'main = ["ugc hook"]',
+                "",
+                "[caption_pools.proof_hook]",
+                'main = ["proof hook"]',
+            ]
+        ),
+        encoding="utf-8",
+    )
+    creative_preset_source = contract_dir / "creative_presets.toml"
+    creative_preset_source.write_text(
+        "\n".join(
+            [
+                "[presets.ugc_story]",
+                "selection_weight = 1.0",
+                'headline_pool_names = ["ugc_hook"]',
+                "",
+                "[presets.proof_story]",
+                "selection_weight = 1.0",
+                'headline_pool_names = ["proof_hook"]',
+            ]
+        ),
+        encoding="utf-8",
+    )
+    metadata_store.sync_caption_contract(product_code="presetcaption", source_file=caption_source)
+    metadata_store.sync_creative_preset_contract(
+        product_code="presetcaption",
+        source_file=creative_preset_source,
+    )
+    caption_runtime_service = CaptionRuntimeService(
+        metadata_store=metadata_store,
+        fonts_root=tmp_path / "fonts",
+    )
+    factory_service = _build_factory_service(unit_of_work_factory, tmp_path / "previews")
+    service = AutoFactoryBatchService(
+        product_service=product_service,
+        asset_intake_service=asset_service,
+        video_assembly_factory_service=factory_service,
+        caption_runtime_service=caption_runtime_service,
+        automation_metadata_store=metadata_store,
+    )
+
+    plan = service.plan_batch(
+        AutoFactoryBatchOrderDTO(
+            batch_code="preset_caption_batch",
+            product_requests=(
+                AutoFactoryProductRequestDTO(
+                    product_code="presetcaption",
+                    requested_output_count=2,
+                    fixed_duration_sec=15.0,
+                    target_platform="tiktok",
+                    target_ratio="9:16",
+                    creative_preset_mode="balanced_cycle",
+                    creative_preset_codes=("ugc_story", "proof_story"),
+                ),
+            ),
+        )
+    )
+
+    recipes_by_preset = {
+        recipe.creative_preset_code: recipe
+        for recipe in plan.planned_recipes
+        if recipe.creative_preset_code is not None
+    }
+    assert set(recipes_by_preset) == {"ugc_story", "proof_story"}
+    assert ("hook", "ugc hook") in recipes_by_preset["ugc_story"].main_caption_signature
+    assert ("hook", "proof hook") in recipes_by_preset["proof_story"].main_caption_signature
+    assert recipes_by_preset["ugc_story"].main_caption_signature != recipes_by_preset["proof_story"].main_caption_signature
+    assert all("headline_reused" not in recipe.near_duplicate_reasons for recipe in plan.planned_recipes)
 
 
 def test_auto_factory_reports_truthful_shortfall_when_tag_filters_remove_visual_assets(unit_of_work_factory, tmp_path) -> None:

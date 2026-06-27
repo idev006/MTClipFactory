@@ -28,7 +28,7 @@ It extends [99_Auto_Factory_Creative_Preset_Orchestration_Workflow_2026-06-27.md
 
 - chosen `creative_preset_code` is persisted run truth on successful `materialize` stages and may be summarized safely in `Orders`
 - requested preset mode and requested preset-code overrides are order-item truth and may be surfaced directly in the same summary
-- current preset fields such as `headline_pool_names` and `cta_pool_names` can now affect rendered `hook` and `cta` caption text when the selected preset points to named `caption_pools.*` entries, but they are still not a full planner-and-runtime override path by themselves
+- current preset fields such as `headline_pool_names` and `cta_pool_names` can now affect both planner caption-signature scoring and rendered `hook` / `cta` caption text when the selected preset points to named `caption_pools.*` entries, but they are still not a full caption-runtime override path by themselves
 - preset fields such as `caption_density` and `segment_profile` still remain planner/audit metadata on this baseline until a later SSOT slice wires them deeper into runtime behavior
 - operators must not read preset spread as a platform verdict or a `100%` duplicate-prevention guarantee
 

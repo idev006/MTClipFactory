@@ -110,6 +110,7 @@ When code changes, the related Markdown documents in this folder must be updated
 102. [102_Auto_Factory_Foreground_Family_Diversity_Guard_2026-06-27.md](/F:/programming/python/MTClipFactory/doc/102_Auto_Factory_Foreground_Family_Diversity_Guard_2026-06-27.md)
 103. [103_Auto_Factory_Preset_Driven_Caption_Rendering_2026-06-27.md](/F:/programming/python/MTClipFactory/doc/103_Auto_Factory_Preset_Driven_Caption_Rendering_2026-06-27.md)
 104. [104_Auto_Factory_Preset_Driven_Caption_Pool_Routing_2026-06-27.md](/F:/programming/python/MTClipFactory/doc/104_Auto_Factory_Preset_Driven_Caption_Pool_Routing_2026-06-27.md)
+105. [105_Auto_Factory_Preset_Aware_Caption_Signature_Planning_2026-06-27.md](/F:/programming/python/MTClipFactory/doc/105_Auto_Factory_Preset_Aware_Caption_Signature_Planning_2026-06-27.md)
 
 ## Governance
 
