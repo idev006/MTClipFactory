@@ -110,6 +110,24 @@ def _register_asset(
     )
 
 
+def _register_existing_source_asset(
+    asset_service: AssetIntakeService,
+    *,
+    product_id: int,
+    asset_type: str,
+    asset_code: str,
+    source_file: Path,
+) -> int:
+    return asset_service.register_asset(
+        RegisterAssetCommand(
+            product_id=product_id,
+            asset_type=asset_type,
+            source_file_path=source_file,
+            asset_code=asset_code,
+        )
+    )
+
+
 def _build_auto_factory_service(unit_of_work_factory, tmp_path: Path, durations_by_name: dict[str, float]) -> AutoFactoryBatchService:
     product_service = ProductApplicationService(unit_of_work_factory=unit_of_work_factory)
     asset_service = _build_asset_service(unit_of_work_factory, tmp_path / "media_library", durations_by_name)
@@ -616,6 +634,48 @@ def test_auto_factory_reports_voice_overuse_risk_when_voice_must_repeat(unit_of_
     assert rerun_recipe.near_duplicate_score > 0.0
     assert "voice_asset_overused" in rerun_recipe.near_duplicate_reasons
     assert "exact_combo_reused" not in rerun_recipe.near_duplicate_reasons
+
+
+def test_auto_factory_reports_foreground_family_reuse_when_duplicate_file_family_must_repeat(
+    unit_of_work_factory,
+    tmp_path,
+) -> None:
+    product_service = ProductApplicationService(unit_of_work_factory=unit_of_work_factory)
+    product_id = product_service.create_product(CreateProductCommand(product_code="familyrisk", product_name="Family Risk"))
+    asset_service = _build_asset_service(unit_of_work_factory, tmp_path / "media_library", {"voice_01.mp3": 12.0})
+    duplicate_a = tmp_path / "family_dup_a.mp4"
+    duplicate_b = tmp_path / "family_dup_b.mp4"
+    duplicate_a.write_bytes(b"same-foreground-family")
+    duplicate_b.write_bytes(b"same-foreground-family")
+    _register_existing_source_asset(
+        asset_service,
+        product_id=product_id,
+        asset_type="foreground_video",
+        asset_code="fg_dup_a",
+        source_file=duplicate_a,
+    )
+    _register_existing_source_asset(
+        asset_service,
+        product_id=product_id,
+        asset_type="foreground_video",
+        asset_code="fg_dup_b",
+        source_file=duplicate_b,
+    )
+    _register_asset(asset_service, product_id=product_id, tmp_path=tmp_path, asset_type="background_video", asset_code="bg_01", file_name="bg01.mp4")
+    _register_asset(asset_service, product_id=product_id, tmp_path=tmp_path, asset_type="background_video", asset_code="bg_02", file_name="bg02.mp4")
+    _register_asset(asset_service, product_id=product_id, tmp_path=tmp_path, asset_type="voiceover", asset_code="voice_01", file_name="voice_01.mp3")
+    service = _build_auto_factory_service(unit_of_work_factory, tmp_path, {"voice_01.mp3": 12.0})
+
+    plan = service.plan_batch(
+        AutoFactoryBatchOrderDTO(
+            batch_code="familyrisk_batch",
+            product_requests=(AutoFactoryProductRequestDTO(product_code="familyrisk", requested_output_count=2),),
+        )
+    )
+
+    assert len(plan.planned_recipes) == 2
+    assert plan.planned_recipes[1].near_duplicate_score > 0.0
+    assert "foreground_family_reused" in plan.planned_recipes[1].near_duplicate_reasons
 
 
 def test_auto_factory_exact_fingerprint_guard_allows_same_assets_with_different_ratio(unit_of_work_factory, tmp_path) -> None:

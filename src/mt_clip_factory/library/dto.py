@@ -33,6 +33,7 @@ class AssetSummaryDTO:
     tag_labels: tuple[str, ...]
     thumbnail_path: str | None
     proxy_path: str | None
+    file_path: str | None = None
 
 
 @dataclass(slots=True, frozen=True)

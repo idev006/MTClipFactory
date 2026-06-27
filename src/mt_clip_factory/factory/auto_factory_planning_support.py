@@ -1,9 +1,10 @@
 from __future__ import annotations
 
 from collections import Counter
-from dataclasses import dataclass, replace
+from dataclasses import dataclass, field, replace
 import math
 
+from mt_clip_factory.factory.asset_diversity import is_collapsed_diversity_key
 from mt_clip_factory.factory.auto_factory_dto import PlannedBatchAssetAssignmentDTO
 from mt_clip_factory.factory.caption_selection_support import CaptionSelectionSignature
 
@@ -47,6 +48,7 @@ class _PlanningHistory:
     exact_fingerprint_hashes: frozenset[str]
     foreground_sequence_weights: Counter
     role_asset_weights: Counter
+    role_family_weights: Counter = field(default_factory=Counter)
 
     @classmethod
     def empty(cls) -> _PlanningHistory:
@@ -55,6 +57,7 @@ class _PlanningHistory:
             exact_fingerprint_hashes=frozenset(),
             foreground_sequence_weights=Counter(),
             role_asset_weights=Counter(),
+            role_family_weights=Counter(),
         )
 
 
@@ -62,6 +65,9 @@ class _PlanningHistory:
 class _PlanningPoolProfile:
     role_asset_pool_ids: dict[str, frozenset[int]]
     role_asset_pool_sizes: dict[str, int]
+    role_family_pool_keys: dict[str, frozenset[str]]
+    role_family_pool_sizes: dict[str, int]
+    role_family_key_asset_counts: dict[tuple[str, str], int]
     foreground_sequence_pool_size: int
     main_caption_pool_size: int
     headline_foreground_combo_pool_size: int
@@ -87,6 +93,7 @@ def _select_blueprints_greedily(
     selected_exact_signature_counts: Counter = Counter()
     selected_foreground_sequence_counts: Counter = Counter()
     selected_role_asset_counts: Counter = Counter()
+    selected_role_family_counts: Counter = Counter()
     selected_main_caption_counts: Counter = Counter()
     selected_headline_foreground_counts: Counter = Counter()
     selected_headline_music_counts: Counter = Counter()
@@ -109,6 +116,7 @@ def _select_blueprints_greedily(
                 selected_exact_signature_counts=selected_exact_signature_counts,
                 selected_foreground_sequence_counts=selected_foreground_sequence_counts,
                 selected_role_asset_counts=selected_role_asset_counts,
+                selected_role_family_counts=selected_role_family_counts,
                 selected_main_caption_counts=selected_main_caption_counts,
                 selected_headline_foreground_counts=selected_headline_foreground_counts,
                 selected_headline_music_counts=selected_headline_music_counts,
@@ -124,6 +132,7 @@ def _select_blueprints_greedily(
             selected_exact_signature_counts=selected_exact_signature_counts,
             selected_foreground_sequence_counts=selected_foreground_sequence_counts,
             selected_role_asset_counts=selected_role_asset_counts,
+            selected_role_family_counts=selected_role_family_counts,
             selected_main_caption_counts=selected_main_caption_counts,
             selected_headline_foreground_counts=selected_headline_foreground_counts,
             selected_headline_music_counts=selected_headline_music_counts,
@@ -144,6 +153,8 @@ def _select_blueprints_greedily(
             selected_foreground_sequence_counts[selected_blueprint.foreground_sequence] += 1
         for assignment in selected_blueprint.assignments:
             selected_role_asset_counts[(assignment.role, assignment.asset_id)] += 1
+            if is_collapsed_diversity_key(assignment.diversity_key):
+                selected_role_family_counts[(assignment.role, assignment.diversity_key)] += 1
         if selected_blueprint.main_caption_signature:
             selected_main_caption_counts[selected_blueprint.main_caption_signature] += 1
             foreground_asset_id = _role_asset_id(selected_blueprint, role_name="foreground")
@@ -163,6 +174,7 @@ def _selection_score(
     selected_exact_signature_counts: Counter,
     selected_foreground_sequence_counts: Counter,
     selected_role_asset_counts: Counter,
+    selected_role_family_counts: Counter,
     selected_main_caption_counts: Counter,
     selected_headline_foreground_counts: Counter,
     selected_headline_music_counts: Counter,
@@ -176,6 +188,7 @@ def _selection_score(
         selected_exact_signature_counts=selected_exact_signature_counts,
         selected_foreground_sequence_counts=selected_foreground_sequence_counts,
         selected_role_asset_counts=selected_role_asset_counts,
+        selected_role_family_counts=selected_role_family_counts,
         selected_main_caption_counts=selected_main_caption_counts,
         selected_headline_foreground_counts=selected_headline_foreground_counts,
         selected_headline_music_counts=selected_headline_music_counts,
@@ -188,6 +201,8 @@ def _selection_score(
     selected_foreground_penalty = float(selected_foreground_sequence_counts[blueprint.foreground_sequence]) * 180.0
     history_role_penalty = 0.0
     selected_role_penalty = 0.0
+    history_role_family_penalty = 0.0
+    selected_role_family_penalty = 0.0
     for assignment in blueprint.assignments:
         role_weight = _SELECTION_ROLE_WEIGHTS.get(assignment.role, 1.0)
         history_role_penalty += (
@@ -196,6 +211,13 @@ def _selection_score(
         selected_role_penalty += (
             float(selected_role_asset_counts[(assignment.role, assignment.asset_id)]) * role_weight
         )
+        if _shared_role_diversity_key(assignment.role, assignment.diversity_key, pool_profile=pool_profile):
+            history_role_family_penalty += (
+                float(planning_history.role_family_weights[(assignment.role, assignment.diversity_key)]) * role_weight
+            )
+            selected_role_family_penalty += (
+                float(selected_role_family_counts[(assignment.role, assignment.diversity_key)]) * role_weight
+            )
     internal_repeat_penalty = float(_foreground_internal_repeat_count(blueprint.foreground_sequence)) * 25.0
     foreground_balance_penalty = _foreground_batch_balance_penalty(
         blueprint,
@@ -209,6 +231,8 @@ def _selection_score(
         + history_foreground_penalty
         + (selected_role_penalty * 24.0)
         + (history_role_penalty * 7.0)
+        + (selected_role_family_penalty * 42.0)
+        + (history_role_family_penalty * 12.0)
         + internal_repeat_penalty
         + foreground_balance_penalty
         + (similarity.score * 500.0)
@@ -223,6 +247,7 @@ def _assess_near_duplicate(
     selected_exact_signature_counts: Counter,
     selected_foreground_sequence_counts: Counter,
     selected_role_asset_counts: Counter,
+    selected_role_family_counts: Counter,
     selected_main_caption_counts: Counter,
     selected_headline_foreground_counts: Counter,
     selected_headline_music_counts: Counter,
@@ -256,6 +281,28 @@ def _assess_near_duplicate(
             max_penalty=0.55,
         )
         reasons.append("foreground_asset_reused")
+
+    foreground_family_reuse = _role_family_reuse_count(
+        blueprint,
+        role_name="foreground",
+        planning_history=planning_history,
+        selected_role_family_counts=selected_role_family_counts,
+        pool_profile=pool_profile,
+    )
+    if foreground_family_reuse > 0:
+        score += _scaled_reuse_penalty(
+            reuse_count=foreground_family_reuse,
+            total_usage_count=_role_family_usage_total_count(
+                role_name="foreground",
+                planning_history=planning_history,
+                selected_role_family_counts=selected_role_family_counts,
+            ),
+            pool_size=pool_profile.role_asset_pool_sizes.get("foreground", 0),
+            base_penalty=0.52,
+            incremental_penalty=0.12,
+            max_penalty=0.78,
+        )
+        reasons.append("foreground_family_reused")
 
     voice_reuse = _role_reuse_count(
         blueprint,
@@ -298,6 +345,28 @@ def _assess_near_duplicate(
             max_penalty=0.30,
         )
         reasons.append("background_asset_reused")
+
+    background_family_reuse = _role_family_reuse_count(
+        blueprint,
+        role_name="background",
+        planning_history=planning_history,
+        selected_role_family_counts=selected_role_family_counts,
+        pool_profile=pool_profile,
+    )
+    if background_family_reuse > 0:
+        score += _scaled_reuse_penalty(
+            reuse_count=background_family_reuse,
+            total_usage_count=_role_family_usage_total_count(
+                role_name="background",
+                planning_history=planning_history,
+                selected_role_family_counts=selected_role_family_counts,
+            ),
+            pool_size=pool_profile.role_asset_pool_sizes.get("background", 0),
+            base_penalty=0.26,
+            incremental_penalty=0.08,
+            max_penalty=0.42,
+        )
+        reasons.append("background_family_reused")
 
     music_reuse = _role_reuse_count(
         blueprint,
@@ -442,6 +511,22 @@ def _foreground_role_reuse_count(
     return reused_count
 
 
+def _role_family_reuse_count(
+    blueprint: _VariantBlueprint,
+    *,
+    role_name: str,
+    planning_history: _PlanningHistory,
+    selected_role_family_counts: Counter,
+    pool_profile: _PlanningPoolProfile,
+) -> float:
+    diversity_key = _role_diversity_key(blueprint, role_name=role_name)
+    if _shared_role_diversity_key(role_name, diversity_key, pool_profile=pool_profile) is None:
+        return 0.0
+    return float(planning_history.role_family_weights[(role_name, diversity_key)]) + float(
+        selected_role_family_counts[(role_name, diversity_key)]
+    )
+
+
 def _foreground_internal_repeat_count(sequence: tuple[int, ...]) -> int:
     if len(set(sequence)) <= 1:
         return 0
@@ -466,6 +551,26 @@ def _role_asset_id(blueprint: _VariantBlueprint, *, role_name: str) -> int | Non
         if assignment.role == role_name:
             return assignment.asset_id
     return None
+
+
+def _role_diversity_key(blueprint: _VariantBlueprint, *, role_name: str) -> str | None:
+    for assignment in blueprint.assignments:
+        if assignment.role == role_name:
+            return assignment.diversity_key
+    return None
+
+
+def _shared_role_diversity_key(
+    role_name: str,
+    diversity_key: str | None,
+    *,
+    pool_profile: _PlanningPoolProfile,
+) -> str | None:
+    if diversity_key is None:
+        return None
+    if pool_profile.role_family_key_asset_counts.get((role_name, diversity_key), 0) <= 1:
+        return None
+    return diversity_key
 
 
 def _main_caption_reuse_count(
@@ -497,6 +602,8 @@ def _build_planning_pool_profile(
     candidate_blueprints: tuple[_VariantBlueprint, ...],
 ) -> _PlanningPoolProfile:
     role_asset_ids: dict[str, set[int]] = {}
+    role_family_keys: dict[str, set[str]] = {}
+    role_family_asset_ids: dict[tuple[str, str], set[int]] = {}
     foreground_sequences: set[tuple[int, ...]] = set()
     main_caption_signatures: set[tuple[tuple[str, str], ...]] = set()
     headline_foreground_combos: set[tuple[tuple[tuple[str, str], ...], int]] = set()
@@ -508,6 +615,9 @@ def _build_planning_pool_profile(
         music_asset_id = _role_asset_id(blueprint, role_name="music")
         for assignment in blueprint.assignments:
             role_asset_ids.setdefault(assignment.role, set()).add(assignment.asset_id)
+            if is_collapsed_diversity_key(assignment.diversity_key):
+                role_family_keys.setdefault(assignment.role, set()).add(assignment.diversity_key)
+                role_family_asset_ids.setdefault((assignment.role, assignment.diversity_key), set()).add(assignment.asset_id)
         for slot_signature in blueprint.caption_signatures_by_slot:
             if slot_signature is None or not slot_signature.main_role_texts:
                 continue
@@ -519,6 +629,12 @@ def _build_planning_pool_profile(
     return _PlanningPoolProfile(
         role_asset_pool_ids={role: frozenset(asset_ids) for role, asset_ids in role_asset_ids.items()},
         role_asset_pool_sizes={role: len(asset_ids) for role, asset_ids in role_asset_ids.items()},
+        role_family_pool_keys={role: frozenset(keys) for role, keys in role_family_keys.items()},
+        role_family_pool_sizes={role: len(keys) for role, keys in role_family_keys.items()},
+        role_family_key_asset_counts={
+            key: len(asset_ids)
+            for key, asset_ids in role_family_asset_ids.items()
+        },
         foreground_sequence_pool_size=len(foreground_sequences),
         main_caption_pool_size=len(main_caption_signatures),
         headline_foreground_combo_pool_size=len(headline_foreground_combos),
@@ -651,6 +767,25 @@ def _role_usage_total_count(
     selected_total = sum(
         float(count)
         for (assignment_role, _asset_id), count in selected_role_asset_counts.items()
+        if assignment_role == role_name
+    )
+    return historical_total + selected_total
+
+
+def _role_family_usage_total_count(
+    *,
+    role_name: str,
+    planning_history: _PlanningHistory,
+    selected_role_family_counts: Counter,
+) -> float:
+    historical_total = sum(
+        float(count)
+        for (assignment_role, _family_key), count in planning_history.role_family_weights.items()
+        if assignment_role == role_name
+    )
+    selected_total = sum(
+        float(count)
+        for (assignment_role, _family_key), count in selected_role_family_counts.items()
         if assignment_role == role_name
     )
     return historical_total + selected_total

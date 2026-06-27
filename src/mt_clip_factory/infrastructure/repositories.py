@@ -296,6 +296,7 @@ class SqlAlchemyAssetRepository:
                 AssetModel.file_size_mb,
                 AssetModel.thumbnail_path,
                 AssetModel.proxy_path,
+                AssetModel.file_path,
             )
             .join(ProductModel, ProductModel.id == AssetModel.product_id)
             .order_by(AssetModel.created_at.desc(), AssetModel.id.desc())
@@ -323,6 +324,7 @@ class SqlAlchemyAssetRepository:
                 tag_labels=self._load_tag_labels(row.id),
                 thumbnail_path=row.thumbnail_path,
                 proxy_path=row.proxy_path,
+                file_path=row.file_path,
             )
             for row in rows
         ]

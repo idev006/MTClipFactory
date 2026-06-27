@@ -36,6 +36,7 @@ class PlannedBatchAssetAssignmentDTO:
     asset_type: str
     role: str
     tag_labels: tuple[str, ...] = ()
+    diversity_key: str | None = None
 
 
 @dataclass(slots=True, frozen=True)

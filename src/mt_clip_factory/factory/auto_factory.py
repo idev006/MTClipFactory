@@ -31,6 +31,11 @@ from mt_clip_factory.factory.auto_factory_variant_support import (
     _order_role_assets_for_diversity_frontier,
     _resolve_candidate_scan_limit,
 )
+from mt_clip_factory.factory.asset_diversity import (
+    build_asset_diversity_key,
+    build_asset_summary_diversity_key,
+    is_collapsed_diversity_key,
+)
 from mt_clip_factory.factory.caption_runtime import CaptionRuntimeService, ProductAutomationMetadataStore
 from mt_clip_factory.factory.caption_selection_support import CaptionSelectionSignature
 from mt_clip_factory.factory.creative_preset_runtime import (
@@ -324,9 +329,16 @@ class AutoFactoryBatchService:
             seed_key=f"{batch_code}|{product.product_code}|music",
             item_key=lambda asset: asset.asset_code or str(asset.asset_id),
         )
+        asset_diversity_keys = {
+            asset.asset_id: diversity_key
+            for asset in ready_assets
+            for diversity_key in [build_asset_summary_diversity_key(asset)]
+            if diversity_key is not None
+        }
         planning_history = self._load_planning_history(
             product_id=product.product_id,
             product_code=product.product_code,
+            asset_diversity_keys=asset_diversity_keys,
             excluded_recipe_ids=history_excluded_recipe_ids,
         )
         creative_preset_definitions = self._load_creative_preset_definitions(product.product_code)
@@ -556,6 +568,7 @@ class AutoFactoryBatchService:
         *,
         product_id: int,
         product_code: str,
+        asset_diversity_keys: dict[int, str],
         excluded_recipe_ids: frozenset[int] = frozenset(),
     ) -> _PlanningHistory:
         output_summaries = self._video_assembly_factory_service.list_outputs(
@@ -576,6 +589,7 @@ class AutoFactoryBatchService:
         exact_fingerprint_hashes: set[str] = set()
         foreground_sequence_weights: Counter = Counter()
         role_asset_weights: Counter = Counter()
+        role_family_weights: Counter = Counter()
         for history_index, recipe_id in enumerate(recipe_ids_in_history_order):
             recipe_details = self._video_assembly_factory_service.get_recipe(recipe_id)
             exact_fingerprint_hashes.add(
@@ -601,11 +615,15 @@ class AutoFactoryBatchService:
                 if not normalized_role:
                     continue
                 role_asset_weights[(normalized_role, item.asset_id)] += history_weight
+                diversity_key = asset_diversity_keys.get(item.asset_id)
+                if is_collapsed_diversity_key(diversity_key):
+                    role_family_weights[(normalized_role, diversity_key)] += history_weight
         return _PlanningHistory(
             exact_signature_weights=exact_signature_weights,
             exact_fingerprint_hashes=frozenset(exact_fingerprint_hashes),
             foreground_sequence_weights=foreground_sequence_weights,
             role_asset_weights=role_asset_weights,
+            role_family_weights=role_family_weights,
         )
 
     def _get_preview_job_summary(self, job_id: int) -> PreviewJobSummaryDTO:
@@ -693,6 +711,13 @@ def _to_assignment(asset: AssetSummaryDTO, *, role: str) -> PlannedBatchAssetAss
         asset_type=asset.asset_type,
         role=role,
         tag_labels=asset.tag_labels,
+        diversity_key=build_asset_diversity_key(
+            role_name=role,
+            asset_id=asset.asset_id,
+            asset_code=asset.asset_code,
+            tag_labels=asset.tag_labels,
+            file_path=asset.file_path,
+        ),
     )
 
 

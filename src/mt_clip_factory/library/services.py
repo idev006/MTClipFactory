@@ -165,6 +165,7 @@ class AssetIntakeService:
                     tag_labels=summary.tag_labels,
                     thumbnail_path=summary.thumbnail_path,
                     proxy_path=summary.proxy_path,
+                    file_path=summary.file_path,
                 )
                 for summary in uow.assets.list_summaries(
                     product_id=product_id,
@@ -197,6 +198,7 @@ class AssetIntakeService:
                 tag_labels=summary.tag_labels,
                 thumbnail_path=summary.thumbnail_path,
                 proxy_path=summary.proxy_path,
+                file_path=summary.file_path,
             )
 
     def list_replacement_candidates(self, asset_id: int) -> list[AssetSummaryDTO]:
@@ -217,6 +219,7 @@ class AssetIntakeService:
                     tag_labels=summary.tag_labels,
                     thumbnail_path=summary.thumbnail_path,
                     proxy_path=summary.proxy_path,
+                    file_path=summary.file_path,
                 )
                 for summary in uow.assets.list_summaries(
                     product_id=source_asset.product_id,

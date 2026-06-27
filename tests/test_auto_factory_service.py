@@ -145,6 +145,24 @@ def _register_asset(
     )
 
 
+def _register_existing_source_asset(
+    asset_service: AssetIntakeService,
+    *,
+    product_id: int,
+    asset_type: str,
+    asset_code: str,
+    source_file: Path,
+) -> int:
+    return asset_service.register_asset(
+        RegisterAssetCommand(
+            product_id=product_id,
+            asset_type=asset_type,
+            source_file_path=source_file,
+            asset_code=asset_code,
+        )
+    )
+
+
 def _assign_tag_to_asset(tag_service: TagManagementService, *, asset_id: int, tag_group: str, tag_name: str) -> int:
     tag_id = tag_service.create_tag(CreateTagCommand(tag_name=tag_name, tag_group=tag_group))
     tag_service.assign_tag_to_asset(AssignTagToAssetCommand(asset_id=asset_id, tag_id=tag_id))
@@ -362,6 +380,62 @@ def test_auto_factory_diversifies_voice_early_within_batch(unit_of_work_factory,
     ]
 
     assert len(set(voice_codes)) == 2
+
+
+def test_auto_factory_spreads_foreground_content_families_before_reusing_duplicate_files(
+    unit_of_work_factory,
+    tmp_path,
+) -> None:
+    product_service = ProductApplicationService(unit_of_work_factory=unit_of_work_factory)
+    product_id = product_service.create_product(CreateProductCommand(product_code="fgfamily", product_name="FG Family"))
+    asset_service = _build_asset_service(unit_of_work_factory, tmp_path / "media_library", {"voice_01.mp3": 12.0})
+    duplicate_a = tmp_path / "duplicate_a.mp4"
+    duplicate_b = tmp_path / "duplicate_b.mp4"
+    unique_fg = tmp_path / "unique_fg.mp4"
+    duplicate_a.write_bytes(b"same-presenter-video")
+    duplicate_b.write_bytes(b"same-presenter-video")
+    unique_fg.write_bytes(b"different-presenter-video")
+    _register_existing_source_asset(
+        asset_service,
+        product_id=product_id,
+        asset_type="foreground_video",
+        asset_code="fg_dup_a",
+        source_file=duplicate_a,
+    )
+    _register_existing_source_asset(
+        asset_service,
+        product_id=product_id,
+        asset_type="foreground_video",
+        asset_code="fg_dup_b",
+        source_file=duplicate_b,
+    )
+    _register_existing_source_asset(
+        asset_service,
+        product_id=product_id,
+        asset_type="foreground_video",
+        asset_code="fg_unique",
+        source_file=unique_fg,
+    )
+    _register_asset(asset_service, product_id=product_id, tmp_path=tmp_path, asset_type="background_video", asset_code="bg_01", file_name="bg01.mp4")
+    _register_asset(asset_service, product_id=product_id, tmp_path=tmp_path, asset_type="background_video", asset_code="bg_02", file_name="bg02.mp4")
+    _register_asset(asset_service, product_id=product_id, tmp_path=tmp_path, asset_type="voiceover", asset_code="voice_01", file_name="voice_01.mp3")
+    service = _build_auto_factory_service(unit_of_work_factory, tmp_path, {"voice_01.mp3": 12.0})
+
+    plan = service.plan_batch(
+        AutoFactoryBatchOrderDTO(
+            batch_code="fgfamily_batch",
+            product_requests=(AutoFactoryProductRequestDTO(product_code="fgfamily", requested_output_count=2),),
+        )
+    )
+
+    foreground_assignments = [
+        next(assignment for assignment in recipe.assignments if assignment.role == "foreground")
+        for recipe in plan.planned_recipes
+    ]
+
+    assert len(plan.planned_recipes) == 2
+    assert len({assignment.diversity_key for assignment in foreground_assignments}) == 2
+    assert {assignment.asset_code for assignment in foreground_assignments} != {"fg_dup_a", "fg_dup_b"}
 
 
 def test_auto_factory_spreads_backgrounds_early_within_batch(unit_of_work_factory, tmp_path) -> None:
