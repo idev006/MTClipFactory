@@ -26,7 +26,7 @@ from mt_clip_factory.presentation.factory.auto_factory_control import (
 
 class FakeAutoFactoryFolderService:
     def __init__(self) -> None:
-        self.calls: list[tuple[str, str | None, int, bool]] = []
+        self.calls: list[tuple[str, str | None, int, bool, bool | None, bool | None, str | None]] = []
         self.audit_calls: list[tuple[str, int]] = []
 
     def run_batch_root(
@@ -37,8 +37,21 @@ class FakeAutoFactoryFolderService:
         scan_depth: int = 1,
         materialize: bool = True,
         build_previews: bool = False,
+        snapshot_materialize_requested: bool | None = None,
+        snapshot_build_previews_requested: bool | None = None,
+        snapshot_run_mode: str | None = None,
     ) -> AutoFactoryFolderRunReportDTO:
-        self.calls.append((str(batch_root), batch_code, scan_depth, materialize))
+        self.calls.append(
+            (
+                str(batch_root),
+                batch_code,
+                scan_depth,
+                materialize,
+                snapshot_materialize_requested,
+                snapshot_build_previews_requested,
+                snapshot_run_mode,
+            )
+        )
         return AutoFactoryFolderRunReportDTO(
             batch_code=batch_code or "uat_batch",
             scan_depth=scan_depth,
@@ -294,7 +307,17 @@ def test_auto_factory_control_view_model_runs_intake_only_without_order_creation
     assert view_model.run_report is not None
     assert view_model.run_report.scan_depth == 2
     assert view_model.selected_order is None
-    assert folder_service.calls == [("F:\\batch_root", None, 2, False)]
+    assert folder_service.calls == [
+        (
+            "F:\\batch_root",
+            None,
+            2,
+            False,
+            False,
+            False,
+            AutoFactoryControlViewModel.RUN_MODE_INTAKE_ONLY,
+        )
+    ]
     assert order_service.create_calls == []
     assert "Intake completed without creating a production order." in view_model.feedback
 
@@ -337,7 +360,17 @@ def test_auto_factory_control_view_model_runs_materialization_with_preview_mode(
     assert view_model.selected_order is not None
     assert view_model.selected_order.production_order_id == 41
     assert len(view_model.recent_orders) == 1
-    assert folder_service.calls == [("F:\\batch_root", "campaign_launch", 1, False)]
+    assert folder_service.calls == [
+        (
+            "F:\\batch_root",
+            "campaign_launch",
+            1,
+            False,
+            True,
+            True,
+            AutoFactoryControlViewModel.RUN_MODE_MATERIALIZE_AND_PREVIEWS,
+        )
+    ]
     assert order_service.create_order_calls[0][0] == "campaign_launch"
     assert order_service.create_order_calls[0][2] is True
     assert order_service.create_order_calls[0][3] == AutoFactoryControlViewModel.RUN_MODE_MATERIALIZE_AND_PREVIEWS

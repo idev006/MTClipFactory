@@ -419,6 +419,39 @@ def test_folder_service_can_materialize_and_build_previews(unit_of_work_factory,
     assert all(Path(result.output_path or "").exists() for result in report.preview_production.recipe_results)
 
 
+def test_folder_service_snapshot_can_record_requested_run_truth_during_intake_only_execution(unit_of_work_factory, tmp_path) -> None:
+    _, _, _, folder_service, _ = _build_services(
+        unit_of_work_factory,
+        tmp_path,
+        {"voice_a.mp3": 17.2},
+    )
+    batch_root = tmp_path / "batch_root"
+    product_dir = _write_product_folder(
+        batch_root,
+        folder_name="ProductA",
+        product_code="product_a",
+        product_name="Product A",
+        requested_output_count=2,
+    )
+
+    report = folder_service.run_batch_root(
+        batch_root,
+        batch_code="product_a_requested_truth",
+        materialize=False,
+        snapshot_materialize_requested=True,
+        snapshot_build_previews_requested=True,
+        snapshot_run_mode="materialize_and_build_previews",
+    )
+
+    snapshot_text = (product_dir / "runs" / "product_a_requested_truth" / "order_snapshot.toml").read_text(encoding="utf-8")
+
+    assert report.materialization is None
+    assert report.preview_production is None
+    assert 'run_mode = "materialize_and_build_previews"' in snapshot_text
+    assert "materialize_requested = true" in snapshot_text
+    assert "build_previews_requested = true" in snapshot_text
+
+
 def test_folder_service_rejects_preview_request_without_materialization(unit_of_work_factory, tmp_path) -> None:
     _, _, _, folder_service, _ = _build_services(unit_of_work_factory, tmp_path, {})
     batch_root = tmp_path / "batch_root"

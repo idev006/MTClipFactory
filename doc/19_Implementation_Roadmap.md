@@ -70,6 +70,7 @@ The project now uses two roadmap layers:
 - `IR-48` Auto Factory render-history operator surface and render-service split baseline: complete on 2026-06-26
 - `IR-49` Auto Factory caption-aware same-batch diversity baseline: complete on 2026-06-26
 - `IR-50` Auto Factory pool-normalized duplicate scoring baseline: complete on 2026-06-26
+- `IR-51` Auto Factory requested-run snapshot truth and foreground-balance hardening baseline: complete on 2026-06-27
 
 ## Current Execution Stream
 
@@ -110,6 +111,8 @@ The same anti-duplicate stream now also surfaces that persisted render-history t
 The same anti-duplicate stream now also makes planner scoring caption-aware inside one batch by predicting deterministic headline selection from the current caption contract and penalizing repeated `headline + foreground` or `headline + music` pairings when fresher combinations still exist.
 
 The same anti-duplicate stream now also calibrates planner scoring against the feasible role pool so constrained products are not automatically pushed into `High` once the planner has already exhausted the available foreground, background, voice, or headline pool as evenly as possible.
+
+The same operator-truth and anti-duplicate stream now also keeps `order_snapshot.toml` aligned with the operator-requested run mode even when the desktop path performs intake first, and forces fresh same-batch foreground coverage before repeating another foreground that is already used in the current batch.
 
 Backlog activation rules:
 
@@ -712,9 +715,9 @@ Make the new control-plane baseline safe for future multi-worker execution by in
 - delivered `Auto Factory` UI/view-model wiring for backend-functional `Pause Run`, `Stop Run`, and `Resume Run` operator surfaces, lease visibility, active-worker truth, and order-event inspection
 - hardened stale active-order stop handling so `Stop Run` can finalize immediately when no live lease owner remains instead of waiting forever for a dead worker checkpoint
 - delivered SQLite heartbeat lock-tolerance plus file-backed `WAL` and `busy_timeout` runtime hardening so transient write contention does not kill the heartbeat thread during active local Auto Factory runs
-- covered migration, service, view-model, and UI seams with pytest, and reverified the full suite at `324 passed, 4 warnings`
+- covered migration, service, view-model, and UI seams with pytest, and reverified the full suite at `326 passed, 4 warnings`
 
-The latest stale-stop hardening pass, SSOT/UML alignment pass, caption hardening pass, and SQLite heartbeat hardening pass have now also reverified the full suite at `324 passed, 4 warnings`.
+The latest requested-run snapshot truth pass, same-batch foreground-balance hardening pass, stale-stop hardening pass, SSOT/UML alignment pass, caption hardening pass, and SQLite heartbeat hardening pass have now also reverified the full suite at `326 passed, 4 warnings`.
 
 ## IR-21 | Folder Discovery Depth And Assisted Tagging Ergonomics
 

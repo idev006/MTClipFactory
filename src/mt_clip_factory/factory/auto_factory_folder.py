@@ -102,6 +102,9 @@ class AutoFactoryFolderService:
         scan_depth: int = 1,
         materialize: bool = True,
         build_previews: bool = False,
+        snapshot_materialize_requested: bool | None = None,
+        snapshot_build_previews_requested: bool | None = None,
+        snapshot_run_mode: str | None = None,
     ) -> AutoFactoryFolderRunReportDTO:
         if build_previews and not materialize:
             raise AutoFactoryFolderContractError("build_previews requires materialize=True so preview jobs have recipes to run.")
@@ -111,6 +114,17 @@ class AutoFactoryFolderService:
         product_configs = {product_dir: _load_product_config(product_dir) for product_dir in product_dirs}
         pipeline_configs = {product_dir: _load_pipeline_config(product_dir) for product_dir in product_dirs}
         effective_batch_code = _resolve_effective_batch_code(batch_code=batch_code, root_path=root_path)
+        resolved_snapshot_materialize_requested = (
+            materialize if snapshot_materialize_requested is None else snapshot_materialize_requested
+        )
+        resolved_snapshot_build_previews_requested = (
+            build_previews if snapshot_build_previews_requested is None else snapshot_build_previews_requested
+        )
+        resolved_snapshot_run_mode = _resolve_snapshot_run_mode(
+            run_mode=snapshot_run_mode,
+            materialize=resolved_snapshot_materialize_requested,
+            build_previews=resolved_snapshot_build_previews_requested,
+        )
 
         existing_product_ids = {product.product_code: product.product_id for product in self._product_service.list_products()}
         product_reports: list[AutoFactoryFolderProductReportDTO] = []
@@ -170,8 +184,9 @@ class AutoFactoryFolderService:
             self._write_product_run_snapshot(
                 batch_code=effective_batch_code,
                 scan_depth=scan_depth,
-                materialize=materialize,
-                build_previews=build_previews,
+                snapshot_materialize_requested=resolved_snapshot_materialize_requested,
+                snapshot_build_previews_requested=resolved_snapshot_build_previews_requested,
+                snapshot_run_mode=resolved_snapshot_run_mode,
                 product_dir=product_dir,
                 product_config=product_configs[product_dir],
                 pipeline_config=pipeline_configs[product_dir],
@@ -320,8 +335,9 @@ class AutoFactoryFolderService:
         *,
         batch_code: str,
         scan_depth: int,
-        materialize: bool,
-        build_previews: bool,
+        snapshot_materialize_requested: bool,
+        snapshot_build_previews_requested: bool,
+        snapshot_run_mode: str,
         product_dir: Path,
         product_config: AutoFactoryFolderProductConfigDTO,
         pipeline_config: AutoFactoryFolderPipelineConfigDTO,
@@ -334,9 +350,10 @@ class AutoFactoryFolderService:
             product_code=product_config.product_code,
             batch_code=batch_code,
             payload={
+                "run_mode": snapshot_run_mode,
                 "scan_depth": scan_depth,
-                "materialize_requested": materialize,
-                "build_previews_requested": build_previews,
+                "materialize_requested": snapshot_materialize_requested,
+                "build_previews_requested": snapshot_build_previews_requested,
                 "requested_output_count": pipeline_config.requested_output_count,
                 "target_platform": pipeline_config.target_platform,
                 "target_ratio": pipeline_config.target_ratio,
@@ -361,6 +378,16 @@ class AutoFactoryFolderService:
                 "skipped_existing_asset_count": product_report.skipped_existing_asset_count,
             },
         )
+
+
+def _resolve_snapshot_run_mode(*, run_mode: str | None, materialize: bool, build_previews: bool) -> str:
+    if run_mode is not None and run_mode.strip():
+        return run_mode.strip()
+    if build_previews:
+        return "materialize_and_build_previews"
+    if materialize:
+        return "materialize"
+    return "intake_only"
 
 
 def _audit_product_dir(product_dir: Path) -> AutoFactoryFolderPreflightProductReportDTO:

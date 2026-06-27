@@ -91,7 +91,7 @@ Rules:
 3. `manifests/` stores preview/final manifest JSON files for this batch.
 4. `logs/` stores lightweight run-visible text logs when runtime messages are recorded.
 5. `journal.toml` stores append-only run events for intake, render, review, and recovery visibility.
-6. `order_snapshot.toml` stores the order/product request snapshot that produced this run.
+6. `order_snapshot.toml` stores the operator-requested order/product run snapshot that produced this run, including the requested run mode when that truth is known before persisted production-order execution starts.
 7. When the operator leaves `Batch Code` blank, the effective folder name should be auto-generated from the root-folder slug plus a UTC timestamp so repeated runs do not collapse into one ambiguous batch path.
 
 ## Journal Rule
@@ -225,7 +225,7 @@ flowchart LR
     A["Operator Prepares Product Folder"] --> B["Run Auto Factory"]
     B --> C["Sync captions.toml + pipeline.toml + context.toml To Runtime Cache"]
     C --> D["Create Product-Local runs/<batch_code> Layout"]
-    D --> E["Write order_snapshot.toml"]
+    D --> E["Write order_snapshot.toml(requested run truth)"]
     E --> F["Resolve Per-Asset-Type Fill Policy"]
     F --> G["Render Preview / Final Into Product-Local Folders"]
     G --> H["Write Manifest + Journal Event"]
@@ -249,7 +249,7 @@ sequenceDiagram
     FolderSvc->>Meta: sync captions.toml
     FolderSvc->>Meta: sync pipeline.toml
     FolderSvc->>Meta: sync context.toml(source_product_dir)
-    FolderSvc->>RunStore: write order_snapshot.toml + intake journal
+    FolderSvc->>RunStore: write order_snapshot.toml(requested run truth) + intake journal
     FolderSvc->>Factory: materialize / build previews
     Factory->>Policy: load fill policy by product_code
     Factory->>RunStore: resolve preview/final artifact paths

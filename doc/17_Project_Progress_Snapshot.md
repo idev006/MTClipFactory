@@ -2,7 +2,7 @@
 
 ## Snapshot Date
 
-- 2026-06-26
+- 2026-06-27
 
 ## Where To See Progress
 
@@ -104,6 +104,8 @@
 - Recipe Builder output details now also expose `history_scope`, direct output-level `clip_formula_hash`, and a clearer operator-facing explanation for the `historical_render_duplicate` review signal.
 - Auto Factory planner now also calibrates duplicate-risk math against the actual feasible role pool, so evenly spread reuse in one-voice or low-foreground products is scored more truthfully than avoidable early reuse.
 - Auto Factory planner now also grants bounded credit for fresh same-batch headline pairings, so a widened caption pool can lower risk without hiding real reuse reasons.
+- product-local `order_snapshot.toml` now also preserves operator-requested run truth for `run_mode`, `materialize_requested`, and `build_previews_requested` even when the desktop path executes folder intake first and starts the persisted order afterward
+- Auto Factory planner now also forces fresh foreground coverage before repeating a foreground that is already used in the current batch when another feasible foreground still exists
 - Preview/final render execution is now split into a dedicated factory support module so `services.py` stays under the repo line-count preference without changing public workflow behavior.
 - Auto Factory now also persists that duplicate-risk evidence on successful `materialize` stages and shows it in the `Orders` tab so operators can inspect order truth instead of relying on memory-only planner output.
 - Auto Factory local-worker heartbeat updates now also tolerate transient SQLite `database is locked` contention, so one missed heartbeat write no longer kills the heartbeat thread during an otherwise active run.
@@ -205,6 +207,8 @@
 - completed a live `Biothentic0001` caption-aware planner audit, confirming `9` distinct `headline + foreground` pairs and `9` distinct `headline + music` pairs across a 10-output plan even though the product still rotated only `3` headline signatures
 - completed a follow-up live `Biothentic0001` planner audit after pool-normalized scoring, confirming `10` distinct headline signatures plus a calibrated `0.374` to `0.456` risk range instead of the earlier blanket `High`
 - tuned the built-in `sale_blast` and `dark_lower_third` preset defaults plus the new-product caption template toward lighter top banners, tighter grouped headline spacing, and larger lower-third readability baselines
+- delivered requested-run snapshot truth for product-local Auto Factory artifacts so `order_snapshot.toml` now records the operator-requested run mode instead of only the intake substep
+- delivered same-batch foreground-balance hardening so planner selection now uses each feasible foreground before repeating another one when fresh foreground coverage is still available
 
 ## Still Open
 
@@ -239,5 +243,5 @@
 
 ## Verification Baseline
 
-- `python -m pytest` in `.venv`: `322 passed, 4 warnings`
+- `python -m pytest` in `.venv`: `326 passed, 4 warnings`
 - targeted `QT_QPA_PLATFORM=offscreen` UI/theme coverage for the new `Auto Factory` window and existing app windows: passed

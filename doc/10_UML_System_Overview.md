@@ -722,12 +722,14 @@ sequenceDiagram
         View->>View: show product/pipeline/caption contract truth
         Operator->>View: open product/contracts/runs or copy summary
     else intake/materialize/previews
-        VM->>FolderSvc: run_batch_root(..., materialize=False)
+        VM->>FolderSvc: run_batch_root(..., materialize=False, snapshot_requested_run_truth)
         FolderSvc-->>VM: intake report + order DTO
         alt intake only
             VM-->>View: intake report + selected-product runtime detail
         else materialize or previews
-            VM->>OrderSvc: create_and_run_order(order,...)
+            FolderSvc->>RunStore: write order_snapshot.toml(requested run_mode/materialize/build_previews)
+            VM->>OrderSvc: create_order(order,..., run_mode, build_previews)
+            VM->>OrderSvc: run_order(order_id,...)
             OrderSvc-->>VM: persisted order details + stages
             VM-->>View: intake report + recent order truth + selected-product runtime detail
         end

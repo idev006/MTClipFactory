@@ -428,6 +428,105 @@ def test_auto_factory_reduces_history_reuse_score_when_small_pools_are_used_even
     assert all(recipe.main_caption_signature for recipe in rerun_plan.planned_recipes)
 
 
+def test_auto_factory_uses_all_foregrounds_before_repeating_when_fresh_batch_options_remain(
+    unit_of_work_factory,
+    tmp_path,
+) -> None:
+    product_service = ProductApplicationService(unit_of_work_factory=unit_of_work_factory)
+    product_code = "fgcover"
+    product_id = product_service.create_product(CreateProductCommand(product_code=product_code, product_name="FG Cover"))
+    durations = {f"voice_{index:02d}.mp3": 12.0 for index in range(1, 7)}
+    asset_service = _build_asset_service(unit_of_work_factory, tmp_path / "media_library", durations)
+    fg_03 = _register_asset(
+        asset_service,
+        product_id=product_id,
+        tmp_path=tmp_path,
+        asset_type="foreground_video",
+        asset_code="fg_03",
+        file_name="fg03.mp4",
+    )
+    _register_asset(
+        asset_service,
+        product_id=product_id,
+        tmp_path=tmp_path,
+        asset_type="foreground_video",
+        asset_code="fg_01",
+        file_name="fg01.mp4",
+    )
+    _register_asset(
+        asset_service,
+        product_id=product_id,
+        tmp_path=tmp_path,
+        asset_type="foreground_video",
+        asset_code="fg_02",
+        file_name="fg02.mp4",
+    )
+    for asset_index in range(6):
+        _register_asset(
+            asset_service,
+            product_id=product_id,
+            tmp_path=tmp_path,
+            asset_type="background_video",
+            asset_code=f"bg_{asset_index + 1:02d}",
+            file_name=f"bg{asset_index + 1:02d}.mp4",
+        )
+        _register_asset(
+            asset_service,
+            product_id=product_id,
+            tmp_path=tmp_path,
+            asset_type="background_music",
+            asset_code=f"music_{asset_index + 1:02d}",
+            file_name=f"music{asset_index + 1:02d}.mp3",
+        )
+        _register_asset(
+            asset_service,
+            product_id=product_id,
+            tmp_path=tmp_path,
+            asset_type="voiceover",
+            asset_code=f"voice_{asset_index + 1:02d}",
+            file_name=f"voice_{asset_index + 1:02d}.mp3",
+        )
+    factory_service = _build_factory_service(unit_of_work_factory, tmp_path / "previews")
+    service = AutoFactoryBatchService(
+        product_service=product_service,
+        asset_intake_service=asset_service,
+        video_assembly_factory_service=factory_service,
+    )
+    history_order = AutoFactoryBatchOrderDTO(
+        batch_code="fgcover_history",
+        product_requests=(AutoFactoryProductRequestDTO(product_code=product_code, requested_output_count=6),),
+    )
+    baseline_plan = service.plan_batch(history_order)
+    for history_index, planned_recipe in enumerate(baseline_plan.planned_recipes, start=1):
+        fg_heavy_history_recipe = _replace_assignment_role(
+            planned_recipe,
+            role="foreground",
+            asset_id=fg_03,
+            asset_code="fg_03",
+            asset_type="foreground_video",
+        )
+        _materialize_history_recipe(
+            factory_service,
+            product_id=product_id,
+            recipe_code=f"fgcover_history_{history_index:03d}",
+            planned_recipe=fg_heavy_history_recipe,
+        )
+
+    rerun_plan = service.plan_batch(
+        AutoFactoryBatchOrderDTO(
+            batch_code="fgcover_rerun",
+            product_requests=(AutoFactoryProductRequestDTO(product_code=product_code, requested_output_count=3),),
+        )
+    )
+    rerun_foregrounds = [
+        next(assignment.asset_code for assignment in recipe.assignments if assignment.role == "foreground")
+        for recipe in rerun_plan.planned_recipes
+    ]
+
+    assert len(rerun_foregrounds) == 3
+    assert set(rerun_foregrounds) == {"fg_01", "fg_02", "fg_03"}
+
+
 def test_auto_factory_blocks_exact_fingerprint_reuse_when_history_forces_repeat(unit_of_work_factory, tmp_path) -> None:
     product_service = ProductApplicationService(unit_of_work_factory=unit_of_work_factory)
     product_id = product_service.create_product(CreateProductCommand(product_code="forcedrepeat", product_name="Forced Repeat"))

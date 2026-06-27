@@ -2,7 +2,7 @@
 
 ## Project Manager Snapshot
 
-- Report date: 2026-06-26
+- Report date: 2026-06-27
 - Overall status: In Progress
 - Current phase: Phase 6, operator-grade local-worker auto-factory control baseline delivered; distributed execution and deeper recovery-facing UX still pending
 - Delivery mode: document-led SSOT with code and tests kept in sync
@@ -138,6 +138,8 @@
 - Auto Factory no longer counts a stale lease as one active worker in the operator progress surface, keeping `Resume Run` truthful as lease recovery instead of pretending the worker is still active
 - `Pause Run`, `Stop Run`, and `Resume Run` are now backend-functional on the delivered local-worker baseline, including persisted operator intent, lease-aware recovery truth, and checkpoint-safe state transitions
 - stale active orders can now also be stopped immediately when no live worker lease remains, avoiding a forever-pending `stop_requested` state after worker death
+- product-local `order_snapshot.toml` now also records the operator-requested `run_mode`, `materialize_requested`, and `build_previews_requested` truth even when the desktop Auto Factory path performs folder intake before starting the persisted production order
+- same-batch planner selection now also forces fresh foreground coverage before repeating an already-used foreground when another feasible foreground remains unused, then prefers fair-share balance after coverage is exhausted
 - caption runtime now also clamps grouped top-band headline height through a new `max_safe_band_height_ratio` rule so presenter-led promo cards shrink before covering the eye line, while still keeping overflow review-visible when the safer band cannot contain the text
 - grouped multi-line caption solving no longer grows above the requested contract font size, while short single-line best-fit cards may still upscale when that is the intended readability behavior
 - caption runtime/layout support helpers are now split into dedicated modules so the core orchestrators stay below the repo `800`-line guardrail without changing rendered behavior
@@ -179,7 +181,7 @@
 
 ## Verification Baseline
 
-- `python -m pytest` via `.venv`: `322 passed, 4 warnings`
+- `python -m pytest` via `.venv`: `326 passed, 4 warnings`
 - targeted `QT_QPA_PLATFORM=offscreen` UI coverage for the new `Auto Factory` window and existing themed windows: passed
 
 ## Current Focus
@@ -206,6 +208,8 @@
 - validate whether the current caption headline pool is broad enough for 10-output commercial batches or whether repeated hook rotation is now the dominant samey-content risk
 - validate whether the new caption-aware same-batch planner pressure is strong enough on additional products or whether product-level headline-pool guidance and operator-visible pair-count summaries are needed next
 - validate whether the new pool-normalized duplicate-scoring math stays truthful across products with very uneven ready pools, especially one-voice or low-foreground catalogs
+- validate whether the new requested-run snapshot truth is sufficient for product-local audit and whether later order identifiers should also be mirrored into `order_snapshot.toml`
+- validate whether the new same-batch foreground coverage pressure lowers commercial duplicate feel on real campaign batches without over-favoring historically overused foregrounds
 - validate whether the new background-diversity hardening is strong enough on real campaign batches or whether future policy needs per-product cooldown knobs for backgrounds
 - validate whether the new foreground/music diversity hardening is strong enough on real campaign batches or whether product-level cooldown knobs are needed for sequence families or music reuse
 - validate whether the new frontier option-pool reordering is strong enough on real large-pool products or whether future policy needs explicit per-role cooldown windows or operator-tunable diversity budgets
@@ -252,18 +256,20 @@
 7. Validate whether product-local `runs/<batch_code>` artifacts remain sufficient across multiple products and whether journal detail is enough for recovery-facing operator use.
 8. Validate whether the new exact `fingerprint_hash` guard prevents commercially unacceptable exact repeats in real Shopee/TikTok publishing batches without over-blocking useful variants.
 9. Validate whether the new pool-normalized duplicate-scoring math keeps `Medium` versus `High` operator truth aligned with real constrained pools across additional products.
-10. Validate whether the new `Orders`-tab risk filter, sort, and level emphasis actually reduce operator triage time on real campaign batches.
-11. Validate whether the new recent-orders risk summary strip reduces operator click-through time when scanning recent production history.
-12. Validate whether the new background-diversity hardening actually reduces same-background repetition on real Shopee/TikTok publishing batches.
-13. Validate whether the new foreground/music diversity hardening actually lowers repeated-foreground and repeated-music risk on real Shopee/TikTok publishing batches.
-14. Validate whether the new frontier option-pool reordering actually broadens large-pool background/music usage on real campaign batches such as `Biothentic0001`.
-15. Validate whether the new persistent foreground/background clip policy actually reduces same-clip duplicate feel on real operator batches while still preserving enough cross-output variety.
-16. Validate whether the new segment-inventory manifest evidence is enough for operator review or whether `Orders` / output-detail UI should surface more of it directly.
-17. Run another live end-to-end preview/final audit on `Biothentic0001` after the new policy-aware voice-loop, loop-authority, and promo-caption contract slice.
-18. Validate whether product-level voice looping should surface an operator-facing repetition warning or max-repeat policy after more live runs.
-19. Run another live `Biothentic0001` audit on the versioned manifest envelope and verify that output-detail surfaces remain readable from the new sectioned contract.
-20. Run a live folder-intake audit on one real product folder arranged in the new `contracts/` plus `assets/` layout and verify that ambiguity failures are understandable to operators.
-20. Validate the new `Audit Only` control-surface mode with operators and decide whether issue grouping/export needs to be added.
+10. Validate whether the new requested-run snapshot truth reduces operator confusion when product-local run artifacts are inspected outside the UI.
+11. Validate whether the new same-batch foreground coverage pressure reduces repeated-foreground feel on real Shopee/TikTok publishing batches before adding any future operator-tunable cooldown knobs.
+12. Validate whether the new `Orders`-tab risk filter, sort, and level emphasis actually reduce operator triage time on real campaign batches.
+13. Validate whether the new recent-orders risk summary strip reduces operator click-through time when scanning recent production history.
+14. Validate whether the new background-diversity hardening actually reduces same-background repetition on real Shopee/TikTok publishing batches.
+15. Validate whether the new foreground/music diversity hardening actually lowers repeated-foreground and repeated-music risk on real Shopee/TikTok publishing batches.
+16. Validate whether the new frontier option-pool reordering actually broadens large-pool background/music usage on real campaign batches such as `Biothentic0001`.
+17. Validate whether the new persistent foreground/background clip policy actually reduces same-clip duplicate feel on real operator batches while still preserving enough cross-output variety.
+18. Validate whether the new segment-inventory manifest evidence is enough for operator review or whether `Orders` / output-detail UI should surface more of it directly.
+19. Run another live end-to-end preview/final audit on `Biothentic0001` after the new policy-aware voice-loop, loop-authority, and promo-caption contract slice.
+20. Validate whether product-level voice looping should surface an operator-facing repetition warning or max-repeat policy after more live runs.
+21. Run another live `Biothentic0001` audit on the versioned manifest envelope and verify that output-detail surfaces remain readable from the new sectioned contract.
+22. Run a live folder-intake audit on one real product folder arranged in the new `contracts/` plus `assets/` layout and verify that ambiguity failures are understandable to operators.
+23. Validate the new `Audit Only` control-surface mode with operators and decide whether issue grouping/export needs to be added.
 
 ## Direction Locked In This Documentation Revision
 

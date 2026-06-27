@@ -29,6 +29,7 @@ That behavior was too pessimistic for operator review because:
 - role reuse penalties must distinguish between:
   - avoidable reuse while unused pool capacity still exists
   - constrained reuse after the pool is already exhausted evenly
+- same-batch persistent foreground coverage should later be free to harden further without changing the exact-history guard, especially when one foreground remains unused while another is already repeating
 - headline reuse penalties must also respect the available deterministic same-batch headline pool
 - fresh same-batch headline signals may apply a bounded diversity credit, but exact-combo reuse must still stay hard-blocked at the stronger exact-history seam
 - risk reasons remain reuse-oriented and truthful; this slice calibrates score math without claiming that constrained products are duplicate-safe
@@ -70,6 +71,7 @@ sequenceDiagram
 ## Expected Behavior
 
 - early reuse while fresh role alternatives still exist remains strongly penalized
+- same-batch foreground selection should prefer fresh persistent foreground coverage before repeating another foreground that is already used in the batch
 - once the planner has already consumed the full ready pool evenly, unavoidable reuse stays visible but scores lower than avoidable reuse
 - one-voice products can still show voice reuse reasons, but that constraint no longer dominates the whole order into `High` by itself
 - fresh deterministic headlines and fresh `headline + foreground` / `headline + music` pairings can lower the score modestly
@@ -89,3 +91,4 @@ sequenceDiagram
 - a low or medium planner score does not mean the product has a large enough real asset pool for unlimited safe publishing
 - the score can now say "this reuse was constrained and spread as fairly as possible", but it still cannot prove rendered pixel-level uniqueness
 - backend-functional `Pause Run`, `Stop Run`, and `Resume Run` semantics remain unchanged by this duplicate-scoring slice and are already delivered separately through the local-worker persisted control baseline in document `71`
+- later same-batch foreground-coverage pressure can still refine this slice further without changing its core pool-normalized scoring direction

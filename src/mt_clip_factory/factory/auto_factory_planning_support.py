@@ -2,6 +2,7 @@ from __future__ import annotations
 
 from collections import Counter
 from dataclasses import dataclass, replace
+import math
 
 from mt_clip_factory.factory.auto_factory_dto import PlannedBatchAssetAssignmentDTO
 from mt_clip_factory.factory.caption_selection_support import CaptionSelectionSignature
@@ -59,6 +60,7 @@ class _PlanningHistory:
 
 @dataclass(slots=True, frozen=True)
 class _PlanningPoolProfile:
+    role_asset_pool_ids: dict[str, frozenset[int]]
     role_asset_pool_sizes: dict[str, int]
     foreground_sequence_pool_size: int
     main_caption_pool_size: int
@@ -195,6 +197,11 @@ def _selection_score(
             float(selected_role_asset_counts[(assignment.role, assignment.asset_id)]) * role_weight
         )
     internal_repeat_penalty = float(_foreground_internal_repeat_count(blueprint.foreground_sequence)) * 25.0
+    foreground_balance_penalty = _foreground_batch_balance_penalty(
+        blueprint,
+        selected_role_asset_counts=selected_role_asset_counts,
+        pool_profile=pool_profile,
+    )
     total_penalty = (
         selected_exact_penalty
         + history_exact_penalty
@@ -203,6 +210,7 @@ def _selection_score(
         + (selected_role_penalty * 24.0)
         + (history_role_penalty * 7.0)
         + internal_repeat_penalty
+        + foreground_balance_penalty
         + (similarity.score * 500.0)
     )
     return total_penalty, blueprint.variant_index
@@ -375,14 +383,23 @@ def _assess_near_duplicate(
         )
         reasons.append("headline_music_combo_reused")
 
-    score = max(0.0, score - _fresh_diversity_credit(
-        exact_reuse_count=exact_reuse_count,
-        main_caption_reuse=main_caption_reuse,
-        headline_foreground_reuse=headline_foreground_reuse,
-        headline_music_reuse=headline_music_reuse,
-        pool_profile=pool_profile,
-        slot_signature=slot_signature,
-    ))
+    score = max(
+        0.0,
+        score
+        - _foreground_balance_credit(
+            blueprint,
+            selected_role_asset_counts=selected_role_asset_counts,
+            pool_profile=pool_profile,
+        )
+        - _fresh_diversity_credit(
+            exact_reuse_count=exact_reuse_count,
+            main_caption_reuse=main_caption_reuse,
+            headline_foreground_reuse=headline_foreground_reuse,
+            headline_music_reuse=headline_music_reuse,
+            pool_profile=pool_profile,
+            slot_signature=slot_signature,
+        ),
+    )
 
     unique_reasons = tuple(dict.fromkeys(reasons))
     return _SimilarityAssessment(
@@ -500,12 +517,80 @@ def _build_planning_pool_profile(
             if music_asset_id is not None:
                 headline_music_combos.add((slot_signature.main_role_texts, music_asset_id))
     return _PlanningPoolProfile(
+        role_asset_pool_ids={role: frozenset(asset_ids) for role, asset_ids in role_asset_ids.items()},
         role_asset_pool_sizes={role: len(asset_ids) for role, asset_ids in role_asset_ids.items()},
         foreground_sequence_pool_size=len(foreground_sequences),
         main_caption_pool_size=len(main_caption_signatures),
         headline_foreground_combo_pool_size=len(headline_foreground_combos),
         headline_music_combo_pool_size=len(headline_music_combos),
     )
+
+
+def _foreground_batch_balance_penalty(
+    blueprint: _VariantBlueprint,
+    *,
+    selected_role_asset_counts: Counter,
+    pool_profile: _PlanningPoolProfile,
+) -> float:
+    foreground_asset_id = _role_asset_id(blueprint, role_name="foreground")
+    if foreground_asset_id is None:
+        return 0.0
+    foreground_pool_ids = tuple(sorted(pool_profile.role_asset_pool_ids.get("foreground", frozenset())))
+    pool_size = len(foreground_pool_ids)
+    if pool_size <= 1:
+        return 0.0
+    current_selected_count = float(selected_role_asset_counts[("foreground", foreground_asset_id)])
+    selected_counts = [int(selected_role_asset_counts[("foreground", asset_id)]) for asset_id in foreground_pool_ids]
+    selected_total = float(sum(selected_counts))
+    projected_count = current_selected_count + 1.0
+    fair_share_ceiling = _fair_share_ceiling(total_count=selected_total + 1.0, pool_size=pool_size)
+    min_selected_count = min(selected_counts, default=0)
+    unused_asset_count = sum(1 for count in selected_counts if count <= 0)
+    penalty = 0.0
+    if unused_asset_count > 0 and current_selected_count > 0:
+        penalty += 1600.0
+    over_fair_share = projected_count - fair_share_ceiling
+    if over_fair_share > 0:
+        penalty += 90.0 * over_fair_share
+    ahead_of_floor = projected_count - float(min_selected_count + 1)
+    if ahead_of_floor > 0:
+        penalty += 60.0 * ahead_of_floor
+    return penalty
+
+
+def _foreground_balance_credit(
+    blueprint: _VariantBlueprint,
+    *,
+    selected_role_asset_counts: Counter,
+    pool_profile: _PlanningPoolProfile,
+) -> float:
+    foreground_asset_id = _role_asset_id(blueprint, role_name="foreground")
+    if foreground_asset_id is None:
+        return 0.0
+    foreground_pool_ids = tuple(sorted(pool_profile.role_asset_pool_ids.get("foreground", frozenset())))
+    pool_size = len(foreground_pool_ids)
+    if pool_size <= 1:
+        return 0.0
+    current_selected_count = float(selected_role_asset_counts[("foreground", foreground_asset_id)])
+    selected_total = float(
+        sum(
+            float(selected_role_asset_counts[("foreground", asset_id)])
+            for asset_id in foreground_pool_ids
+        )
+    )
+    projected_count = current_selected_count + 1.0
+    fair_share_ceiling = _fair_share_ceiling(total_count=selected_total + 1.0, pool_size=pool_size)
+    if current_selected_count <= 0 and selected_total < float(pool_size):
+        return 0.08
+    if projected_count <= fair_share_ceiling:
+        return 0.04
+    return 0.0
+
+
+def _fair_share_ceiling(*, total_count: float, pool_size: int) -> float:
+    if pool_size <= 0:
+        return total_count
+    return float(math.ceil(total_count / float(pool_size)))
 
 
 def _scaled_reuse_penalty(

@@ -56,6 +56,7 @@ It complements [07_Testing_Strategy.md](/F:/programming/python/MTClipFactory/doc
 - persistent foreground/background clip policy so each Auto Factory clip uses exactly one foreground plus one background without mid-clip foreground swaps
 - segment-inventory manifest evidence so each rendered clip exposes segment asset/time composition truth plus deterministic clip-formula hashing
 - segment-aware foreground assignment rendering so semantic recipe roles map to the matching timeline segments during preview/final composition
+- requested-run snapshot truth for product-local Auto Factory artifacts, including operator-requested run mode and requested materialize/build-preview booleans
 - tag-aware auto-factory asset-pool filtering from normalized asset labels
 - asset-first tagging workflow for selected-asset details, tag search, and create-and-attach behavior
 - bulk asset tagging workflow for multi-select assignment and primary selected-asset review
@@ -236,15 +237,17 @@ It complements [07_Testing_Strategy.md](/F:/programming/python/MTClipFactory/doc
 29. Confirm each planned recipe exposes a deterministic `near_duplicate_score` and machine-readable `near_duplicate_reasons`.
 30. Confirm successful `materialize` recipe stages persist `near_duplicate_score` and `near_duplicate_reasons` in order-stage detail truth.
 31. Confirm the desktop `Auto Factory` `Orders` tab shows persisted duplicate-risk values and reasons without guessing when older orders do not have that evidence.
-32. Confirm the planner hard-blocks an exact canonical `fingerprint_hash` repeat when the same product already has that exact persisted recipe formula in history.
-33. Confirm the hard guard still allows a non-identical candidate when target ratio, target duration, or role assignment differences change the canonical hash.
-34. Confirm production-order resume excludes the same order's already-materialized recipes from duplicate-guard history rebuilding so retryable preview failures can continue.
-35. Confirm the desktop `Auto Factory` `Orders` tab derives `High`, `Medium`, `Low`, and `Unavailable` emphasis labels from persisted planner evidence without inventing missing scores.
-36. Confirm the desktop `Auto Factory` `Orders` tab can filter product/stage rows by risk emphasis and sort stage rows by duplicate risk.
-37. Confirm the desktop `Auto Factory` `Recent Production Orders` strip shows persisted `Risk Level` plus raw `Duplicate Risk` and highlights higher-risk rows without guessing when evidence is missing.
-38. Confirm Auto Factory uses more than one feasible `background_video` across early batch outputs when alternatives exist, even if the product has a large foreground search space.
-39. Confirm Auto Factory can surface a fresh `background_music` alternative early enough to choose it when the default early scan would otherwise be dominated by other dimensions.
-40. Confirm Auto Factory deprioritizes a historically repeated foreground sequence when a feasible fresh sequence exists.
+32. Confirm `order_snapshot.toml` records the operator-requested `run_mode`, `materialize_requested`, and `build_previews_requested` truth even when the desktop Auto Factory path performs intake before background production-order execution.
+33. Confirm the planner hard-blocks an exact canonical `fingerprint_hash` repeat when the same product already has that exact persisted recipe formula in history.
+34. Confirm the hard guard still allows a non-identical candidate when target ratio, target duration, or role assignment differences change the canonical hash.
+35. Confirm production-order resume excludes the same order's already-materialized recipes from duplicate-guard history rebuilding so retryable preview failures can continue.
+36. Confirm the desktop `Auto Factory` `Orders` tab derives `High`, `Medium`, `Low`, and `Unavailable` emphasis labels from persisted planner evidence without inventing missing scores.
+37. Confirm the desktop `Auto Factory` `Orders` tab can filter product/stage rows by risk emphasis and sort stage rows by duplicate risk.
+38. Confirm the desktop `Auto Factory` `Recent Production Orders` strip shows persisted `Risk Level` plus raw `Duplicate Risk` and highlights higher-risk rows without guessing when evidence is missing.
+39. Confirm Auto Factory uses more than one feasible `background_video` across early batch outputs when alternatives exist, even if the product has a large foreground search space.
+40. Confirm Auto Factory can surface a fresh `background_music` alternative early enough to choose it when the default early scan would otherwise be dominated by other dimensions.
+41. Confirm the planner uses every feasible foreground at least once before repeating another foreground that is already used in the same batch when a fresh foreground still exists.
+42. Confirm Auto Factory deprioritizes a historically repeated foreground sequence when a feasible fresh sequence exists.
 41. Confirm large ready asset pools reorder `background`, `music`, or `voice` options by historical underuse before frontier enumeration.
 42. Confirm equal-history role assets preserve deterministic seeded tie order after the new frontier option-pool reordering.
 43. Confirm a large ready background pool prefers fresher backgrounds before falling back to historically reused ones.

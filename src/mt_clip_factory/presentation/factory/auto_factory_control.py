@@ -288,6 +288,9 @@ class AutoFactoryControlViewModel(QObject):
             batch_code=request.batch_code,
             scan_depth=request.scan_depth,
             materialize=False,
+            snapshot_materialize_requested=request.run_mode != self.RUN_MODE_INTAKE_ONLY,
+            snapshot_build_previews_requested=request.run_mode == self.RUN_MODE_MATERIALIZE_AND_PREVIEWS,
+            snapshot_run_mode=request.run_mode,
         )
         if request.run_mode == self.RUN_MODE_INTAKE_ONLY:
             return AutoFactoryControlExecutionResult(
