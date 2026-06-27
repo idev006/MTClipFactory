@@ -68,6 +68,7 @@ def build_segmented_preview_composition(
     segments: Sequence[TimelineSegment],
     caption_runtime_service: CaptionRuntimeService | None = None,
     automation_policy_service: ProductAutomationPolicyService | None = None,
+    creative_preset_code: str | None = None,
     caption_frame_size: tuple[int, int] | None = None,
 ) -> PreviewComposition:
     fill_policies = (
@@ -91,6 +92,7 @@ def build_segmented_preview_composition(
         product_code=product_code,
         recipe_code=recipe.recipe_code,
         segments=segments,
+        creative_preset_code=creative_preset_code,
         frame_size=caption_frame_size,
     )
     if not visual_assets_by_layer:
@@ -389,6 +391,7 @@ def _resolve_segment_captions(
     product_code: str,
     recipe_code: str,
     segments: Sequence[TimelineSegment],
+    creative_preset_code: str | None,
     frame_size: tuple[int, int] | None,
 ) -> dict[int, ResolvedSegmentCaptions]:
     if caption_runtime_service is None:
@@ -398,6 +401,7 @@ def _resolve_segment_captions(
         product_code=product_code,
         recipe_code=recipe_code,
         segments=tuple(segments),
+        creative_preset_code=creative_preset_code,
         frame_width_px=frame_width_px,
         frame_height_px=frame_height_px,
     )

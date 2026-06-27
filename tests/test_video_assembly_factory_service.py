@@ -8,6 +8,8 @@ import pytest
 from mt_clip_factory.application.dto import CreateProductCommand
 from mt_clip_factory.application.services import ProductApplicationService
 from mt_clip_factory.factory.audio_composition import PreviewAudioMixPlan
+from mt_clip_factory.domain.enums import OrchestrationStatus
+from mt_clip_factory.domain.production_orders import ProductionOrder, ProductionOrderItem, ProductionOrderStage
 from mt_clip_factory.factory.automation_policy import ProductAutomationPolicyService
 from mt_clip_factory.factory.caption_runtime import CaptionRuntimeService, ProductAutomationMetadataStore
 from mt_clip_factory.factory.dto import AssignAssetToRecipeCommand, CreateRecipeCommand
@@ -234,6 +236,32 @@ def _write_runtime_caption_contract(
     return CaptionRuntimeService(metadata_store=metadata_store, fonts_root=fonts_root)
 
 
+def _write_runtime_creative_preset_contract(
+    *,
+    media_root: Path,
+    product_code: str,
+    preset_code: str = "clean_story",
+    main_style_preset: str = "clean_cta",
+    sub_style_preset: str = "dark_lower_third",
+) -> None:
+    source_dir = media_root.parent / "product_contract"
+    source_dir.mkdir(parents=True, exist_ok=True)
+    creative_preset_source = source_dir / "creative_presets.toml"
+    creative_preset_source.write_text(
+        "\n".join(
+            [
+                f"[presets.{preset_code}]",
+                f'display_name = "{preset_code.replace("_", " ").title()}"',
+                f'main_style_preset = "{main_style_preset}"',
+                f'sub_style_preset = "{sub_style_preset}"',
+            ]
+        ),
+        encoding="utf-8",
+    )
+    metadata_store = ProductAutomationMetadataStore(media_root)
+    metadata_store.sync_creative_preset_contract(product_code=product_code, source_file=creative_preset_source)
+
+
 def test_factory_service_creates_and_lists_recipe(unit_of_work_factory, tmp_path) -> None:
     product_id, _ = _register_ready_asset(unit_of_work_factory, tmp_path)
     service = _build_factory_service(unit_of_work_factory, tmp_path / "previews")
@@ -371,6 +399,86 @@ def test_factory_service_writes_resolved_caption_manifest_and_review_signal(unit
     assert manifest_payload["captions"]["segments"][0]["roles"][0]["font_file"].endswith("THSarabun.ttf")
     assert recipe.status == "needs_review"
     assert any(signal["code"] == "caption_overflow_risk" for signal in manifest_payload["review_gate"]["signals"])
+
+
+def test_factory_service_applies_materialized_creative_preset_to_caption_manifest(unit_of_work_factory, tmp_path) -> None:
+    media_root = tmp_path / "media_library"
+    product_id, asset_id = _register_ready_asset(unit_of_work_factory, tmp_path)
+    caption_runtime_service = _write_runtime_caption_contract(
+        media_root=media_root,
+        product_code="honey",
+        main_text="caption preset hook",
+    )
+    _write_runtime_creative_preset_contract(
+        media_root=media_root,
+        product_code="honey",
+        preset_code="clean_story",
+        main_style_preset="clean_cta",
+        sub_style_preset="dark_lower_third",
+    )
+    service = _build_factory_service(
+        unit_of_work_factory,
+        tmp_path / "previews",
+        caption_runtime_service=caption_runtime_service,
+    )
+    recipe_id = service.create_recipe(CreateRecipeCommand(product_id=product_id, recipe_code="Caption Preset Render"))
+    service.assign_asset_to_recipe(AssignAssetToRecipeCommand(recipe_id=recipe_id, asset_id=asset_id, role="hero"))
+
+    with unit_of_work_factory() as uow:
+        order = uow.production_orders.add(
+            ProductionOrder(
+                order_code="caption_preset_order_001",
+                batch_code="caption_preset_batch",
+                source_mode="test_runtime",
+            )
+        )
+        assert order.id is not None
+        order_item = uow.production_orders.add_item(
+            ProductionOrderItem(
+                production_order_id=order.id,
+                product_id=product_id,
+                product_code_snapshot="honey",
+                requested_output_count=1,
+            )
+        )
+        assert order_item.id is not None
+        uow.production_order_stages.add(
+            ProductionOrderStage(
+                production_order_id=order.id,
+                production_order_item_id=order_item.id,
+                stage_name="materialize",
+                stage_scope="recipe",
+                status=OrchestrationStatus.SUCCEEDED,
+                sequence_index=1,
+                recipe_id=recipe_id,
+                detail_json=json.dumps(
+                    {
+                        "creative_preset_code": "clean_story",
+                        "creative_preset_signature": "clean_story|-|-|-|clean_cta|dark_lower_third",
+                        "creative_preset_reasons": ["preset_mode:locked_preset"],
+                    }
+                ),
+            )
+        )
+        uow.commit()
+
+    job_id = service.enqueue_preview_job(
+        recipe_id,
+        batch_code="caption_preset_batch",
+        source_mode="folder_control_surface",
+    )
+    service.run_preview_job(job_id)
+
+    output = service.list_outputs(recipe_id=recipe_id)[0]
+    manifest_payload = json.loads(Path(output.manifest_path).read_text(encoding="utf-8"))
+    first_segment_roles = manifest_payload["captions"]["segments"][0]["roles"]
+
+    assert manifest_payload["creative_preset"]["preset_code"] == "clean_story"
+    assert first_segment_roles[0]["style_preset"] == "clean_cta"
+    assert first_segment_roles[0]["position"] == "center"
+    assert first_segment_roles[0]["background_color"] == "#0F172A"
+    assert first_segment_roles[1]["style_preset"] == "dark_lower_third"
+    assert first_segment_roles[1]["background_color"] == "#0F172A"
 
 
 def test_factory_service_writes_runtime_audio_mix_summary_to_manifest(unit_of_work_factory, tmp_path) -> None:

@@ -52,6 +52,28 @@ def _write_caption_contract(
     return caption_file
 
 
+def _write_creative_preset_contract(
+    product_dir: Path,
+    *,
+    preset_code: str = "clean_story",
+    main_style_preset: str = "clean_cta",
+    sub_style_preset: str = "benefit_stack",
+) -> Path:
+    creative_preset_file = product_dir / "creative_presets.toml"
+    creative_preset_file.write_text(
+        "\n".join(
+            [
+                f"[presets.{preset_code}]",
+                f'display_name = "{preset_code.replace("_", " ").title()}"',
+                f'main_style_preset = "{main_style_preset}"',
+                f'sub_style_preset = "{sub_style_preset}"',
+            ]
+        ),
+        encoding="utf-8",
+    )
+    return creative_preset_file
+
+
 def test_caption_runtime_resolves_deterministic_roles_and_workspace_font(tmp_path) -> None:
     media_root = tmp_path / "media_library"
     fonts_root = tmp_path / "fonts"
@@ -227,6 +249,83 @@ def test_caption_runtime_can_resolve_selection_signature_without_layout_renderin
     assert first.main_role_texts != second.main_role_texts
     assert first.role_texts[0][0:2] == ("hook", "main")
     assert first.role_texts[-1][0:2] == ("cta", "main")
+
+
+def test_caption_runtime_applies_creative_preset_style_override_to_rendered_roles(tmp_path) -> None:
+    media_root = tmp_path / "media_library"
+    fonts_root = tmp_path / "fonts"
+    fonts_root.mkdir(parents=True, exist_ok=True)
+    (fonts_root / "THSarabun.ttf").write_bytes(b"font")
+    product_dir = tmp_path / "product_preset_override"
+    product_dir.mkdir(parents=True, exist_ok=True)
+    caption_file = product_dir / "captions.toml"
+    caption_file.write_text(
+        "\n".join(
+            [
+                "[caption_pools.hook]",
+                'main = ["hook text"]',
+                'sub = ["sub text"]',
+                "",
+                "[caption_properties.main]",
+                'font_family = "THSarabun"',
+                'position = "top"',
+                "font_size = 64",
+                "safe_top_ratio = 0.10",
+                "safe_bottom_ratio = 0.34",
+                "",
+                "[caption_properties.sub]",
+                'font_family = "THSarabun"',
+                'position = "bottom"',
+                "font_size = 34",
+                "safe_top_ratio = 0.70",
+                "safe_bottom_ratio = 0.90",
+            ]
+        ),
+        encoding="utf-8",
+    )
+    creative_preset_file = _write_creative_preset_contract(
+        product_dir,
+        preset_code="clean_story",
+        main_style_preset="clean_cta",
+        sub_style_preset="dark_lower_third",
+    )
+    store = ProductAutomationMetadataStore(media_root)
+    store.sync_caption_contract(product_code="product_preset_override", source_file=caption_file)
+    store.sync_creative_preset_contract(product_code="product_preset_override", source_file=creative_preset_file)
+    service = CaptionRuntimeService(metadata_store=store, fonts_root=fonts_root)
+    segments = (
+        TimelineSegment(
+            recipe_id=1,
+            segment_type="hook",
+            sequence_index=1,
+            start_sec=0.0,
+            end_sec=3.0,
+            target_duration_sec=3.0,
+        ),
+    )
+
+    baseline = service.resolve_for_segments(
+        product_code="product_preset_override",
+        recipe_code="product_preset_override_batch_001",
+        segments=segments,
+    )
+    overridden = service.resolve_for_segments(
+        product_code="product_preset_override",
+        recipe_code="product_preset_override_batch_001",
+        segments=segments,
+        creative_preset_code="clean_story",
+    )
+
+    assert baseline[0].roles[0].style_preset is None
+    assert baseline[0].roles[0].position == "top"
+    assert baseline[0].roles[1].style_preset is None
+    assert baseline[0].roles[1].background_color is None
+    assert overridden[0].roles[0].style_preset == "clean_cta"
+    assert overridden[0].roles[0].position == "center"
+    assert overridden[0].roles[0].background_color == "#0F172A"
+    assert overridden[0].roles[1].style_preset == "dark_lower_third"
+    assert overridden[0].roles[1].background_color == "#0F172A"
+    assert overridden[0].roles[1].textbox_width_ratio == pytest.approx(0.94)
 
 
 def test_caption_runtime_places_default_main_and_sub_in_separate_safe_bands(tmp_path) -> None:

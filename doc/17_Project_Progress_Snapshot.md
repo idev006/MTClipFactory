@@ -105,6 +105,7 @@
 - Auto Factory planner now also calibrates duplicate-risk math against the actual feasible role pool, so evenly spread reuse in one-voice or low-foreground products is scored more truthfully than avoidable early reuse.
 - Auto Factory planner now also grants bounded credit for fresh same-batch headline pairings, so a widened caption pool can lower risk without hiding real reuse reasons.
 - Auto Factory now also supports product-local creative preset contracts, planner-time preset resolution, persisted preset request truth on production-order items, chosen-preset evidence on materialize stages, manifest-visible preset identity, and desktop preset-mode/operator-override controls.
+- Auto Factory preview/final render now also applies the materialized creative preset's caption-style override truth, so per-clip chosen presets can change rendered `main` / `sub` caption card styling instead of remaining planner-only metadata.
 - Auto Factory recent-order summary now also reflects combined order-level duplicate truth from materialize-stage planner evidence plus preview/review render-history evidence instead of showing planner-only score in isolation.
 - Auto Factory selected-order summaries now also report requested preset policy plus persisted chosen-preset spread/concentration, and the live `Biothentic0001` contract now includes a real preset catalog with `balanced_cycle` defaults plus preset-aware foreground/music tag tuning.
 - product-local `order_snapshot.toml` now also preserves operator-requested run truth for `run_mode`, `materialize_requested`, and `build_previews_requested` even when the desktop path executes folder intake first and starts the persisted order afterward
@@ -188,6 +189,7 @@
 - delivered stronger `Orders`-tab operator triage for duplicate risk through derived risk levels, row emphasis, and risk filter/sort controls backed only by persisted planner evidence
 - delivered recent-orders duplicate-risk summary so the bottom `Recent Production Orders` strip now shows persisted `Risk Level` and a combined order-level raw score with the same truthful emphasis palette
 - delivered creative-preset orchestration baseline so product-local `creative_presets.toml`, planner-time preset resolution, persisted preset request truth, materialize-stage preset evidence, manifest-visible preset identity, and Auto Factory preset controls now work end to end
+- delivered preset-driven caption rendering so preview/final jobs now read the materialized preset code and apply preset-specific `main_style_preset` / `sub_style_preset` overrides inside caption runtime and output manifests
 - delivered preset-spread operator summary plus live-product contract hardening so selected orders can show requested preset mode, requested preset codes, chosen preset spread, and preset concentration from persisted materialize truth
 - delivered background-diversity hardening so early Auto Factory candidate scans no longer hide alternate backgrounds behind a large foreground search space
 - delivered foreground/music diversity hardening so candidate coverage and scoring now push fresh music and foreground sequences earlier when feasible

@@ -118,7 +118,9 @@ The same operator-truth and anti-duplicate stream now also keeps `order_snapshot
 
 The current anti-duplicate and creative-diversity stream now includes a delivered creative preset orchestration baseline so Auto Factory can vary whole ad treatments, not only rotate raw foreground/background/voice/music ids inside one flat selection space.
 
-The next stream should validate that delivered baseline on broader live products, tune preset-family balancing and suitability signals, and decide whether preset contract fields such as `headline_pool_names` should later drive a deeper caption-runtime override path instead of remaining planner/audit metadata only.
+The same creative-diversity stream now also applies materialized preset caption-style truth during preview/final render, so preset-driven `main` / `sub` visual treatment changes are visible in the actual clip output path rather than only in planner/audit metadata.
+
+The next stream should validate that delivered render-time baseline on broader live products, tune preset-family balancing and suitability signals, and decide whether preset contract fields such as `headline_pool_names` should later drive a deeper caption-runtime override path instead of remaining planner/audit metadata only.
 
 Backlog activation rules:
 

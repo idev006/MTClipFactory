@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from dataclasses import dataclass
+from dataclasses import dataclass, replace
 from pathlib import Path
 import shutil
 import tomllib
@@ -25,6 +25,11 @@ from mt_clip_factory.factory.caption_runtime_support import (
     _resolve_font,
     _resolve_style_preset_defaults,
     _text_list,
+)
+from mt_clip_factory.factory.creative_preset_runtime import (
+    CreativePresetContractError,
+    CreativePresetDefinition,
+    parse_creative_preset_contract_text,
 )
 
 
@@ -295,10 +300,14 @@ class CaptionRuntimeService:
         product_code: str,
         recipe_code: str,
         segments: tuple[TimelineSegment, ...],
+        creative_preset_code: str | None = None,
         frame_width_px: int | None = None,
         frame_height_px: int | None = None,
     ) -> tuple[ResolvedSegmentCaptions, ...]:
-        contract = self._load_contract(product_code)
+        contract = self._load_contract(
+            product_code,
+            creative_preset_code=creative_preset_code,
+        )
         if contract is None:
             return ()
         frame = (
@@ -366,7 +375,12 @@ class CaptionRuntimeService:
             segment_types=segment_types,
         )
 
-    def _load_contract(self, product_code: str) -> ProductCaptionContract | None:
+    def _load_contract(
+        self,
+        product_code: str,
+        *,
+        creative_preset_code: str | None = None,
+    ) -> ProductCaptionContract | None:
         raw_text = self._metadata_store.load_caption_contract_text(product_code)
         if raw_text is None:
             return None
@@ -379,7 +393,7 @@ class CaptionRuntimeService:
         selection_section = _expect_table(data.get("caption_selection"), table_name="[caption_selection]", required=False)
         pools_section = _expect_table(data.get("caption_pools"), table_name="[caption_pools]", required=False)
         properties_section = _expect_table(data.get("caption_properties"), table_name="[caption_properties]", required=False)
-        return ProductCaptionContract(
+        contract = ProductCaptionContract(
             selection=CaptionSelectionPolicy(
                 mode=_optional_text(selection_section.get("mode")) or "random_with_seed",
                 seed_scope=_optional_text(selection_section.get("seed_scope")) or "recipe",
@@ -395,6 +409,50 @@ class CaptionRuntimeService:
             main_style=_parse_role_style(properties_section.get("main"), role="main"),
             sub_style=_parse_role_style(properties_section.get("sub"), role="sub"),
         )
+        creative_preset = self._load_creative_preset_definition(
+            product_code,
+            creative_preset_code=creative_preset_code,
+        )
+        if creative_preset is None:
+            return contract
+        return replace(
+            contract,
+            main_style=_apply_style_preset_override(
+                contract.main_style,
+                role="main",
+                style_preset=creative_preset.main_style_preset,
+            ),
+            sub_style=_apply_style_preset_override(
+                contract.sub_style,
+                role="sub",
+                style_preset=creative_preset.sub_style_preset,
+            ),
+        )
+
+    def _load_creative_preset_definition(
+        self,
+        product_code: str,
+        *,
+        creative_preset_code: str | None,
+    ) -> CreativePresetDefinition | None:
+        normalized_code = _optional_text(creative_preset_code)
+        if normalized_code is None:
+            return None
+        normalized_code = normalized_code.casefold()
+        raw_text = self._metadata_store.load_creative_preset_contract_text(product_code)
+        if raw_text is None or not raw_text.strip():
+            return None
+        try:
+            definitions = parse_creative_preset_contract_text(
+                raw_text,
+                source_name=str(self._metadata_store.creative_preset_contract_path(product_code)),
+            )
+        except CreativePresetContractError as exc:
+            raise CaptionContractError(str(exc)) from exc
+        for definition in definitions:
+            if definition.preset_code == normalized_code:
+                return definition
+        return None
 
     def _resolve_role(
         self,
@@ -707,5 +765,225 @@ def _parse_role_style(value, *, role: str) -> CaptionRoleStyle:
             value_for("review_required_if_overflow"),
             default=True,
             context=f"[caption_properties.{role}].review_required_if_overflow",
+        ),
+    )
+
+
+def _apply_style_preset_override(
+    style: CaptionRoleStyle,
+    *,
+    role: str,
+    style_preset: str | None,
+) -> CaptionRoleStyle:
+    normalized_style_preset = _optional_text(style_preset)
+    if normalized_style_preset is None:
+        return style
+    normalized_style_preset = normalized_style_preset.casefold()
+    preset_defaults = _resolve_style_preset_defaults(
+        style_preset=normalized_style_preset,
+        role=role,
+    )
+
+    def has_value(*keys: str) -> bool:
+        return any(key in preset_defaults for key in keys)
+
+    def value_or_current(current_value, *keys: str):
+        for key in keys:
+            if key in preset_defaults:
+                return preset_defaults[key]
+        return current_value
+
+    textbox_width_source = value_or_current(style.textbox_width_ratio, "textbox_width_ratio", "max_width_ratio")
+    max_width_source = (
+        preset_defaults["max_width_ratio"]
+        if "max_width_ratio" in preset_defaults
+        else textbox_width_source
+        if "textbox_width_ratio" in preset_defaults
+        else style.max_width_ratio
+    )
+    max_lines = _positive_int(
+        value_or_current(style.max_lines, "max_lines"),
+        default=style.max_lines,
+        context=f"[creative_preset.{normalized_style_preset}.{role}].max_lines",
+    )
+    preferred_line_count = min(
+        max_lines,
+        _positive_int(
+            value_or_current(style.preferred_line_count, "preferred_line_count"),
+            default=style.preferred_line_count,
+            context=f"[creative_preset.{normalized_style_preset}.{role}].preferred_line_count",
+        ),
+    )
+    font_fallbacks = (
+        _text_list(
+            preset_defaults.get("font_fallbacks"),
+            context=f"[creative_preset.{normalized_style_preset}.{role}].font_fallbacks",
+        )
+        if has_value("font_fallbacks")
+        else style.font_fallbacks
+    )
+    return replace(
+        style,
+        position=_optional_text(value_or_current(style.position, "position")) or style.position,
+        alignment=_choice_text(
+            value_or_current(style.alignment, "alignment"),
+            default=style.alignment,
+            allowed=("left", "center", "right"),
+            context=f"[creative_preset.{normalized_style_preset}.{role}].alignment",
+        ),
+        vertical_alignment=_choice_text(
+            value_or_current(style.vertical_alignment, "vertical_alignment"),
+            default=style.vertical_alignment,
+            allowed=("top", "middle", "bottom"),
+            context=f"[creative_preset.{normalized_style_preset}.{role}].vertical_alignment",
+        ),
+        textbox_alignment=_choice_text(
+            value_or_current(style.textbox_alignment, "textbox_alignment"),
+            default=style.textbox_alignment,
+            allowed=("left", "center", "right"),
+            context=f"[creative_preset.{normalized_style_preset}.{role}].textbox_alignment",
+        ),
+        textbox_mode=_choice_text(
+            value_or_current(style.textbox_mode, "textbox_mode"),
+            default=style.textbox_mode,
+            allowed=("grouped", "per_line"),
+            context=f"[creative_preset.{normalized_style_preset}.{role}].textbox_mode",
+        ),
+        textbox_height_mode=_choice_text(
+            value_or_current(style.textbox_height_mode, "textbox_height_mode"),
+            default=style.textbox_height_mode,
+            allowed=("content_hug", "fixed"),
+            context=f"[creative_preset.{normalized_style_preset}.{role}].textbox_height_mode",
+        ),
+        style_preset=normalized_style_preset,
+        font_family=_optional_text(value_or_current(style.font_family, "font_family")) or style.font_family,
+        font_fallbacks=font_fallbacks,
+        font_size=_positive_int(
+            value_or_current(style.font_size, "font_size"),
+            default=style.font_size,
+            context=f"[creative_preset.{normalized_style_preset}.{role}].font_size",
+        ),
+        font_size_unit=_choice_text(
+            value_or_current(style.font_size_unit, "font_size_unit"),
+            default=style.font_size_unit,
+            allowed=("px", "pt"),
+            context=f"[creative_preset.{normalized_style_preset}.{role}].font_size_unit",
+        ),
+        min_font_size=_positive_int(
+            value_or_current(style.min_font_size, "min_font_size"),
+            default=style.min_font_size,
+            context=f"[creative_preset.{normalized_style_preset}.{role}].min_font_size",
+        ),
+        font_weight=_optional_text(value_or_current(style.font_weight, "font_weight")) or style.font_weight,
+        text_color=_optional_text(value_or_current(style.text_color, "text_color")) or style.text_color,
+        stroke_color=_optional_text(value_or_current(style.stroke_color, "stroke_color")) or style.stroke_color,
+        stroke_width=_non_negative_int(
+            value_or_current(style.stroke_width, "stroke_width"),
+            default=style.stroke_width,
+            context=f"[creative_preset.{normalized_style_preset}.{role}].stroke_width",
+        ),
+        background_color=_optional_text(value_or_current(style.background_color, "background_color")),
+        background_opacity=_bounded_float(
+            value_or_current(style.background_opacity, "background_opacity"),
+            default=style.background_opacity,
+            minimum=0.0,
+            maximum=1.0,
+            context=f"[creative_preset.{normalized_style_preset}.{role}].background_opacity",
+        ),
+        box_border_color=_optional_text(value_or_current(style.box_border_color, "box_border_color")),
+        box_border_opacity=_bounded_float(
+            value_or_current(style.box_border_opacity, "box_border_opacity"),
+            default=style.box_border_opacity,
+            minimum=0.0,
+            maximum=1.0,
+            context=f"[creative_preset.{normalized_style_preset}.{role}].box_border_opacity",
+        ),
+        box_border_width=_non_negative_int(
+            value_or_current(style.box_border_width, "box_border_width"),
+            default=style.box_border_width,
+            context=f"[creative_preset.{normalized_style_preset}.{role}].box_border_width",
+        ),
+        padding=_non_negative_int(
+            value_or_current(style.padding, "padding"),
+            default=style.padding,
+            context=f"[creative_preset.{normalized_style_preset}.{role}].padding",
+        ),
+        max_lines=max_lines,
+        preferred_line_count=preferred_line_count,
+        max_chars_per_line=_positive_int(
+            value_or_current(style.max_chars_per_line, "max_chars_per_line"),
+            default=style.max_chars_per_line,
+            context=f"[creative_preset.{normalized_style_preset}.{role}].max_chars_per_line",
+        ),
+        max_width_ratio=_bounded_float(
+            max_width_source,
+            default=style.max_width_ratio,
+            minimum=0.1,
+            maximum=1.0,
+            context=f"[creative_preset.{normalized_style_preset}.{role}].max_width_ratio",
+        ),
+        textbox_width_ratio=_bounded_float(
+            textbox_width_source,
+            default=style.textbox_width_ratio,
+            minimum=0.1,
+            maximum=1.0,
+            context=f"[creative_preset.{normalized_style_preset}.{role}].textbox_width_ratio",
+        ),
+        textbox_height_ratio=_bounded_float(
+            value_or_current(style.textbox_height_ratio, "textbox_height_ratio"),
+            default=style.textbox_height_ratio,
+            minimum=0.0,
+            maximum=1.0,
+            context=f"[creative_preset.{normalized_style_preset}.{role}].textbox_height_ratio",
+        ),
+        line_spacing_ratio=_bounded_float(
+            value_or_current(style.line_spacing_ratio, "line_spacing_ratio"),
+            default=style.line_spacing_ratio,
+            minimum=0.0,
+            maximum=1.0,
+            context=f"[creative_preset.{normalized_style_preset}.{role}].line_spacing_ratio",
+        ),
+        line_advance_ratio=_bounded_float(
+            value_or_current(style.line_advance_ratio, "line_advance_ratio"),
+            default=style.line_advance_ratio,
+            minimum=0.5,
+            maximum=1.2,
+            context=f"[creative_preset.{normalized_style_preset}.{role}].line_advance_ratio",
+        ),
+        safe_top_ratio=_bounded_float(
+            value_or_current(style.safe_top_ratio, "safe_top_ratio"),
+            default=style.safe_top_ratio,
+            minimum=0.0,
+            maximum=1.0,
+            context=f"[creative_preset.{normalized_style_preset}.{role}].safe_top_ratio",
+        ),
+        safe_bottom_ratio=_bounded_float(
+            value_or_current(style.safe_bottom_ratio, "safe_bottom_ratio"),
+            default=style.safe_bottom_ratio,
+            minimum=0.0,
+            maximum=1.0,
+            context=f"[creative_preset.{normalized_style_preset}.{role}].safe_bottom_ratio",
+        ),
+        max_safe_band_height_ratio=_bounded_float(
+            value_or_current(style.max_safe_band_height_ratio, "max_safe_band_height_ratio"),
+            default=style.max_safe_band_height_ratio,
+            minimum=0.0,
+            maximum=1.0,
+            context=f"[creative_preset.{normalized_style_preset}.{role}].max_safe_band_height_ratio",
+        ),
+        overflow_policy=_choice_text(
+            value_or_current(style.overflow_policy, "overflow_policy"),
+            default=style.overflow_policy,
+            allowed=(
+                "wrap_then_scale_then_review",
+                "wrap_then_truncate_or_review",
+            ),
+            context=f"[creative_preset.{normalized_style_preset}.{role}].overflow_policy",
+        ),
+        enter_animation=_optional_text(value_or_current(style.enter_animation, "enter_animation")),
+        review_required_if_overflow=_boolean(
+            value_or_current(style.review_required_if_overflow, "review_required_if_overflow"),
+            default=style.review_required_if_overflow,
+            context=f"[creative_preset.{normalized_style_preset}.{role}].review_required_if_overflow",
         ),
     )

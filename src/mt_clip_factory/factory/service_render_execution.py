@@ -84,6 +84,7 @@ def run_preview_job(service, job_id: int) -> None:  # noqa: ANN001
                 assets=assets,
                 fill_policies=fill_policies,
             )
+            creative_preset_code = _materialize_creative_preset_code(uow, recipe_id=recipe.id)
             composition = build_segmented_preview_composition(
                 recipe=recipe,
                 product_code=product.product_code,
@@ -93,6 +94,7 @@ def run_preview_job(service, job_id: int) -> None:  # noqa: ANN001
                 segments=persisted.segments,
                 caption_runtime_service=service._caption_runtime_service,
                 automation_policy_service=service._automation_policy_service,
+                creative_preset_code=creative_preset_code,
                 caption_frame_size=_resolve_caption_frame_size(
                     system_settings_service=service._system_settings_service,
                     target_ratio=recipe.target_ratio,
@@ -270,6 +272,7 @@ def run_final_render_job(service, job_id: int) -> None:  # noqa: ANN001
                 assets=assets,
                 fill_policies=fill_policies,
             )
+            creative_preset_code = _materialize_creative_preset_code(uow, recipe_id=recipe.id)
             composition = build_segmented_preview_composition(
                 recipe=recipe,
                 product_code=product.product_code,
@@ -279,6 +282,7 @@ def run_final_render_job(service, job_id: int) -> None:  # noqa: ANN001
                 segments=persisted.segments,
                 caption_runtime_service=service._caption_runtime_service,
                 automation_policy_service=service._automation_policy_service,
+                creative_preset_code=creative_preset_code,
                 caption_frame_size=_resolve_caption_frame_size(
                     system_settings_service=service._system_settings_service,
                     target_ratio=recipe.target_ratio,
@@ -495,6 +499,16 @@ def _materialize_creative_preset_payload(uow, *, recipe_id: int) -> dict[str, ob
             "selection_reasons": reasons,
         }
     return None
+
+
+def _materialize_creative_preset_code(uow, *, recipe_id: int) -> str | None:  # noqa: ANN001
+    creative_preset_payload = _materialize_creative_preset_payload(uow, recipe_id=recipe_id)
+    if creative_preset_payload is None:
+        return None
+    preset_code = creative_preset_payload.get("preset_code")
+    if not isinstance(preset_code, str) or not preset_code.strip():
+        return None
+    return preset_code.strip()
 
 
 def _fail_render_job(service, uow, *, job, product_code: str, batch_code: str | None, event_type: str, recipe_code: str, exc: Exception) -> None:  # noqa: ANN001,E501
